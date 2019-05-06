@@ -153,7 +153,7 @@ def avg_slope_at_x(leaf_ranges, leaf_slopes):
     return uniq_x, avg_slope_at_x
 
 
-def plot_mine(X, y, colname, targetname=None,
+def mine_plot(X, y, colname, targetname=None,
               ax=None,
               ntrees=30,
               min_samples_leaf=2,
@@ -272,13 +272,13 @@ def catwise_leaves(rf, X, y, colname):
     return leaf_histos
 
 
-def plot_cat_mine(X, y, colname, targetname,
-                  cats=None,
-                  ax=None,
-                  sort='ascending',
-                  ntrees=30, min_samples_leaf=5,
-                  alpha=.03,
-                  yrange=None):
+def mine_catplot(X, y, colname, targetname,
+                 cats=None,
+                 ax=None,
+                 sort='ascending',
+                 ntrees=30, min_samples_leaf=5,
+                 alpha=.03,
+                 yrange=None):
     rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X.drop(colname, axis=1), y)
     print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")

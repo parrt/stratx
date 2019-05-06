@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from  matplotlib.collections import LineCollection
 import time
 
-def predict(model, X:pd.DataFrame, colname:str, targetname="target", numx=50, nlines=None):
+def ice_predict(model, X:pd.DataFrame, colname:str, targetname="target", numx=50, nlines=None):
     """
     Return dataframe with one row per observation in X and one column
     per unique value of column identified by colname.
@@ -66,7 +66,7 @@ def ice2lines(ice:np.ndarray) -> np.ndarray:
     return np.array(lines)
 
 
-def plot_ice(ice, colname, targetname="target", cats=None, ax=None, linewidth=.7, color='#9CD1E3',
+def ice_plot(ice, colname, targetname="target", cats=None, ax=None, linewidth=.7, color='#9CD1E3',
              alpha=.1, title=None, yrange=None, pdp=True, pdp_linewidth=1, pdp_alpha=1,
              pdp_color='black'):
     start = time.time()
