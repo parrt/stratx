@@ -162,10 +162,35 @@ def mine_plot(X, y, colname, targetname=None,
               xrange=None,
               yrange=None,
               show_derivative=False):
+    """
+
+    :param X:
+    :param y:
+    :param colname:
+    :param targetname:
+    :param ax:
+    :param ntrees:
+    :param min_samples_leaf:
+    :param alpha:
+    :param hires_threshold:
+    :param xrange:
+    :param yrange:
+    :param show_derivative:
+    :return:
+    """
+
+    """
+    Wow. Breiman's trick mostly works. Might as well leave as X,y though
+    X_synth, y_synth = conjure_twoclass(X)
     rf = RandomForestRegressor(n_estimators=ntrees,
                                min_samples_leaf=min_samples_leaf,
                                oob_score=False)
-    rf.fit(X.drop(colname, axis=1), y)
+    rf.fit(X_synth.drop(colname,axis=1), y_synth)
+    """
+    rf = RandomForestRegressor(n_estimators=ntrees,
+                               min_samples_leaf=min_samples_leaf,
+                               oob_score=False)
+    rf.fit(X.drop(colname,axis=1), y)
     # print(f"\nModel wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     leaf_xranges, leaf_yranges, leaf_slopes = collect_leaf_slopes(rf, X, y, colname, hires_threshold=hires_threshold)
     uniq_x, slope_at_x = avg_slope_at_x(leaf_xranges, leaf_slopes)
@@ -326,20 +351,6 @@ def mine_catplot(X, y, colname, targetname,
 
 # -------------- S U P P O R T ---------------
 
-def df_string_to_cat(df:pd.DataFrame) -> dict:
-    catencoders = {}
-    for colname in df.columns:
-        if is_string_dtype(df[colname]) or is_object_dtype(df[colname]):
-            df[colname] = df[colname].astype('category').cat.as_ordered()
-            catencoders[colname] = df[colname].cat.categories
-    return catencoders
-
-
-def df_cat_to_catcode(df):
-    for col in df.columns:
-        if is_categorical_dtype(df[col]):
-            df[col] = df[col].cat.codes + 1
-
 
 def scramble(X : np.ndarray) -> np.ndarray:
     """
@@ -379,4 +390,4 @@ def conjure_twoclass(X):
         X_synth = np.concatenate([X, X_rand], axis=0)
     y_synth = np.concatenate([np.zeros(len(X)),
                               np.ones(len(X_rand))], axis=0)
-    return X_synth, y_synth
+    return X_synth, pd.Series(y_synth)
