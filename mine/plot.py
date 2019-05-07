@@ -53,7 +53,7 @@ def hires_slopes_from_one_leaf(x:np.ndarray, y:np.ndarray):
     n_estimators=3 seems fine for sine curve.  Gotta keep cost down here as we might
     call this a lot.
     """
-    rf = RandomForestRegressor(n_estimators=30, min_samples_leaf=5, bootstrap=True)
+    rf = RandomForestRegressor(n_estimators=20, min_samples_leaf=5, bootstrap=True)
     rf.fit(X, y)
     leaves = leaf_samples(rf, X)
     leaf_slopes = []
@@ -99,7 +99,7 @@ def collect_leaf_slopes(rf, X, y, colname, hires_threshold):
         leaf_x = one_leaf_samples[colname].values
         leaf_y = y.iloc[samples].values
         if len(samples)>hires_threshold:
-            print(f"BIG {len(samples)}!!!")
+            # print(f"BIG {len(samples)}!!!")
             leaf_xranges_, leaf_yranges_, leaf_slopes_ = \
                 hires_slopes_from_one_leaf(leaf_x, leaf_y)
             leaf_slopes.extend(leaf_slopes_)
