@@ -192,7 +192,8 @@ def mine_plot(X, y, colname, targetname=None,
                                oob_score=False)
     rf.fit(X.drop(colname,axis=1), y)
     # print(f"\nModel wo {colname} OOB R^2 {rf.oob_score_:.5f}")
-    leaf_xranges, leaf_yranges, leaf_slopes = collect_leaf_slopes(rf, X, y, colname, hires_threshold=hires_threshold)
+    leaf_xranges, leaf_yranges, leaf_slopes = \
+        collect_leaf_slopes(rf, X, y, colname, hires_threshold=hires_threshold)
     uniq_x, slope_at_x = avg_slope_at_x(leaf_xranges, leaf_slopes)
     # print(f'uniq_x = [{", ".join([f"{x:4.1f}" for x in uniq_x])}]')
     # print(f'slopes = [{", ".join([f"{s:4.1f}" for s in slope_at_x])}]')
