@@ -7,6 +7,8 @@ from  matplotlib.collections import LineCollection
 from sklearn.linear_model import LinearRegression, Lasso
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
+
 import time
 from pandas.api.types import is_string_dtype, is_object_dtype, is_categorical_dtype, is_bool_dtype
 from scipy.integrate import cumtrapz
@@ -57,11 +59,11 @@ def hires_slopes_from_one_leaf(x:np.ndarray, y:np.ndarray):
     X = x.reshape(-1,1)
     """
     Bootstrapping appears to be important, giving much better sine curve for weather().
-    min_samples_leaf=3 seems pretty good but min_samples_leaf=5 is smoother.
-    n_estimators=3 seems fine for sine curve.  Gotta keep cost down here as we might
+    Tried many diff min_samples_leaf and min_samples_leaf=10 is largest value I feel
+    comfortable with and gives good sine curve. Gotta keep cost down here as we might
     call this a lot.
     """
-    rf = RandomForestRegressor(n_estimators=20, min_samples_leaf=5, bootstrap=True)
+    rf = RandomForestRegressor(n_estimators=20, min_samples_leaf=10, bootstrap=True)
     rf.fit(X, y)
     leaves = leaf_samples(rf, X)
     leaf_slopes = []
