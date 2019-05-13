@@ -44,6 +44,14 @@ def leaf_samples(rf, X:np.ndarray):
     return leaf_samples
 
 
+def dtree_leaf_samples(dtree, X:np.ndarray):
+    leaf_ids = dtree.apply(X)
+    d = pd.DataFrame(leaf_ids, columns=['leafid'])
+    d = d.reset_index() # get 0..n-1 as column called index so we can do groupby
+    sample_idxs_in_leaf = d.groupby('leafid')['index'].apply(lambda x: x.values)
+    return sample_idxs_in_leaf
+
+
 def hires_slopes_from_one_leaf(x:np.ndarray, y:np.ndarray):
     start = time.time()
     X = x.reshape(-1,1)
@@ -310,6 +318,7 @@ def mine_catplot(X, y, colname, targetname,
     print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     leaf_histos = catwise_leaves(rf, X, y, colname)
     sum_per_cat = np.sum(leaf_histos, axis=1)
+    # TODO: I think np.nansum(skipna=True) would work here
     nonmissing_count_per_cat = len(leaf_histos.columns) - np.isnan(leaf_histos).sum(axis=1)
     avg_per_cat = sum_per_cat / nonmissing_count_per_cat
 
