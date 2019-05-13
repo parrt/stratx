@@ -62,6 +62,8 @@ def hires_slopes_from_one_leaf(x:np.ndarray, y:np.ndarray):
     Tried many diff min_samples_leaf and min_samples_leaf=10 is largest value I feel
     comfortable with and gives good sine curve. Gotta keep cost down here as we might
     call this a lot.
+    
+    Tried single estimator w/o boostrap. Terrible.
     """
     rf = RandomForestRegressor(n_estimators=20, min_samples_leaf=10, bootstrap=True)
     rf.fit(X, y)
