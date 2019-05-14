@@ -1,0 +1,92 @@
+\documentclass[10pt]{sigplanconf}
+\usepackage[T1]{fontenc}
+\usepackage{amsthm}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{epstopdf}
+\usepackage{hyperref}
+\usepackage{alltt}
+\usepackage{listings}
+\usepackage{array}
+\usepackage{extarrows}
+\usepackage{setspace}
+\usepackage{tikz}
+\usepackage{tikz-qtree}
+\usetikzlibrary{calc}
+\usetikzlibrary{positioning}
+\usepackage{floatrow}
+\usepackage{mathtools}
+\usepackage{makecell}
+\usepackage[noline, boxed, procnumbered, linesnumberedhidden, titlenumbered]{algorithm2e} 
+\usepackage{enumitem}
+\usepackage[firstpage]{draftwatermark}
+
+\newcommand{\techreport}[1]{} % drop #1 to make it a cut
+\newcommand{\cL}{{\cal L}}
+\newcommand{\eg}{{\em e.g.}}
+\newcommand{\ith}{$i^{th}$}
+\newcommand{\cut}[1]{}
+\newcommand{\todo}[1]{{\bf\em TODO:} #1}
+\newcommand*{\pos}[1]{\ensuremath{\color{blue}\uparrow_{\!#1}}}
+\newcommand*{\chpos}[2]{\ensuremath{\underset{\color{blue}\uparrow_{\!#2}}{#1}}}
+
+\cut{
+\newcommand*{\underuparrow}[1]{\ensuremath{\underset{\uparrow}{#1}}}
+\newcommand*{\underuparrowa}[1]{\ensuremath{\underset{\!\uparrow_{\!a}}{#1}}}
+\newcommand*{\underuparrowb}[1]{\ensuremath{\underset{\!\uparrow_{\!b}}{#1}}}
+\newcommand*{\underuparrowc}[1]{\ensuremath{\underset{\!\uparrow_{\!c}}{#1}}}
+\newcommand*{\underuparrowd}[1]{\ensuremath{\underset{\!\uparrow_{\!d}}{#1}}}
+}
+
+\newcommand\vizsp[1][.33em]{%
+  \mbox{\kern.06em\vrule height.3ex}%
+  \vbox{\hrule width#1}%
+  \hbox{\vrule height.3ex}}
+    
+\newtheorem{definition}{Definition}[section]
+\newcounter{featurecounter}
+
+\setlist[enumerate]{itemsep=-1mm}
+
+\addtolength{\columnsep}{-4pt}
+%\addtolength{\textwidth}{1pt}
+
+\begin{document}
+
+\special{papersize=8.5in,11in}
+\setlength{\pdfpageheight}{\paperheight}
+\setlength{\pdfpagewidth}{\paperwidth}
+
+\title{A New, More Accurate Approach For Computing Partial Dependence Plots}
+
+\authorinfo{Terence Parr\vspace{-2mm}}
+           {University of San Francisco, USA\vspace{-1mm}}
+           {parrt@cs.usfca.edu}
+\authorinfo{James Wilson\vspace{-2mm}}
+           {University of San Francisco, USA\vspace{-1mm}}
+           {jdwilson4@usfca.edu}
+
+\maketitle
+
+\begin{abstract}
+foobar
+\end{abstract}
+
+\cite{PDP} \cite{ICE}
+
+%\category{D.2.3}{Software Engineering}{Coding - Pretty printers}
+
+%\keywords Formatting algorithms, pretty-printer
+
+
+% We recommend abbrvnat bibliography style.
+
+\vfill\eject
+\bibliographystyle{abbrvnat}
+
+% The bibliography should be embedded for final submission.
+
+\bibliography{mipd}
+
+\end{document}
