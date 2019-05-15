@@ -173,7 +173,9 @@ def mine_plot(X, y, colname, targetname=None,
               hires_threshold=20,
               xrange=None,
               yrange=None,
-              show_derivative=False):
+              show_derivative=False,
+              pdp_dot_size=5,
+              title=None):
     """
 
     :param X:
@@ -226,7 +228,7 @@ def mine_plot(X, y, colname, targetname=None,
     # Nah. starting with 0 is best
 
     ax.scatter(uniq_x, curve,
-               s=3, alpha=1,
+               s=pdp_dot_size, alpha=1,
                c='black', label="Avg piecewise linear")
 
     segments = []
@@ -249,10 +251,8 @@ def mine_plot(X, y, colname, targetname=None,
 
     ax.set_xlabel(colname)
     ax.set_ylabel(targetname)
-    if hasattr(rf, 'oob_score_'):
-        ax.set_title(f"Effect of {colname} on {targetname} in similar regions\nOOB R^2 {rf.oob_score_:.3f}")
-    else:
-        ax.set_title(f"Effect of {colname} on {targetname} in similar regions")
+    if title is not None:
+        ax.set_title(title)
 
     if show_derivative:
         other = ax.twinx()

@@ -113,8 +113,6 @@ def ice_plot(ice, colname, targetname="target", cats=None, ax=None, linewidth=.7
     else:
         ax.set_xlim(minx, maxx)
 
-    ax.set_title(f"Partial dependence of {colname} on {targetname}")
-
     if pdp:
         uniq_values = ice.iloc[0,:]
         ax.plot(uniq_values, avg_y - min_pdp_y,
