@@ -1,6 +1,6 @@
 \documentclass[12pt]{article}
 \usepackage{enumitem}
-\usepackage[T1]{fontenc}
+%\usepackage[T1]{fontenc}
 \usepackage[auth-sc,affil-sl]{authblk}
 \usepackage{amsmath}
 \usepackage{graphicx}
@@ -19,6 +19,7 @@
 \usepackage[noline, boxed, procnumbered, linesnumberedhidden, titlenumbered]{algorithm2e}
 \usepackage[firstpage]{draftwatermark}
 \usepackage[margin=1in]{geometry}  %%jcgs has own margins
+\usepackage{lmodern}
 
 %\pdfminorversion=4
 % NOTE: To produce blinded version, replace "0" with "1" below.
@@ -36,6 +37,8 @@
 \newcommand{\ith}{$i^{th}$}
 \newcommand{\cut}[1]{}
 \newcommand{\todo}[1]{{\bf\em TODO:} #1}
+
+\newcommand{\spd}{\fontfamily{cmr}\textsc{\textbf{StratPD}}}
 
 \setlist[enumerate]{itemsep=-1mm}
 
@@ -58,8 +61,7 @@
 
 \if0\blind
 {
-  \title{\bf Accurate and Model-Independent\\
-  Partial Dependence Plots}
+  \title{\bf \spd: A Localized Approach to Partial Dependence Plots for Dependent Variables}
 
   \author{Terence Parr and James Wilson\\
       University of San Francisco\\
@@ -112,13 +114,15 @@ As another example, consider the marginal plot of the number of bathrooms versus
 \end{center}
 \end{figure}
 
+\spd
+
 The partial dependence plot largely follows the marginal plot except for the prices of three and four bathroom apartments, where it levels off. This is counterintuitive and exposes an issue with PD and ICE plots. While PD and ICE plots are {\em model-agnostic}, they are not {\em model-independent} and are subject to the strengths and weaknesses of the model making predictions. In \figref{fig:baths_price}(b), the model is a Random Forest(tm) (RF) and RFs cannot extrapolate beyond their support range.  The data set has few apartments with three and four bathrooms, as shown by the lack of blue dots in that range of the marginal plot, so the price predictions appear to flatten out after two bathrooms.  In contrast, \figref{fig:baths_price}(c) shows the PD/ICE plot for the exact same data set but using a linear model (with Lasso regularization).
 
 Getting such radically different PD and ICE plots for different underlying models is undesirable because users cannot distinguish between interesting $y$ curve fluctuations and artifacts of their model choice. At the very least, users should compare plots derived from multiple models. Moreover, PD and ICE plots are only as accurate as the underlying model, meaning PD and ICE plots from derived high-bias models should not be trusted.
 
 There are two remaining issues with PD and ICE plots associated with the relationship between features. First, as Friedman pointed out, PD plots are most accurate ``{\em when {\em [the model]} is dominated by low order interactions.}''  Feature interactions such as $x_1x_2$ are difficult to tease apart to obtain partial dependencies on just $x_1$ or $x_2$. ICE plots address this issue by showing separate predicted $y$ curves for each observation as the feature of interest is moved through all possible values.  This not only shows the variation hidden by the PD average curve, but it can depict interaction relationships between the feature of interest and other features. \todo{ref later fig}.
 
-The second issue stems from collinearity, a lack of independence, between features.  In a nutshell, not every combination of collinear features is valid. Consider a five bedroom apartment with just one or even zero bathrooms or a four bathroom studio was no bedroom or an observation identified as male but also pregnant.  Because PD and ICE alter observations by shifting the feature of interest through all possible feature values, they run the risk of conjuring nonsensical observations, and in our experience, features in real data sets are often collinear to some degree. This problem can be mitigated by computing PD and ICE plots on groups of collinear or interacting features of interest. \todo{but could involve identifying subsets and computing lots of combinations and we still might want to know about a single contribution.}
+The second issue stems from collinearity, a lack of independence, between features.  In a nutshell, not every combination of dependent features is valid. Consider a five bedroom apartment with just one or even zero bathrooms or a four bathroom studio was no bedroom or an observation identified as male but also pregnant.  Because PD and ICE alter observations by shifting the feature of interest through all possible feature values, they run the risk of conjuring nonsensical observations, and in our experience, features in real data sets are often collinear to some degree. This problem can be mitigated by computing PD and ICE plots on groups of collinear or interacting features of interest. \todo{but could involve identifying subsets and computing lots of combinations and we still might want to know about a single contribution.}
 
 \begin{figure}[htbp]
 \begin{center}
@@ -151,6 +155,8 @@ Stratification is great because it's simple to implement and is obviously correc
 PDP math shows that features added or multiplied times the remaining F approximation completely describe the partial dependence; I assume that means that interactions are not a problem.
 
 do we need to talk about LIME?
+
+propensity stuff James mentioned
  
 This python package seems to do PDP, LIME etc... https://github.com/oracle/Skater
 
