@@ -62,7 +62,6 @@
   Partial Dependence Plots}
 
   \author{Terence Parr and James Wilson\\
-      Department of Data Science\\
       University of San Francisco\\
 }
   \maketitle
@@ -85,36 +84,25 @@ Pithy abstract here.
 \end{abstract}
 
 \noindent%
-{\it Keywords:} 
-\vfill
+{\it Keywords:} beer, bbq
+%\vfill
 
-\newpage
+%\newpage
 %\spacingset{1.5} % DON'T change the spacing!
 \section{Introduction}
 \label{sec:intro}
 
-In practice, interpreting a machine learning model is just as important as obtaining an accurate model. Feature importance is one such interpretation tool, which indicates the relative predictive power of each feature and is helpful when making business decisions. For example, in a model predicting apartment rent prices, the important features often identify what renters are willing to pay for. On the other hand, feature importance does not identify the relationship itself between features (independent variables) $x_i$ and the target (dependent) variable $y$.  Knowing these relationships tells model users a great deal about their data and, indirectly, the associated real-world population. For example, public health officials might be interested in how years of education affect body weight, given a set of observations sampled from a population.
+In practice, machine learning model interpretation is just as important as obtaining an accurate model. Feature importance is one such interpretation tool, which indicates the relative predictive power of each feature and is helpful when making business decisions. For example, in a model predicting apartment rent prices, the important features often identify what renters are willing to pay for. On the other hand, feature importance does not identify the relationship itself between features (independent variables) $x_i$ and the target (dependent) variable $y$.  Knowing these relationships tells model users a great deal about their data and, indirectly, the associated real-world population. For example, public health officials might be interested in how years of education affect body weight, given a set of observations sampled from a population.
 
 Given just one or two features, a plot of $x_i$ versus $y$ lets us visualize the exact relationship of each feature and $y$.  Because we cannot visualize more than three dimensions, however, this approach does not work for data sets with more than two features.
 
 To get around this limitation, traditional marginal plots project other axes onto the axis associated with the feature of interest.  That means that marginal plots do not isolate the specific contribution of $x_i$ to $y$. For example, a marginal plot of sex (male/female) versus body weight would likely show that, on average, men are heavier than women. While true, men are also taller than women on average, which likely accounts for most of the difference in average weight. It's unlikely that two ``identical'' people, differing only in sex, would be appreciably different in weight.  
 
-As another example, consider the marginal plot of the number of bathrooms versus price shown in \figref{fig:baths_price}(a) (New York City apartment rent data from Kaggle). One would expect a near-linear relationship for the net effect of the number of bathrooms on price, but the marginal plot implausibly suggests that moving from no bathrooms to one bathroom does not affect the price.   The apartment prices shown in the marginal plot include the effect of all other features for each apartment.
+As another example, consider the marginal plot of the number of bathrooms versus price shown in \figref{fig:baths_price}(a) (New York City apartment rent data from Kaggle). One would expect a near-linear relationship for the net effect of the number of bathrooms on price, but the marginal plot implausibly suggests that moving from no bathrooms to one bathroom does not affect the price very much.   The apartment prices shown in the marginal plot include the effect of all other features for each apartment.
 
 \cite{PDP} introduced partial dependence (PD) plots as a way to extract and visualize the dependence of $y$ on one or two features of interest. \figref{fig:baths_price}(b) shows the (zero-centered) PD of rent price on the number of bathrooms as a black line. The partial dependence line is the average of the blue lines, which represent the individual conditional expectation (ICE) plots of \cite{ICE}.  In this case, the ICE lines depict the model prediction contributions for a single observation as the bathroom feature shifts through all possible number of bathrooms. Because PD plots represent an average across observations, they can hide a great deal of variability, so it is helpful to combine PD and ICE plots.
 
-The partial dependence plot seems to follow the marginal plot except for the three and four bathroom apartments, where it levels off. This is counterintuitive and exposes an issue with PD plots. While PD plots are model-agnostic, they are not model-independent and are subject to the strengths and weaknesses of the model used to make predictions. In \figref{fig:baths_price}(b), the model is a Random Forest(tm) (RF) and RFs cannot extrapolate beyond their support range.  The data set has few apartments with three and four bathrooms, as shown by the lack of blue dots in that range of the marginal plot, so the price predictions appear to flatten out after two bathrooms.  \figref{fig:baths_price}(c) shows the PD/ICE plot for the exact same data set but using a linear model (with Lasso regularization).
- 
-a result of collinearity with, for example, the number of bedrooms.
- 
-as long as these features are not strongly collinear with the remaining features. The interaction between variables causes marginal plots
-
-
-define what we are actually looking for: controlling for other variables or net effect. All other features being equal. partial derivative.
-
-
-
- \begin{figure}[htbp]
+\begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.7]{images/baths_vs_price.png}
 \includegraphics[scale=0.7]{images/baths_vs_price_pdp.png}
@@ -124,12 +112,50 @@ define what we are actually looking for: controlling for other variables or net 
 \end{center}
 \end{figure}
 
-After controlling for all other features,
+The partial dependence plot largely follows the marginal plot except for the prices of three and four bathroom apartments, where it levels off. This is counterintuitive and exposes an issue with PD and ICE plots. While PD and ICE plots are {\em model-agnostic}, they are not {\em model-independent} and are subject to the strengths and weaknesses of the model making predictions. In \figref{fig:baths_price}(b), the model is a Random Forest(tm) (RF) and RFs cannot extrapolate beyond their support range.  The data set has few apartments with three and four bathrooms, as shown by the lack of blue dots in that range of the marginal plot, so the price predictions appear to flatten out after two bathrooms.  In contrast, \figref{fig:baths_price}(c) shows the PD/ICE plot for the exact same data set but using a linear model (with Lasso regularization).
+
+Getting such radically different PD and ICE plots for different underlying models is undesirable because users cannot distinguish between interesting $y$ curve fluctuations and artifacts of their model choice. At the very least, users should compare plots derived from multiple models. Moreover, PD and ICE plots are only as accurate as the underlying model, meaning PD and ICE plots from derived high-bias models should not be trusted.
+
+There are two remaining issues with PD plots associated with the relationship between features. First, as Friedman pointed out, PD plots are most accurate ``{\em when {\em [the model]} is dominated by low order interactions.}''  Feature interactions are difficult to tease apart to obtain partial dependencies. ICE plots address this issue by showing separate predicted $y$ curves for each observation as the feature of interest is moved through all possible values.  This not only shows the variation hidden by the PD average curve, but it can depict interaction relationships between the feature of interest and other features. \todo{ref later fig}.
+
+The second issue stems from collinearity, a lack of independence, between features.  In a nutshell, not every combination of two collinear features is valid. Consider a five bedroom apartment with just one or even zero bathrooms or a four bathroom studio was no bedroom or an observation identified as male but also pregnant.  Because PD and ICE alter observations by shifting the feature of interest through all possible feature values, they run the risk of conjuring nonsensical observations, and in our experience, features in real data sets are often collinear to some degree. This problem can be mitigated by computing PD and ICE plots on groups of collinear or interacting features of interest. \todo{but could involve computing lots of combinations and we still might want to know about a single contribution.}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.7]{images/baths_vs_price_mipd.png}
+\caption{{\bf  Model-independent partial dependence plot of bathrooms versus rent price}}
+\label{fig:baths_price_mipd}
+\end{center}
+\end{figure}
+
+The remaining issue with PD plots was pointed out by Friedman: PD plots ``{\em often produce helpful clues, especially when {\em [the model]} is dominated by low order interactions.}'' Variable collinearity or interactions are difficult to tease apart to obtain partial dependencies.  ICE plots address this issue by showing how the predicted $y$ value changes for each observation as the feature of interest is moved through all possible values. shows a relationship but is it accurate? nonsensical samples.
+
+\cut{
+separate but related problems: {\em (i)} collinearity between features and {\em (ii)} y being a function of interaction between features, such as implicit $x_1x_2$ terms. 
+ 
+
+
+since we care most about how y changes per changes in $x_i$, absolute plots are less useful than relative plots; compare with centered ICE, which I also don't like.
 
 
 
+define what we are actually looking for: controlling for other variables or net effect. All other features being equal. partial derivative.}
+
+Our approach...
 
 \section{Related work}
+
+There are a few basic approaches to identifying the partial effect of a single variable on the target or response variable:
+
+\begin{itemize}
+\item Stratification
+\item Beta coefficients from linear model without regularization
+\item Marginal plots
+\item PDP/ICE
+\item Accumulated Local Effects (https://arxiv.org/abs/1612.08468) (ALE) plots
+\end{itemize}
+
+Stratification is great because it's simple to implement and is obviously correctly isolating the effect of a single variable, $x_i$, on the target, $y$. We are grouping samples by all features except for $x_i$ then considering the relationship between that feature and $y$.   Unfortunately, it quickly breaks down when there are many variables because it's impossible to find enough samples that are equivalent across all of those variables.
 
 PDP math shows that features added or multiplied times the remaining F approximation completely describe the partial dependence; I assume that means that interactions are not a problem.
 
