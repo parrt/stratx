@@ -36,7 +36,7 @@
 \newcommand{\eg}{{\em e.g.}}
 \newcommand{\ith}{$i^{th}$}
 \newcommand{\cut}[1]{}
-\newcommand{\todo}[1]{{\bf\em TODO:} #1}
+\newcommand{\todo}[1]{{\bf\em TODO:} {\em #1}}
 
 \newcommand{\spd}{\fontfamily{cmr}\textsc{\textbf{StratPD}}}
 
@@ -61,7 +61,7 @@
 
 \if0\blind
 {
-  \title{\bf \spd: A Localized Approach to Partial Dependence Plots for Dependent Variables}
+  \title{\bf \spd: A Localized Approach to Partial Dependence Plots for Non-Independent Variables}
 
   \author{Terence Parr and James Wilson\\
       University of San Francisco\\
@@ -114,15 +114,27 @@ As another example, consider the marginal plot of the number of bathrooms versus
 \end{center}
 \end{figure}
 
-\spd
-
 The partial dependence plot largely follows the marginal plot except for the prices of three and four bathroom apartments, where it levels off. This is counterintuitive and exposes an issue with PD and ICE plots. While PD and ICE plots are {\em model-agnostic}, they are not {\em model-independent} and are subject to the strengths and weaknesses of the model making predictions. In \figref{fig:baths_price}(b), the model is a Random Forest(tm) (RF) and RFs cannot extrapolate beyond their support range.  The data set has few apartments with three and four bathrooms, as shown by the lack of blue dots in that range of the marginal plot, so the price predictions appear to flatten out after two bathrooms.  In contrast, \figref{fig:baths_price}(c) shows the PD/ICE plot for the exact same data set but using a linear model (with Lasso regularization).
 
 Getting such radically different PD and ICE plots for different underlying models is undesirable because users cannot distinguish between interesting $y$ curve fluctuations and artifacts of their model choice. At the very least, users should compare plots derived from multiple models. Moreover, PD and ICE plots are only as accurate as the underlying model, meaning PD and ICE plots from derived high-bias models should not be trusted.
 
-There are two remaining issues with PD and ICE plots associated with the relationship between features. First, as Friedman pointed out, PD plots are most accurate ``{\em when {\em [the model]} is dominated by low order interactions.}''  Feature interactions such as $x_1x_2$ are difficult to tease apart to obtain partial dependencies on just $x_1$ or $x_2$. ICE plots address this issue by showing separate predicted $y$ curves for each observation as the feature of interest is moved through all possible values.  This not only shows the variation hidden by the PD average curve, but it can depict interaction relationships between the feature of interest and other features. \todo{ref later fig}.
+There are two remaining issues with PD plots associated with the relationship between features. First, as Friedman pointed out, PD plots are most accurate ``{\em when {\em [the model]} is dominated by low order interactions.}''  Feature interactions such as $x_1x_2$ are difficult to tease apart to obtain partial dependencies on just $x_1$ or $x_2$. ICE plots address this issue by showing separate predicted $y$ curves for each observation as the feature of interest is moved through all possible values.  This not only shows the variation hidden by the PD average curve, but it can depict interaction relationships between the feature of interest and other features. \todo{ref later fig}.
 
-The second issue stems from collinearity, a lack of independence, between features.  In a nutshell, not every combination of dependent features is valid. Consider a five bedroom apartment with just one or even zero bathrooms or a four bathroom studio was no bedroom or an observation identified as male but also pregnant.  Because PD and ICE alter observations by shifting the feature of interest through all possible feature values, they run the risk of conjuring nonsensical observations, and in our experience, features in real data sets are often collinear to some degree. This problem can be mitigated by computing PD and ICE plots on groups of collinear or interacting features of interest. \todo{but could involve identifying subsets and computing lots of combinations and we still might want to know about a single contribution.}
+The second issue stems from collinearity, a lack of independence, between features.  In a nutshell, not every combination of dependent features is valid. Consider a five bedroom apartment with just one or even zero bathrooms or a four bathroom studio was no bedroom or an observation identified as male but also pregnant.  Because PD and ICE alter observations by shifting the feature of interest through all possible feature values, they run the risk of conjuring nonsensical observations, and in our experience, features in real data sets are very often dependent to some degree. This problem can be mitigated by computing PD and ICE plots on groups of collinear or interacting features of interest. \todo{but could involve identifying subsets and computing lots of combinations and we still might want to know about a single contribution.}
+
+To summarize the hazards of PD and ICE plots, both are strongly affected by the model chosen by the programmer.  To obtain accurate plots, PD and ICE rely on the accuracy of the underlying model, which might sacrifice local (\todo{use bold vector x for the first time here?}) accuracy to minimize some global loss function. Both plots use model prediction results rather than the data itself. Moreover, a potentially inaccurate model feeds off of potentially-nonsensical, synthesized observations arising from variable dependencies. What we need is an accurate mechanism that does not rely on, nor make predictions from, a user's model and a mechanism that does not presume independent features.
+
+\section{Our approach}
+
+In a perfect world, a model-independent approach supporting non-independent features is straightforward because we would know the actual function, $f(\bf x)$, that maps feature vector $\bf x$ to target $y$.  The partial derivative with respect to $x_i$ describes how a unit change in $x_i$ affects $y$ at all $x_i$ values. Integrating and plotting the partial derivative would yield a curve showing just $x_i$'s contribution to $y$. 
+
+Another simple approach, that works only in theory, stratifies a data set, grouping observations by all features except the feature of interest, $x_i$. For each group of observations with identical features $x_j$ for $j \neq i$, the univariate relationship between $x_i$ and $y$ precisely answers how $x_i$ affects $y$ ``all else being equal.''  This approach can work for one or two variables but quickly breaks down for many variables because it is impossible to find enough samples that are equivalent across that many variables.
+
+controlling for, canceling out... Even though $f(\bf x)$ is unavailable, a linear regression model can provide the general trend of $y$ over $x_i$ via regression coefficient $\beta_i$, but $\beta_i$ is a constant and says nothing about local trends.
+
+combine the two approaches
+
+obtaining accurate partial dependence plots is easy.
 
 \begin{figure}[htbp]
 \begin{center}
@@ -150,13 +162,13 @@ There are a few basic approaches to identifying the partial effect of a single v
 \item Accumulated Local Effects (https://arxiv.org/abs/1612.08468) (ALE) plots
 \end{itemize}
 
-Stratification is great because it's simple to implement and is obviously correctly isolating the effect of a single variable, $x_i$, on the target, $y$. We are grouping samples by all features except for $x_i$ then considering the relationship between that feature and $y$.   Unfortunately, it quickly breaks down when there are many variables because it's impossible to find enough samples that are equivalent across all of those variables.
-
 PDP math shows that features added or multiplied times the remaining F approximation completely describe the partial dependence; I assume that means that interactions are not a problem.
 
 do we need to talk about LIME?
 
 propensity stuff James mentioned
+
+talk about how we do not presume independence of features
  
 This python package seems to do PDP, LIME etc... https://github.com/oracle/Skater
 
@@ -171,5 +183,5 @@ Actually, the R version of personal dependence may actually do this. See https:/
 
 \bibliographystyle{apalike}
 
-\bibliography{mipd}
+\bibliography{stratpd}
 \end{document}
