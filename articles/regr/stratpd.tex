@@ -38,7 +38,7 @@
 \newcommand{\cut}[1]{}
 \newcommand{\todo}[1]{{\bf\em TODO:} {\em #1}}
 
-\newcommand{\spd}{\fontfamily{cmr}\textsc{\textbf{StratPD}}}
+\newcommand{\spd}{\fontfamily{cmr}\textsc{\small StratPD}}
 
 \setlist[enumerate]{itemsep=-1mm}
 
@@ -61,7 +61,7 @@
 
 \if0\blind
 {
-  \title{\bf \spd: A Localized Approach to Partial Dependence Plots for Non-Independent Variables}
+  \title{{\fontfamily{cmr}\textsc{StratPD}}: \bf A Localized Approach to Partial Dependence Plots for Non-Independent Variables}
 
   \author{Terence Parr and James Wilson\\
       University of San Francisco\\
@@ -120,17 +120,49 @@ Getting such radically different PD and ICE plots for different underlying model
 
 There are two remaining issues with PD plots associated with the relationship between features. First, as Friedman pointed out, PD plots are most accurate ``{\em when {\em [the model]} is dominated by low order interactions.}''  Feature interactions such as $x_1x_2$ are difficult to tease apart to obtain partial dependencies on just $x_1$ or $x_2$. ICE plots address this issue by showing separate predicted $y$ curves for each observation as the feature of interest is moved through all possible values.  This not only shows the variation hidden by the PD average curve, but it can depict interaction relationships between the feature of interest and other features. \todo{ref later fig}.
 
-The second issue stems from a lack of independence between features.  In a nutshell, not every combination of dependent features is valid. Consider a five bedroom apartment with just one or even zero bathrooms or a four bathroom studio was no bedroom or an observation identified as male but also pregnant.  Because PD and ICE alter observations by shifting the feature of interest through all possible feature values, they run the risk of conjuring nonsensical observations, and in our experience, features in real data sets are very often dependent to some degree. This problem can be mitigated by computing PD and ICE plots on groups of mutually-dependent or interacting features of interest. \todo{but could involve identifying subsets and computing lots of combinations and we still might want to know about a single contribution.}
+The second issue stems from a lack of independence between features.  In a nutshell, not every combination of dependent features is valid. Consider a five bedroom apartment with just one or even zero bathrooms or a four bathroom studio was no bedroom or an observation identified as male but also pregnant.  Because PD and ICE alter observations by shifting the feature of interest through all possible feature values, they run the risk of conjuring up nonsensical observations, and in our experience, features in real data sets are very often dependent to some degree. This problem can be mitigated by computing PD and ICE plots on groups of mutually-dependent or interacting features of interest. \todo{but could involve identifying subsets and computing lots of combinations and we still might want to know about a single contribution.}
 
 To summarize the hazards of PD and ICE plots, both are strongly affected by the model chosen by the programmer.  To obtain accurate plots, PD and ICE rely on the accuracy of the underlying model, which might sacrifice local (\todo{use bold vector x for the first time here?}) accuracy to minimize some global loss function. Both plots use model prediction results rather than the data itself. Moreover, a potentially inaccurate model feeds off of potentially-nonsensical, synthesized observations arising from variable dependencies. What we need is an accurate mechanism that does not rely on, nor make predictions from, a user's model and a mechanism that does not presume independent features.
 
 \section{Our approach}
 
-In a perfect world, a model-independent approach supporting non-independent features is straightforward because we would know the actual function, $y = f(\bf x)$, that maps feature vector $\bf x$ to target $y$.  The partial derivative of $f(\bf x)$ with respect to $x_i$ describes how a unit change in $x_i$ affects $y$ at all $x_i$ values, treating all other variables as constants. Integrating the partial derivative $\frac{\partial}{\partial x_i} f(\bf x)$ would yield a curve showing just $x_i$'s contribution to $y$. 
+In a perfect world, a model-independent approach supporting non-independent and interacting features would be straightforward because we would know the actual function, $y = f(\bf x)$, that maps feature vector $\bf x$ to target $y$.  (${\bf x} = [ x_1, .., x_d ]$ for $d$ dimensions or features.) The partial derivative of $f(\bf x)$ with respect to $x_i$ describes how a unit change in $x_i$ affects $y$ at all $x_i$ values, treating all other variables as constants. Integrating the partial derivative $\frac{\partial}{\partial x_i} f(\bf x)$ would yield a curve showing just $x_i$'s contribution to $y$. 
 
-Even though $f(\bf x)$ is unavailable, a linear regression model provides the general trend of $y$ over $x_i$'s support via regression coefficient $\beta_i$. For a unit change in $x_i$, $y$ increases or decreases by $\beta_i$, effectively canceling out or controlling for the other features, $x_j$ for $j \neq i$. There are two problems with using a global linear model.  First, coefficient $\beta_i$ is a constant and effectively smooths over any local $y$ trends. Second, linear models require dummy variables to represent (and replace) categorical $x_i$ variables, therefore, regression coefficients would describe the relationship between a single category rather than $x_i$.
+Even though $f(\bf x)$ is unavailable, a linear regression model provides the general trend of $y$ over $x_i$'s support via regression coefficient $\beta_i$. For a unit change in $x_i$, $y$ increases or decreases by $\beta_i$, effectively canceling out or controlling for the other features, $x_j$ for $j \neq i$. There are a few problems with using a global linear model, however.  First, a linear model might not be strong enough to capture the relationship between $\bf x$ and $y$. Second, coefficient $\beta_i$ is a constant and smooths over any local $y$ fluctuations. Third, linear models require dummy variables to represent (and replace) categorical $x_i$ variables, therefore, regression coefficients describe the relationship between a single category and $y$, rather than $x_i$ and $y$.
 
-Another simple but impractical approach stratifies a data set, grouping observations by all features except the feature of interest, $x_i$. For each group of observations with identical $x_j$ features for $j \neq i$, the univariate relationship between $x_i$ and $y$ precisely answers how $x_i$ affects $y$ all else being equal.  This approach works for two or three variables but quickly breaks down for more variables because it is impossible to find enough samples that are equivalent across that many variables.
+Another simple but impractical approach stratifies a data set, grouping observations by all features except the feature of interest, $x_i$. For a group of observations with identical $x_j$ features for all $j \neq i$, the associated $x_i$ and $y$ subset describes a piece of how $x_i$ affects $y$, all else being equal.  Fitting a univariate linear model to a group yields a piecewise approximation to the slope of $y$ localized to a specific region of $x_i$. The $x_i$ regions from multiple groups would typically overlap and so the slope of $y$ in a specific $x_i$ region is the average of all slope estimates covering that region. The localized slopes are a good approximation to the partial derivative of the unknown $f(\bf x)$ with respect to $x_i$. Integrating the slope estimates describes just $x_i$'s contribution to $y$.  
+
+Alas, this stratification approach works for two or three variables but breaks down for more variables because it is impractical to find groups of observations that are equal across so many variables.  Nonetheless, stratification is simple, well understood, and clearly isolates the effect of $x_i$ on $y$ from the other features in this application, even in the presence of non-independent and interacting features.  If a method for stratifying many variables were available, this approach would be practical.
+
+The key idea is to relax stratification so that it groups observations into similar, not exactly equal groups, which leads us to the primary contribution of this paper.  Our approach, called \spd, uses a random forest to cluster observations into similar groups and then collects piecewise approximations to the partial derivative of $f(\bf x)$. Averaging and then integrating partial derivatives across $x_i$ space yields a partial dependence curve that appears to isolate $x_i$'s contribution to $y$ well for real data sets.
+
+The primary contribution of this paper is a simple and practical means for stratifying data so that we can obtain localized approximations of the partial derivative with respect to a feature of interest.
+
+
+(\todo{ALE does something similar so cite it here}.)
+
+ means of controlling for confounding variables
+
+Stratifying
+
+indicate randomization here is useful
+
+\cut{ 
+$\{(x_i^{(g)}, y^{(g)})\}_{g=1}^G$
+\\\\
+$\{(x_i^{(g)}, y^{(g)})\}$
+\\
+\\
+${\bf x} = [ x_1, .., x_d ]$ for $d$ dimensions/features?
+\\
+\\\\
+$\{(x_i^{(k)}, y^{(k)})\}$ for $k$ in group $g$
+\\
+\\
+}
+
+
+Taking the partial derivative of a known function and integrating gets us the exact partial dependence, even in the presence of non-independent features and interactions, but we never know the true $f(\bf x)$ function.  If we had enough data, however, we could approximate the partial derivative piecewise using stratification.
 
 
 combine the two approaches
