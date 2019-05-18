@@ -138,6 +138,7 @@ def collect_leaf_slopes(rf, X, y, colname, hires_threshold):
 
 def avg_slope_at_x(leaf_ranges, leaf_slopes):
     start = time.time()
+    # TODO, can we use unique(X.iloc[:,i])?
     uniq_x = set(leaf_ranges[:, 0]).union(set(leaf_ranges[:, 1]))
     uniq_x = np.array(sorted(uniq_x))
     nx = len(uniq_x)

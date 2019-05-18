@@ -94,15 +94,15 @@ Pithy abstract here.
 \section{Introduction}
 \label{sec:intro}
 
-In practice, machine learning model interpretation is just as important as obtaining an accurate model. Feature importance is one such interpretation tool, which indicates the relative predictive power of each feature and is helpful when making business decisions. For example, in a model predicting apartment rent prices, the important features often identify what renters are willing to pay for. On the other hand, feature importance does not identify the relationship itself between features (independent variables) $x_i$ and the target (dependent) variable $y$.  Knowing these relationships tells model users a great deal about their data and, indirectly, the associated real-world population. For example, public health officials might be interested in how years of education affect body weight, given a set of observations sampled from a population.
+In practice, machine learning model interpretation is just as important as obtaining an accurate model. Feature importance is one such interpretation tool, which indicates the relative predictive power of each feature and is helpful when making business decisions. For example, in a model predicting apartment rent prices, the important features often identify what renters are willing to pay for. On the other hand, feature importance does not identify the relationship itself between features (explanatory variables),  and the target (response) variable.  Knowing these relationships tells model users a great deal about their data and, indirectly, the associated real-world population. For example, public health officials might be interested in how years of education affect body weight, given a set of observations sampled from a population.
 
-Given just one or two features, a plot of $x_i$ versus $y$ lets us visualize the exact relationship of each feature and $y$.  Because we cannot visualize more than three dimensions, however, this approach does not work for data sets with more than two features.
+Given just one or two features, a plot of any feature versus the target lets us visualize the exact relationship, this approach does not work for data sets with more than two features because we cannot visualize more than three dimensions.
 
-To get around this limitation, traditional marginal plots project other axes onto the axis associated with the feature of interest.  That means that marginal plots do not isolate the specific contribution of $x_i$ to $y$. For example, a marginal plot of sex (male/female) versus body weight would likely show that, on average, men are heavier than women. While true, men are also taller than women on average, which likely accounts for most of the difference in average weight. It's unlikely that two ``identical'' people, differing only in sex, would be appreciably different in weight.  
+To get around this limitation, traditional marginal plots project other axes onto the axis associated with the feature of interest.  That means that marginal plots do not isolate the specific contribution of a feature of interest to the target. For example, a marginal plot of sex (male/female) versus body weight would likely show that, on average, men are heavier than women. While true, men are also taller than women on average, which likely accounts for most of the difference in average weight. It's unlikely that two ``identical'' people, differing only in sex, would be appreciably different in weight.  
 
 As another example, consider the marginal plot of the number of bathrooms versus price shown in \figref{fig:baths_price}(a) (New York City apartment rent data from Kaggle). One would expect a near-linear relationship for the net effect of the number of bathrooms on price, but the marginal plot implausibly suggests that moving from no bathrooms to one bathroom does not affect the price very much.   The apartment prices shown in the marginal plot include the effect of all other features for each apartment.
 
-\cite{PDP} introduced partial dependence (PD) plots as a way to extract and visualize the dependence of $y$ on one or two features of interest. \figref{fig:baths_price}(b) shows the (zero-centered) PD of rent price on the number of bathrooms as a black line. The partial dependence line is the average of the blue lines, which represent the individual conditional expectation (ICE) plots of \cite{ICE}.  In this case, the ICE lines depict the model prediction contributions for a single observation as the bathroom feature shifts through all possible number of bathrooms. Because PD plots represent an average across observations, they can hide a great deal of variability, so it is helpful to combine PD and ICE plots.
+\cite{PDP} introduced partial dependence (PD) plots as a way to extract and visualize the dependence of the target on one or two features of interest. \figref{fig:baths_price}(b) shows the (zero-centered) PD of rent price on the number of bathrooms as a black line. The partial dependence line is the average of the blue lines, which represent the individual conditional expectation (ICE) plots of \cite{ICE}.  In this case, the ICE lines depict the model prediction contributions for a single observation as the bathroom feature shifts through all possible number of bathrooms. Because PD plots represent an average across observations, they can hide a great deal of variability, so it is helpful to combine PD and ICE plots.
 
 \begin{figure}[htbp]
 \begin{center}
@@ -116,64 +116,108 @@ As another example, consider the marginal plot of the number of bathrooms versus
 
 The partial dependence plot largely follows the marginal plot except for the prices of two and three bathroom apartments, where it levels off. This is counterintuitive and exposes an issue with PD and ICE plots. While PD and ICE plots are {\em model-agnostic}, they are not {\em model-independent} and are subject to the strengths and weaknesses of the model making predictions. In \figref{fig:baths_price}(b), the model is a Random Forest(tm) (RF) and RFs cannot extrapolate beyond their support range.  The data set has few apartments with three and four bathrooms, as shown by the lack of blue dots in that range of the marginal plot, so the price predictions appear to flatten out after two bathrooms.  In contrast, \figref{fig:baths_price}(c) shows the PD/ICE plot for the exact same data set but using a linear model (with Lasso regularization).
 
-Getting such radically different PD and ICE plots for different underlying models is undesirable because users cannot distinguish between interesting $y$ curve fluctuations and artifacts of their model choice. At the very least, users should compare plots derived from multiple models. Moreover, PD and ICE plots are only as accurate as the underlying model, meaning PD and ICE plots from derived high-bias models should not be trusted.
+Getting such radically different PD and ICE plots for different underlying models is undesirable because users cannot distinguish between interesting target fluctuations and artifacts of their model choice. At the very least, users should compare plots derived from multiple models. Moreover, PD and ICE plots are only as accurate as the underlying model, meaning PD and ICE plots from derived high-bias models should not be trusted.
 
-There are two remaining issues with PD plots associated with the relationship between features. First, as Friedman pointed out, PD plots are most accurate ``{\em when {\em [the model]} is dominated by low order interactions.}''  Feature interactions such as $x_1x_2$ are difficult to tease apart to obtain partial dependencies on just $x_1$ or $x_2$. ICE plots address this issue by showing separate predicted $y$ curves for each observation as the feature of interest is moved through all possible values.  This not only shows the variation hidden by the PD average curve, but it can depict interaction relationships between the feature of interest and other features. \todo{ref later fig}.
+There are two remaining issues with PD plots associated with the relationship between features. First, as Friedman pointed out, PD plots are most accurate ``{\em when {\em [the model]} is dominated by low order interactions.}''  Feature interactions such as $x_1x_2$ are difficult to tease apart to obtain partial dependencies on just $x_1$ or $x_2$. (Feature $x_j^T = (x_{1j}, .., x_{Nj})$ is a column vector of the  $N \times p$ explanatory matrix ${\bf X}$). ICE plots address this issue by showing separate prediction curves for each observation as the feature of interest is moved through all possible values.  This not only shows the variation hidden by the PD average curve, but it depicts interaction relationships between the feature of interest and other features. \todo{ref later fig}.
 
 The second issue stems from a lack of independence between features.  In a nutshell, not every combination of dependent features is valid. Consider a five bedroom apartment with just one or even zero bathrooms or a four bathroom studio was no bedroom or an observation identified as male but also pregnant.  Because PD and ICE alter observations by shifting the feature of interest through all possible feature values, they run the risk of conjuring up nonsensical observations, and in our experience, features in real data sets are very often dependent to some degree. This problem can be mitigated by computing PD and ICE plots on groups of mutually-dependent or interacting features of interest. \todo{but could involve identifying subsets and computing lots of combinations and we still might want to know about a single contribution.}
 
-To summarize the hazards of PD and ICE plots, both are strongly affected by the model chosen by the programmer.  To obtain accurate plots, PD and ICE rely on the accuracy of the underlying model, which might sacrifice local (\todo{use bold vector x for the first time here?}) accuracy to minimize some global loss function. Both plots use model prediction results rather than the data itself. Moreover, a potentially inaccurate model feeds off of potentially-nonsensical, synthesized observations arising from variable dependencies. What we need is an accurate mechanism that does not rely on, nor make predictions from, a user's model and a mechanism that does not presume independent features.
+To summarize the hazards of PD and ICE plots, {\em (i)} both are strongly affected by the model chosen by the programmer.  {\em (ii)} To obtain accurate plots, PD and ICE rely on the accuracy of the underlying model, which might sacrifice local accuracy to minimize some global loss function.  Both plots display model prediction results rather than the data itself. {\em (iii)} Moreover, the potentially inaccurate model feeds off of potentially-nonsensical, synthesized observations arising from variable dependencies. What we need is an accurate mechanism that does not rely on, nor make predictions from, a user's model and a mechanism that does not presume independent features.
 
 \section{Our approach}
 
-In a perfect world, a model-independent approach supporting non-independent and interacting features would be straightforward because we would know the actual function, $y = f(\bf x)$, that maps feature vector $\bf x$ to target $y$.  (${\bf x} = [ x_1, .., x_d ]$ for $d$ dimensions or features.) The partial derivative of $f(\bf x)$ with respect to $x_i$ describes how a unit change in $x_i$ affects $y$ at all $x_i$ values, treating all other variables as constants. Integrating the partial derivative $\frac{\partial}{\partial x_i} f(\bf x)$ would yield a curve showing just $x_i$'s contribution to $y$. 
+In a perfect world, a model-independent approach supporting non-independent and interacting features would be straightforward because we would know the actual function, $y = f({\bf x})$ or ${\bf y} = f(\bf X)$, that precisely maps a feature vector ${\bf x}_i$ to target value $y_i$ where ${\bf x}_i = ( x_{i1}, .., x_{ip} )$ is a $1 \times p$ row vector of $\bf X$. The partial derivative of $f({\bf x})$ with respect to a variable (column) of interest, $x_c^T = (x_{1c}, .., x_{Nc})$, describes how a unit change in $x_c$ affects $y$ for all $x_c$ values, treating all other variables as constants. Integrating the partial derivative $\frac{\partial}{\partial X_{c}} f({\bf x})$ would yield a curve showing just $X_{c}$'s contribution to $y$. 
 
-Even though $f(\bf x)$ is unavailable, a linear regression model provides the general trend of $y$ over $x_i$'s support via regression coefficient $\beta_i$. For a unit change in $x_i$, $y$ increases or decreases by $\beta_i$, effectively canceling out or controlling for the other features, $x_j$ for $j \neq i$. There are a few problems with using a global linear model, however.  First, a linear model might not be strong enough to capture the relationship between $\bf x$ and $y$. Second, coefficient $\beta_i$ is a constant and smooths over any local $y$ fluctuations. Third, linear models require dummy variables to represent (and replace) categorical $x_i$ variables, therefore, regression coefficients describe the relationship between a single category and $y$, rather than $x_i$ and $y$.
+Even though $y = f(\bf x)$ is unavailable, a linear regression model, $y = \hat{f}(\bf x)$, provides the general trend of $y$ versus feature $x_c$ via regression coefficient $\beta_c$. For a unit change in $x_c$, $y$ increases or decreases by $\beta_c$, effectively canceling out or controlling for the other features, $X_{j \neq c}$. There are a few problems with using a global linear model, however.  First, a linear model might not be strong enough to capture the relationship between all $({\bf x}_i, y_i)$ observation pairs. Second, coefficient $\beta_c$ is a constant and smooths over any local $y$ fluctuations across the entire range of $x_c$. Third, linear models require dummy variables to represent (and replace) categorical $x_c$ variables, therefore, regression coefficients describe the relationship between the presence or absence of a single category and $y$, rather than $x_c$ and $y$.
 
-Another simple but impractical approach stratifies a data set, grouping observations by all features except the feature of interest, $x_i$. For a group of observations with identical $x_j$ features for all $j \neq i$, the associated $x_i$ and $y$ subset describes a piece of how $x_i$ affects $y$, all else being equal.  Fitting a univariate linear model to a group yields a piecewise approximation to the slope of $y$ localized to a specific region of $x_i$. The $x_i$ regions from multiple groups would typically overlap and so the slope of $y$ in a specific $x_i$ region is the average of all slope estimates covering that region. The localized slopes are a good approximation to the partial derivative of the unknown $f(\bf x)$ with respect to $x_i$. Integrating the slope estimates describes just $x_i$'s contribution to $y$.  
+Another simple but impractical approach stratifies a data set, grouping observations by all features except the feature of interest, $x_c$.  Let $G$ be a group of observations, identified by a set of row indices, where each row has identical $X_{j}$ features for $j \neq c$: $\{((x_{i1}, .., x_{ij \neq c}, .., x_{ip}),  y_i)\}_{i \in G}$. For a given $G$, the $\{(x_{ic},  y_i)\}_{i \in G}$ pairs then partially describe how $x_c$ affects $y$, all else being equal.  Fitting a univariate linear regressor (without regularization) to group $G$ yields an approximation, $\beta_G$, of the slope of $y$ localized to a specific region of $x_c$: $R_G = [min(x_{ic}), max(x_{ic})]_{i \in G}$.   Because the $x_c$ regions from multiple groups could overlap, the slope, $\beta_R$, in any given $x_c$ region, $R$, would be the average of all slope estimates covering that region: $\beta_R = \frac{1}{|G \in R|}\Sigma_{G \in R}\beta_G$. Together, the collection of regions and slopes, $(R, \beta_R)$, would cover the full $x_c$ range and represent a good localized approximation to the partial derivative of the unknown $f(\bf x)$ with respect to $x_c$I.
 
-Alas, this stratification approach works for two or three variables but breaks down for more variables because it is impractical to find groups of observations that are equal across so many variables.  Nonetheless, stratification is simple, well understood, and clearly isolates the effect of $x_i$ on $y$ from the other features in this application, even in the presence of non-independent and interacting features.  If a method for stratifying many variables were available, this approach would be practical.
+Alas, this stratification approach works for two or three variables but breaks down for more variables because it is impractical to find groups of observations that are equal across so many variables.  Nonetheless, stratification is simple, well understood, and clearly isolates the effect of $x_c$I on $y$ from the other features for this application, even in the presence of non-independent and interacting features.  The only obstacle is a general and practical mechanism for stratifying observations with many variables, which leads us to the primary contribution of this paper.
 
-The key idea is to relax stratification so that it groups observations into similar, not exactly equal groups, which leads us to the primary contribution of this paper.  Our approach, called \spd, uses a random forest to cluster observations into similar groups and then collects piecewise approximations to the partial derivative of $f(\bf x)$. Averaging and then integrating partial derivatives across $x_i$ space yields a partial dependence curve that appears to isolate $x_i$'s contribution to $y$ well for real data sets.
+The key idea is to relax stratification so that it organizes observations into groups of similar rather than equal observations.  Our approach, called \spd, uses a random forest to cluster observations into similar groups and then collects piecewise approximations to the partial derivatives of $f(\bf x)$ for each group. The approximation to the partial derivative for range $R$ of $x_c$I is the average of regression coefficients that  overlap with $R$.  There is a group for every leaf in every tree of the forest
 
-The primary contribution of this paper is a simple and practical means for stratifying data so that we can obtain localized approximations of the partial derivative with respect to a feature of interest.
+Region endpoints are limited to $x_{ic}$ points from the training data $\bf X$.  There is no interpolation between points, though we use the slope to summarize the relationship of $y$ to $x_c$I in $R$.
 
+Each leaf in each tree of the forest produces a group with a collection of $\{(x_{ic},  y_i)\}_{i \in G}$
 
-(\todo{ALE does something similar so cite it here}.)
-
- means of controlling for confounding variables
-
-Stratifying
-
-indicate randomization here is useful
-
-\cut{ 
-$\{(x_i^{(g)}, y^{(g)})\}_{g=1}^G$
-\\\\
-$\{(x_i^{(g)}, y^{(g)})\}$
-\\
-\\
-${\bf x} = [ x_1, .., x_d ]$ for $d$ dimensions/features?
-\\
-\\\\
-$\{(x_i^{(k)}, y^{(k)})\}$ for $k$ in group $g$
-\\
-\\
-}
+one group per leaf across all trees,
 
 
-Taking the partial derivative of a known function and integrating gets us the exact partial dependence, even in the presence of non-independent features and interactions, but we never know the true $f(\bf x)$ function.  If we had enough data, however, we could approximate the partial derivative piecewise using stratification.
+ subregions formed by the leaves of trees in the forest.
 
 
-combine the two approaches
+ Averaging partial derivatives within each region and then integrating  across $x_c$I space yields a partial dependence curve that does a good job of isolating $x_c$I's contribution to $y$ on real and synthesized data sets, as we show below.
+
+
+For example, \figref{fig:baths_price_stratpd} shows the \spd{} plot for the bathrooms-to-price relationship.  Each blue line represents the slope computed from the observations in a single group of observations with similar $X_{i \neq c}$ features. The range of a slope line on the bathrooms axis is the range of the $x_c$I values in that group.
 
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.7]{images/baths_vs_price_mipd.png}
 \caption{{\bf  Model-independent partial dependence plot of bathrooms versus rent price}}
-\label{fig:baths_price_mipd}
+\label{fig:baths_price_stratpd}
 \end{center}
 \end{figure}
+
+ than the PD plot of \figref{fig:baths_price}(b).
+
+
+those in illustrates the collection of approximate partial derivatives and the \spd{} plot for the same rent data set in .
+
+
+
+few data points in leaves. parameterized slope provides better estimate
+
+randomization means of controlling for confounding variables
+
+
+
+
+$\{(x_i^{(g)}, y^{(g)})\}_{g=1}^G$
+\\\\
+$\{(x_i^{(g)}, y^{(g)})\}$
+\\
+\\
+${\bf x} = (x_1, .., x_d )$ for $d$ dimensions/features?
+\\
+\\\\
+$\{(x_i^{(k)}, y^{(k)})\}$ for $k$ in group $g$
+\\
+\\
+
+
+
+\setlength{\algomargin}{5pt}
+\begin{algorithm}[H]
+\LinesNumbered
+\SetAlgorithmName{Algorithm}{List of Algorithms}
+\SetAlgoSkip{}
+\SetInd{.5em}{.5em}
+\TitleOfAlgo{{\em partdx}($X$, $\bf y$, $i$) {\bf returns} $\vec{\bf dx}$}
+Train random forest regressor {\it rf} on $X$, $\bf y$\\
+xranges, slopes = piecewise(rf, X, y, i)\\
+uniqx = sorted(unique($x_i$))\\
+c = 1\\
+\For{r, s in xranges, slopes:}{
+    $squarewave = \begin{cases}
+      s, & \text{where }uniqx\text{ in range } r, \\
+      NaN, & \text{otherwise}.
+    \end{cases}$\\
+    slopes[:, c] = squarewave\\
+    c += 1\\
+}
+{\bf return} $\Sigma_{j=1}^N slopes[:, j]$
+
+Let $F_0(X) = \frac{1}{N}\sum_{i=1}^N y_i$, mean of target $\vec y$ across all observations\\
+\For{$m$ = 1 \KwTo $M$}{
+	Let $\vec r_{m-1} = \vec y - F_{m-1}(X)$ be the residual direction vector\\
+	Train regression tree $\Delta_m$ on $\vec r_{m-1}$, minimizing squared error\\
+}
+\Return{$F_M$}\\
+\end{algorithm}
+
+Taking the partial derivative of a known function and integrating gets us the exact partial dependence, even in the presence of non-independent features and interactions, but we never know the true $f(\bf x)$ function.  If we had enough data, however, we could approximate the partial derivative piecewise using stratification.
+
 
 since we care most about how y changes per changes in $x_i$, absolute plots are less useful than relative plots; compare with centered ICE, which I also don't like.
 
