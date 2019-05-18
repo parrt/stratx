@@ -126,30 +126,19 @@ To summarize the hazards of PD and ICE plots, {\em (i)} both are strongly affect
 
 \section{Our approach}
 
-In a perfect world, a model-independent approach supporting non-independent and interacting features would be straightforward because we would know the actual function, $y = f({\bf x})$ or ${\bf y} = f(\bf X)$, that precisely maps a feature vector ${\bf x}_i$ to target value $y_i$ where ${\bf x}_i = ( x_{i1}, .., x_{ip} )$ is a $1 \times p$ row vector of $\bf X$. The partial derivative of $f({\bf x})$ with respect to a variable (column) of interest, $x_c^T = (x_{1c}, .., x_{Nc})$, describes how a unit change in $x_c$ affects $y$ for all $x_c$ values, treating all other variables as constants. Integrating the partial derivative $\frac{\partial}{\partial X_{c}} f({\bf x})$ would yield a curve showing just $X_{c}$'s contribution to $y$. 
+In a perfect world, a model-independent approach supporting non-independent and interacting features would be straightforward because we would know the actual function, $y = f({\bf x})$ or ${\bf y} = f(\bf X)$, that precisely maps a feature vector ${\bf x}_i$ to target value $y_i$ where ${\bf x}_i = ( x_{i1}, .., x_{ip} )$ is a $1 \times p$ row vector of $\bf X$. The partial derivative of $f({\bf x})$ with respect to a variable (column) of interest, $x_c^T = (x_{1c}, .., x_{Nc})$, describes how a unit change in $x_c$ affects $y$ for all $x_c$ values, treating all other variables as constants. Integrating the partial derivative $\frac{\partial}{\partial x_{c}} f({\bf x})$ would yield a curve showing just $x_{c}$'s contribution to $y$. 
 
-Even though $y = f(\bf x)$ is unavailable, a linear regression model, $y = \hat{f}(\bf x)$, provides the general trend of $y$ versus feature $x_c$ via regression coefficient $\beta_c$. For a unit change in $x_c$, $y$ increases or decreases by $\beta_c$, effectively canceling out or controlling for the other features, $X_{j \neq c}$. There are a few problems with using a global linear model, however.  First, a linear model might not be strong enough to capture the relationship between all $({\bf x}_i, y_i)$ observation pairs. Second, coefficient $\beta_c$ is a constant and smooths over any local $y$ fluctuations across the entire range of $x_c$. Third, linear models require dummy variables to represent (and replace) categorical $x_c$ variables, therefore, regression coefficients describe the relationship between the presence or absence of a single category and $y$, rather than $x_c$ and $y$.
+Even though $y = f(\bf x)$ is unavailable, a linear regression model, $y = \hat{f}(\bf x)$, provides the general trend of $y$ versus feature $x_c$ via regression coefficient $\beta_c$. For a unit change in $x_c$, $y$ increases or decreases by $\beta_c$, effectively canceling out or controlling for the other features, $x_{j}$ for $j \neq c$. \cut{(Let $x_{(-c)} = x_j ~\forall~ j \neq c$)}. There are a few problems with using a global linear model, however.  First, a linear model might not be strong enough to capture the relationship between all $({\bf x}_i, y_i)$ observation pairs. Second, coefficient $\beta_c$ is a constant and smooths over any local $y$ fluctuations across the entire range of $x_c$. Third, linear models require dummy variables to represent (and replace) categorical $x_c$ variables, therefore, regression coefficients describe the relationship between the presence or absence of a single category and $y$, rather than $x_c$ and $y$.
 
-Another simple but impractical approach stratifies a data set, grouping observations by all features except the feature of interest, $x_c$.  Let $G$ be a group of observations, identified by a set of row indices, where each row has identical $X_{j}$ features for $j \neq c$: $\{((x_{i1}, .., x_{ij \neq c}, .., x_{ip}),  y_i)\}_{i \in G}$. For a given $G$, the $\{(x_{ic},  y_i)\}_{i \in G}$ pairs then partially describe how $x_c$ affects $y$, all else being equal.  Fitting a univariate linear regressor (without regularization) to group $G$ yields an approximation, $\beta_G$, of the slope of $y$ localized to a specific region of $x_c$: $R_G = [min(x_{ic}), max(x_{ic})]_{i \in G}$.   Because the $x_c$ regions from multiple groups could overlap, the slope, $\beta_R$, in any given $x_c$ region, $R$, would be the average of all slope estimates covering that region: $\beta_R = \frac{1}{|G \in R|}\Sigma_{G \in R}\beta_G$. Together, the collection of regions and slopes, $(R, \beta_R)$, would cover the full $x_c$ range and represent a good localized approximation to the partial derivative of the unknown $f(\bf x)$ with respect to $x_c$I.
+Another simple but impractical approach stratifies a data set, grouping observations by all features except the feature of interest, $x_c$.  Let $G$ be a group of observations, identified by a set of row indices, where each observation has identical $x_{j}$ features for $j \neq c$: $\{((x_{i1}, .., x_{ij \neq c}, .., x_{ip}),  y_i)\}_{i \in G}$. For a given $G$, the $\{(x_{ic},  y_i)\}_{i \in G}$ pairs then partially describe how $x_c$ affects $y$, all else being equal.  Fitting a univariate linear regressor (without regularization) to group $G$ yields an approximation, $\beta_G$, of the slope of $y$ localized to the specific region of $x_c$ in group $G$: $R_G = [min(x_{ic}), max(x_{ic})]_{i \in G}$.   Because the $x_c$ regions from multiple groups could overlap, the slope, $\beta_R$, in any given $x_c$ region, $R$, would be the average of all slope estimates covering that region: $\beta_R = \frac{1}{|G \in R|}\Sigma_{G \in R}\beta_G$. Together, the collection of regions and slopes, $\{(R, \beta_R)\}_{R \in x_c}$, would cover the full $x_c$ range and represent a good localized approximation of the partial derivative of the unknown $f(\bf x)$ with respect to $x_c$.
 
-Alas, this stratification approach works for two or three variables but breaks down for more variables because it is impractical to find groups of observations that are equal across so many variables.  Nonetheless, stratification is simple, well understood, and clearly isolates the effect of $x_c$I on $y$ from the other features for this application, even in the presence of non-independent and interacting features.  The only obstacle is a general and practical mechanism for stratifying observations with many variables, which leads us to the primary contribution of this paper.
+Alas, this stratification approach works for two or three variables but breaks down for more variables because it is impractical to find groups of observations that are equal across so many variables.  Nonetheless, stratification is simple, well understood, and clearly isolates the effect of $x_c$ on $y$ from the other features for this application, even in the presence of non-independent and interacting features.  The only obstacle is a general and practical mechanism for stratifying observations with many variables, which leads us to the primary contribution of this paper.
 
-The key idea is to relax stratification so that it organizes observations into groups of similar rather than equal observations.  Our approach, called \spd, uses a random forest to cluster observations into similar groups and then collects piecewise approximations to the partial derivatives of $f(\bf x)$ for each group. The approximation to the partial derivative for range $R$ of $x_c$I is the average of regression coefficients that  overlap with $R$.  There is a group for every leaf in every tree of the forest
+The key idea is to relax stratification so that it organizes observations into groups of similar rather than equal observations.  Our approach, called \spd, uses a random forest to cluster observations into  groups of similar observations and then collects piecewise approximations to the partial derivatives of $f(\bf x)$ for the groups. The approximation to the partial derivative for range $R$ of $x_c$ is the average of regression coefficients that  overlap with $R$.  The random forest trains on $({\bf X}_{(-c)}, {\bf y})$, in the usual way, where ${\bf X}_{(-c)}$ = $\{(x_1, .., x_{i \neq c}, .., x_p)\}_{i=1}^N$ is  the explanatory matrix {\em without} column vector $x_c$, ${\bf X}_{(-c)}$.  Observations $({\bf x}_{i}, y_i)$ that end up in a tree leaf are more likely than not to be similar in $x_{j \neq c}$ since the forest trained on ${\bf X}_{(-c)}$. (\todo{cite breiman similarity mechanism})
 
-Region endpoints are limited to $x_{ic}$ points from the training data $\bf X$.  There is no interpolation between points, though we use the slope to summarize the relationship of $y$ to $x_c$I in $R$.
+Region endpoints are limited to $x_{ic}$ points from the training data $\bf X$.  There is no interpolation between points, though we use the slope to summarize the relationship of $y$ to $x_c$ in $R$.
 
-Each leaf in each tree of the forest produces a group with a collection of $\{(x_{ic},  y_i)\}_{i \in G}$
-
-one group per leaf across all trees,
-
-
- subregions formed by the leaves of trees in the forest.
-
-
- Averaging partial derivatives within each region and then integrating  across $x_c$I space yields a partial dependence curve that does a good job of isolating $x_c$I's contribution to $y$ on real and synthesized data sets, as we show below.
-
-
-For example, \figref{fig:baths_price_stratpd} shows the \spd{} plot for the bathrooms-to-price relationship.  Each blue line represents the slope computed from the observations in a single group of observations with similar $X_{i \neq c}$ features. The range of a slope line on the bathrooms axis is the range of the $x_c$I values in that group.
+For example, \figref{fig:baths_price_stratpd} shows the \spd{} plot for the bathrooms-to-price relationship.  Each blue line represents the slope computed from the observations in a single group of observations with similar $x_{i \neq c}$ features. The range of a slope line on the bathrooms axis is the range of the $x_c$ values in that group.
 
 \begin{figure}[htbp]
 \begin{center}
@@ -171,59 +160,33 @@ few data points in leaves. parameterized slope provides better estimate
 randomization means of controlling for confounding variables
 
 
-
-
-$\{(x_i^{(g)}, y^{(g)})\}_{g=1}^G$
-\\\\
-$\{(x_i^{(g)}, y^{(g)})\}$
-\\
-\\
-${\bf x} = (x_1, .., x_d )$ for $d$ dimensions/features?
-\\
-\\\\
-$\{(x_i^{(k)}, y^{(k)})\}$ for $k$ in group $g$
-\\
-\\
-
-
-
 \setlength{\algomargin}{5pt}
 \begin{algorithm}[H]
 \LinesNumbered
 \SetAlgorithmName{Algorithm}{List of Algorithms}
 \SetAlgoSkip{}
 \SetInd{.5em}{.5em}
-\TitleOfAlgo{{\em partdx}($X$, $\bf y$, $i$) {\bf returns} $\vec{\bf dx}$}
-Train random forest regressor {\it rf} on $X$, $\bf y$\\
-xranges, slopes = piecewise(rf, X, y, i)\\
-uniqx = sorted(unique($x_i$))\\
-c = 1\\
-\For{r, s in xranges, slopes:}{
-    $squarewave = \begin{cases}
-      s, & \text{where }uniqx\text{ in range } r, \\
-      NaN, & \text{otherwise}.
-    \end{cases}$\\
-    slopes[:, c] = squarewave\\
-    c += 1\\
+\TitleOfAlgo{{\em stratpd}($X$, $\bf y$, $c$) {\bf returns} collection of $\beta$ coefficients, $\hat{y}$}
+Train random forest regressor {\it rf} on ${\bf X}_{(-c)}$, $\bf y$\\
+\ForEach{leaf $L \in {\it rf}$}{
+	$(L_x, L_y)$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
+	$R_L$ = $[min(L_x), max(L_x)]$\\
+	\lIf{left$(R_L)$ = right$(R_r)$}{{\bf continue}}\\
+	Fit linear model to $(L_x, L_y)$ giving $\beta_L$\\
 }
-{\bf return} $\Sigma_{j=1}^N slopes[:, j]$
-
-Let $F_0(X) = \frac{1}{N}\sum_{i=1}^N y_i$, mean of target $\vec y$ across all observations\\
-\For{$m$ = 1 \KwTo $M$}{
-	Let $\vec r_{m-1} = \vec y - F_{m-1}(X)$ be the residual direction vector\\
-	Train regression tree $\Delta_m$ on $\vec r_{m-1}$, minimizing squared error\\
+$uniqx$ = sorted(unique($x_c$))\\
+\For{$i=1$ {\bf to} $|uniqx|-1$}{
+	$R$ = $(uniqx_i, uniqx_{i+1})$\\
+	\ForEach{leaf $L \in {\it rf}$}{
+		$\beta_{R} = \frac{1}{|R_L \in R|}\Sigma_{R_L \in R}\beta_L$\\
+	}
 }
-\Return{$F_M$}\\
+$\hat{y}$ = numerically integrate $\beta_R$'s at uniqx leaving first integral value as y=0\\
+\Return{collection of all $\beta_R$ and $\hat{y}$}
 \end{algorithm}
-
-Taking the partial derivative of a known function and integrating gets us the exact partial dependence, even in the presence of non-independent features and interactions, but we never know the true $f(\bf x)$ function.  If we had enough data, however, we could approximate the partial derivative piecewise using stratification.
 
 
 since we care most about how y changes per changes in $x_i$, absolute plots are less useful than relative plots; compare with centered ICE, which I also don't like.
-
-define what we are actually looking for: controlling for other variables or net effect. All other features being equal. partial derivative.
-
-Our approach...
 
 \section{Related work}
 
