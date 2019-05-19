@@ -134,30 +134,32 @@ Another simple but impractical approach stratifies a data set, grouping observat
 
 Alas, this stratification approach works for two or three variables but breaks down for more variables because it is impractical to find groups of observations that are equal across so many variables.  Nonetheless, stratification is simple, well understood, and clearly isolates the effect of $x_c$ on $y$ from the other features for this application, even in the presence of non-independent and interacting features.  The only obstacle is a general and practical mechanism for stratifying observations with many variables, which leads us to the primary contribution of this paper.
 
-The key idea is to relax stratification so that it organizes observations into groups of similar rather than equal observations.  Our approach, called \spd, uses a random forest to cluster observations into  groups of similar observations and then collects piecewise approximations to the partial derivatives of $f(\bf x)$ for the groups. The approximation to the partial derivative for range $R$ of $x_c$ is the average of regression coefficients that  overlap with $R$.  The random forest trains on $({\bf X}_{(-c)}, {\bf y})$, in the usual way, where ${\bf X}_{(-c)}$ = $\{(x_1, .., x_{i \neq c}, .., x_p)\}_{i=1}^N$ is  the explanatory matrix {\em without} column vector $x_c$, ${\bf X}_{(-c)}$.  Observations $({\bf x}_{i}, y_i)$ that end up in a tree leaf are more likely than not to be similar in $x_{j \neq c}$ since the forest trained on ${\bf X}_{(-c)}$. (\todo{cite breiman similarity mechanism})
-
-Region endpoints are limited to $x_{ic}$ points from the training data $\bf X$.  There is no interpolation between points, though we use the slope to summarize the relationship of $y$ to $x_c$ in $R$.
-
-For example, \figref{fig:baths_price_stratpd} shows the \spd{} plot for the bathrooms-to-price relationship.  Each blue line represents the slope computed from the observations in a single group of observations with similar $x_{i \neq c}$ features. The range of a slope line on the bathrooms axis is the range of the $x_c$ values in that group.
+The key idea is to relax stratification so that it organizes observations into groups of similar rather than equal observations.  Our approach, called \spd, uses a random forest to stratify observations into  groups of similar observations and then collects piecewise linear approximations to the partial derivatives of the unknown $f(\bf x)$ for the groups. Each leaf, $L$, in each tree of the forest represents a group with similar $x_{(-c)}$ values and yields a $\beta_L$ from a linear model trained on $(L_x, L_y)$, the $x_c$ and $\bf y$ observations associated with $L$.  The partial derivative between any two (unique and sorted) adjacent $x_c$ data points is estimated by averaging the $\beta_L$ coefficients that overlap that range, yielding $n-1$ partial derivatives for $n$ unique $x_c$ values.  Numerically integrating the partial derivatives across $x_c$ space gives a curve representing the contribution of $x_c$ to $y$.
 
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.7]{images/baths_vs_price_mipd.png}
-\caption{{\bf  Model-independent partial dependence plot of bathrooms versus rent price}}
+\caption{{\bf  \spd{} partial dependence plot of bathrooms versus rent price}}
 \label{fig:baths_price_stratpd}
 \end{center}
 \end{figure}
 
- than the PD plot of \figref{fig:baths_price}(b).
+\figref{fig:baths_price_stratpd} shows the \spd{} plot derived from the same apartment rent data set used by the PD/ICE plots in \figref{fig:baths_price}. Each blue line represents the regression line with slope $\beta_L$ through the observations in a single leaf of observations with similar $x_{(-c)}$ features. The emanating and terminating $x$ positions of $L$'s line are the minimum and maximum $x_c$ in $L$, $R_L$. The height of $L$'s line is $\beta_G \Delta{}R_L$, the slope times the width of $R_L$. The black dots represent the integral values at $x_c$.
 
+interesting: starts at 0 at min $x_c$, variation in dx at each $x_c$, density of data, only shows at $x_c$
 
-those in illustrates the collection of approximate partial derivatives and the \spd{} plot for the same rent data set in .
+The random forest trains on $({\bf X}_{(-c)}, {\bf y})$, in the usual way, where ${\bf X}_{(-c)}$ = $\{(x_1, .., x_{i \neq c}, .., x_p)\}_{i=1}^N$ is  the explanatory matrix {\em without} column vector $x_c$.  Observations $({\bf x}_{i}, y_i)$ that end up in a tree leaf are more likely than not to be similar, but similar only in columns $x_{(-c)}$ since the forest trained on ${\bf X}_{(-c)}$. (\todo{cite breiman similarity mechanism}.) Random forests have the advantage that they are insensitive to variable scales and deal well with label-encoded categorical variables. The trees must be limited in depth or forced to have a minimum number of samples per leaf (7 by default).  Multiple observations per leaf are required in order to estimate the slope between $x_i$ and $y$ in each leaf.
 
+Grouping observations into similar regions of feature space is critical to the success of this algorithm.  We need a similarity mechanism that does not require changes to the data set, such as normalization, and a mechanism that does not require one-hot encoding categorical variables. 
 
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.7]{images/leaves.pdf}
+\caption{{\bf  Leaves...}}
+\label{fig:leaves}
+\end{center}
+\end{figure}
 
-few data points in leaves. parameterized slope provides better estimate
-
-randomization means of controlling for confounding variables
 
 
 \setlength{\algomargin}{5pt}
@@ -184,6 +186,34 @@ $uniqx$ = sorted(unique($x_c$))\\
 $\hat{y}$ = numerically integrate $\beta_R$'s at uniqx leaving first integral value as y=0\\
 \Return{collection of all $\beta_R$ and $\hat{y}$}
 \end{algorithm}
+
+\setlength{\algomargin}{5pt}
+\begin{algorithm}[H]
+\LinesNumbered
+\SetAlgorithmName{Algorithm}{List of Algorithms}
+\SetAlgoSkip{}
+\SetInd{.5em}{.5em}
+\TitleOfAlgo{{\em catstratpd}($X$, $\bf y$, $c$) {\bf returns} collection of $\beta$ coefficients, $\hat{y}$}
+Train random forest regressor {\it rf} on ${\bf X}_{(-c)}$, $\bf y$\\
+\Return{collection of all $\beta_R$ and $\hat{y}$}
+\end{algorithm}
+
+
+
+
+Region endpoints are limited to $x_{ic}$ points from the training data $\bf X$.  There is no interpolation between points, though we use the slope to summarize the relationship of $y$ to $x_c$ in $R$.
+
+For example, \figref{fig:baths_price_stratpd} shows the \spd{} plot for the bathrooms-to-price relationship. 
+
+those in illustrates the collection of approximate partial derivatives and the \spd{} plot for the same rent data set in .
+
+
+
+few data points in leaves. parameterized slope provides better estimate
+
+randomization means of controlling for confounding variables
+
+
 
 
 since we care most about how y changes per changes in $x_i$, absolute plots are less useful than relative plots; compare with centered ICE, which I also don't like.

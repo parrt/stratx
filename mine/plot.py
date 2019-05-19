@@ -96,15 +96,11 @@ def collect_leaf_slopes(rf, X, y, colname, hires_threshold):
     We don't need to subtract the minimum y value before regressing because
     the slope won't be different. (We are ignoring the intercept of the regression line).
 
-    Return for each leaf, the range of X[colname], y at left/right of leaf range,
-    and associated slope for that range.
-
-    Currently, leaf_yranges is unused.
+    Return for each leaf, the range of X[colname] and associated slope for that range.
     """
     start = time.time()
     leaf_slopes = []
     leaf_xranges = []
-    leaf_yranges = []
     leaves = leaf_samples(rf, X.drop(colname, axis=1))
     for samples in leaves:
         one_leaf_samples = X.iloc[samples]
@@ -116,7 +112,6 @@ def collect_leaf_slopes(rf, X, y, colname, hires_threshold):
                 hires_slopes_from_one_leaf(leaf_x, leaf_y)
             leaf_slopes.extend(leaf_slopes_)
             leaf_xranges.extend(leaf_xranges_)
-            leaf_yranges.extend(leaf_yranges_)
             continue
 
         r = (np.min(leaf_x), np.max(leaf_x))
@@ -127,16 +122,20 @@ def collect_leaf_slopes(rf, X, y, colname, hires_threshold):
         lm.fit(leaf_x.reshape(-1, 1), leaf_y)
         leaf_slopes.append(lm.coef_[0])
         leaf_xranges.append(r)
-        leaf_yranges.append((leaf_y[0], leaf_y[-1]))
     leaf_slopes = np.array(leaf_slopes)
     leaf_xranges = np.array(leaf_xranges)
-    leaf_yranges = np.array(leaf_yranges)
     stop = time.time()
     print(f"collect_leaf_slopes {stop - start:.3f}s")
-    return leaf_xranges, leaf_yranges, leaf_slopes
+    return leaf_xranges, leaf_slopes
 
 
 def avg_slope_at_x(leaf_ranges, leaf_slopes):
+    """
+    Slope at max(x) is NaN since we have not data beyond that point.
+    :param leaf_ranges:
+    :param leaf_slopes:
+    :return:
+    """
     start = time.time()
     # TODO, can we use unique(X.iloc[:,i])?
     uniq_x = set(leaf_ranges[:, 0]).union(set(leaf_ranges[:, 1]))
@@ -151,15 +150,12 @@ def avg_slope_at_x(leaf_ranges, leaf_slopes):
         s = np.full(nx, slope) # s has value scope at all locations (flat line)
         # now trim line so it's only valid in range r
         s[np.where(uniq_x < r[0])] = np.nan
-        s[np.where(uniq_x > r[1])] = np.nan
+        s[np.where(uniq_x >= r[1])] = np.nan # don't set slope on right edge
         slopes[:, i] = s
         i += 1
-    # Now average horiz across the matrix, averaging within each range
-    sum_at_x = np.nansum(slopes, axis=1)
-    missing_values_at_x = np.isnan(slopes).sum(axis=1)
-    count_at_x = nslopes - missing_values_at_x
     # The value could be genuinely zero so we use nan not 0 for out-of-range
-    avg_slope_at_x = sum_at_x / count_at_x
+    # Now average horiz across the matrix, averaging within each range
+    avg_slope_at_x = np.nanmean(slopes, axis=1)
 
     stop = time.time()
     # print(f"avg_slope_at_x {stop - start:.3f}s")
@@ -174,9 +170,10 @@ def mine_plot(X, y, colname, targetname=None,
               hires_threshold=20,
               xrange=None,
               yrange=None,
-              show_derivative=False,
-              pdp_dot_size=5,
-              title=None):
+              pdp_dot_size=6,
+              title=None,
+              nlines=None,
+              show_dx_line=False):
     """
 
     :param X:
@@ -207,7 +204,7 @@ def mine_plot(X, y, colname, targetname=None,
                                oob_score=False)
     rf.fit(X.drop(colname,axis=1), y)
     # print(f"\nModel wo {colname} OOB R^2 {rf.oob_score_:.5f}")
-    leaf_xranges, leaf_yranges, leaf_slopes = \
+    leaf_xranges, leaf_slopes = \
         collect_leaf_slopes(rf, X, y, colname, hires_threshold=hires_threshold)
     uniq_x, slope_at_x = avg_slope_at_x(leaf_xranges, leaf_slopes)
     # print(f'uniq_x = [{", ".join([f"{x:4.1f}" for x in uniq_x])}]')
@@ -216,32 +213,49 @@ def mine_plot(X, y, colname, targetname=None,
     if ax is None:
         fig, ax = plt.subplots(1,1)
 
-    curve = cumtrapz(slope_at_x, x=uniq_x)          # we lose one value here
+    # print(f"diff: {np.diff(uniq_x)}")
+    dx = slope_at_x[:-1] * np.diff(uniq_x)          # last slope is nan since no data after last x value
+    # print(f"dx: {dx}")
+    curve = np.cumsum(dx)                           # we lose one value here
+    # curve = cumtrapz(slope_at_x, x=uniq_x)          # we lose one value here
     curve = np.concatenate([np.array([0]), curve])  # add back the 0 we lost
+    # print(slope_at_x, len(slope_at_x))
+    # print(dx)
+    # print(uniq_x, len(uniq_x))
+    # print(curve, len(curve))
 
     # if 0 is in x feature and not on left/right edge, get y at 0
     # and shift so that is x,y 0 point.
     # nx = len(uniq_x)
     # if uniq_x[int(nx*0.05)]<0 or uniq_x[-int(nx*0.05)]>0:
     #     closest_x_to_0 = np.abs(uniq_x - 0.0).argmin()
-    #     y_offset = curve[closest_x_to_0]
-    #     curve -= y_offset  # shift
+    #     y = curve[closest_x_to_0]
+    #     curve -= y  # shift
     # Nah. starting with 0 is best
 
     ax.scatter(uniq_x, curve,
                s=pdp_dot_size, alpha=1,
                c='black', label="Avg piecewise linear")
 
+    if show_dx_line:
+        ax.plot(uniq_x, curve, ':',
+                   alpha=1,
+                   lw=1,
+                   c='grey')
+
     segments = []
-    for xr, yr, slope in zip(leaf_xranges, leaf_yranges, leaf_slopes):
-        delta = slope * (xr[1] - xr[0])
+    for xr, slope in zip(leaf_xranges, leaf_slopes):
+        y_delta = slope * (xr[1] - xr[0])
         closest_x_i = np.abs(uniq_x - xr[0]).argmin() # find curve point for xr[0]
-        y_offset = curve[closest_x_i]
-        # one_line = [(xr[0],y_offset+yr[0]), (xr[1], y_offset+delta+yr[0])]
-        one_line = [(xr[0],y_offset), (xr[1], y_offset+delta)]
+        y = curve[closest_x_i]
+        one_line = [(xr[0],y), (xr[1], y+y_delta)]
         segments.append( one_line )
 
-    lines = LineCollection(segments, alpha=alpha, color='#9CD1E3', linewidth=1)
+    if nlines is not None:
+        idxs = np.random.randint(low=0, high=len(segments), size=nlines)
+        segments = np.array(segments)[idxs]
+
+    lines = LineCollection(segments, alpha=alpha, color='#9CD1E3', linewidth=.5)
     if xrange is not None:
         ax.set_xlim(*xrange)
     else:
@@ -254,17 +268,6 @@ def mine_plot(X, y, colname, targetname=None,
     ax.set_ylabel(targetname)
     if title is not None:
         ax.set_title(title)
-
-    if show_derivative:
-        other = ax.twinx()
-        other.set_ylabel("Partial derivative", fontdict={"color":'#f46d43'})
-        other.plot(uniq_x, slope_at_x, linewidth=1, c='#f46d43', alpha=.5)
-        other.set_ylim(min(slope_at_x),max(slope_at_x))
-        other.tick_params(axis='y', colors='#f46d43')
-        m = np.mean(slope_at_x)
-        mx = np.max(uniq_x)
-        mnx = np.min(uniq_x)
-        other.plot(mx-(mx-mnx)*0.02, m, marker='>', c='#f46d43')
 
 
 def catwise_leaves(rf, X, y, colname):

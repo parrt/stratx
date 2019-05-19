@@ -50,7 +50,7 @@ def load_rent():
 
     # Create ideal numeric data set w/o outliers etc...
     df = df[(df.price > 1_000) & (df.price < 10_000)]
-    df = df[df.bathrooms < 10]
+    df = df[df.bathrooms <= 3]  # There's almost no data for 3.5 and above with small sample
     df = df[(df.longitude != 0) | (df.latitude != 0)]
     df = df[(df['latitude'] > 40.55) & (df['latitude'] < 40.94) &
             (df['longitude'] > -74.1) & (df['longitude'] < -73.67)]
@@ -61,7 +61,7 @@ def load_rent():
 
 def rent():
     df_rent = load_rent()
-    df_rent = df_rent.sample(n=2000)  # get a small subsample
+    df_rent = df_rent.sample(n=6000)  # get a small subsample
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
 
@@ -82,16 +82,16 @@ def rent():
     rf.fit(X, y)
 
     fig, ax = plt.subplots(1,1, figsize=(3,3))
-    ax.set_ylim(0,5000)
-    ice = ice_predict(rf, X, 'bathrooms', 'price')
+    ax.set_ylim(-1000,5000)
+    ice = ice_predict(rf, X, 'bathrooms', 'price', nlines=700)
     ice_plot(ice, 'bathrooms', 'price', alpha=.05, ax=ax)
     plt.tight_layout()
     savefig("baths_vs_price_pdp")
     plt.close()
 
     fig, ax = plt.subplots(1,1, figsize=(3,3))
-    ax.set_ylim(0,5000)
-    mine_plot(X, y, 'bathrooms', 'price', ax=ax, alpha=.03)
+    ax.set_ylim(-1000,5000)
+    mine_plot(X, y, 'bathrooms', 'price', ax=ax, alpha=.2, nlines=700)
     plt.tight_layout()
     savefig("baths_vs_price_mipd")
     plt.close()
@@ -100,8 +100,8 @@ def rent():
     lm.fit(X, y)
 
     fig, ax = plt.subplots(1,1, figsize=(3,3))
-    ax.set_ylim(0,5000)
-    ice = ice_predict(lm, X, 'bathrooms', 'price')
+    ax.set_ylim(-1000,5000)
+    ice = ice_predict(lm, X, 'bathrooms', 'price', nlines=700)
     ice_plot(ice, 'bathrooms', 'price', alpha=.05, ax=ax)
     plt.tight_layout()
     savefig("baths_vs_price_pdp_lm")

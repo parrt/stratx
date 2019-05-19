@@ -1,11 +1,11 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='mine',
+    name='stratpd',
     version='0.1',
-    url='https://github.com/parrt/mine',
+    url='https://github.com/parrt/stratpd',
     license='MIT',
-    py_modules=['mine'],
+    py_modules=['stratpd'],
     packages=find_packages(),
     python_requires='>=3.6',
     author='Terence Parr',
