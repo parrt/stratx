@@ -106,9 +106,9 @@ As another example, consider the marginal plot of the number of bathrooms versus
 
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[scale=0.7]{images/baths_vs_price.png}
-\includegraphics[scale=0.7]{images/baths_vs_price_pdp.png}
-\includegraphics[scale=0.7]{images/baths_vs_price_pdp_lm.png}
+\includegraphics[scale=0.7]{images/bathrooms_vs_price.png}
+\includegraphics[scale=0.7]{images/bathrooms_vs_price_pdp.png}
+\includegraphics[scale=0.7]{images/bathrooms_vs_price_pdp_lm.png}
 \caption{{\bf  Marginal plot and PDP/ICE plot of bathrooms versus rent price; sample size 8000 of 400k...}}
 \label{fig:baths_price}
 \end{center}
@@ -148,7 +148,7 @@ The key idea is to relax stratification so that it organizes observations into g
 
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[scale=0.7]{images/baths_vs_price_stratpd.png}
+\includegraphics[scale=0.7]{images/bathrooms_vs_price_stratpd.png}
 \caption{{\bf  \spd{} partial dependence plot of bathrooms versus rent price}}
 \label{fig:baths_price_stratpd}
 \end{center}
@@ -197,6 +197,12 @@ $\hat{y}$ = numerically integrate $\beta_R$'s at uniqx leaving first integral va
 \SetInd{.5em}{.5em}
 \TitleOfAlgo{{\em CatStratPD}($X$, $\bf y$, $c$) {\bf returns} collection of $\beta$ coefficients, $\hat{y}$}
 Train random forest regressor {\it rf} on ${\bf X}_{(-c)}$, $\bf y$\\
+\ForEach{leaf $L \in {\it rf}$}{
+	$(L_x, L_y)$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
+	Let dictionary $y_{cat}$ = average $L_y$ per category $cat$\\
+	\lIf{$|y_{cat}| < 2$}{{\bf continue}}\\
+	\lForEach{$cat$}{$y_{cat}$ = $y_{cat}$ - $min(y_{cat})$}
+}
 \Return{collection of all $\beta_R$ and $\hat{y}$}
 \end{algorithm}
 
@@ -217,7 +223,82 @@ combine derivative in the same plot
 
 since we care most about how y changes per changes in $x_i$, absolute plots are less useful than relative plots; compare with centered ICE, which I also don't like.
 
-\section{Related work}
+\section{Experimental Results}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.7]{images/education_vs_weight_stratpd.png}
+\includegraphics[scale=0.7]{images/education_vs_weight_pdp.png}
+\caption{{\bf  Edu vs weight}}
+\label{fig:education_vs_weight}
+\end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.7]{images/height_vs_weight_stratpd.png}
+\includegraphics[scale=0.7]{images/height_vs_weight_pdp.png}
+\caption{{\bf  Height vs weight}}
+\label{fig:height_vs_weight}
+\end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.7]{images/pregnant_vs_weight_stratpd.png}
+\includegraphics[scale=0.7]{images/pregnant_vs_weight_pdp.png}
+\caption{{\bf  pregnant vs weight}}
+\label{fig:pregnant_vs_weight}
+\end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.7]{images/state_vs_temp_partition_pdp.png}
+%\includegraphics[scale=0.7]{images/state_vs_temp_stratpd.png}
+\includegraphics[scale=0.7]{images/state_vs_temp_pdp.png}
+\caption{{\bf  state  vs temp}}
+\label{fig:state_vs_temp}
+\end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.7]{images/dayofyear_vs_temp_stratpd.png}
+\includegraphics[scale=0.7]{images/dayofyear_vs_temp_pdp.png}
+\caption{{\bf  dayofyear  vs temp}}
+\label{fig:dayofyear_vs_temp}
+\end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.7]{images/add_x1_y_stratpd.png}
+\includegraphics[scale=0.7]{images/add_x1_y_pdp.png}
+\\
+\includegraphics[scale=0.7]{images/add_x2_y_stratpd.png}
+\includegraphics[scale=0.7]{images/add_x2_y_pdp.png}
+\caption{{\bf  additive from ICE x1, x2 vs y; $y = x_1^2 + x_2 + \epsilon$, $x_1, x_2, x_3$ are U(-1,1) Sample size 1000}}
+\label{fig:add_x1_y_stratpd}
+\end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.7]{images/bigx_x1_y_stratpd.png}
+\includegraphics[scale=0.7]{images/bigx_x1_y_pdp.png}
+\\
+\includegraphics[scale=0.7]{images/bigx_x2_y_stratpd.png}
+\includegraphics[scale=0.7]{images/bigx_x2_y_pdp.png}
+\\
+\includegraphics[scale=0.7]{images/bigx_x3_y_stratpd.png}
+\includegraphics[scale=0.7]{images/bigx_x3_y_pdp.png}
+\caption{{\bf  big X from ICE $y = 0.2x_1 - 5x_2 + 10x_2\mathbf{1}_{x_3 \geq 0} + \epsilon$, $x_1, x_2, x_3$ are U(-1,1), Sample size 1000}}
+\label{fig:add_x1_y_stratpd}
+\end{center}
+\end{figure}
+
+\section{Related Work}
 
 There are a few basic approaches to identifying the partial effect of a single variable on the target or response variable:
 

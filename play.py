@@ -15,8 +15,8 @@ from sklearn.ensemble.partial_dependence import partial_dependence, plot_partial
 from pdpbox import pdp
 from rfpimp import *
 from scipy.integrate import cumtrapz
-from mine.plot import *
-from mine.ice import *
+from stratpd.plot import *
+from stratpd.ice import *
 
 def df_string_to_cat(df:pd.DataFrame) -> dict:
     catencoders = {}
@@ -46,14 +46,14 @@ def toy_weight_data(n):
     df.loc[df['sex']=='F','education'] = 12 + np.random.randint(0,8,size=nwomen)
     df['weight'] = 120 \
                    + (df['height']-df['height'].min()) * 10 \
-                   + df['pregnant']*10 \
+                   + df['pregnant']*30 \
                    - df['education']*1.2
     df['pregnant'] = df['pregnant'].astype(bool)
     df['education'] = df['education'].astype(int)
     return df
 
 def weight():
-    df_raw = toy_weight_data(500)
+    df_raw = toy_weight_data(1000)
     df = df_raw.copy()
     catencoders = df_string_to_cat(df)
     df_cat_to_catcode(df)
@@ -68,24 +68,24 @@ def weight():
     axes[0,0].axis('off')
     axes[0,1].axis('off')
 
-    mine_plot(X, y, 'education', 'weight', ax=axes[1][0],
-                 yrange=(-12,0),
-              nlines = 500
-                 )
-    mine_plot(X, y, 'height', 'weight', ax=axes[2][0],
-                 yrange=(0,160),
-    nlines = 1000
-    )
-    # mine_catplot(X, y, 'sex', 'weight', ax=axes[3][0], ntrees=50,
-    #                  alpha=.2,
-    #                  cats=df_raw['sex'].unique(),
-    #                  yrange=(0,5)
-    #                  )
-    # mine_catplot(X, y, 'pregnant', 'weight', ax=axes[4][0], ntrees=50,
-    #                  alpha=.2,
-    #                  cats=df_raw['pregnant'].unique(),
-    #                  yrange=(0,10)
-    #                  )
+    # mine_plot(X, y, 'education', 'weight', ax=axes[1][0],
+    #              yrange=(-12,0),
+    #           nlines = 500
+    #              )
+    # mine_plot(X, y, 'height', 'weight', ax=axes[2][0],
+    #              yrange=(0,160),
+    # nlines = 1000
+    # )
+    catstratpd_plot(X, y, 'sex', 'weight', ax=axes[3][0], ntrees=100,
+                     alpha=.2,
+                     cats=df_raw['sex'].unique(),
+                     yrange=(0,5)
+                     )
+    catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[4][0], ntrees=100,
+                     alpha=.2,
+                    cats=df_raw['pregnant'].unique(),
+                     yrange=(0,35)
+                     )
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
@@ -107,7 +107,7 @@ def weight():
 
 
 def rent():
-    df = pd.read_json('../notebooks/data/train.json')
+    df = pd.read_json('notebooks/data/train.json')
 
     # Create ideal numeric data set w/o outliers etc...
     # Create ideal numeric data set w/o outliers etc...
@@ -124,10 +124,10 @@ def rent():
     y = df_rent['price']
 
     fig, axes = plt.subplots(4, 2, figsize=(8,16))
-    mine_plot(X, y, 'bedrooms', 'price', ax=axes[0,0], alpha=.2, yrange=(0,3000), nlines=1000)
-    # mine_plot(X, y, 'bathrooms', 'price', ax=axes[1,0], alpha=.2, yrange=(0,5000), nlines=1000)
-    # mine_plot(X, y, 'latitude', 'price', ax=axes[2,0], alpha=.2, yrange=(0,1700), nlines=1000)
-    # mine_plot(X, y, 'longitude', 'price', ax=axes[3,0], alpha=.2, yrange=(-3000,250), nlines=1000)
+    stratpd_plot(X, y, 'bedrooms', 'price', ax=axes[0,0], alpha=.2, yrange=(0,3000), nlines=1000)
+    #     stratpd_plot(X, y, 'bedrooms', 'price', ax=axes[0,0], alpha=.2, yrange=(0,3000), nlines=1000)(X, y, 'bathrooms', 'price', ax=axes[1,0], alpha=.2, yrange=(0,5000), nlines=1000)
+    #     stratpd_plot(X, y, 'bedrooms', 'price', ax=axes[0,0], alpha=.2, yrange=(0,3000), nlines=1000)(X, y, 'latitude', 'price', ax=axes[2,0], alpha=.2, yrange=(0,1700), nlines=1000)
+    #     stratpd_plot(X, y, 'bedrooms', 'price', ax=axes[0,0], alpha=.2, yrange=(0,3000), nlines=1000)(X, y, 'longitude', 'price', ax=axes[3,0], alpha=.2, yrange=(-3000,250), nlines=1000)
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
@@ -149,4 +149,5 @@ def rent():
 
 
 if __name__ == '__main__':
-    rent()
+    # rent()
+    weight()

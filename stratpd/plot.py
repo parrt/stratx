@@ -162,18 +162,18 @@ def avg_slope_at_x(leaf_ranges, leaf_slopes):
     return uniq_x, avg_slope_at_x
 
 
-def mine_plot(X, y, colname, targetname=None,
-              ax=None,
-              ntrees=30,
-              min_samples_leaf=2,
-              alpha=.05,
-              hires_threshold=30,
-              xrange=None,
-              yrange=None,
-              pdp_dot_size=6,
-              title=None,
-              nlines=None,
-              show_dx_line=False):
+def stratpd_plot(X, y, colname, targetname=None,
+                 ax=None,
+                 ntrees=30,
+                 min_samples_leaf=2,
+                 alpha=.05,
+                 hires_threshold=30,
+                 xrange=None,
+                 yrange=None,
+                 pdp_dot_size=5,
+                 title=None,
+                 nlines=None,
+                 show_dx_line=False):
     """
 
     :param X:
@@ -293,6 +293,7 @@ def catwise_leaves(rf, X, y, colname):
     for samples in leaves:
         combined = Xy.iloc[samples]
         # print("\n", combined)
+        dsflkasfd;kljasdf;kjlfads np.min(combined.iloc[:, -1])
         histo = combined.groupby(colname).mean()
         histo = histo.iloc[:,-1]
 #         print(histo)
@@ -304,7 +305,8 @@ def catwise_leaves(rf, X, y, colname):
         # minimum change seen by any category (works even when all are negative)
         # This assignment copies cat bumps to appropriate cat row using index
         # leaving cats w/o representation as nan
-        relative_changes_per_cat = histo - np.min(histo.values)
+        # relative_changes_per_cat = histo - np.min(histo.values)
+        relative_changes_per_cat = histo - np.min(combined.iloc[:,-1])
         leaf_histos['leaf' + str(ci)] = relative_changes_per_cat
         ci += 1
 
@@ -314,21 +316,19 @@ def catwise_leaves(rf, X, y, colname):
     return leaf_histos
 
 
-def mine_catplot(X, y, colname, targetname,
-                 cats=None,
-                 ax=None,
-                 sort='ascending',
-                 ntrees=30, min_samples_leaf=5,
-                 alpha=.03,
-                 yrange=None):
+def catstratpd_plot(X, y, colname, targetname,
+                    cats=None,
+                    ax=None,
+                    sort='ascending',
+                    ntrees=30, min_samples_leaf=5,
+                    alpha=.03,
+                    yrange=None,
+                    title=None):
     rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X.drop(colname, axis=1), y)
     print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     leaf_histos = catwise_leaves(rf, X, y, colname)
-    sum_per_cat = np.sum(leaf_histos, axis=1)
-    # TODO: I think np.nansum(skipna=True) would work here
-    nonmissing_count_per_cat = len(leaf_histos.columns) - np.isnan(leaf_histos).sum(axis=1)
-    avg_per_cat = sum_per_cat / nonmissing_count_per_cat
+    avg_per_cat = np.nanmean(leaf_histos, axis=1)
 
     if ax is None:
         fig, ax = plt.subplots(1, 1)
@@ -349,12 +349,12 @@ def mine_catplot(X, y, colname, targetname,
     xloc = 1
     sigma = .02
     mu = 0
-    x_noise = np.random.normal(mu, sigma, size=nleaves)
+    x_noise = np.random.normal(mu, sigma, size=nleaves) # to make strip plot
     for i in sort_indexes:
         ax.scatter(x_noise + xloc, leaf_histos.iloc[i]-min_value,
                    alpha=alpha, marker='o', s=10,
                    c='#9CD1E3')
-        ax.plot([xloc - .1, xloc + .1], [avg_per_cat.iloc[i]-min_value] * 2,
+        ax.plot([xloc - .1, xloc + .1], [avg_per_cat[i]-min_value] * 2,
                 c='black', linewidth=2)
         xloc += 1
     ax.set_xticks(range(1, ncats + 1))
@@ -362,7 +362,8 @@ def mine_catplot(X, y, colname, targetname,
 
     ax.set_xlabel(colname)
     ax.set_ylabel(targetname)
-    ax.set_title(f"Effect of {colname} on {targetname} in similar regions")
+    if title is not None:
+        ax.set_title(title)
 
     if yrange is not None:
         ax.set_ylim(*yrange)

@@ -1,4 +1,4 @@
-from mine.plot import *
+from stratp.plot import *
 
 
 def df_string_to_cat(df:pd.DataFrame) -> dict:
