@@ -293,20 +293,17 @@ def catwise_leaves(rf, X, y, colname):
     for samples in leaves:
         combined = Xy.iloc[samples]
         # print("\n", combined)
-        dsflkasfd;kljasdf;kjlfads np.min(combined.iloc[:, -1])
-        histo = combined.groupby(colname).mean()
-        histo = histo.iloc[:,-1]
-#         print(histo)
-        #             print(histo - min_of_first_cat)
-        if len(histo) < 2:
-            # print(f"ignoring len {len(histo)} cat leaf")
+        min_y = np.min(combined.iloc[:, -1])
+        avg_cat_y = combined.groupby(colname).mean()
+        avg_cat_y = avg_cat_y.iloc[:,-1]
+        if len(avg_cat_y) < 2:
+            # print(f"ignoring len {len(avg_cat_y)} cat leaf")
             continue
         # record how much bump or drop we get per category above
         # minimum change seen by any category (works even when all are negative)
         # This assignment copies cat bumps to appropriate cat row using index
         # leaving cats w/o representation as nan
-        # relative_changes_per_cat = histo - np.min(histo.values)
-        relative_changes_per_cat = histo - np.min(combined.iloc[:,-1])
+        relative_changes_per_cat = avg_cat_y - min_y
         leaf_histos['leaf' + str(ci)] = relative_changes_per_cat
         ci += 1
 

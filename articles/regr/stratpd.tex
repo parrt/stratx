@@ -197,16 +197,18 @@ $\hat{y}$ = numerically integrate $\beta_R$'s at uniqx leaving first integral va
 \SetInd{.5em}{.5em}
 \TitleOfAlgo{{\em CatStratPD}($X$, $\bf y$, $c$) {\bf returns} collection of $\beta$ coefficients, $\hat{y}$}
 Train random forest regressor {\it rf} on ${\bf X}_{(-c)}$, $\bf y$\\
+Let $D$ be dictionary mapping $cat$ to $y$\\
 \ForEach{leaf $L \in {\it rf}$}{
 	$(L_x, L_y)$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
+	\ForEach{$cat \in L_x$}{
+		ycats = $\Sigma_{i \in L_x = cat} L_y^{(i)}$ average $L_y$ per category $cat$\\
+	}
 	Let dictionary $y_{cat}$ = average $L_y$ per category $cat$\\
 	\lIf{$|y_{cat}| < 2$}{{\bf continue}}\\
-	\lForEach{$cat$}{$y_{cat}$ = $y_{cat}$ - $min(y_{cat})$}
+	\lForEach{$cat \in y_{cat}$}{$y_{cat}$ = $y_{cat}$ - $min(L_y)$}
 }
 \Return{collection of all $\beta_R$ and $\hat{y}$}
 \end{algorithm}
-
-
 
 
 Region endpoints are limited to $x_{ic}$ points from the training data $\bf X$.  There is no interpolation between points, though we use the slope to summarize the relationship of $y$ to $x_c$ in $R$.
