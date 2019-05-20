@@ -61,7 +61,7 @@ def load_rent():
 
 def rent():
     df_rent = load_rent()
-    df_rent = df_rent.sample(n=6000)  # get a small subsample
+    df_rent = df_rent.sample(n=8000)  # get a small subsample
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
 
@@ -78,6 +78,13 @@ def rent():
     savefig("baths_vs_price")
     plt.close()
 
+    fig, ax = plt.subplots(1,1, figsize=(3,3))
+    mine_plot(X, y, 'bathrooms', 'price', ax=ax, alpha=.2, nlines=700)
+    ax.set_ylim(-1000,5000)
+    plt.tight_layout()
+    savefig("baths_vs_price_stratpd")
+    plt.close()
+
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
 
@@ -89,20 +96,13 @@ def rent():
     savefig("baths_vs_price_pdp")
     plt.close()
 
-    fig, ax = plt.subplots(1,1, figsize=(3,3))
-    ax.set_ylim(-1000,5000)
-    mine_plot(X, y, 'bathrooms', 'price', ax=ax, alpha=.2, nlines=700)
-    plt.tight_layout()
-    savefig("baths_vs_price_mipd")
-    plt.close()
-
     lm = Lasso()
     lm.fit(X, y)
 
     fig, ax = plt.subplots(1,1, figsize=(3,3))
-    ax.set_ylim(-1000,5000)
     ice = ice_predict(lm, X, 'bathrooms', 'price', nlines=700)
     ice_plot(ice, 'bathrooms', 'price', alpha=.05, ax=ax)
+    ax.set_ylim(-1000,5000)
     plt.tight_layout()
     savefig("baths_vs_price_pdp_lm")
     plt.close()

@@ -49,7 +49,7 @@
     </font-face>
   </defs>
   <metadata> Produced by OmniGraffle 7.10.2 
-    <dc:date>2019-05-19 20:01:05 +0000</dc:date>
+    <dc:date>2019-05-20 01:51:12 +0000</dc:date>
   </metadata>
   <g id="Canvas_1" stroke="none" fill="none" stroke-dasharray="none" fill-opacity="1" stroke-opacity="1">
     <title>Canvas 1</title>
@@ -118,7 +118,7 @@
         </text>
       </g>
       <g id="Graphic_29">
-        <text transform="translate(-677.0688 -387.0801)" fill="black">
+        <text transform="translate(-678.0688 -387.0801)" fill="black">
           <tspan font-family="Lucida Grande" font-size="12" font-weight="400" fill="black" x="0" y="12">◦</tspan>
         </text>
       </g>
@@ -128,7 +128,7 @@
         </text>
       </g>
       <g id="Graphic_31">
-        <text transform="translate(-618 -387.8)" fill="black">
+        <text transform="translate(-616.5 -387.8)" fill="black">
           <tspan font-family="Lucida Grande" font-size="12" font-weight="400" fill="black" x="0" y="12">◦</tspan>
         </text>
       </g>
@@ -138,7 +138,7 @@
         </text>
       </g>
       <g id="Graphic_33">
-        <text transform="translate(-852.5508 -409.2)" fill="black">
+        <text transform="translate(-852.1016 -434.25)" fill="black">
           <tspan font-family="Times New Roman" font-size="16" font-style="italic" font-weight="400" fill="black" x="0" y="14">y</tspan>
         </text>
       </g>
@@ -203,10 +203,10 @@
         </g>
       </g>
       <g id="Line_53">
-        <line x1="-840.4" y1="-333.41927" x2="-793" y2="-349.79426" stroke="#feae61" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <line x1="-840.4" y1="-333.41927" x2="-792" y2="-349.75" stroke="#feae61" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
       </g>
       <g id="Line_54">
-        <line x1="-793" y1="-349.66927" x2="-700" y2="-349.66927" stroke="#feae61" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        <line x1="-792" y1="-349.66927" x2="-700" y2="-349.66927" stroke="#feae61" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
       </g>
       <g id="Line_55">
         <line x1="-700" y1="-349.49426" x2="-674.6" y2="-356.92135" stroke="#feae61" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
@@ -480,6 +480,24 @@
       </g>
       <g id="Line_144">
         <line x1="-564.7508" y1="-333" x2="-564.7508" y2="-329.1009" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".5"/>
+      </g>
+      <g id="Graphic_146">
+        <text transform="translate(-961.2915 -388.29593) rotate(-50)" fill="black">
+          <tspan font-family="Times New Roman" font-size="16" font-weight="700" fill="black" x="0" y="14">X</tspan>
+          <tspan font-family="Times New Roman" font-size="16" font-weight="400" fill="black" y="14"> matrix</tspan>
+        </text>
+      </g>
+      <g id="Line_148">
+        <line x1="-699.7803" y1="-332.72682" x2="-699.7803" y2="-349.66927" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="0.5,1.5" stroke-width=".5"/>
+      </g>
+      <g id="Line_149">
+        <line x1="-674.79026" y1="-332.72682" x2="-674.79026" y2="-356.92135" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="0.5,1.5" stroke-width=".5"/>
+      </g>
+      <g id="Line_150">
+        <line x1="-613" y1="-331.3935" x2="-613" y2="-335.92136" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2.0,2.0" stroke-width=".5"/>
+      </g>
+      <g id="Line_151">
+        <line x1="-792" y1="-332.5518" x2="-792" y2="-349.49426" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="0.5,1.5" stroke-width=".5"/>
       </g>
     </g>
   </g>
