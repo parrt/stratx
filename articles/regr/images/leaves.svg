@@ -49,7 +49,7 @@
     </font-face>
   </defs>
   <metadata> Produced by OmniGraffle 7.10.2 
-    <dc:date>2019-05-20 01:51:12 +0000</dc:date>
+    <dc:date>2019-05-20 16:13:04 +0000</dc:date>
   </metadata>
   <g id="Canvas_1" stroke="none" fill="none" stroke-dasharray="none" fill-opacity="1" stroke-opacity="1">
     <title>Canvas 1</title>
@@ -284,8 +284,8 @@
         <rect x="-919.3516" y="-441.73767" width="16.503906" height="43.6" stroke="gray" stroke-linecap="round" stroke-linejoin="round" stroke-width=".5"/>
       </g>
       <g id="Graphic_88">
-        <rect x="-891.1516" y="-441.73767" width="16.503906" height="43.6" fill="white"/>
-        <rect x="-891.1516" y="-441.73767" width="16.503906" height="43.6" stroke="gray" stroke-linecap="round" stroke-linejoin="round" stroke-width=".5"/>
+        <rect x="-890.9973" y="-440.98767" width="16.503906" height="43.6" fill="white"/>
+        <rect x="-890.9973" y="-440.98767" width="16.503906" height="43.6" stroke="gray" stroke-linecap="round" stroke-linejoin="round" stroke-width=".5"/>
       </g>
       <g id="Graphic_93">
         <rect x="-994.7516" y="-395.5363" width="75.4" height="21" fill="white"/>
@@ -384,22 +384,23 @@
         </g>
       </g>
       <g id="Graphic_117">
-        <text transform="translate(-886.077 -467.51335)" fill="black">
+        <text transform="translate(-886.5285 -459.8)" fill="black">
           <tspan font-family="Lucida Grande" font-size="12" font-weight="400" fill="black" x="0" y="12">◇</tspan>
         </text>
       </g>
       <g id="Graphic_118">
-        <text transform="translate(-885.8573 -429.14983)" fill="black">
+        <title>◦</title>
+        <text transform="translate(-886.2141 -442.0772)" fill="black">
           <tspan font-family="Lucida Grande" font-size="12" font-weight="400" fill="black" x="0" y="12">◦</tspan>
         </text>
       </g>
       <g id="Graphic_119">
-        <text transform="translate(-886.1516 -394.5363)" fill="black">
+        <text transform="translate(-885.9035 -398.4)" fill="black">
           <tspan font-family="Lucida Grande" font-size="12" font-weight="400" fill="black" x="0" y="12">□</tspan>
         </text>
       </g>
       <g id="Graphic_120">
-        <text transform="translate(-886.1516 -366.93496)" fill="black">
+        <text transform="translate(-886.2453 -371.6807)" fill="black">
           <tspan font-family="PingFang SC" font-size="7" font-weight="400" fill="black" x="0" y="7">△</tspan>
         </text>
       </g>
@@ -471,7 +472,7 @@
         </g>
       </g>
       <g id="Graphic_141">
-        <text transform="translate(-887.0916 -345.66886)" fill="black">
+        <text transform="translate(-886.8101 -351.92135)" fill="black">
           <tspan font-family="STIXGeneral" font-size="10" font-weight="400" fill="black" x="0" y="11">Unexpected.</tspan>
         </text>
       </g>
@@ -498,6 +499,46 @@
       </g>
       <g id="Line_151">
         <line x1="-792" y1="-332.5518" x2="-792" y2="-349.49426" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="0.5,1.5" stroke-width=".5"/>
+      </g>
+      <g id="Graphic_152">
+        <text transform="translate(-886.4338 -476.4)" fill="black">
+          <tspan font-family="Lucida Grande" font-size="12" font-weight="400" fill="black" x="0" y="12">◇</tspan>
+        </text>
+      </g>
+      <g id="Graphic_153">
+        <text transform="translate(-886.2141 -432.25)" fill="black">
+          <tspan font-family="Lucida Grande" font-size="12" font-weight="400" fill="black" x="0" y="12">◦</tspan>
+        </text>
+      </g>
+      <g id="Graphic_154">
+        <text transform="translate(-886.2141 -422.13767)" fill="black">
+          <tspan font-family="Lucida Grande" font-size="12" font-weight="400" fill="black" x="0" y="12">◦</tspan>
+        </text>
+      </g>
+      <g id="Graphic_155">
+        <text transform="translate(-886.1336 -411.6444)" fill="black">
+          <tspan font-family="Lucida Grande" font-size="12" font-weight="400" fill="black" x="0" y="12">◦</tspan>
+        </text>
+      </g>
+      <g id="Graphic_156">
+        <text transform="translate(-886.5901 -468.01335)" fill="black">
+          <tspan font-family="Lucida Grande" font-size="12" font-weight="400" fill="black" x="0" y="12">◇</tspan>
+        </text>
+      </g>
+      <g id="Graphic_157">
+        <text transform="translate(-885.9973 -390.5363)" fill="black">
+          <tspan font-family="Lucida Grande" font-size="12" font-weight="400" fill="black" x="0" y="12">□</tspan>
+        </text>
+      </g>
+      <g id="Graphic_158">
+        <text transform="translate(-886.1649 -362.18496)" fill="black">
+          <tspan font-family="PingFang SC" font-size="7" font-weight="400" fill="black" x="0" y="7">△</tspan>
+        </text>
+      </g>
+      <g id="Graphic_159">
+        <text transform="translate(-886.8716 -341.93496)" fill="black">
+          <tspan font-family="STIXGeneral" font-size="10" font-weight="400" fill="black" x="0" y="11">Unexpected.</tspan>
+        </text>
       </g>
     </g>
   </g>

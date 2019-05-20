@@ -50,7 +50,7 @@ def load_rent():
 
     # Create ideal numeric data set w/o outliers etc...
     df = df[(df.price > 1_000) & (df.price < 10_000)]
-    df = df[df.bathrooms <= 3]  # There's almost no data for 3.5 and above with small sample
+    df = df[df.bathrooms <= 6]  # There's almost no data for above with small sample
     df = df[(df.longitude != 0) | (df.latitude != 0)]
     df = df[(df['latitude'] > 40.55) & (df['latitude'] < 40.94) &
             (df['longitude'] > -74.1) & (df['longitude'] < -73.67)]
@@ -90,7 +90,7 @@ def rent():
 
     fig, ax = plt.subplots(1,1, figsize=(3,3))
     ax.set_ylim(-1000,5000)
-    ice = ice_predict(rf, X, 'bathrooms', 'price', nlines=700)
+    ice = ice_predict(rf, X, 'bathrooms', 'price', nlines=1000)
     ice_plot(ice, 'bathrooms', 'price', alpha=.05, ax=ax)
     plt.tight_layout()
     savefig("baths_vs_price_pdp")
@@ -100,7 +100,7 @@ def rent():
     lm.fit(X, y)
 
     fig, ax = plt.subplots(1,1, figsize=(3,3))
-    ice = ice_predict(lm, X, 'bathrooms', 'price', nlines=700)
+    ice = ice_predict(lm, X, 'bathrooms', 'price', nlines=1000)
     ice_plot(ice, 'bathrooms', 'price', alpha=.05, ax=ax)
     ax.set_ylim(-1000,5000)
     plt.tight_layout()

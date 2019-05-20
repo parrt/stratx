@@ -107,7 +107,7 @@ def collect_leaf_slopes(rf, X, y, colname, hires_threshold):
         leaf_x = one_leaf_samples[colname].values
         leaf_y = y.iloc[samples].values
         if len(samples)>hires_threshold:
-            # print(f"BIG {len(samples)}!!!")
+            #print(f"BIG {len(samples)}!!!")
             leaf_xranges_, leaf_yranges_, leaf_slopes_ = \
                 hires_slopes_from_one_leaf(leaf_x, leaf_y)
             leaf_slopes.extend(leaf_slopes_)
@@ -167,7 +167,7 @@ def mine_plot(X, y, colname, targetname=None,
               ntrees=30,
               min_samples_leaf=2,
               alpha=.05,
-              hires_threshold=20,
+              hires_threshold=30,
               xrange=None,
               yrange=None,
               pdp_dot_size=6,

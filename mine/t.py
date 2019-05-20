@@ -112,22 +112,22 @@ def rent():
     # Create ideal numeric data set w/o outliers etc...
     # Create ideal numeric data set w/o outliers etc...
     df = df[(df.price > 1_000) & (df.price < 10_000)]
-    df = df[df.bathrooms < 4]  # There's almost no data for 4 and above
+    df = df[df.bathrooms <= 6]  # There's almost no data for above
     df = df[(df.longitude != 0) | (df.latitude != 0)]
     df = df[(df['latitude'] > 40.55) & (df['latitude'] < 40.94) &
             (df['longitude'] > -74.1) & (df['longitude'] < -73.67)]
     df_rent = df[['bedrooms', 'bathrooms', 'latitude', 'longitude', 'price']]
     df_rent.head()
 
-    df_rent = df_rent.sample(n=400)  # get a small subsample
+    df_rent = df_rent.sample(n=4000)  # get a small subsample
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
 
     fig, axes = plt.subplots(4, 2, figsize=(8,16))
     mine_plot(X, y, 'bedrooms', 'price', ax=axes[0,0], alpha=.2, yrange=(0,3000), nlines=1000)
-    mine_plot(X, y, 'bathrooms', 'price', ax=axes[1,0], alpha=.2, yrange=(0,5000), nlines=1000)
-    mine_plot(X, y, 'latitude', 'price', ax=axes[2,0], alpha=.2, yrange=(0,1700), nlines=1000)
-    mine_plot(X, y, 'longitude', 'price', ax=axes[3,0], alpha=.2, yrange=(-3000,250), nlines=1000)
+    # mine_plot(X, y, 'bathrooms', 'price', ax=axes[1,0], alpha=.2, yrange=(0,5000), nlines=1000)
+    # mine_plot(X, y, 'latitude', 'price', ax=axes[2,0], alpha=.2, yrange=(0,1700), nlines=1000)
+    # mine_plot(X, y, 'longitude', 'price', ax=axes[3,0], alpha=.2, yrange=(-3000,250), nlines=1000)
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
