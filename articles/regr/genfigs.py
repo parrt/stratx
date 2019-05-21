@@ -134,7 +134,7 @@ def rent():
 
 def toy_weather_data():
     def temp(x): return np.sin((x+365/2)*(2*np.pi)/365)
-    def noise(state): return np.random.normal(-5, 5, sum(df['state'] == state))
+    def noise(state): return np.random.normal(-10, 10, sum(df['state'] == state))
 
     df = pd.DataFrame()
     df['dayofyear'] = range(1,365+1)
@@ -171,8 +171,14 @@ def weather():
     savefig(f"dayofyear_vs_temp_stratpd")
     plt.close()
 
-    # catstratpd_plot(X, y, 'state', 'temperature', cats=catencoders['state'],
-    #              ax=axes[2][0])  # , yrange=(0,160))
+    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+    catstratpd_plot(X, y, 'state', 'temperature', cats=catencoders['state'],
+                    min_samples_leaf=7,
+                    sort=None,
+                 ax=ax)  # , yrange=(0,160))
+    plt.tight_layout()
+    savefig(f"state_vs_temp_stratpd")
+    plt.close()
 
     rf = RandomForestRegressor(n_estimators=30, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
@@ -192,31 +198,12 @@ def weather():
     savefig(f"state_vs_temp_pdp")
     plt.close()
 
-    df = df_raw.copy()
-    # axes[3, 0].plot(df.loc[df['state'] == 'CA', 'dayofyear'],
-    #                 df.loc[df['state'] == 'CA', 'temperature'], label="CA")
-    # axes[3, 0].plot(df.loc[df['state'] == 'CO', 'dayofyear'],
-    #                 df.loc[df['state'] == 'CO', 'temperature'], label="CO")
-    # axes[3, 0].plot(df.loc[df['state'] == 'AZ', 'dayofyear'],
-    #                 df.loc[df['state'] == 'AZ', 'temperature'], label="AZ")
-    # axes[3, 0].plot(df.loc[df['state'] == 'WA', 'dayofyear'],
-    #                 df.loc[df['state'] == 'WA', 'temperature'], label="WA")
-    # axes[3, 0].legend()
-    # axes[3, 0].set_title('Raw data')
-    # axes[3, 0].set_ylabel('Temperature')
-    # axes[3, 0].set_xlabel('Dataframe row index')
-
     fig, ax = plt.subplots(1, 1, figsize=(3, 3))
-    rtreeviz_univar(ax,
-                    X['state'], y,
-                    feature_name='state',
-                    target_name='y',
-                    min_samples_leaf=2,
-                    fontsize=10, show={'splits'})
+    ax.scatter(X['state'], y, alpha=.07, s=6)
     ax.set_xlabel("state")
     ax.set_ylabel("y")
     plt.tight_layout()
-    savefig(f"state_vs_temp_partition_pdp")
+    savefig(f"state_vs_temp")
     plt.close()
 
 
@@ -242,8 +229,9 @@ def weight():
     plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=(3, 3))
-    catstratpd_plot(X, y, 'sex', 'weight', ax=ax, ntrees=30,
+    catstratpd_plot(X, y, 'sex', 'weight', ax=ax, ntrees=10,
                     alpha=.2,
+                    min_samples_leaf=2,
                     cats=df_raw['sex'].unique(),
                     yrange=(0, 5)
                     )
@@ -252,8 +240,9 @@ def weight():
     plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=(3, 3))
-    catstratpd_plot(X, y, 'pregnant', 'weight', ax=ax, ntrees=30,
+    catstratpd_plot(X, y, 'pregnant', 'weight', ax=ax, ntrees=10,
                     alpha=.2,
+                    min_samples_leaf=2,
                     cats=df_raw['pregnant'].unique(),
                     yrange=(0, 30)
                     )
@@ -429,8 +418,8 @@ def bigX():
     plt.close()
 
 if __name__ == '__main__':
-    rent()
-    weight()
+    # rent()
+    # weight()
     weather()
-    additivity()
-    bigX()
+    # additivity()
+    # bigX()

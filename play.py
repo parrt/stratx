@@ -76,13 +76,15 @@ def weight():
     #              yrange=(0,160),
     # nlines = 1000
     # )
-    catstratpd_plot(X, y, 'sex', 'weight', ax=axes[3][0], ntrees=100,
+    catstratpd_plot(X, y, 'sex', 'weight', ax=axes[3][0], ntrees=1,
                      alpha=.2,
+                    min_samples_leaf=2,
                      cats=df_raw['sex'].unique(),
                      yrange=(0,5)
                      )
-    catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[4][0], ntrees=100,
+    catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[4][0], ntrees=1,
                      alpha=.2,
+                    min_samples_leaf=2,
                     cats=df_raw['pregnant'].unique(),
                      yrange=(0,35)
                      )

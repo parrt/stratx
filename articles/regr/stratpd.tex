@@ -134,7 +134,7 @@ Another simple but impractical approach stratifies a data set, grouping observat
 
 Alas, this stratification approach works for two or three variables but breaks down for more variables because it is impractical to find groups of observations that are equal across so many variables.  Nonetheless, stratification is simple, well understood, and clearly isolates the effect of $x_c$ on $y$ from the other features for this application, even in the presence of non-independent and interacting features.  The only obstacle is a general and practical mechanism for stratifying observations with many variables, which leads us to the primary contribution of this paper.
 
-The key idea is to relax stratification so that it organizes observations into groups of similar rather than equal observations.  Our approach, called \spd, uses a random forest to stratify observations into  groups of similar observations and then collects piecewise linear approximations to the partial derivatives of the unknown $f(\bf x)$ for the groups. Each leaf, $L$, in each tree of the forest represents a group with similar $x_{(-c)}$ values and yields a $\beta_L$ from a linear model trained on $(L_x, L_y)$, the $x_c$ and $\bf y$ observations associated with $L$.  The partial derivative between any two (unique and sorted) adjacent $x_c$ data points is estimated by averaging the $\beta_L$ coefficients that overlap that range, yielding $n-1$ partial derivatives for $n$ unique $x_c$ values.  Numerically integrating the partial derivatives across $x_c$ space gives a curve representing the contribution of $x_c$ to $y$. This process is depicted in \figref{fig:leaves}. There are five leaves in \figref{fig:leaves}, potentially from multiple trees in a forest, with regression lines fit through leaf observations, $(L_x, L_y)$. The $x_c$ values in $L_5$ are identical so its infinite slope is ignored.
+The key idea is to relax stratification so that it organizes observations into groups of similar rather than equal observations.  Our approach, called \spd, uses a random forest to stratify observations into  groups of similar observations and then collects piecewise linear approximations to the partial derivatives of the unknown $f(\bf x)$ for the groups. Each leaf, $L$, in each tree of the forest represents a group with similar $x_{(-c)}$ values and yields a $\beta_L$ from a linear model trained on $(Lx, Ly)$, the $x_c$ and $\bf y$ observations associated with $L$.  The partial derivative between any two (unique and sorted) adjacent $x_c$ data points is estimated by averaging the $\beta_L$ coefficients that overlap that range, yielding $n-1$ partial derivatives for $n$ unique $x_c$ values.  Numerically integrating the partial derivatives across $x_c$ space gives a curve representing the contribution of $x_c$ to $y$. This process is depicted in \figref{fig:leaves}. There are five leaves in \figref{fig:leaves}, potentially from multiple trees in a forest, with regression lines fit through leaf observations, $(Lx, Ly)$. The $x_c$ values in $L_5$ are identical so its infinite slope is ignored.
 
 \begin{figure}[htbp]
 \begin{center}
@@ -154,7 +154,7 @@ The key idea is to relax stratification so that it organizes observations into g
 \end{center}
 \end{figure}
 
-\figref{fig:baths_price_stratpd} shows the \spd{} plot derived from the same apartment rent data set used by the PD/ICE plots in \figref{fig:baths_price}. Each blue line represents the regression line through the observations in a single leaf of observations with similar $x_{(-c)}$ features. Dropping the $y$-intercept from the regression line effectively drops the contributions of $x_{(-c)}$ features to $L_y$.  The emanating and terminating $x$ positions of $L$'s line are the minimum and maximum $x_c$ in $L$, $R_L$. The height of $L$'s line is $\beta_G \Delta{}R_L$, the slope times the width of region $R_L$. The black dots represent the integration of the $\beta_R$ values at $x_c$.
+\figref{fig:baths_price_stratpd} shows the \spd{} plot derived from the same apartment rent data set used by the PD/ICE plots in \figref{fig:baths_price}. Each blue line represents the regression line through the observations in a single leaf of observations with similar $x_{(-c)}$ features. Dropping the $y$-intercept from the regression line effectively drops the contributions of $x_{(-c)}$ features to $Ly$.  The emanating and terminating $x$ positions of $L$'s line are the minimum and maximum $x_c$ in $L$, $R_L$. The height of $L$'s line is $\beta_G \Delta{}R_L$, the slope times the width of region $R_L$. The black dots represent the integration of the $\beta_R$ values at $x_c$.
 
 interesting: starts at 0 at min $x_c$, variation in dx at each $x_c$, density of data, only shows at $x_c$
 
@@ -168,12 +168,12 @@ Algorithm \ref{alg:StratPD}...
 \SetAlgoSkip{}
 \SetInd{.5em}{.5em}
 \TitleOfAlgo{{\em StratPD}($X$, $\bf y$, $c$) {\bf returns} collection of $\beta$ coefficients, $\hat{y}$}
-Train random forest regressor {\it rf} on ${\bf X}_{(-c)}$, $\bf y$\\
+Train random forest regressor {\it rf} on (${\bf X}_{(-c)}$, $\bf y$)\\
 \ForEach{leaf $L \in {\it rf}$}{
-	$(L_x, L_y)$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
-	$R_L$ = $[min(L_x), max(L_x)]$\\
+	$(Lx, Ly)$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
+	$R_L$ = $[min(Lx), max(Lx)]$\\
 	\lIf{left$(R_L)$ = right$(R_r)$}{{\bf continue}}\\
-	Fit linear model to $(L_x, L_y)$ giving $\beta_L$\\
+	Fit linear model to $(Lx, Ly)$ giving $\beta_L$\\
 }
 $uniqx$ = sorted(unique($x_c$))\\
 \For{$i=1$ {\bf to} $|uniqx|-1$}{
@@ -182,7 +182,7 @@ $uniqx$ = sorted(unique($x_c$))\\
 		$\beta_{R} = \frac{1}{|R_L \in R|}\Sigma_{R_L \in R}\beta_L$\\
 	}
 }
-$\hat{y}$ = numerically integrate $\beta_R$'s at uniqx leaving first integral value as y=0\\
+$\hat{y}$ = numerically integrate $\beta_R$'s at $uniqx$ leaving first integral value as y=0\\
 \Return{collection of all $\beta_R$ and $\hat{y}$}
 \end{algorithm}
 
@@ -195,19 +195,22 @@ $\hat{y}$ = numerically integrate $\beta_R$'s at uniqx leaving first integral va
 \SetAlgorithmName{Algorithm}{List of Algorithms}
 \SetAlgoSkip{}
 \SetInd{.5em}{.5em}
-\TitleOfAlgo{{\em CatStratPD}($X$, $\bf y$, $c$) {\bf returns} collection of $\beta$ coefficients, $\hat{y}$}
-Train random forest regressor {\it rf} on ${\bf X}_{(-c)}$, $\bf y$\\
-Let $D$ be dictionary mapping $cat$ to $y$\\
+\TitleOfAlgo{{\em CatStratPD}($X$, $\bf y$, $c$) {\bf returns} dictionary mapping category to $y$}
+Train random forest regressor {\it rf} on (${\bf X}_{(-c)}$, $\bf y$)\\
+Let $D$ be dictionary mapping category to $y$ value\\
 \ForEach{leaf $L \in {\it rf}$}{
-	$(L_x, L_y)$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
-	\ForEach{$cat \in L_x$}{
-		ycats = $\Sigma_{i \in L_x = cat} L_y^{(i)}$ average $L_y$ per category $cat$\\
+	$(Lx, Ly)$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
+	\ForEach{$cat \in Lx$}{
+		$cat_y$ = $Ly[Lx=cat]$\\
+		\lIf{$|cat_y| < 2$}{{\bf continue}}\\
+		$cat_{avg}$ = $\frac{1}{|cat_y|} \Sigma cat_y$\\
+		$cat_{avg}$ = $cat_{avg} - min(Ly)$~~~~~~(Strip y contribution from $x_{(-c)}$)\\
+		$D_{cat}$ = $D_{cat} + cat_{avg}$\\
 	}
-	Let dictionary $y_{cat}$ = average $L_y$ per category $cat$\\
-	\lIf{$|y_{cat}| < 2$}{{\bf continue}}\\
-	\lForEach{$cat \in y_{cat}$}{$y_{cat}$ = $y_{cat}$ - $min(L_y)$}
 }
-\Return{collection of all $\beta_R$ and $\hat{y}$}
+Let $n_{cat}$ be number of $cat_{avg}$ added to $D_{cat}$\\
+$D_{cat}$ = $D_{cat} / n_{cat}$~~~~(Take average of leaf averages for $cat$)\\
+\Return{$D_{cat}$}
 \end{algorithm}
 
 
@@ -256,8 +259,8 @@ since we care most about how y changes per changes in $x_i$, absolute plots are 
 
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[scale=0.7]{images/state_vs_temp_partition_pdp.png}
-%\includegraphics[scale=0.7]{images/state_vs_temp_stratpd.png}
+\includegraphics[scale=0.7]{images/state_vs_temp.png}
+\includegraphics[scale=0.7]{images/state_vs_temp_stratpd.png}
 \includegraphics[scale=0.7]{images/state_vs_temp_pdp.png}
 \caption{{\bf  state  vs temp}}
 \label{fig:state_vs_temp}

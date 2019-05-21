@@ -317,7 +317,7 @@ def catstratpd_plot(X, y, colname, targetname,
                     cats=None,
                     ax=None,
                     sort='ascending',
-                    ntrees=30, min_samples_leaf=5,
+                    ntrees=30, min_samples_leaf=2,
                     alpha=.03,
                     yrange=None,
                     title=None):
