@@ -122,6 +122,7 @@ def rent():
     df_rent.head()
 
     df_rent = df_rent.sample(n=4000)  # get a small subsample
+
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
 
@@ -151,5 +152,5 @@ def rent():
 
 
 if __name__ == '__main__':
-    # rent()
-    weight()
+    rent()
+    # weight()

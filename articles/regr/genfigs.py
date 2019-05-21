@@ -17,6 +17,7 @@ from rfpimp import *
 from scipy.integrate import cumtrapz
 from stratpd.plot import *
 from stratpd.ice import *
+import inspect
 
 def df_string_to_cat(df:pd.DataFrame) -> dict:
     catencoders = {}
@@ -81,6 +82,7 @@ def load_rent():
 
 
 def rent():
+    print(f"----------- {inspect.stack()[0][3]} -----------")
     df_rent = load_rent()
     df_rent = df_rent.sample(n=8000)  # get a small subsample
     X = df_rent.drop('price', axis=1)
@@ -148,6 +150,7 @@ def toy_weather_data():
 
 
 def weather():
+    print(f"----------- {inspect.stack()[0][3]} -----------")
     df_raw = toy_weather_data()
     df = df_raw.copy()
     catencoders = df_string_to_cat(df)
@@ -208,6 +211,7 @@ def weather():
 
 
 def weight():
+    print(f"----------- {inspect.stack()[0][3]} -----------")
     df_raw = toy_weight_data(2000)
     df = df_raw.copy()
     catencoders = df_string_to_cat(df)
@@ -301,6 +305,7 @@ def additivity_data(n):
     return df
 
 def additivity():
+    print(f"----------- {inspect.stack()[0][3]} -----------")
     n = 1000
     df = additivity_data(n=n)
     X = df.drop('y', axis=1)
@@ -358,6 +363,7 @@ def bigX_data(n):
 
 
 def bigX():
+    print(f"----------- {inspect.stack()[0][3]} -----------")
     n = 1000
     df = bigX_data(n=n)
     X = df.drop('y', axis=1)
@@ -418,8 +424,8 @@ def bigX():
     plt.close()
 
 if __name__ == '__main__':
-    # rent()
-    # weight()
+    rent()
+    weight()
     weather()
-    # additivity()
-    # bigX()
+    additivity()
+    bigX()

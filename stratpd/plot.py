@@ -199,6 +199,9 @@ def stratpd_plot(X, y, colname, targetname=None,
                                oob_score=False)
     rf.fit(X_synth.drop(colname,axis=1), y_synth)
     """
+
+    print(f"Unique {colname} = {len(np.unique(X[colname]))}/{len(X)}")
+
     rf = RandomForestRegressor(n_estimators=ntrees,
                                min_samples_leaf=min_samples_leaf,
                                oob_score=False)
