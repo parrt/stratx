@@ -76,15 +76,13 @@ def weight():
     #              yrange=(0,160),
     # nlines = 1000
     # )
-    catstratpd_plot(X, y, 'sex', 'weight', ax=axes[3][0], ntrees=1,
+    catstratpd_plot(X, y, 'sex', 'weight', ax=axes[3][0],
                      alpha=.2,
-                    min_samples_leaf=2,
                      cats=df_raw['sex'].unique(),
                      yrange=(0,5)
                      )
-    catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[4][0], ntrees=1,
+    catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[4][0],
                      alpha=.2,
-                    min_samples_leaf=2,
                     cats=df_raw['pregnant'].unique(),
                      yrange=(0,35)
                      )
@@ -151,6 +149,91 @@ def rent():
     plt.show()
 
 
+def toy_weather_data():
+    def temp(x): return np.sin((x+365/2)*(2*np.pi)/365)
+    def noise(state): return np.random.normal(-5, 5, sum(df['state'] == state))
+
+    df = pd.DataFrame()
+    df['dayofyear'] = range(1,365+1)
+    df['state'] = np.random.choice(['CA','CO','AZ','WA'], len(df))
+    df['temperature'] = temp(df['dayofyear'])
+    df.loc[df['state']=='CA','temperature'] = 70 + df.loc[df['state']=='CA','temperature'] * noise('CA')
+    df.loc[df['state']=='CO','temperature'] = 40 + df.loc[df['state']=='CO','temperature'] * noise('CO')
+    df.loc[df['state']=='AZ','temperature'] = 90 + df.loc[df['state']=='AZ','temperature'] * noise('AZ')
+    df.loc[df['state']=='WA','temperature'] = 60 + df.loc[df['state']=='WA','temperature'] * noise('WA')
+    return df
+
+
+def weather():
+    df_raw = toy_weather_data()
+    df = df_raw.copy()
+    catencoders = df_string_to_cat(df)
+    print(catencoders)
+    df_cat_to_catcode(df)
+    X = df.drop('temperature', axis=1)
+    y = df['temperature']
+
+    fig, axes = plt.subplots(4, 2, figsize=(8, 8),
+                             gridspec_kw={'height_ratios': [.2, 3, 3, 3]})
+
+    axes[0, 0].get_xaxis().set_visible(False)
+    axes[0, 1].get_xaxis().set_visible(False)
+    axes[0, 0].axis('off')
+    axes[0, 1].axis('off')
+
+    """
+    The scale diff between states, obscures the sinusoidal nature of the
+    dayofyear vs temp plot. With noise N(0,5) gotta zoom in -3,3 on mine too.
+    otherwise, smooth quasilinear plot with lots of bristles showing volatility.
+    Flip to N(-5,5) which is more realistic and we see sinusoid for both, even at
+    scale. yep, the N(0,5) was obscuring sine for both. 
+    """
+    stratpd_plot(X, y, 'dayofyear', 'temperature', ax=axes[1][0],
+                 # ntrees=10, min_samples_leaf=2,
+                 hires_min_samples_leaf=11
+                 )  # , yrange=(-10,10))
+    # catstratpd_plot(X, y, 'state', 'temperature', cats=catencoders['state'],
+    #                 ax=axes[2][0])  # , yrange=(0,160))
+    #
+    # rf = RandomForestRegressor(n_estimators=30, min_samples_leaf=1, oob_score=True)
+    # rf.fit(X, y)
+    #
+    # ice = ice_predict(rf, X, 'dayofyear', 'temperature')
+    # ice_plot(ice, 'dayofyear', 'temperature', ax=axes[1, 1])  # , yrange=(-12,0))
+    #
+    # ice = ice_predict(rf, X, 'state', 'temperature')
+    # ice_plot(ice, 'state', 'temperature', cats=catencoders['state'],
+    #          ax=axes[2, 1])  # , yrange=(-12,0))
+    #
+    df = df_raw.copy()
+    axes[3, 0].plot(df.loc[df['state'] == 'CA', 'dayofyear'],
+                    df.loc[df['state'] == 'CA', 'temperature'], label="CA")
+    axes[3, 0].plot(df.loc[df['state'] == 'CO', 'dayofyear'],
+                    df.loc[df['state'] == 'CO', 'temperature'], label="CO")
+    axes[3, 0].plot(df.loc[df['state'] == 'AZ', 'dayofyear'],
+                    df.loc[df['state'] == 'AZ', 'temperature'], label="AZ")
+    axes[3, 0].plot(df.loc[df['state'] == 'WA', 'dayofyear'],
+                    df.loc[df['state'] == 'WA', 'temperature'], label="WA")
+    axes[3, 0].legend()
+    axes[3, 0].set_title('Raw data')
+    axes[3, 0].set_ylabel('Temperature')
+    axes[3, 0].set_xlabel('Dataframe row index')
+
+    rtreeviz_univar(axes[3, 1],
+                    X['state'], y,
+                    feature_name='state',
+                    target_name='y',
+                    min_samples_leaf=2,
+                    fontsize=10)
+    axes[3, 1].set_title(f'state space partition with min_samples_leaf={2}')
+    axes[3, 1].set_xlabel("state")
+    axes[3, 1].set_ylabel("y")
+
+    plt.tight_layout()
+
+    plt.show()
+
 if __name__ == '__main__':
-    rent()
+    # rent()
     # weight()
+    weather()

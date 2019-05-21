@@ -54,7 +54,7 @@ def dtree_leaf_samples(dtree, X:np.ndarray):
     return sample_idxs_in_leaf
 
 
-def hires_slopes_from_one_leaf(x:np.ndarray, y:np.ndarray):
+def hires_slopes_from_one_leaf(x:np.ndarray, y:np.ndarray, hires_min_samples_leaf:int):
     start = time.time()
     X = x.reshape(-1,1)
     """
@@ -65,7 +65,7 @@ def hires_slopes_from_one_leaf(x:np.ndarray, y:np.ndarray):
     
     Tried single estimator w/o boostrap. Terrible.
     """
-    rf = RandomForestRegressor(n_estimators=20, min_samples_leaf=10, bootstrap=True)
+    rf = RandomForestRegressor(n_estimators=10, min_samples_leaf=hires_min_samples_leaf, bootstrap=True)
     rf.fit(X, y)
     leaves = leaf_samples(rf, X)
     leaf_slopes = []
@@ -88,7 +88,7 @@ def hires_slopes_from_one_leaf(x:np.ndarray, y:np.ndarray):
     return leaf_xranges, leaf_yranges, leaf_slopes
 
 
-def collect_leaf_slopes(rf, X, y, colname, hires_threshold):
+def collect_leaf_slopes(rf, X, y, colname, hires_threshold, hires_min_samples_leaf):
     """
     For each leaf of each tree of the random forest rf (trained on all features
     except colname), get the samples then isolate the column of interest X values
@@ -109,7 +109,7 @@ def collect_leaf_slopes(rf, X, y, colname, hires_threshold):
         if len(samples)>hires_threshold:
             #print(f"BIG {len(samples)}!!!")
             leaf_xranges_, leaf_yranges_, leaf_slopes_ = \
-                hires_slopes_from_one_leaf(leaf_x, leaf_y)
+                hires_slopes_from_one_leaf(leaf_x, leaf_y, hires_min_samples_leaf)
             leaf_slopes.extend(leaf_slopes_)
             leaf_xranges.extend(leaf_xranges_)
             continue
@@ -129,7 +129,7 @@ def collect_leaf_slopes(rf, X, y, colname, hires_threshold):
     return leaf_xranges, leaf_slopes
 
 
-def avg_slope_at_x(leaf_ranges, leaf_slopes):
+def avg_slope_at_x(uniq_x, leaf_ranges, leaf_slopes):
     """
     Slope at max(x) is NaN since we have not data beyond that point.
     :param leaf_ranges:
@@ -137,9 +137,6 @@ def avg_slope_at_x(leaf_ranges, leaf_slopes):
     :return:
     """
     start = time.time()
-    # TODO, can we use unique(X.iloc[:,i])?
-    uniq_x = set(leaf_ranges[:, 0]).union(set(leaf_ranges[:, 1]))
-    uniq_x = np.array(sorted(uniq_x))
     nx = len(uniq_x)
     nslopes = len(leaf_slopes)
     slopes = np.zeros(shape=(nx, nslopes))
@@ -159,13 +156,14 @@ def avg_slope_at_x(leaf_ranges, leaf_slopes):
 
     stop = time.time()
     # print(f"avg_slope_at_x {stop - start:.3f}s")
-    return uniq_x, avg_slope_at_x
+    return avg_slope_at_x
 
 
 def stratpd_plot(X, y, colname, targetname=None,
                  ax=None,
-                 ntrees=30,
+                 ntrees=10,
                  min_samples_leaf=2,
+                 hires_min_samples_leaf=5,
                  alpha=.05,
                  hires_threshold=30,
                  xrange=None,
@@ -200,7 +198,7 @@ def stratpd_plot(X, y, colname, targetname=None,
     rf.fit(X_synth.drop(colname,axis=1), y_synth)
     """
 
-    print(f"Unique {colname} = {len(np.unique(X[colname]))}/{len(X)}")
+    # print(f"Unique {colname} = {len(np.unique(X[colname]))}/{len(X)}")
 
     rf = RandomForestRegressor(n_estimators=ntrees,
                                min_samples_leaf=min_samples_leaf,
@@ -208,8 +206,10 @@ def stratpd_plot(X, y, colname, targetname=None,
     rf.fit(X.drop(colname,axis=1), y)
     # print(f"\nModel wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     leaf_xranges, leaf_slopes = \
-        collect_leaf_slopes(rf, X, y, colname, hires_threshold=hires_threshold)
-    uniq_x, slope_at_x = avg_slope_at_x(leaf_xranges, leaf_slopes)
+        collect_leaf_slopes(rf, X, y, colname, hires_threshold=hires_threshold,
+                            hires_min_samples_leaf=hires_min_samples_leaf)
+    uniq_x = sorted(np.unique(X[colname]))
+    slope_at_x = avg_slope_at_x(uniq_x, leaf_xranges, leaf_slopes)
     # print(f'uniq_x = [{", ".join([f"{x:4.1f}" for x in uniq_x])}]')
     # print(f'slopes = [{", ".join([f"{s:4.1f}" for s in slope_at_x])}]')
 
@@ -320,10 +320,16 @@ def catstratpd_plot(X, y, colname, targetname,
                     cats=None,
                     ax=None,
                     sort='ascending',
-                    ntrees=30, min_samples_leaf=2,
+                    ntrees=5, min_samples_leaf=None,
                     alpha=.03,
                     yrange=None,
                     title=None):
+    if min_samples_leaf is None:
+        # rule of thumb: for binary, 2 samples / leaf seems good
+        # but num cats + 1 seems better for non-binary
+        min_samples_leaf = len(np.unique(X[colname]))
+        if min_samples_leaf>2:
+            min_samples_leaf += 1
     rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X.drop(colname, axis=1), y)
     print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")

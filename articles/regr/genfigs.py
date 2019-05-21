@@ -43,7 +43,6 @@ def toy_weight_data(n):
     df = pd.DataFrame()
     nmen = n//2
     nwomen = n//2
-    df['ID'] = range(100,100+n)
     df['sex'] = ['M']*nmen + ['F']*nwomen
     df.loc[df['sex']=='F','pregnant'] = np.random.randint(0,2,size=(nwomen,))
     df.loc[df['sex']=='M','pregnant'] = 0
@@ -72,7 +71,7 @@ def load_rent():
 
     # Create ideal numeric data set w/o outliers etc...
     df = df[(df.price > 1_000) & (df.price < 10_000)]
-    df = df[df.bathrooms <= 6]  # There's almost no data for above with small sample
+    df = df[df.bathrooms <= 4]  # There's almost no data for above with small sample
     df = df[(df.longitude != 0) | (df.latitude != 0)]
     df = df[(df['latitude'] > 40.55) & (df['latitude'] < 40.94) &
             (df['longitude'] > -74.1) & (df['longitude'] < -73.67)]
@@ -84,7 +83,7 @@ def load_rent():
 def rent():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     df_rent = load_rent()
-    df_rent = df_rent.sample(n=8000)  # get a small subsample
+    df_rent = df_rent.sample(n=9000)  # get a small subsample
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
 
@@ -168,7 +167,8 @@ def weather():
     """
     fig, ax = plt.subplots(1, 1, figsize=(3, 3))
     stratpd_plot(X, y, 'dayofyear', 'temperature', ax=ax,
-              ntrees=30, min_samples_leaf=2, yrange=(-20,20),
+                 hires_min_samples_leaf=11,
+                 yrange=(-20,20),
                  pdp_dot_size=2, alpha=.1, nlines=900)
     plt.tight_layout()
     savefig(f"dayofyear_vs_temp_stratpd")
@@ -176,7 +176,6 @@ def weather():
 
     fig, ax = plt.subplots(1, 1, figsize=(3, 3))
     catstratpd_plot(X, y, 'state', 'temperature', cats=catencoders['state'],
-                    min_samples_leaf=7,
                     sort=None,
                  ax=ax)  # , yrange=(0,160))
     plt.tight_layout()
@@ -212,7 +211,7 @@ def weather():
 
 def weight():
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_raw = toy_weight_data(2000)
+    df_raw = toy_weight_data(1000)
     df = df_raw.copy()
     catencoders = df_string_to_cat(df)
     df_cat_to_catcode(df)
@@ -233,9 +232,8 @@ def weight():
     plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=(3, 3))
-    catstratpd_plot(X, y, 'sex', 'weight', ax=ax, ntrees=10,
+    catstratpd_plot(X, y, 'sex', 'weight', ax=ax,
                     alpha=.2,
-                    min_samples_leaf=2,
                     cats=df_raw['sex'].unique(),
                     yrange=(0, 5)
                     )
@@ -244,11 +242,10 @@ def weight():
     plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=(3, 3))
-    catstratpd_plot(X, y, 'pregnant', 'weight', ax=ax, ntrees=10,
+    catstratpd_plot(X, y, 'pregnant', 'weight', ax=ax,
                     alpha=.2,
-                    min_samples_leaf=2,
                     cats=df_raw['pregnant'].unique(),
-                    yrange=(0, 30)
+                    yrange=(-5,35)
                     )
     plt.tight_layout()
     savefig(f"pregnant_vs_weight_stratpd")
@@ -281,7 +278,7 @@ def weight():
 
     fig, ax = plt.subplots(1, 1, figsize=(3, 3))
     ice = ice_predict(rf, X, 'pregnant', 'weight')
-    ice_plot(ice, 'pregnant', 'weight', ax=ax, yrange=(0, 30),
+    ice_plot(ice, 'pregnant', 'weight', ax=ax, yrange=(-5, 35),
              cats=df_raw['pregnant'].unique())
     plt.tight_layout()
     savefig(f"pregnant_vs_weight_pdp")
@@ -315,7 +312,7 @@ def additivity():
 
     fig, ax = plt.subplots(1, 1, figsize=(3, 3))
     stratpd_plot(X, y, 'x1', 'y', ax=ax, min_samples_leaf=min_samples_leaf,
-                 ntrees=50,
+#                 ntrees=50,
               hires_threshold=10, yrange=(-1, 1), pdp_dot_size=3, alpha=.1, nlines=700)
     plt.tight_layout()
     savefig(f"add_x1_y_stratpd")
@@ -323,7 +320,7 @@ def additivity():
 
     fig, ax = plt.subplots(1, 1, figsize=(3, 3))
     stratpd_plot(X, y, 'x2', 'y', ax=ax, min_samples_leaf=min_samples_leaf,
-                 ntrees=50,
+#                 ntrees=50,
                  hires_threshold=10, pdp_dot_size=3, alpha=.1, nlines=700)
     plt.tight_layout()
     savefig(f"add_x2_y_stratpd")
