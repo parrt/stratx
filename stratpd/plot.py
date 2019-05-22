@@ -168,14 +168,15 @@ def stratpd_plot(X, y, colname, targetname=None,
                  ntrees=1,
                  min_samples_leaf=2,
                  hires_min_samples_leaf=5,
-                 alpha=.1,
+                 alpha=.3,
                  hires_threshold=30,
                  xrange=None,
                  yrange=None,
                  pdp_dot_size=5,
                  title=None,
                  nlines=None,
-                 show_dx_line=False):
+                 show_dx_line=False,
+                 supervised=True):
     """
 
     :param X:
@@ -193,28 +194,27 @@ def stratpd_plot(X, y, colname, targetname=None,
     :return:
     """
 
-    """
-    Wow. Breiman's trick mostly works. Might as well leave as X,y though
-    X_synth, y_synth = conjure_twoclass(X)
-    rf = RandomForestRegressor(n_estimators=ntrees,
-                               min_samples_leaf=min_samples_leaf,
-                               oob_score=False)
-    rf.fit(X_synth.drop(colname,axis=1), y_synth)
-    """
-
     # print(f"Unique {colname} = {len(np.unique(X[colname]))}/{len(X)}")
+    if supervised:
+        rf = RandomForestRegressor(n_estimators=ntrees,
+                                   min_samples_leaf=min_samples_leaf,
+                                   bootstrap = False,
+                                   max_features = 1.0,
+                                   oob_score=False)
+        rf.fit(X.drop(colname, axis=1), y)
+    else:
+        """
+        Wow. Breiman's trick works in most cases. Falls apart on Boston housing MEDV target vs AGE
+        """
+        # print("USING UNSUPERVISED MODE")
+        X_synth, y_synth = conjure_twoclass(X)
+        rf = RandomForestRegressor(n_estimators=ntrees,
+                                   min_samples_leaf=min_samples_leaf,
+                                   bootstrap = False,
+                                   max_features = 1.0,
+                                   oob_score=False)
+        rf.fit(X_synth.drop(colname,axis=1), y_synth)
 
-    rf = RandomForestRegressor(n_estimators=ntrees,
-                               min_samples_leaf=min_samples_leaf,
-                               bootstrap = False,
-                               max_features = 1.0,
-                               oob_score=False)
-    # rf = RandomForestRegressor(n_estimators=1,
-    #                            min_samples_leaf=2,
-    #                            bootstrap=False,
-    #                            max_features=1.0,
-    #                            oob_score=False)
-    rf.fit(X.drop(colname,axis=1), y)
     # print(f"\nModel wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     leaf_xranges, leaf_slopes = \
         collect_leaf_slopes(rf, X, y, colname, hires_threshold=hires_threshold,

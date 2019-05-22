@@ -124,10 +124,13 @@ def rent():
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
 
+    supervised = True
+
     fig, axes = plt.subplots(4, 2, figsize=(8,16))
-    stratpd_plot(X, y, 'bedrooms', 'price', ax=axes[0,0], alpha=.2, yrange=(0,3000), nlines=1000)
-    stratpd_plot(X, y, 'bathrooms', 'price', ax=axes[1,0], alpha=.2, yrange=(0,3000), nlines=1000)
-    stratpd_plot(X, y, 'latitude', 'price', ax=axes[2,0], alpha=.2, yrange=(0,3000), nlines=1000)
+    stratpd_plot(X, y, 'bedrooms', 'price', ax=axes[0,0], alpha=.2, yrange=(0,3000), nlines=1000, supervised=supervised)
+    stratpd_plot(X, y, 'bathrooms', 'price', ax=axes[1,0], alpha=.2, yrange=(0,3000), nlines=1000, supervised=supervised)
+    stratpd_plot(X, y, 'latitude', 'price', ax=axes[2,0], alpha=.2, yrange=(0,3000), nlines=1000, supervised=supervised)
+    stratpd_plot(X, y, 'longitude', 'price', ax=axes[3,0], alpha=.2, nlines=1000, supervised=supervised)
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
@@ -233,6 +236,6 @@ def weather():
     plt.show()
 
 if __name__ == '__main__':
-    # rent()
+    rent()
     # weight()
-    weather()
+    # weather()
