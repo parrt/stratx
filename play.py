@@ -167,7 +167,13 @@ def toy_weather_data():
 
 
 def weather():
-    df_raw = toy_weather_data()
+    df_yr1 = toy_weather_data()
+    df_yr1['year']=1980
+    df_yr2 = toy_weather_data()
+    df_yr2['year']=1981
+    df_yr3 = toy_weather_data()
+    df_yr3['year']=1982
+    df_raw = pd.concat([df_yr1, df_yr2, df_yr3], axis=0)
     df = df_raw.copy()
     catencoders = df_string_to_cat(df)
     print(catencoders)
@@ -191,9 +197,26 @@ def weather():
     scale. yep, the N(0,5) was obscuring sine for both. 
     """
     stratpd_plot(X, y, 'dayofyear', 'temperature', ax=axes[1][0],
-                 # ntrees=10, min_samples_leaf=2,
-                 hires_min_samples_leaf=11
-                 )  # , yrange=(-10,10))
+                 ntrees=1,
+                 # min_samples_leaf=2,
+                 hires_min_samples_leaf=13
+                 , yrange=(-10,10))
+    stratpd_plot(X, y, 'dayofyear', 'temperature', ax=axes[1][1],
+                 ntrees=5,
+                 # min_samples_leaf=5,
+                 hires_min_samples_leaf=13
+                 , yrange=(-10,10))
+    stratpd_plot(X, y, 'dayofyear', 'temperature', ax=axes[2][0],
+                 ntrees=10,
+                 # min_samples_leaf=7,
+                 hires_min_samples_leaf=13
+                 , yrange=(-10,10))
+    stratpd_plot(X, y, 'dayofyear', 'temperature', ax=axes[2][1],
+                 ntrees=20,
+                 # min_samples_leaf=20,
+                 hires_min_samples_leaf=13
+                 , yrange=(-10,10))
+
     # catstratpd_plot(X, y, 'state', 'temperature', cats=catencoders['state'],
     #                 ax=axes[2][0])  # , yrange=(0,160))
     #
@@ -208,14 +231,26 @@ def weather():
     #          ax=axes[2, 1])  # , yrange=(-12,0))
     #
     df = df_raw.copy()
-    axes[3, 0].plot(df.loc[df['state'] == 'CA', 'dayofyear'],
-                    df.loc[df['state'] == 'CA', 'temperature'], label="CA")
-    axes[3, 0].plot(df.loc[df['state'] == 'CO', 'dayofyear'],
-                    df.loc[df['state'] == 'CO', 'temperature'], label="CO")
-    axes[3, 0].plot(df.loc[df['state'] == 'AZ', 'dayofyear'],
-                    df.loc[df['state'] == 'AZ', 'temperature'], label="AZ")
-    axes[3, 0].plot(df.loc[df['state'] == 'WA', 'dayofyear'],
-                    df.loc[df['state'] == 'WA', 'temperature'], label="WA")
+    avgtmp = df.groupby(['state','dayofyear'])[['temperature']].mean()
+    # avgtmp.sort_values('dayofyear')
+    avgtmp = avgtmp.reset_index()
+    print(avgtmp.reset_index().head(10))
+    ca = avgtmp.query('state=="CA"')
+    co = avgtmp.query('state=="CO"')
+    az = avgtmp.query('state=="AZ"')
+    wa = avgtmp.query('state=="WA"')
+    axes[3, 0].plot(ca['dayofyear'], ca['temperature'], label="CA")
+    axes[3, 0].plot(co['dayofyear'], co['temperature'], label="CO")
+    axes[3, 0].plot(az['dayofyear'], az['temperature'], label="AZ")
+    axes[3, 0].plot(wa['dayofyear'], wa['temperature'], label="WA")
+    # axes[3, 0].plot(df.loc[df['state'] == 'CA', 'dayofyear'],
+    #                 df.loc[df['state'] == 'CA', 'temperature'], label="CA")
+    # axes[3, 0].plot(df.loc[df['state'] == 'CO', 'dayofyear'],
+    #                 df.loc[df['state'] == 'CO', 'temperature'], label="CO")
+    # axes[3, 0].plot(df.loc[df['state'] == 'AZ', 'dayofyear'],
+    #                 df.loc[df['state'] == 'AZ', 'temperature'], label="AZ")
+    # axes[3, 0].plot(df.loc[df['state'] == 'WA', 'dayofyear'],
+    #                 df.loc[df['state'] == 'WA', 'temperature'], label="WA")
     axes[3, 0].legend()
     axes[3, 0].set_title('Raw data')
     axes[3, 0].set_ylabel('Temperature')
@@ -236,6 +271,6 @@ def weather():
     plt.show()
 
 if __name__ == '__main__':
-    rent()
+    # rent()
     # weight()
-    # weather()
+    weather()

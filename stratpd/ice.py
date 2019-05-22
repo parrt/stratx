@@ -66,7 +66,7 @@ def ice2lines(ice:np.ndarray) -> np.ndarray:
     return np.array(lines)
 
 
-def ice_plot(ice, colname, targetname="target", cats=None, ax=None, linewidth=.7, color='#9CD1E3',
+def ice_plot(ice, colname, targetname="target", cats=None, ax=None, linewidth=.5, color='#9CD1E3',
              alpha=.1, title=None, yrange=None, pdp=True, pdp_linewidth=.5, pdp_alpha=1,
              pdp_color='black'):
     start = time.time()

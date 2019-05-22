@@ -150,7 +150,13 @@ def toy_weather_data():
 
 def weather():
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_raw = toy_weather_data()
+    df_yr1 = toy_weather_data()
+    df_yr1['year']=1980
+    df_yr2 = toy_weather_data()
+    df_yr2['year']=1981
+    df_yr3 = toy_weather_data()
+    df_yr3['year']=1982
+    df_raw = pd.concat([df_yr1, df_yr2, df_yr3], axis=0)
     df = df_raw.copy()
     catencoders = df_string_to_cat(df)
     print(catencoders)
@@ -167,9 +173,9 @@ def weather():
     """
     fig, ax = plt.subplots(1, 1, figsize=(3, 3))
     stratpd_plot(X, y, 'dayofyear', 'temperature', ax=ax,
-                 hires_min_samples_leaf=11,
-                 yrange=(-20,20),
-                 pdp_dot_size=2, alpha=.1, nlines=900)
+                 hires_min_samples_leaf=13,
+                 yrange=(-15,15),
+                 pdp_dot_size=2, alpha=.5)
     plt.tight_layout()
     savefig(f"dayofyear_vs_temp_stratpd")
     plt.close()
@@ -177,6 +183,8 @@ def weather():
     fig, ax = plt.subplots(1, 1, figsize=(3, 3))
     catstratpd_plot(X, y, 'state', 'temperature', cats=catencoders['state'],
                     sort=None,
+                    alpha=.3,
+                    min_samples_leaf=11,
                  ax=ax)  # , yrange=(0,160))
     plt.tight_layout()
     savefig(f"state_vs_temp_stratpd")
@@ -187,7 +195,7 @@ def weather():
 
     fig, ax = plt.subplots(1, 1, figsize=(3, 3))
     ice = ice_predict(rf, X, 'dayofyear', 'temperature')
-    ice_plot(ice, 'dayofyear', 'temperature', ax=ax, yrange=(-20,20))
+    ice_plot(ice, 'dayofyear', 'temperature', ax=ax, yrange=(-15,15))
     plt.tight_layout()
     savefig(f"dayofyear_vs_temp_pdp")
     plt.close()
@@ -201,11 +209,40 @@ def weather():
     plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=(3, 3))
-    ax.scatter(X['state'], y, alpha=.07, s=6)
+    rtreeviz_univar(ax,
+                    X['state'], y,
+                    feature_name='state',
+                    target_name='y',
+                    fontsize=10, show={'splits'})
+    plt.tight_layout()
+    plt.show()
+
+    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+    ax.scatter(X['state'], y, alpha=.05, s=20)
+    ax.set_xticklabels(np.concatenate([[''], catencoders['state'].values]))
     ax.set_xlabel("state")
-    ax.set_ylabel("y")
+    ax.set_ylabel("temperature")
     plt.tight_layout()
     savefig(f"state_vs_temp")
+    plt.close()
+
+    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+    df = df_raw.copy()
+    avgtmp = df.groupby(['state','dayofyear'])[['temperature']].mean()
+    avgtmp = avgtmp.reset_index()
+    ca = avgtmp.query('state=="CA"')
+    co = avgtmp.query('state=="CO"')
+    az = avgtmp.query('state=="AZ"')
+    wa = avgtmp.query('state=="WA"')
+    ax.plot(ca['dayofyear'], ca['temperature'], lw=.5, c='#fdae61', label="CA")
+    ax.plot(co['dayofyear'], co['temperature'], lw=.5, c='#225ea8', label="CO")
+    ax.plot(az['dayofyear'], az['temperature'], lw=.5, c='#41b6c4', label="AZ")
+    ax.plot(wa['dayofyear'], wa['temperature'], lw=.5, c='#a1dab4', label="WA")
+    ax.legend(loc='lower left', borderpad=0, labelspacing=0)
+    ax.set_xlabel("dayofyear")
+    ax.set_ylabel("temperature")
+    plt.tight_layout()
+    savefig(f"dayofyear_vs_temp")
     plt.close()
 
 
@@ -421,8 +458,8 @@ def bigX():
     plt.close()
 
 if __name__ == '__main__':
-    rent()
-    weight()
+    # rent()
+    # weight()
     weather()
-    additivity()
-    bigX()
+    # additivity()
+    # bigX()
