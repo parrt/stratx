@@ -65,7 +65,11 @@ def hires_slopes_from_one_leaf(x:np.ndarray, y:np.ndarray, hires_min_samples_lea
     
     Tried single estimator w/o boostrap. Terrible.
     """
-    rf = RandomForestRegressor(n_estimators=10, min_samples_leaf=hires_min_samples_leaf, bootstrap=True)
+    rf = RandomForestRegressor(n_estimators=1,
+                               min_samples_leaf=hires_min_samples_leaf,
+                               max_features=1.0,
+                               bootstrap=False,
+                               )
     rf.fit(X, y)
     leaves = leaf_samples(rf, X)
     leaf_slopes = []
@@ -327,19 +331,27 @@ def catstratpd_plot(X, y, colname, targetname,
                     cats=None,
                     ax=None,
                     sort='ascending',
-                    ntrees=5, min_samples_leaf=None,
+                    ntrees=1,
+                    min_samples_leaf=None,
                     alpha=.03,
                     yrange=None,
                     title=None):
     if min_samples_leaf is None:
         # rule of thumb: for binary, 2 samples / leaf seems good
-        # but num cats + 1 seems better for non-binary
+        # but num cats + 3 seems better for non-binary
         min_samples_leaf = len(np.unique(X[colname]))
         if min_samples_leaf>2:
-            min_samples_leaf += 1
-    rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
+            min_samples_leaf += 3
+
+    rf = RandomForestRegressor(n_estimators=ntrees,
+                               min_samples_leaf=min_samples_leaf,
+                               bootstrap = False,
+                               max_features = 1.0,
+                               oob_score=False)
+
+    # rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X.drop(colname, axis=1), y)
-    print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
+    # print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     leaf_histos = catwise_leaves(rf, X, y, colname)
     avg_per_cat = np.nanmean(leaf_histos, axis=1)
 

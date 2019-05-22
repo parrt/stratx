@@ -233,6 +233,6 @@ def weather():
     plt.show()
 
 if __name__ == '__main__':
-    rent()
+    # rent()
     # weight()
-    # weather()
+    weather()
