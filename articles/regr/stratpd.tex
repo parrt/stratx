@@ -16,7 +16,7 @@
 \usepackage{alltt}
 \usepackage{listings}
 \usepackage{array}
-\usepackage[noline, boxed, procnumbered, linesnumberedhidden, titlenumbered]{algorithm2e}
+\usepackage[noline, boxed, linesnumbered, procnumbered, titlenumbered]{algorithm2e}
 \usepackage[firstpage]{draftwatermark}
 \usepackage[margin=1in]{geometry}  %%jcgs has own margins
 \usepackage{lmodern}
@@ -98,11 +98,9 @@ In practice, machine learning model interpretation is just as important as obtai
 
 Given just one or two features, a plot of any feature versus the target lets us visualize the exact relationship, this approach does not work for data sets with more than two features because we cannot visualize more than three dimensions.
 
-To get around this limitation, traditional marginal plots project other axes onto the axis associated with the feature of interest.  That means that marginal plots do not isolate the specific contribution of a feature of interest to the target. For example, a marginal plot of sex (male/female) versus body weight would likely show that, on average, men are heavier than women. While true, men are also taller than women on average, which likely accounts for most of the difference in average weight. It's unlikely that two ``identical'' people, differing only in sex, would be appreciably different in weight.  
+To get around this limitation, traditional marginal plots project other axes onto the plane associated with the feature of interest and target variable.  That means that marginal plots do not isolate the specific contribution of a feature of interest to the target. For example, a marginal plot of sex (male/female) versus body weight would likely show that, on average, men are heavier than women. While true, men are also taller than women on average, which likely accounts for most of the difference in average weight. It's unlikely that two ``identical'' people, differing only in sex, would be appreciably different in weight.  
 
-As another example, consider the marginal plot of the number of bathrooms versus price shown in \figref{fig:baths_price}(a) (New York City apartment rent data from Kaggle). One would expect a near-linear relationship for the net effect of the number of bathrooms on price, but the marginal plot implausibly suggests that moving from 2.5 bathrooms to three full bathrooms does not affect the price very much.  The apartment prices shown in the marginal plot include the effect of all other features for each apartment.
-
-\cite{PDP} introduced partial dependence (PD) plots as a way to extract and visualize the dependence of the target on one or two features of interest. \figref{fig:baths_price}(b) shows the (zero-centered) PD of rent price on the number of bathrooms as a black line. The partial dependence line is the average of the blue lines, which represent the individual conditional expectation (ICE) plots of \cite{ICE}.  In this case, the ICE lines depict the model prediction contributions for a single observation as the bathroom feature shifts through all possible number of bathrooms. Because PD plots represent an average across observations, they can hide a great deal of variability, so it is helpful to combine PD and ICE plots.
+\cite{PDP} introduced partial dependence (PD) plots as a way to extract and visualize the dependence of the target on one or two features of interest.  Consider a New York City apartment rent data set from Kaggle \cite{rent-dataset} and the marginal plot in \figref{fig:baths_price}(a) showing the number of bathrooms versus price.  \figref{fig:baths_price}(b) shows the (zero-centered) PD of rent price on the number of bathrooms as a black line. The partial dependence line is the average of the blue lines, which represent the individual conditional expectation (ICE) plots of \cite{ICE}.  In this case, the ICE lines depict the model prediction contributions for a single observation as the bathroom feature shifts through all possible number of bathrooms. Because PD plots represent an average across observations, they can hide a great deal of variability, so it is helpful to combine PD and ICE plots.
 
 \begin{figure}[htbp]
 \begin{center}
@@ -119,7 +117,7 @@ As another example, consider the marginal plot of the number of bathrooms versus
 
 Also, getting radically different PD and ICE plots for different underlying models is undesirable because users cannot distinguish between interesting target fluctuations and artifacts of their model choice. Consider \figref{fig:baths_price}(c) that shows the PD/ICE plot for the exact same data set but using a linear model (with Lasso regularization). A single-line cannot adequately describe the nonlinearity evident from the marginal plot. At the very least, users should compare plots derived from multiple models. Moreover, PD and ICE plots are only as accurate as the underlying model, meaning PD and ICE plots from derived high-bias models should not be trusted.
 
-\figref{fig:baths_price}(d) shows the partial dependence of rent on the number of bathrooms (as black dots) using the \spd{} approach described in this paper. Aside from partial dependence information, the plot depicts the density of data in the bathroom/rent space by the number and location of lines, identifies the unique $x$ (bathroom) values, and characterizes the variability of the slopes across $x$.
+\figref{fig:baths_price}(d) shows the partial dependence of rent on the number of bathrooms (as black dots) using the \spd{} approach described in this paper. The plot also depicts the density of data in the bathroom/rent space by the number and location of lines, identifies the unique $x$ (bathroom) values, and characterizes the variability of the slopes across $x$.
 
 There are two remaining issues with PD plots associated with the relationship between features. First, as Friedman pointed out, PD plots are most accurate ``{\em when {\em [the model]} is dominated by low order interactions.}''  Feature interactions such as $x_1x_2$ are difficult to tease apart to obtain partial codependencies on just $x_1$ or $x_2$. (Feature $x_j^T = (x_{1j}, .., x_{Nj})$ is a column vector of the  $N \times p$ explanatory matrix ${\bf X}$). ICE plots address this issue by showing separate prediction curves for each observation as the feature of interest is moved through all possible values.  This not only shows the variation hidden by the PD average curve, but it depicts interaction relationships between the feature of interest and other features.
 
@@ -159,7 +157,7 @@ To illustrate how variable codependencies result in misleading PD and ICE plots,
 \end{center}
 \end{figure}
 
-To summarize the hazards of PD and ICE plots, {\em (i)} both are strongly affected by the model chosen by the programmer.  {\em (ii)} To obtain accurate plots, PD and ICE rely on the accuracy of the underlying model, which might sacrifice local accuracy to minimize some global loss function.  Both plots display model prediction results rather than the data itself. {\em (iii)} The potentially inaccurate model feeds off of potentially-nonsensical, synthesized observations arising from variable codependencies. What we need is an accurate mechanism that does not rely on, nor make predictions from, a user's model and a mechanism that does not presume independent features.
+To summarize the hazards of PD and ICE plots, {\em (i)} both are strongly affected by the model chosen by the programmer.  {\em (ii)} To obtain accurate plots, PD and ICE rely on the accuracy of the underlying model, which might sacrifice local accuracy to minimize some global loss function.  Both plots display model prediction results rather than the data itself. {\em (iii)} The potentially inaccurate model feeds off of potentially-nonsensical, synthesized observations arising from variable codependencies. What we need is an accurate mechanism that does not rely on, nor make predictions from, a user's model and a mechanism that does not presume mutually independent features.
 
 \section{Our approach}
 
@@ -167,7 +165,7 @@ In a perfect world, supporting codependent and interacting features would be str
 
 Even though $y = f(\bf x)$ is unavailable, a linear regression model, $y = \hat{f}(\bf x)$, provides the general trend of $y$ versus feature $x_c$ via regression coefficient $\beta_c$. For a unit change in $x_c$, $y$ increases or decreases by $\beta_c$, effectively canceling out or controlling for the other features, $x_{(-c)}$, where $x_{(-c)} = x_{j} ~\forall~ j \neq c$. There are a few problems with using a global linear model, however.  First, a linear model might not be strong enough to capture the relationship between all $({\bf x}_i, y_i)$ observation pairs. Second, coefficient $\beta_c$ is a constant and smooths over any local $y$ fluctuations across the entire range of $x_c$. Third, linear models require dummy variables to represent (and replace) categorical $x_c$ variables, therefore, regression coefficients describe the relationship between the presence or absence of a single category and $y$, rather than $x_c$ and $y$.
 
-Another simple but impractical approach stratifies a data set, grouping observations by all features except the feature of interest, $x_c$.  Let $G$ be a group of observations, identified by a set of row indices, where each observation has identical $x_{(-c)}$ features. For a given $G$, the $\{(x_{ic},  y_i)\}_{i \in G}$ pairs then partially describe how $x_c$ affects $y$, all else being equal.  Fitting a univariate linear regressor (without regularization) to group $G$ yields an approximation, $\beta_G$, of the slope of $y$ localized to the specific region of $x_c$ in group $G$: $R_G = [min(x_{ic}), max(x_{ic})]_{i \in G}$.   Because the $x_c$ regions from multiple groups could overlap, slope $\beta_R$ in any given $x_c$ region, $R$, would be the average of all slope estimates covering that region: $\beta_R = \frac{1}{|G \in R|}\Sigma_{G \in R}\beta_G$. Together, the collection of regions and slopes, $\{(R, \beta_R)\}_{R \in x_c}$, would cover the full $x_c$ range and represent a good localized approximation of the partial derivative of the unknown $f(\bf x)$ with respect to $x_c$.
+Another simple but impractical approach stratifies a data set, grouping observations by all features except the feature of interest, $x_c$.  Let $G$ be a group of observations, identified by a set of row indices, where each observation has identical $x_{(-c)}$ features. For a given $G$, the $\{(x_{ic},  y_i)\}_{i \in G}$ pairs then partially describe how $x_c$ affects $y$, all else being equal.  Fitting a univariate linear regressor (without regularization) to group $G$ yields an approximation, $\beta_G$, of the slope of $y$ localized to the specific region of $x_c$ in group $G$; region $R_G = [min(x_{ic}), max(x_{ic})]_{i \in G}$.   Because the $x_c$ regions from multiple groups could overlap, slope $\beta_R$ in any given $x_c$ region, $R$, would be the average of all slope estimates covering that region: $\beta_R = \frac{1}{|G \in R|}\Sigma_{G \in R}\beta_G$. Together, the collection of regions and slopes, $\{(R, \beta_R)\}_{R \in x_c}$, would cover the full $x_c$ range and represent a good localized approximation of the partial derivative of the unknown $f(\bf x)$ with respect to $x_c$.
 
 Alas, this stratification approach works for two or three variables but breaks down for more variables because it is impractical to find groups of observations that are equal across so many variables.  Nonetheless, stratification is simple, well understood, and clearly isolates the effect of $x_c$ on $y$ from the other features for this application, even in the presence of codependent and interacting features.  The only obstacle is a general and practical mechanism for stratifying observations with many variables, which leads us to the primary contribution of this paper.
 
@@ -201,16 +199,21 @@ Revisiting the \spd{} plot in \figref{fig:height_vs_weight}(d), derived from the
 
 Partial dependence through stratification also works for categorical variables, given a suitable similarity measure between observations that supports categorical variables, but identifying an appropriate categorical similarity measure is a well-known issue. Random forests, however, support categorical variables easily by treating categories as unique integers (i.e., without having to one-hot encode). That means \spd{} can consider how categorical variable $x_c$ affects $y$, instead of just a single category at a time (if forced to one-hot encode $x_c$). As with purely numeric variables, observations with categorical variables that end up in the same leaf are more likely than not to be similar. (\todo cite breiman proximity matrix and p595 of ESL book). After stratification by a random forest trained on $({\bf X}_{(-c)}, {\bf y})$, we are left with a regression on a single categorical variable. Because categorical variables can be unordered nominal variables, the notion of $y$ slope is not meaningful between two categories. Instead, \spd{} groups leaf observations $(Lx, Ly)$ by the $Lx$ categories, computes the average $Ly$ value per category, and subtracts $min(Ly)$ to erase the contributions of $x_{(-c)}$.  To get the overall contribution of $x_c$ on $y$ for category $cat$, \spd{} averages the leaf contributions $cat$ across all leaves. See Algorithm \ref{alg:CatStratPD}.
 
+Pathological case with cat vars: weather sine. lines 6-9 of alg 1.
+
 It's worth mentioning
-Random forests
+
 Before moving on, it's worthwhile emphasizing the advantages of stratifying with random forests. Aside from obviating the need to define a similarity measure,
 
- no need to define a similarity measure
-randomization means of controlling for confounding variables
 combine derivative in the same plot
 categorical variable natively
 
+
+\todo{new stuf} y tells us how to partition the feature space into similar groups that are adjacent regions and features space but have similar y. Technically we don't need supervised y but sometimes unsupervised fails, such in the case where p = 2 or p greater than two but with very weak predictors or noise.  The aim is not prediction; instead it is to partition the feature space into similar regions. Consequently we are not worried about over fitting, in fact we wanted to over fit in the sense that it is getting the best partition possible using all the data and all features. Generalization would suffer but we don't care because we want to know about this particular data set. Decision trees mean we don't need to define a similarity measure and we don't need to define been with or another mechanism to draw regions. The regions are optimal to get similar y.
+
 \section{Experimental Results}
+
+effect of sup/unsup: more accurate grouping. ignore noise. unsup fails if p=2 since $X_{(-c)}$ has p=1 and unsup can't distinguish X from synth X.
 
 \todo{add car data}
 
@@ -365,7 +368,7 @@ $\hat{y}$ = numerically integrate $\beta_R$'s at $uniqx$\\
 \SetAlgorithmName{Algorithm}{List of Algorithms}
 \SetAlgoSkip{}
 \SetInd{.5em}{.5em}
-\TitleOfAlgo{{\em CatStratPD}($X$, $\bf y$, $c$) {\bf returns} dictionary mapping category to $y$}
+\TitleOfAlgo{{\em CatStratPD}($X$, $\bf y$, $c$) {\bf returns} dictionary mapping category to effect on $y$}
 Train random forest regressor {\it rf} on (${\bf X}_{(-c)}$, $\bf y$)\\
 Let $D$ be dictionary mapping category to $y$ value\\
 \ForEach{leaf $L \in {\it rf}$}{
@@ -374,12 +377,12 @@ Let $D$ be dictionary mapping category to $y$ value\\
 		$cat_y$ = $Ly[Lx=cat]$\\
 		\lIf{$|cat_y| < 2$}{{\bf continue}}\\
 		$cat_{avg}$ = $\frac{1}{|cat_y|} \Sigma cat_y$\\
-		$cat_{avg}$ = $cat_{avg} - min(Ly)$~~~~~~(Strip y contribution from $x_{(-c)}$)\\
+		$cat_{avg}$ = $cat_{avg} - min(Ly)$\tcp*[r]{\it Strip y contribution from $x_{(-c)}$}
 		$D_{cat}$ = $D_{cat} + cat_{avg}$\\
 	}
 }
 Let $n_{cat}$ be number of $cat_{avg}$ added to $D_{cat}$\\
-$D_{cat}$ = $D_{cat} / n_{cat}$~~~~(Take average of leaf averages for $cat$)\\
+$D_{cat}$ = $D_{cat} / n_{cat}$\tcp*[r]{\it Take average of leaf averages for $cat$}
 \Return{$D_{cat}$}
 \end{algorithm}
 

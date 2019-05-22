@@ -135,7 +135,7 @@ def rent():
 
 def toy_weather_data():
     def temp(x): return np.sin((x+365/2)*(2*np.pi)/365)
-    def noise(state): return np.random.normal(-10, 10, sum(df['state'] == state))
+    def noise(state): return np.random.normal(-5, 5, sum(df['state'] == state))
 
     df = pd.DataFrame()
     df['dayofyear'] = range(1,365+1)
