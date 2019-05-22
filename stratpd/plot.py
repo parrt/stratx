@@ -161,10 +161,10 @@ def avg_slope_at_x(uniq_x, leaf_ranges, leaf_slopes):
 
 def stratpd_plot(X, y, colname, targetname=None,
                  ax=None,
-                 ntrees=10,
+                 ntrees=1,
                  min_samples_leaf=2,
                  hires_min_samples_leaf=5,
-                 alpha=.05,
+                 alpha=.1,
                  hires_threshold=30,
                  xrange=None,
                  yrange=None,
@@ -202,7 +202,14 @@ def stratpd_plot(X, y, colname, targetname=None,
 
     rf = RandomForestRegressor(n_estimators=ntrees,
                                min_samples_leaf=min_samples_leaf,
+                               bootstrap = False,
+                               max_features = 1.0,
                                oob_score=False)
+    # rf = RandomForestRegressor(n_estimators=1,
+    #                            min_samples_leaf=2,
+    #                            bootstrap=False,
+    #                            max_features=1.0,
+    #                            oob_score=False)
     rf.fit(X.drop(colname,axis=1), y)
     # print(f"\nModel wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     leaf_xranges, leaf_slopes = \

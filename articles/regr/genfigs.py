@@ -308,7 +308,7 @@ def additivity():
     X = df.drop('y', axis=1)
     y = df['y']
 
-    min_samples_leaf = 11
+    min_samples_leaf = 15
 
     fig, ax = plt.subplots(1, 1, figsize=(3, 3))
     stratpd_plot(X, y, 'x1', 'y', ax=ax, min_samples_leaf=min_samples_leaf,

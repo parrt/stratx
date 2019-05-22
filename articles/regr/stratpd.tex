@@ -61,7 +61,7 @@
 
 \if0\blind
 {
-  \title{{\fontfamily{cmr}\textsc{StratPD}}: \bf A Localized Approach to Partial Dependence Plots for Non-Independent Variables}
+  \title{{\fontfamily{cmr}\textsc{StratPD}}: \bf A Localized Approach to Partial Dependence Plots for Codependent Variables}
 
   \author{Terence Parr and James Wilson\\
       University of San Francisco\\
@@ -117,13 +117,13 @@ As another example, consider the marginal plot of the number of bathrooms versus
 
 \cut{The partial dependence plot broadly follows the marginal plot except for the prices of two and three bathroom apartments, where it levels off. This is counterintuitive and exposes an issue with PD and ICE plots.} While PD and ICE plots are {\em model-agnostic}, they are not {\em model-independent} and are subject to the strengths and weaknesses of the model making predictions.  For example, Random Forests(tm) (RF) cannot extrapolate beyond their support range and this data set subset of 9000 observations has very few apartments with 0 or more than two bathrooms.  (Note the lack of blue dots in those ranges of the marginal plot.) PD and ICE plots shift the bathroom feature of all observations from 0 to 4, accepting less trustworthy predictions from the model in extreme ranges.   
 
-Also, getting radically different PD and ICE plots for different underlying models is undesirable because users cannot distinguish between interesting target fluctuations and artifacts of their model choice. Consider \figref{fig:baths_price}(c) that shows the PD/ICE plot for the exact same data set but using a linear model (with Lasso regularization). At the very least, users should compare plots derived from multiple models. Moreover, PD and ICE plots are only as accurate as the underlying model, meaning PD and ICE plots from derived high-bias models should not be trusted.
+Also, getting radically different PD and ICE plots for different underlying models is undesirable because users cannot distinguish between interesting target fluctuations and artifacts of their model choice. Consider \figref{fig:baths_price}(c) that shows the PD/ICE plot for the exact same data set but using a linear model (with Lasso regularization). A single-line cannot adequately describe the nonlinearity evident from the marginal plot. At the very least, users should compare plots derived from multiple models. Moreover, PD and ICE plots are only as accurate as the underlying model, meaning PD and ICE plots from derived high-bias models should not be trusted.
 
 \figref{fig:baths_price}(d) shows the partial dependence of rent on the number of bathrooms (as black dots) using the \spd{} approach described in this paper. Aside from partial dependence information, the plot depicts the density of data in the bathroom/rent space by the number and location of lines, identifies the unique $x$ (bathroom) values, and characterizes the variability of the slopes across $x$.
 
-There are two remaining issues with PD plots associated with the relationship between features. First, as Friedman pointed out, PD plots are most accurate ``{\em when {\em [the model]} is dominated by low order interactions.}''  Feature interactions such as $x_1x_2$ are difficult to tease apart to obtain partial dependencies on just $x_1$ or $x_2$. (Feature $x_j^T = (x_{1j}, .., x_{Nj})$ is a column vector of the  $N \times p$ explanatory matrix ${\bf X}$). ICE plots address this issue by showing separate prediction curves for each observation as the feature of interest is moved through all possible values.  This not only shows the variation hidden by the PD average curve, but it depicts interaction relationships between the feature of interest and other features.
+There are two remaining issues with PD plots associated with the relationship between features. First, as Friedman pointed out, PD plots are most accurate ``{\em when {\em [the model]} is dominated by low order interactions.}''  Feature interactions such as $x_1x_2$ are difficult to tease apart to obtain partial codependencies on just $x_1$ or $x_2$. (Feature $x_j^T = (x_{1j}, .., x_{Nj})$ is a column vector of the  $N \times p$ explanatory matrix ${\bf X}$). ICE plots address this issue by showing separate prediction curves for each observation as the feature of interest is moved through all possible values.  This not only shows the variation hidden by the PD average curve, but it depicts interaction relationships between the feature of interest and other features.
 
-The second issue stems from a lack of independence between features.  In a nutshell, not every combination of dependent features is valid. Consider a five bedroom apartment with just one or even zero bathrooms or a four bathroom studio was no bedroom or an observation identified as male but also pregnant.  Because PD and ICE alter observations by shifting the feature of interest through all possible feature values, they run the risk of conjuring up nonsensical observations, and in our experience, features in real data sets are very often dependent to some degree. This problem can be mitigated by computing PD and ICE plots on groups of mutually-dependent or interacting features of interest. \todo{but could involve identifying subsets and computing lots of combinations and we still might want to know about a single contribution.}
+The second issue stems from a lack of independence between features.  In a nutshell, not every combination of codependent features is valid. Consider a five bedroom apartment with just one or even zero bathrooms or a four bathroom studio was no bedroom or an observation identified as male but also pregnant.  Because PD and ICE alter observations by shifting the feature of interest through all possible feature values, they run the risk of conjuring up nonsensical observations, and in our experience, features in real data sets are very often codependent to some degree. This problem can be mitigated by computing PD and ICE plots on groups of mutually-dependent or interacting features of interest. \todo{but could involve identifying subsets and computing lots of combinations and we still might want to know about a single contribution.}
 
 \cut{
 def toy_weight_data(n):
@@ -148,7 +148,7 @@ def toy_weight_data(n):
 }
 
 
-To illustrate how variable dependencies result in misleading PD and ICE plots, consider a  weight data set with observations matching a person's characteristics to a weight in pounds. We discuss the data set details in \secref{sec:exp}, but for the moment, assume that women are slightly shorter on average and are 30 pounds heavier if pregnant. The PD/ICE plot in \figref{fig:height_vs_weight}(a) shows an inaccurate partial dependence where shorter people are slightly heavier than those over about 72 inches. The blue ICE lines pop up significantly for shorter heights due to the codependence of $x_{sex}$ and $x_{pregnant}$: PD and ICE conjure up pregnant males and ask the model to estimate their weight. In contrast, the \spd{} plot in \figref{fig:height_vs_weight}(b) is not confused by codependence and gives the true partial dependence of weight on height.
+To illustrate how variable codependencies result in misleading PD and ICE plots, consider a body weight data set with observations matching a person's characteristics to a weight in pounds. We discuss the data set details in \secref{sec:exp}, but for the moment, assume that women are slightly shorter on average and are 30 pounds heavier if pregnant. The PD/ICE plot in \figref{fig:height_vs_weight}(a) shows an inaccurate partial dependence where shorter people are slightly heavier per inch of height than those over about 72 inches. The blue ICE lines jump up significantly for shorter heights due to the codependence of $x_{sex}$ and $x_{pregnant}$ because PD and ICE conjure up pregnant males and ask the model to estimate their weight.  To be clear, the weight equation has no interaction term with $x_{height}$ and $x_{pregnant}$, but $x_{height}$ is codependent indirectly with $x_{pregnant}$ (via $x_{sex}$).  The \spd{} plot in \figref{fig:height_vs_weight}(b), on the other hand, is not confused by codependence and gives the true partial dependence of weight on height.
 
 \begin{figure}[htbp]
 \begin{center}
@@ -159,21 +159,21 @@ To illustrate how variable dependencies result in misleading PD and ICE plots, c
 \end{center}
 \end{figure}
 
-To summarize the hazards of PD and ICE plots, {\em (i)} both are strongly affected by the model chosen by the programmer.  {\em (ii)} To obtain accurate plots, PD and ICE rely on the accuracy of the underlying model, which might sacrifice local accuracy to minimize some global loss function.  Both plots display model prediction results rather than the data itself. {\em (iii)} The potentially inaccurate model feeds off of potentially-nonsensical, synthesized observations arising from variable dependencies. What we need is an accurate mechanism that does not rely on, nor make predictions from, a user's model and a mechanism that does not presume independent features.
+To summarize the hazards of PD and ICE plots, {\em (i)} both are strongly affected by the model chosen by the programmer.  {\em (ii)} To obtain accurate plots, PD and ICE rely on the accuracy of the underlying model, which might sacrifice local accuracy to minimize some global loss function.  Both plots display model prediction results rather than the data itself. {\em (iii)} The potentially inaccurate model feeds off of potentially-nonsensical, synthesized observations arising from variable codependencies. What we need is an accurate mechanism that does not rely on, nor make predictions from, a user's model and a mechanism that does not presume independent features.
 
 \section{Our approach}
 
-In a perfect world, supporting non-independent and interacting features would be straightforward because we would know the actual function, $y = f({\bf x})$ or ${\bf y} = f(\bf X)$, that precisely maps a feature vector ${\bf x}_i$ to target value $y_i$ where ${\bf x}_i = ( x_{i1}, .., x_{ip} )$ is a $1 \times p$ row vector of $\bf X$. The partial derivative of $f({\bf x})$ with respect to a variable (column) of interest, $x_c^T = (x_{1c}, .., x_{Nc})$, describes how a unit change in $x_c$ affects $y$ for all $x_c$ values, treating all other variables as constants. Integrating the partial derivative $\frac{\partial}{\partial x_{c}} f({\bf x})$ would yield a curve showing just $x_{c}$'s contribution to $y$. 
+In a perfect world, supporting codependent and interacting features would be straightforward because we would know the actual function, $y = f({\bf x})$ or ${\bf y} = f(\bf X)$, that precisely maps a feature vector ${\bf x}_i$ to target value $y_i$ where ${\bf x}_i = ( x_{i1}, .., x_{ip} )$ is a $1 \times p$ row vector of $\bf X$. The partial derivative of $f({\bf x})$ with respect to a variable (column) of interest, $x_c^T = (x_{1c}, .., x_{Nc})$, describes how a unit change in $x_c$ affects $y$ for all $x_c$ values, treating all other variables as constants. Integrating the partial derivative $\frac{\partial}{\partial x_{c}} f({\bf x})$ would yield a curve showing just $x_{c}$'s contribution to $y$. 
 
 Even though $y = f(\bf x)$ is unavailable, a linear regression model, $y = \hat{f}(\bf x)$, provides the general trend of $y$ versus feature $x_c$ via regression coefficient $\beta_c$. For a unit change in $x_c$, $y$ increases or decreases by $\beta_c$, effectively canceling out or controlling for the other features, $x_{(-c)}$, where $x_{(-c)} = x_{j} ~\forall~ j \neq c$. There are a few problems with using a global linear model, however.  First, a linear model might not be strong enough to capture the relationship between all $({\bf x}_i, y_i)$ observation pairs. Second, coefficient $\beta_c$ is a constant and smooths over any local $y$ fluctuations across the entire range of $x_c$. Third, linear models require dummy variables to represent (and replace) categorical $x_c$ variables, therefore, regression coefficients describe the relationship between the presence or absence of a single category and $y$, rather than $x_c$ and $y$.
 
 Another simple but impractical approach stratifies a data set, grouping observations by all features except the feature of interest, $x_c$.  Let $G$ be a group of observations, identified by a set of row indices, where each observation has identical $x_{(-c)}$ features. For a given $G$, the $\{(x_{ic},  y_i)\}_{i \in G}$ pairs then partially describe how $x_c$ affects $y$, all else being equal.  Fitting a univariate linear regressor (without regularization) to group $G$ yields an approximation, $\beta_G$, of the slope of $y$ localized to the specific region of $x_c$ in group $G$: $R_G = [min(x_{ic}), max(x_{ic})]_{i \in G}$.   Because the $x_c$ regions from multiple groups could overlap, slope $\beta_R$ in any given $x_c$ region, $R$, would be the average of all slope estimates covering that region: $\beta_R = \frac{1}{|G \in R|}\Sigma_{G \in R}\beta_G$. Together, the collection of regions and slopes, $\{(R, \beta_R)\}_{R \in x_c}$, would cover the full $x_c$ range and represent a good localized approximation of the partial derivative of the unknown $f(\bf x)$ with respect to $x_c$.
 
-Alas, this stratification approach works for two or three variables but breaks down for more variables because it is impractical to find groups of observations that are equal across so many variables.  Nonetheless, stratification is simple, well understood, and clearly isolates the effect of $x_c$ on $y$ from the other features for this application, even in the presence of non-independent and interacting features.  The only obstacle is a general and practical mechanism for stratifying observations with many variables, which leads us to the primary contribution of this paper.
+Alas, this stratification approach works for two or three variables but breaks down for more variables because it is impractical to find groups of observations that are equal across so many variables.  Nonetheless, stratification is simple, well understood, and clearly isolates the effect of $x_c$ on $y$ from the other features for this application, even in the presence of codependent and interacting features.  The only obstacle is a general and practical mechanism for stratifying observations with many variables, which leads us to the primary contribution of this paper.
 
-\subsection{\spd{} for numeric data}
+\subsection{StratPD for numeric data}
 
-The key idea is to relax stratification so that it organizes observations into groups of similar rather than equal observations.  Our approach, called \spd, uses a random forest to stratify observations into  groups of similar observations and then collects piecewise linear approximations to the partial derivatives of the unknown $f(\bf x)$ for the groups. Each leaf, $L$, in each tree of the forest represents a group with similar $x_{(-c)}$ values and yields a $\beta_L$ from a linear model trained on $(Lx, Ly)$, the $x_c$ and $\bf y$ observations associated with $L$.  The partial derivative between any two (unique and sorted) adjacent $x_c$ data points is estimated by averaging the $\beta_L$ coefficients that overlap that range, yielding $n-1$ partial derivative estimates for $n$ unique $x_c$ values.  Numerically integrating the partial derivatives across $x_c$ space gives a curve representing the contribution of $x_c$ to $y$. This process is depicted in \figref{fig:leaves}. There are five leaves in \figref{fig:leaves}, potentially from multiple trees in a forest, with regression lines fit through leaf observations, $(Lx, Ly)$. The $x_c$ values in $L_5$ are identical so its infinite slope is ignored.
+The key idea is to relax stratification so that it organizes observations into groups of similar rather than equal observations.  Our approach, called \spd, uses a random forest to stratify observations into  groups of similar observations and then collects piecewise linear approximations to the partial derivatives of the unknown $f(\bf x)$ for the groups. Each leaf, $L$, in each tree of the forest represents a group with similar $x_{(-c)}$ values and yields a $\beta_L$ from a linear model trained on $(Lx, Ly)$, the $x_c$ and $\bf y$ observations associated with $L$.  The partial derivative between any two (unique and sorted) adjacent $x_c$ data points is estimated by averaging the $\beta_L$ coefficients that overlap that range, yielding $n-1$ partial derivative estimates for $n$ unique $x_c$ values.  Numerically integrating the partial derivatives across $x_c$ space gives a curve representing the contribution of $x_c$ to $y$, as depicted in \figref{fig:leaves}. There are five leaves in \figref{fig:leaves}, potentially from multiple trees in a forest, with regression lines fit through leaf observations, $(Lx, Ly)$. The $x_c$ values in $L_5$ are identical so its infinite slope is ignored.
 
 \begin{figure}[htbp]
 \begin{center}
@@ -195,49 +195,24 @@ The key idea is to relax stratification so that it organizes observations into g
 \end{figure}
 }
 
-\figref{fig:baths_price_stratpd} shows the \spd{} plot derived from the same apartment rent data set used by the PD/ICE plots in \figref{fig:baths_price}. Each blue line represents the regression line with slope $\beta_L$ through the observations in a single leaf of observations with similar $x_{(-c)}$ features, and extends from the minimum to maximum $x_c$ in $L$ ($R_L$). Dropping the $y$-intercept from the regression line effectively erases the contributions of $x_{(-c)}$ features to $Ly$. Because we are interested in the relative contribution of $x_c$ to $y$, \spd{} plots use zero as a baseline. The black dots represent the integration of the partial derivative estimates up to and including each unique $x_c$ value (except the first $x_c$, which is 0). The partial derivative estimate at an $x_c$ value is the average slope of the blue lines emanating from that value.  
+Revisiting the \spd{} plot in \figref{fig:height_vs_weight}(d), derived from the apartment rent data set, each blue line represents the regression line with slope $\beta_L$ through the observations in a single leaf of observations with similar $x_{(-c)}$ features. Lines extend from the minimum to maximum $x_c$ value in $L$ ($R_L$). Dropping the $y$-intercept from the regression line effectively erases the contributions of $x_{(-c)}$ features to $Ly$. Because we are interested in the relative contribution of $x_c$ to $y$, \spd{} plots use zero as a baseline. The black dots represent the integration of the partial derivative estimates up to and including each unique $x_c$ value (except the first $x_c$, which is 0). The partial derivative estimate at an $x_c$ value is the average slope of the blue lines emanating from that value.  
 
-\subsection{\spd{} for categorical data}
+\subsection{StratPD for categorical data}
 
-Partial dependence through stratification also works for categorical variables, given a suitable similarity measure between observations that supports categorical variables, but identifying an appropriate categorical similarity measure is a well-known issue. Random forests, however, support categorical variables easily by treating categories as unique integers (i.e., without having to one-hot encode). That means \spd{} can consider how categorical variable $x_c$ affects $y$, instead of  just a single category at a time. As with purely numeric variables, observations with categorical variables that end up in the same leaf are more likely than not to be similar. (\todo cite breiman proximity matrix and p595 of ESL book). After stratification by a random forest trained on $({\bf X}_{(-c)}, y)$, we are left with a regression on a single categorical variable. Because categorical variables can be unordered nominal variables, the notion of $y$ slope is not meaningful between two categories. Instead, \spd{} groups leaf observations $(Lx, Ly)$ by the $Lx$ categories, computes the average $Ly$ value per category, and subtracts $min(Ly)$ to erase the contributions of $x_{(-c)}$.  To get the overall contribution of $x_c$ on $y$ for category $cat$, \spd{} averages the leaf contributions $cat$ across all leaves. See Algorithm \ref{alg:CatStratPD}.
+Partial dependence through stratification also works for categorical variables, given a suitable similarity measure between observations that supports categorical variables, but identifying an appropriate categorical similarity measure is a well-known issue. Random forests, however, support categorical variables easily by treating categories as unique integers (i.e., without having to one-hot encode). That means \spd{} can consider how categorical variable $x_c$ affects $y$, instead of just a single category at a time (if forced to one-hot encode $x_c$). As with purely numeric variables, observations with categorical variables that end up in the same leaf are more likely than not to be similar. (\todo cite breiman proximity matrix and p595 of ESL book). After stratification by a random forest trained on $({\bf X}_{(-c)}, {\bf y})$, we are left with a regression on a single categorical variable. Because categorical variables can be unordered nominal variables, the notion of $y$ slope is not meaningful between two categories. Instead, \spd{} groups leaf observations $(Lx, Ly)$ by the $Lx$ categories, computes the average $Ly$ value per category, and subtracts $min(Ly)$ to erase the contributions of $x_{(-c)}$.  To get the overall contribution of $x_c$ on $y$ for category $cat$, \spd{} averages the leaf contributions $cat$ across all leaves. See Algorithm \ref{alg:CatStratPD}.
 
-\cut{
-def toy_weight_data(n):
-    df = pd.DataFrame()
-    nmen = n//2
-    nwomen = n//2
-    df['ID'] = range(100,100+n)
-    df['sex'] = ['M']*nmen + ['F']*nwomen
-    df.loc[df['sex']=='F','pregnant'] = np.random.randint(0,2,size=(nwomen,))
-    df.loc[df['sex']=='M','pregnant'] = 0
-    df.loc[df['sex']=='M','height'] = 5*12+8 + np.random.uniform(-7, +8, size=(nmen,))
-    df.loc[df['sex']=='F','height'] = 5*12+5 + np.random.uniform(-4.5, +5, size=(nwomen,))
-    df.loc[df['sex']=='M','education'] = 10 + np.random.randint(0,8,size=nmen)
-    df.loc[df['sex']=='F','education'] = 12 + np.random.randint(0,8,size=nwomen)
-    df['weight'] = 120 \
-                   + (df['height']-df['height'].min()) * 10 \
-                   + df['pregnant']*30 \
-                   - df['education']*1.2
-    df['pregnant'] = df['pregnant'].astype(bool)
-    df['education'] = df['education'].astype(int)
-    return df
-}
+It's worth mentioning
+Random forests
+Before moving on, it's worthwhile emphasizing the advantages of stratifying with random forests. Aside from obviating the need to define a similarity measure,
 
-Before moving on to sample applications of \spd{}, it's worthwhile emphasizing the advantages of this approach over PD and ICE. Most importantly, \spd{} is model-independent in the sense that it does not expect nor rely on a user's model trained on $({\bf X}, {\bf y})$.  \spd{} does, of course, use models internally: a random forest for stratification and multiple linear models for estimating local partial derivatives.  The biggest difference is that \spd{} does not use predictions from any these models, which means prediction accuracy is irrelevant. unlike for PD and ICE. (\todo{refer to unsupervised learning trick}.)
-
-\spd{} was designed to support non-independent features, which violates an assumption of PD and ICE. While ICE exposes variable interactions, it is still susceptible to variable dependencies causing misleading plots.
- 
-no conjuring of synthetic observations
-
-Region endpoints are limited to $x_{ic}$ points from the training data $\bf X$.  There is no interpolation between points, though we use the slope to summarize the relationship of $y$ to $x_c$ in $R$.
-
-less sensitive to nonindependent variables.
- 
+ no need to define a similarity measure
 randomization means of controlling for confounding variables
-
 combine derivative in the same plot
+categorical variable natively
 
 \section{Experimental Results}
+
+\todo{add car data}
 
 The data set has an equal number of males and females with $x_{pregnant} \sim U(0,1)$ if female, 65 + $U(-4.5,5)$ if female, and $x_{height} = 68 + U(-7,8)$ if male. 
 
@@ -248,11 +223,9 @@ weight = 120 + 10(x_{height} - min(x_{height})) + 30x_{pregnant} - 1.2x_{educati
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.7]{images/education_vs_weight_stratpd.png}
-\includegraphics[scale=0.7]{images/education_vs_weight_pdp.png}\\
-\includegraphics[scale=0.7]{images/height_vs_weight_stratpd.png}
-\includegraphics[scale=0.7]{images/height_vs_weight_pdp.png}
-\caption{{\bf  Edu and height vs weight}}
-\label{fig:edu_height_vs_weight}
+\includegraphics[scale=0.7]{images/education_vs_weight_pdp.png}
+\caption{{\bf  Edu vs weight}}
+\label{fig:edu_vs_weight}
 \end{center}
 \end{figure}
 
@@ -326,6 +299,10 @@ There are a few basic approaches to identifying the partial effect of a single v
 \end{itemize}
 
 PDP math shows that features added or multiplied times the remaining F approximation completely describe the partial dependence; I assume that means that interactions are not a problem.
+
+Most importantly, \spd{} is model-independent in the sense that it does not expect nor rely on a user's model trained on $({\bf X}, {\bf y})$.  \spd{} does, of course, use models internally: a random forest for stratification and multiple linear models for estimating local partial derivatives.  The biggest difference is that \spd{} does not use predictions from any these models, which means prediction accuracy is irrelevant.  (\todo{refer to unsupervised learning trick}.)  In contrast, PD and ICE rely completely on the model supplied by the user and its accuracy.  Some implementations lay a grid across $x_c$'s range and, therefore, potentially make predictions based upon values not present in $x_c$. Also, as discussed, PD and ICE potentially conjure up nonsensical ${\bf }_i$ feature vectors, due to codependencies, and incorporate resulting predictions into plots.
+
+\spd{} was designed to support codependent features, which violates an assumption of PD and ICE. While ICE exposes variable interactions, it is still susceptible to variable codependencies causing misleading plots.
 
 do we need to talk about LIME?
 

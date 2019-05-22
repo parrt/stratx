@@ -68,14 +68,14 @@ def weight():
     axes[0,0].axis('off')
     axes[0,1].axis('off')
 
-    # mine_plot(X, y, 'education', 'weight', ax=axes[1][0],
-    #              yrange=(-12,0),
-    #           nlines = 500
-    #              )
-    # mine_plot(X, y, 'height', 'weight', ax=axes[2][0],
-    #              yrange=(0,160),
-    # nlines = 1000
-    # )
+    stratpd_plot(X, y, 'education', 'weight', ax=axes[1][0],
+                 yrange=(-12,0),
+              nlines = 500
+                 )
+    stratpd_plot(X, y, 'height', 'weight', ax=axes[2][0],
+                 yrange=(0,160),
+    nlines = 1000
+    )
     catstratpd_plot(X, y, 'sex', 'weight', ax=axes[3][0],
                      alpha=.2,
                      cats=df_raw['sex'].unique(),
@@ -119,16 +119,15 @@ def rent():
     df_rent = df[['bedrooms', 'bathrooms', 'latitude', 'longitude', 'price']]
     df_rent.head()
 
-    df_rent = df_rent.sample(n=4000)  # get a small subsample
+    df_rent = df_rent.sample(n=8000)  # get a small subsample
 
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
 
     fig, axes = plt.subplots(4, 2, figsize=(8,16))
     stratpd_plot(X, y, 'bedrooms', 'price', ax=axes[0,0], alpha=.2, yrange=(0,3000), nlines=1000)
-    #     stratpd_plot(X, y, 'bedrooms', 'price', ax=axes[0,0], alpha=.2, yrange=(0,3000), nlines=1000)(X, y, 'bathrooms', 'price', ax=axes[1,0], alpha=.2, yrange=(0,5000), nlines=1000)
-    #     stratpd_plot(X, y, 'bedrooms', 'price', ax=axes[0,0], alpha=.2, yrange=(0,3000), nlines=1000)(X, y, 'latitude', 'price', ax=axes[2,0], alpha=.2, yrange=(0,1700), nlines=1000)
-    #     stratpd_plot(X, y, 'bedrooms', 'price', ax=axes[0,0], alpha=.2, yrange=(0,3000), nlines=1000)(X, y, 'longitude', 'price', ax=axes[3,0], alpha=.2, yrange=(-3000,250), nlines=1000)
+    stratpd_plot(X, y, 'bathrooms', 'price', ax=axes[1,0], alpha=.2, yrange=(0,3000), nlines=1000)
+    stratpd_plot(X, y, 'latitude', 'price', ax=axes[2,0], alpha=.2, yrange=(0,3000), nlines=1000)
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
@@ -234,6 +233,6 @@ def weather():
     plt.show()
 
 if __name__ == '__main__':
-    # rent()
+    rent()
     # weight()
-    weather()
+    # weather()
