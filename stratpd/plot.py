@@ -176,7 +176,9 @@ def stratpd_plot(X, y, colname, targetname=None,
                  title=None,
                  nlines=None,
                  show_dx_line=False,
-                 supervised=True):
+                 supervised=True,
+                 bootstrap=False,
+                 max_features = 1.0):
     """
 
     :param X:
@@ -198,8 +200,8 @@ def stratpd_plot(X, y, colname, targetname=None,
     if supervised:
         rf = RandomForestRegressor(n_estimators=ntrees,
                                    min_samples_leaf=min_samples_leaf,
-                                   bootstrap = False,
-                                   max_features = 1.0,
+                                   bootstrap = bootstrap,
+                                   max_features = max_features,
                                    oob_score=False)
         rf.fit(X.drop(colname, axis=1), y)
     else:
@@ -335,7 +337,9 @@ def catstratpd_plot(X, y, colname, targetname,
                     min_samples_leaf=None,
                     alpha=.15,
                     yrange=None,
-                    title=None):
+                    title=None,
+                    bootstrap=False,
+                    max_features=1.0):
     if min_samples_leaf is None:
         # rule of thumb: for binary, 2 samples / leaf seems good
         # but num cats + 3 seems better for non-binary
@@ -345,8 +349,8 @@ def catstratpd_plot(X, y, colname, targetname,
 
     rf = RandomForestRegressor(n_estimators=ntrees,
                                min_samples_leaf=min_samples_leaf,
-                               bootstrap = False,
-                               max_features = 1.0,
+                               bootstrap = bootstrap,
+                               max_features = max_features,
                                oob_score=False)
 
     # rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)

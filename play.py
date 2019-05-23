@@ -106,6 +106,68 @@ def weight():
     plt.show()
 
 
+def meta_weight():
+    df_raw = toy_weight_data(1000)
+    df = df_raw.copy()
+    catencoders = df_string_to_cat(df)
+    df_cat_to_catcode(df)
+    df['pregnant'] = df['pregnant'].astype(int)
+    X = df.drop('weight', axis=1)
+    y = df['weight']
+
+    fig, axes = plt.subplots(4, 4, figsize=(8,8))
+
+    stratpd_plot(X, y, 'education', 'weight', ax=axes[0][0], yrange=(-12,0), alpha=.05, pdp_dot_size=10,
+                 ntrees=1, max_features=1.0, bootstrap=False)
+    stratpd_plot(X, y, 'education', 'weight', ax=axes[0][1], yrange=(-12,0), alpha=.05, pdp_dot_size=10,
+                 ntrees=5, max_features='auto', bootstrap=True)
+    stratpd_plot(X, y, 'education', 'weight', ax=axes[0][2], yrange=(-12,0), alpha=.05, pdp_dot_size=10,
+                 ntrees=20, max_features = 'auto', bootstrap = True)
+    stratpd_plot(X, y, 'education', 'weight', ax=axes[0][3], yrange=(-12,0), alpha=.05, pdp_dot_size=10,
+                 ntrees=50, max_features='auto', bootstrap=True)
+
+    stratpd_plot(X, y, 'height', 'weight', ax=axes[1][0], yrange=(0,160), alpha=.05, pdp_dot_size=10,
+                 ntrees=1, max_features=1.0, bootstrap=False)
+    stratpd_plot(X, y, 'height', 'weight', ax=axes[1][1], yrange=(0,160), alpha=.05, pdp_dot_size=10,
+                 ntrees=5, max_features='auto', bootstrap=True)
+    stratpd_plot(X, y, 'height', 'weight', ax=axes[1][2], yrange=(0,160), alpha=.05, pdp_dot_size=10,
+                 ntrees=20, max_features = 'auto', bootstrap = True)
+    stratpd_plot(X, y, 'height', 'weight', ax=axes[1][3], yrange=(0,160), alpha=.05, pdp_dot_size=10,
+                 ntrees=50, max_features='auto', bootstrap=True)
+
+
+    catstratpd_plot(X, y, 'sex', 'weight', ax=axes[2][0], alpha=.2, cats=df_raw['sex'].unique(),
+                     yrange=(0,5),
+                     ntrees=1, max_features=1.0, bootstrap=False)
+    catstratpd_plot(X, y, 'sex', 'weight', ax=axes[2][1], alpha=.2, cats=df_raw['sex'].unique(),
+                     yrange=(0,5),
+                     ntrees=5, max_features='auto', bootstrap=True)
+    catstratpd_plot(X, y, 'sex', 'weight', ax=axes[2][2], alpha=.2, cats=df_raw['sex'].unique(),
+                     yrange=(0,5),
+                     ntrees=20, max_features='auto', bootstrap=True)
+    catstratpd_plot(X, y, 'sex', 'weight', ax=axes[2][3], alpha=.2, cats=df_raw['sex'].unique(),
+                     yrange=(0,5),
+                     ntrees=50, max_features='auto', bootstrap=True)
+
+    catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[3][0], alpha=.2, cats=df_raw['pregnant'].unique(),
+                     yrange=(0,35),
+                     ntrees=1, max_features=1.0, bootstrap=False)
+    catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[3][1], alpha=.2, cats=df_raw['pregnant'].unique(),
+                     yrange=(0,35),
+                     ntrees=5, max_features='auto', bootstrap=True)
+    catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[3][2], alpha=.2, cats=df_raw['pregnant'].unique(),
+                     yrange=(0,35),
+                     ntrees=20, max_features='auto', bootstrap=True)
+    catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[3][3], alpha=.2, cats=df_raw['pregnant'].unique(),
+                     yrange=(0,35),
+                     ntrees=50, max_features='auto', bootstrap=True)
+
+
+    plt.tight_layout()
+
+    plt.show()
+
+
 def rent():
     df = pd.read_json('notebooks/data/train.json')
 
@@ -273,4 +335,5 @@ def weather():
 if __name__ == '__main__':
     # rent()
     # weight()
-    weather()
+    meta_weight()
+    # weather()
