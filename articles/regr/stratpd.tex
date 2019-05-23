@@ -190,9 +190,9 @@ Partial dependence through stratification also works for data sets with categori
 
 \subsection{StratPD for categorical variables}
 
-The stratification approach can also show how a categorical variable $x_c$ affects $y$, instead of just a single category at a time (if one were forced to one-hot encode $x_c$). As with purely numeric variables, observations with categorical variables that end up in the same leaf are in the same region of feature space. (\todo cite breiman proximity matrix and p595 of ESL book). After stratification by a decision tree trained on $(x_{(-c)}, {\bf y})$, we are left with a regression on a single categorical variable. Because categorical variables can be unordered nominal variables, the notion of $y$ slope is not meaningful between two categories. Instead, the \cspd{} algorithm groups leaf observations $(Lx, Ly)$ by the $Lx$ categories, computes the average $Ly$ value per category, and subtracts $min(Ly)$ to erase the contributions of $x_{(-c)}$.  To get the overall contribution of $x_c$ on $y$ for category $cat$,  \cspd{} averages the leaf contributions for $cat$ across all leaves. See Algorithm \ref{alg:CatStratPD}.
+The stratification approach can also capture how a categorical variable $x_c$ affects $y$, instead of just a single category at a time (if one were forced to one-hot encode $x_c$). As with purely numeric variables, observations with categorical variables that end up in the same leaf lie in the same region of feature space. (\todo cite breiman proximity matrix and p595 of ESL book). After stratification by a decision tree trained on $(x_{(-c)}, {\bf y})$, we are left with a regression on a single categorical variable. Because categorical variables can be unordered nominal variables, the notion of $y$ slope is not meaningful between two categories. Instead, the \cspd{} algorithm groups leaf observations $(Lx, Ly)$ by the $Lx$ categories, computes the average $Ly$ value per category, and subtracts $min(Ly)$ to erase the $y$-contributions of $x_{(-c)}$.  To get the overall contribution of $x_c$ on $y$ for category $cat$,  \cspd{} averages the leaf contributions for $cat$ across all leaves. See Algorithm \ref{alg:CatStratPD}.
 
-\figref{fig:state_vs_temp}(a) illustrates \spd{} operating on a categorical variable, state, in a synthetic weather data set with data from four states over three years. Temperature data varies in sinusoidal fashion over the year with $N(-5,5)$ noise and different baseline temperatures per state, as the marginal plot in \figref{fig:state_vs_temp}(b) shows. To get the partial dependence of temperature on state, \spd{} stratifies by dayofyear and year then groups similar time buckets by state and computes the average temperature; each blue dot represents a leaf average. The overall temperature estimate per state is the average of those leaf averages, represented by a solid black dash. We use a strip plot to exhibit the variation and density of $y$ values per category. The \spd{} plot accurately identifies the baseline temperature per state, as does the PD/ICE plot in \figref{fig:state_vs_temp}(c).
+\figref{fig:state_vs_temp}(a) illustrates \cspd{} operating on a categorical variable, state, in a synthetic weather data set with data from four states over three years. Temperature data varies in sinusoidal fashion over the year with $N(-5,5)$ noise and different baseline temperatures per state, as the marginal plot in \figref{fig:state_vs_temp}(b) shows. To get the partial dependence of temperature on state, \spd{} stratifies by dayofyear and year then groups these similar time buckets by state and computes the average temperature; each blue dot represents a leaf average. The overall temperature estimate per state is the average of those leaf averages, represented by a solid black dash. We use a strip plot to exhibit the variation and density of $y$ values per category. The \cspd{} plot accurately identifies the baseline temperature per state, as does the PD/ICE plot in \figref{fig:state_vs_temp}(c).
 
 \begin{figure}[htbp]
 \begin{center}
@@ -204,9 +204,13 @@ The stratification approach can also show how a categorical variable $x_c$ affec
 \end{center}
 \end{figure}
 
-There is a pathological case to consider that can pop up when $x_{(-c)}$ contains a single categorical variable or when the only strongly-predictive variable in $x_{(-c)}$ is categorical.  In this situation, training can yield a decision tree with very large leaves, perhaps hundreds or thousands of observations. Training a single linear model through so many $({\bf x}_i, y_i)$ observations is unlikely to capture the relationship.  The weather data set is a case in point. Choosing  $x_c$=dayofyear, leaves $x_{(-c)}$=\{state,year\} and categorical variable state accounts for most of the variation in target variable temperature.  \figref{fig:dayofyear_vs_temp}(a) shows the marginal plot of state versus temperature. A decision tree splitting on just state, would group all 365 daily temperature observations for a single state into their own leaf. (The marginal plot is showing the complete sine waves but from the side, edge on.)  The \spd{} algorithm described so far would create just four linear models, one per state, and would fail to capture the sine waves. PD and ICE plots, on the other hand, identify the noisy sine waves, as shown in \figref{fig:dayofyear_vs_temp}(b).
+\subsection{Approximating partial derivatives for large regions}
 
-pd/ice not smooth
+There is a pathological case to consider where training yields a decision tree with very large leaves, perhaps hundreds or thousands of observations.  This can happen when $x_{(-c)}$ contains a single categorical variable or when the only strongly-predictive variable in $x_{(-c)}$ is categorical.  Training a single linear model through hundreds of $({\bf x}_i, y_i)$ observations is unlikely to capture the relationship.  The weather data set is a case in point. Choosing  $x_c$=dayofyear, leaves $x_{(-c)}$=\{state,year\} and categorical variable state accounts for most of the variation in target variable temperature.  \figref{fig:dayofyear_vs_temp}(a) shows the marginal plot of state versus temperature. A decision tree, $T$, splitting on just state, would group all 365 daily temperature observations for a single state into just one leaf. (The marginal plot is showing the complete sine waves but from the side, edge on.)  The \spd{} algorithm described so far would likely create just four linear models, one per state, and would fail to capture the sine waves. PD and ICE plots, on the other hand, identify the noisy sine waves, as shown in \figref{fig:dayofyear_vs_temp}(b). \todo{uses random forest with how many trees for pd/ice?}
+
+To handle the special case where partitioning feature space $x_{(-c)}$ yields a leaf, $L \in T$, with too many $x_c$ observations, \spd{} trains another decision tree, $T'$, to partition $L$'s $x_c$ space in more detail. In the worst case, every region of $x_{(-c)}$ identified by $T$ is too large and \spd{} must create a new decision tree per $L \in T$. \algref{alg:StratPD} (lines 6-9) engages this mechanism when $|L|$ is greater than a threshold (default is 30 observations). The \spd{} plot in \figref{fig:dayofyear_vs_temp}(c) clearly shows the sinusoidal fluctuations of temperature over the year. The PD/ICE plot is not smooth because it relies on predictions from a model that reproduces the noisy data, whereas the \spd{} plot is averaging slopes that are themselves smoothing agents.
+
+Without this special case mechanism, the \spd{} plot would have to approximate an entire sine wave with a single line.  Unfortunately, we had to manually choose a minimum leaf size for the nested leaf partitioning, $T'$, to get a proper sine wave.  We recommend trying $T'$ multiple minimum leaf sizes for \spd{} plots when $x_{(-c)}$ has categorical variables and $p$ is small. (The Python implementation allows programmers to set the minimum leaf size for both the $x_{(-c)}$ partitioning with $T$ and second stage partitioning with $T'$.)
 
 \begin{figure}[htbp]
 \begin{center}
@@ -218,20 +222,34 @@ pd/ice not smooth
 \end{center}
 \end{figure}
 
-Pathological case with cat vars: weather sine. lines 6-9 of alg 1.
-
-It's worth mentioning
-
 It's worth examining the role of decision trees
 
-Before moving on, it's worthwhile emphasizing the advantages of stratifying with random forests. Aside from obviating the need to define a similarity measure,
-
-combine derivative in the same plot
-categorical variable natively
-
-\subsection{}
+\subsection{how many trees}
 
 \todo{new stuf} y tells us how to partition the feature space into similar groups that are adjacent regions and features space but have similar y. Technically we don't need supervised y but sometimes unsupervised fails, such in the case where p = 2 or p greater than two but with very weak predictors or noise.  The aim is not prediction; instead it is to partition the feature space into similar regions. Consequently we are not worried about over fitting, in fact we wanted to over fit in the sense that it is getting the best partition possible using all the data and all features. Generalization would suffer but we don't care because we want to know about this particular data set. Decision trees mean we don't need to define a similarity measure and we don't need to define been with or another mechanism to draw regions. The regions are optimal to get similar y.
+
+need 5 trees for rent sparse bedroom data
+
+1, 5, 10, 30 trees
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.7]{images/education_vs_weight_ntrees.png}\\
+\includegraphics[scale=0.7]{images/pregnant_vs_weight_ntrees.png}\\
+\caption{{\bf  weight ntrees}}
+\label{fig:weight_ntrees}
+\end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.7]{images/bathrooms_vs_price_ntrees.png}\\
+\includegraphics[scale=0.7]{images/bedrooms_vs_price_ntrees.png}\\
+\includegraphics[scale=0.7]{images/latitude_vs_price_ntrees.png}
+\caption{{\bf  rent ntrees}}
+\label{fig:rent_ntrees}
+\end{center}
+\end{figure}
 
 \section{Experimental Results}
 

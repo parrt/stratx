@@ -213,6 +213,54 @@ def rent():
     plt.show()
 
 
+def meta_rent():
+    df = pd.read_json('notebooks/data/train.json')
+
+    # Create ideal numeric data set w/o outliers etc...
+    # Create ideal numeric data set w/o outliers etc...
+    df = df[(df.price > 1_000) & (df.price < 10_000)]
+    df = df[df.bathrooms <= 6]  # There's almost no data for above
+    df = df[(df.longitude != 0) | (df.latitude != 0)]
+    df = df[(df['latitude'] > 40.55) & (df['latitude'] < 40.94) &
+            (df['longitude'] > -74.1) & (df['longitude'] < -73.67)]
+    df_rent = df[['bedrooms', 'bathrooms', 'latitude', 'longitude', 'price']]
+    df_rent.head()
+
+    df_rent = df_rent.sample(n=8000, random_state=111)  # get a small subsample
+
+    X = df_rent.drop('price', axis=1)
+    y = df_rent['price']
+
+    supervised = True
+
+    def onevar(colname, row, yrange):
+        for i, t in enumerate([1, 1, 1, 1]):
+            stratpd_plot(X, y, colname, 'price', ax=axes[row, i], alpha=.05,
+                         yrange=yrange,
+                         supervised=supervised,
+                         ntrees=t)
+
+    fig, axes = plt.subplots(4, 4, figsize=(8,8), sharey=True)
+    onevar('bedrooms', row=0, yrange=(0,3000))
+    plt.tight_layout()
+    plt.show()
+
+    fig, axes = plt.subplots(4, 4, figsize=(8,8), sharey=True)
+    onevar('bathrooms', row=1, yrange=(0,3000))
+    plt.tight_layout()
+    plt.show()
+
+    fig, axes = plt.subplots(4, 4, figsize=(8,8), sharey=True)
+    onevar('latitude', row=2, yrange=(0,3000))
+    plt.tight_layout()
+    plt.show()
+
+    fig, axes = plt.subplots(4, 4, figsize=(8,8), sharey=True)
+    onevar('longitude', row=3)
+    plt.tight_layout()
+    plt.show()
+
+
 def toy_weather_data():
     def temp(x): return np.sin((x+365/2)*(2*np.pi)/365)
     def noise(state): return np.random.normal(-5, 5, sum(df['state'] == state))
@@ -334,6 +382,7 @@ def weather():
 
 if __name__ == '__main__':
     # rent()
+    # meta_rent()
     # weight()
     meta_weight()
     # weather()

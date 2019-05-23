@@ -3,6 +3,7 @@ import pandas as pd
 from typing import Mapping, List, Tuple
 from collections import defaultdict
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 from sklearn.linear_model import LinearRegression, Lasso
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
@@ -133,6 +134,51 @@ def rent():
     showcol('bathrooms')
 
 
+def meta_rent():
+    print(f"----------- {inspect.stack()[0][3]} -----------")
+    df_rent = load_rent()
+    df_rent = df_rent.sample(n=9000, random_state=111)  # get a small subsample
+    X = df_rent.drop('price', axis=1)
+    y = df_rent['price']
+
+    X = df_rent.drop('price', axis=1)
+    y = df_rent['price']
+
+    supervised = True
+
+    def onevar(colname, row, alpha=0.05, yrange=None):
+        for i, t in enumerate([1, 5, 10, 30]):
+            stratpd_plot(X, y, colname, 'price', ax=axes[i], alpha=alpha,
+                         yrange=yrange,
+                         supervised=supervised,
+                         show_ylabel = t==1,
+                         ntrees=t)
+
+    fig, axes = plt.subplots(1, 4, figsize=(8,2), sharey=True)
+    onevar('bedrooms', row=0, yrange=(0,3000))
+    plt.tight_layout()
+    savefig(f"bedrooms_vs_price_ntrees")
+    plt.close()
+
+    fig, axes = plt.subplots(1, 4, figsize=(8,2), sharey=True)
+    onevar('bathrooms', row=1, yrange=(0,3000))
+    plt.tight_layout()
+    savefig(f"bathrooms_vs_price_ntrees")
+    plt.close()
+
+    fig, axes = plt.subplots(1, 4, figsize=(8,2), sharey=True)
+    onevar('latitude', row=2, yrange=(0,3000))
+    plt.tight_layout()
+    savefig(f"latitude_vs_price_ntrees")
+    plt.close()
+
+    # fig, axes = plt.subplots(1, 4, figsize=(8,2), sharey=True)
+    # onevar('longitude', row=3, yrange=(-4000,4000))
+    # plt.tight_layout()
+    # savefig(f"longitude_vs_price_ntrees")
+    # plt.close()
+
+
 def toy_weather_data():
     def temp(x): return np.sin((x+365/2)*(2*np.pi)/365)
     def noise(state): return np.random.normal(-5, 5, sum(df['state'] == state))
@@ -208,14 +254,14 @@ def weather():
     savefig(f"state_vs_temp_pdp")
     plt.close()
 
-    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
-    rtreeviz_univar(ax,
-                    X['state'], y,
-                    feature_name='state',
-                    target_name='y',
-                    fontsize=10, show={'splits'})
-    plt.tight_layout()
-    plt.show()
+    # fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+    # rtreeviz_univar(ax,
+    #                 X['state'], y,
+    #                 feature_name='state',
+    #                 target_name='y',
+    #                 fontsize=10, show={'splits'})
+    # plt.tight_layout()
+    # plt.show()
 
     fig, ax = plt.subplots(1, 1, figsize=(3, 3))
     ax.scatter(X['state'], y, alpha=.05, s=20)
@@ -320,11 +366,77 @@ def weight():
     plt.tight_layout()
     savefig(f"pregnant_vs_weight_pdp")
     plt.close()
-    #
-    # fig.suptitle("weight = 120 + 10*(height-min(height)) + 10*pregnant - 1.2*education",
-    #              size=14)
-    #
+
+
+def meta_weight():
+    print(f"----------- {inspect.stack()[0][3]} -----------")
+    df_raw = toy_weight_data(1000)
+    df = df_raw.copy()
+    catencoders = df_string_to_cat(df)
+    df_cat_to_catcode(df)
+    df['pregnant'] = df['pregnant'].astype(int)
+    X = df.drop('weight', axis=1)
+    y = df['weight']
+
+    fig, axes = plt.subplots(1, 4, figsize=(8,2))
+    stratpd_plot(X, y, 'education', 'weight', ax=axes[0], yrange=(-12,0), alpha=.05, pdp_dot_size=10, show_ylabel=True,
+                 ntrees=1, max_features=1.0, bootstrap=False)
+    stratpd_plot(X, y, 'education', 'weight', ax=axes[1], yrange=(-12,0), alpha=.05, pdp_dot_size=10, show_ylabel=False,
+                 ntrees=5, max_features='auto', bootstrap=True)
+    stratpd_plot(X, y, 'education', 'weight', ax=axes[2], yrange=(-12,0), alpha=.05, pdp_dot_size=10, show_ylabel=False,
+                 ntrees=10, max_features = 'auto', bootstrap = True)
+    stratpd_plot(X, y, 'education', 'weight', ax=axes[3], yrange=(-12,0), alpha=.05, pdp_dot_size=10, show_ylabel=False,
+                 ntrees=30, max_features='auto', bootstrap=True)
+    plt.tight_layout()
+    savefig(f"education_vs_weight_ntrees")
+    plt.close()
+
+    fig, axes = plt.subplots(1, 4, figsize=(8,2))
+    stratpd_plot(X, y, 'height', 'weight', ax=axes[0], yrange=(0,160), alpha=.05, pdp_dot_size=10, show_ylabel=True,
+                 ntrees=1, max_features=1.0, bootstrap=False)
+    stratpd_plot(X, y, 'height', 'weight', ax=axes[1], yrange=(0,160), alpha=.05, pdp_dot_size=10, show_ylabel=False,
+                 ntrees=5, max_features='auto', bootstrap=True)
+    stratpd_plot(X, y, 'height', 'weight', ax=axes[2], yrange=(0,160), alpha=.05, pdp_dot_size=10, show_ylabel=False,
+                 ntrees=10, max_features = 'auto', bootstrap = True)
+    stratpd_plot(X, y, 'height', 'weight', ax=axes[3], yrange=(0,160), alpha=.05, pdp_dot_size=10, show_ylabel=False,
+                 ntrees=30, max_features='auto', bootstrap=True)
+    plt.tight_layout()
+    savefig(f"height_vs_weight_ntrees")
+    plt.close()
+
+    # fig, axes = plt.subplots(1, 4, figsize=(8,2))
+    # catstratpd_plot(X, y, 'sex', 'weight', ax=axes[0], alpha=.2, cats=df_raw['sex'].unique(), show_ylabel=True,
+    #                  yrange=(0,5),
+    #                  ntrees=1, max_features=1.0, bootstrap=False)
+    # catstratpd_plot(X, y, 'sex', 'weight', ax=axes[1], alpha=.2, cats=df_raw['sex'].unique(), show_ylabel=False,
+    #                  yrange=(0,5),
+    #                  ntrees=5, max_features='auto', bootstrap=True)
+    # catstratpd_plot(X, y, 'sex', 'weight', ax=axes[2], alpha=.2, cats=df_raw['sex'].unique(), show_ylabel=False,
+    #                  yrange=(0,5),
+    #                  ntrees=10, max_features='auto', bootstrap=True)
+    # catstratpd_plot(X, y, 'sex', 'weight', ax=axes[3], alpha=.2, cats=df_raw['sex'].unique(), show_ylabel=False,
+    #                  yrange=(0,5),
+    #                  ntrees=30, max_features='auto', bootstrap=True)
     # plt.tight_layout()
+    # savefig(f"sex_vs_weight_ntrees")
+    # plt.close()
+    #
+    # fig, axes = plt.subplots(1, 4, figsize=(8,2))
+    # catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[0], alpha=.2, cats=df_raw['pregnant'].unique(), show_ylabel=True,
+    #                  yrange=(0,35),
+    #                  ntrees=1, max_features=1.0, bootstrap=False)
+    # catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[1], alpha=.2, cats=df_raw['pregnant'].unique(), show_ylabel=False,
+    #                  yrange=(0,35),
+    #                  ntrees=5, max_features='auto', bootstrap=True)
+    # catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[2], alpha=.2, cats=df_raw['pregnant'].unique(), show_ylabel=False,
+    #                  yrange=(0,35),
+    #                  ntrees=10, max_features='auto', bootstrap=True)
+    # catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[3], alpha=.2, cats=df_raw['pregnant'].unique(), show_ylabel=False,
+    #                  yrange=(0,35),
+    #                  ntrees=30, max_features='auto', bootstrap=True)
+    # plt.tight_layout()
+    # savefig(f"pregnant_vs_weight_ntrees")
+    # plt.close()
 
 
 def additivity_data(n):
@@ -458,8 +570,10 @@ def bigX():
     plt.close()
 
 if __name__ == '__main__':
-    # rent()
-    # weight()
+    rent()
+    meta_rent()
+    weight()
+    meta_weight()
     weather()
-    # additivity()
-    # bigX()
+    additivity()
+    bigX()

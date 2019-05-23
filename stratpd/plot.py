@@ -176,6 +176,8 @@ def stratpd_plot(X, y, colname, targetname=None,
                  title=None,
                  nlines=None,
                  show_dx_line=False,
+                 show_xlabel=True,
+                 show_ylabel=True,
                  supervised=True,
                  bootstrap=False,
                  max_features = 1.0):
@@ -216,6 +218,10 @@ def stratpd_plot(X, y, colname, targetname=None,
                                    max_features = 1.0,
                                    oob_score=False)
         rf.fit(X_synth.drop(colname,axis=1), y_synth)
+
+    if ntrees==1:
+        max_features = 1.0
+        bootstrap = False
 
     # print(f"\nModel wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     leaf_xranges, leaf_slopes = \
@@ -280,8 +286,10 @@ def stratpd_plot(X, y, colname, targetname=None,
         ax.set_ylim(*yrange)
     ax.add_collection(lines)
 
-    ax.set_xlabel(colname)
-    ax.set_ylabel(targetname)
+    if show_xlabel:
+        ax.set_xlabel(colname)
+    if show_ylabel:
+        ax.set_ylabel(targetname)
     if title is not None:
         ax.set_title(title)
 
@@ -339,13 +347,19 @@ def catstratpd_plot(X, y, colname, targetname,
                     yrange=None,
                     title=None,
                     bootstrap=False,
-                    max_features=1.0):
+                    max_features=1.0,
+                    show_xlabel=True,
+                    show_ylabel=True):
     if min_samples_leaf is None:
         # rule of thumb: for binary, 2 samples / leaf seems good
         # but num cats + 3 seems better for non-binary
         min_samples_leaf = len(np.unique(X[colname]))
         if min_samples_leaf>2:
             min_samples_leaf += 3
+
+    if ntrees==1:
+        max_features = 1.0
+        bootstrap = False
 
     rf = RandomForestRegressor(n_estimators=ntrees,
                                min_samples_leaf=min_samples_leaf,
@@ -389,8 +403,10 @@ def catstratpd_plot(X, y, colname, targetname,
     ax.set_xticks(range(1, ncats + 1))
     ax.set_xticklabels(cats)
 
-    ax.set_xlabel(colname)
-    ax.set_ylabel(targetname)
+    if show_xlabel:
+        ax.set_xlabel(colname)
+    if show_ylabel:
+        ax.set_ylabel(targetname)
     if title is not None:
         ax.set_title(title)
 
