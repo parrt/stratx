@@ -40,6 +40,7 @@
 
 \newcommand{\spd}{\fontfamily{cmr}\textsc{\small StratPD}}
 \newcommand{\cspd}{\fontfamily{cmr}\textsc{\small CatStratPD}}
+\newcommand{\xnc}{$x_{(-c)}$}
 
 \setlist[enumerate]{itemsep=-1mm}
 
@@ -146,8 +147,9 @@ def toy_weight_data(n):
     return df
 }
 
+To illustrate how variable codependencies result in misleading PD and ICE plots, consider a body weight data set with observations matching a person's characteristics to a weight in pounds. We discuss the data set details in \secref{sec:exp}, but for the moment, assume that women are slightly shorter on average and are 30 pounds heavier if pregnant. The PD/ICE plot in \figref{fig:height_vs_weight}(a) shows an inaccurate partial dependence where shorter people are slightly heavier per inch of height than those over about 72 inches. The blue ICE lines jump up significantly for shorter heights due to the codependence of $x_{sex}$ and $x_{pregnant}$ because PD and ICE conjure up pregnant males and ask the model to estimate their weight.  To be clear, the weight equation has no interaction term with $x_{height}$ and $x_{pregnant}$, but $x_{height}$ is codependent indirectly with $x_{pregnant}$ (via $x_{sex}$).  The \spd{} plot in \figref{fig:height_vs_weight}(b), on the other hand, is not confused by codependence and gives the true partial dependence of weight on height. 
 
-To illustrate how variable codependencies result in misleading PD and ICE plots, consider a body weight data set with observations matching a person's characteristics to a weight in pounds. We discuss the data set details in \secref{sec:exp}, but for the moment, assume that women are slightly shorter on average and are 30 pounds heavier if pregnant. The PD/ICE plot in \figref{fig:height_vs_weight}(a) shows an inaccurate partial dependence where shorter people are slightly heavier per inch of height than those over about 72 inches. The blue ICE lines jump up significantly for shorter heights due to the codependence of $x_{sex}$ and $x_{pregnant}$ because PD and ICE conjure up pregnant males and ask the model to estimate their weight.  To be clear, the weight equation has no interaction term with $x_{height}$ and $x_{pregnant}$, but $x_{height}$ is codependent indirectly with $x_{pregnant}$ (via $x_{sex}$).  The \spd{} plot in \figref{fig:height_vs_weight}(b), on the other hand, is not confused by codependence and gives the true partial dependence of weight on height.
+As another example, compare the PD/ICE (a) and \spd{} (b) plots in \figref{fig:edu_vs_weight} showing number of years of education versus weight using the same data set. Weight is related to education by slope -1.2 so a perfect partial dependence graph would show a drop of 12 pounds over 10 years of education.   The PD/ICE plot captures only about half of that relationship, whereas, the \spd{} plot gets much closer to the true education-weight relationship. Female observations have at least 12 years of education, versus 10 for males, so $x_{education}$ and $x_{sex}$ are codependent, though, there is no interaction term. The fact that women are shorter on average biases the education-weight PD/ICE plot because the baseline weight is lower from which the education contribution is  subtracted.
 
 \begin{figure}[htbp]
 \begin{center}
@@ -158,21 +160,30 @@ To illustrate how variable codependencies result in misleading PD and ICE plots,
 \end{center}
 \end{figure}
 
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.7]{images/education_vs_weight_pdp.png}
+\includegraphics[scale=0.7]{images/education_vs_weight_stratpd.png}
+\caption{{\bf  Edu vs weight}}
+\label{fig:edu_vs_weight}
+\end{center}
+\end{figure}
+
 To summarize the hazards of PD and ICE plots, {\em (i)} both are strongly affected by the model chosen by the programmer.  {\em (ii)} To obtain accurate plots, PD and ICE rely on the accuracy of the underlying model, which might sacrifice local accuracy to minimize some global loss function.  Both plots display model prediction results rather than the data itself. {\em (iii)} The potentially inaccurate model feeds off of potentially-nonsensical, synthesized observations arising from variable codependencies. What we need is an accurate mechanism that does not rely on, nor make predictions from, a user's model and a mechanism that does not presume mutually independent features.
 
-\section{Our approach}
+\section{A stratification approach}
 
 In a perfect world, supporting codependent and interacting features would be straightforward because we would know the actual function, $y = f({\bf x})$ or ${\bf y} = f(\bf X)$, that precisely maps a feature vector ${\bf x}_i$ to target value $y_i$ where ${\bf x}_i = ( x_{i1}, .., x_{ip} )$ is a $1 \times p$ row vector of $\bf X$. The partial derivative of $f({\bf x})$ with respect to a variable (column) of interest, $x_c^T = (x_{1c}, .., x_{Nc})$, describes how a unit change in $x_c$ affects $y$ for all $x_c$ values, treating all other variables as constants. Integrating the partial derivative $\frac{\partial}{\partial x_{c}} f({\bf x})$ would yield a curve showing just $x_{c}$'s contribution to $y$. 
 
-Even though $y = f(\bf x)$ is unavailable, a linear regression model, $y = \hat{f}(\bf x)$, provides the general trend of $y$ versus feature $x_c$ via regression coefficient $\beta_c$. For a unit change in $x_c$, $y$ increases or decreases by $\beta_c$, effectively canceling out or controlling for the other features, $x_{(-c)}$, where $x_{(-c)} = x_{j} ~\forall~ j \neq c$. There are a few problems with using a global linear model, however.  First, a linear model might not be strong enough to capture the relationship between all $({\bf x}_i, y_i)$ observation pairs. Second, coefficient $\beta_c$ is a constant and smooths over any local $y$ fluctuations across the entire range of $x_c$. Third, linear models require dummy variables to represent (and replace) categorical $x_c$ variables, therefore, regression coefficients describe the relationship between the presence or absence of a single category and $y$, rather than $x_c$ and $y$.
+Even though $y = f(\bf x)$ is unavailable, a linear regression model, $y = \hat{f}(\bf x)$, provides the general trend of $y$ versus feature $x_c$ via regression coefficient $\beta_c$. For a unit change in $x_c$, $y$ increases or decreases by $\beta_c$, effectively canceling out or controlling for the other features, \xnc, where $x_{(-c)} = x_{j} ~\forall~ j \neq c$. There are a few problems with using a global linear model, however.  First, a linear model might not be strong enough to capture the relationship between all $({\bf x}_i, y_i)$ observation pairs. Second, coefficient $\beta_c$ is a constant and smooths over any local $y$ fluctuations across the entire range of $x_c$. Third, linear models require dummy variables to represent (and replace) categorical $x_c$ variables, therefore, regression coefficients describe the relationship between the presence or absence of a single category and $y$, rather than $x_c$ and $y$.
 
-Another simple but impractical approach stratifies a data set, grouping observations by all features except the feature of interest, $x_c$.  Let $G$ be a group of observations, identified by a set of row indices, where each observation has identical $x_{(-c)}$ features. For a given $G$, the $\{(x_{ic},  y_i)\}_{i \in G}$ pairs then partially describe how $x_c$ affects $y$, all else being equal.  Fitting a univariate linear regressor (without regularization) to group $G$ yields an approximation, $\beta_G$, of the slope of $y$ localized to the specific region of $x_c$ in group $G$; region $R_G = [min(x_{ic}), max(x_{ic})]_{i \in G}$.   Because the $x_c$ regions from multiple groups could overlap, slope $\beta_R$ in any given $x_c$ region, $R$, would be the average of all slope estimates covering that region: $\beta_R = \frac{1}{|G \in R|}\Sigma_{G \in R}\beta_G$. Together, the collection of regions and slopes, $\{(R, \beta_R)\}_{R \in x_c}$, would cover the full $x_c$ range and represent a good localized approximation of the partial derivative of the unknown $f(\bf x)$ with respect to $x_c$.
+Another simple but impractical approach stratifies a data set, grouping observations by all features except the feature of interest, $x_c$.  Let $G$ be a group of observations, identified by a set of row indices, where each observation has identical \xnc{} features. For a given $G$, the $\{(x_{ic},  y_i)\}_{i \in G}$ pairs then partially describe how $x_c$ affects $y$, all else being equal.  Fitting a univariate linear regressor (without regularization) to group $G$ yields an approximation, $\beta_G$, of the slope of $y$ localized to the specific region of $x_c$ in group $G$; region $R_G = [min(x_{ic}), max(x_{ic})]_{i \in G}$.   Because the $x_c$ regions from multiple groups could overlap, slope $\beta_R$ in any given $x_c$ region, $R$, would be the average of all slope estimates covering that region: $\beta_R = \frac{1}{|G \in R|}\Sigma_{G \in R}\beta_G$. Together, the collection of regions and slopes, $\{(R, \beta_R)\}_{R \in x_c}$, would cover the full $x_c$ range and represent a good localized approximation of the partial derivative of the unknown $f(\bf x)$ with respect to $x_c$.
 
 Alas, this stratification approach works for two or three variables but breaks down for more variables because it is impractical to find groups of observations that are equal across so many variables.  Nonetheless, stratification is simple, well understood, and clearly isolates the effect of $x_c$ on $y$ from the other features for this application, even in the presence of codependent and interacting features.  The only obstacle is a general and practical mechanism for stratifying observations with many variables, which leads us to the primary contribution of this paper.
 
 \subsection{StratPD for numeric variables}
 
-The key idea is to relax stratification so that it organizes observations into groups of similar rather than equal observations.  Our approach, called \spd, uses a CART decision tree \cite{CART} to stratify observations into  groups of similar observations and then collects piecewise linear approximations to the partial derivatives of the unknown $f(\bf x)$ for the groups. Each leaf, $L$, in the tree represents a group with similar $x_{(-c)}$ values and yields a $\beta_L$ from a linear model trained on $(Lx, Ly)$, the $x_c$ and $\bf y$ observations associated with $L$.  The partial derivative between any two (unique and sorted) adjacent $x_c$ data points is estimated by averaging the $\beta_L$ coefficients that overlap that range, yielding $n-1$ partial derivative estimates for $n$ unique $x_c$ values.  Numerically integrating the partial derivatives across $x_c$ space gives a curve representing the contribution of $x_c$ to $y$, as depicted in \figref{fig:leaves}. There are five leaves in \figref{fig:leaves} with regression lines fit through leaf observations, $(Lx, Ly)$. The $x_c$ values in $L_5$ are identical so its infinite slope is ignored.
+The key idea is to relax stratification so that it organizes observations into groups of similar rather than equal observations.  Our approach, called \spd, uses a CART decision tree \cite{CART} to stratify observations into  groups of similar observations and then collects piecewise linear approximations to the partial derivatives of the unknown $f(\bf x)$ for the groups. Each leaf, $L$, in the tree represents a group with similar \xnc{} values and yields a $\beta_L$ from a linear model trained on $(Lx, Ly)$, the $x_c$ and $\bf y$ observations associated with $L$.  The partial derivative between any two (unique and sorted) adjacent $x_c$ data points is estimated by averaging the $\beta_L$ coefficients that overlap that range, yielding $n-1$ partial derivative estimates for $n$ unique $x_c$ values.  Numerically integrating the partial derivatives across $x_c$ space gives a curve representing the contribution of $x_c$ to $y$, as depicted in \figref{fig:leaves}. There are five leaves in \figref{fig:leaves} with regression lines fit through leaf observations, $(Lx, Ly)$. The $x_c$ values in $L_5$ are identical so its infinite slope is ignored.
 
 \begin{figure}[htbp]
 \begin{center}
@@ -182,15 +193,15 @@ The key idea is to relax stratification so that it organizes observations into g
 \end{center}
 \end{figure}
 
-\spd{} trains a decision tree in the usual way but on $(x_{(-c)}, {\bf y})$ rather than $({\bf X}, {\bf y})$. Observations $({\bf x}_{i}, y_i)$ that end up in a tree leaf are, by definition, in the same region of $x_{(-c)}$ feature space. Training greedily partitions feature space in order to minimize variance of $y_i$ within regions, which partitions feature space into tighter and tighter regions.  Tighter regions imply more similar $x_{(-c)}$ values. (The collection of variable inequalities among the decision nodes along the path from from the root to a leaf demarcates the region of feature space.)  The training process must leave at least two samples per leaf in order to fit localized linear models. With too few observations in leaf $L$, $\beta_L$ is a poor estimate; with too many observations, $\beta_L$ is overly-sensitive to contributions from non-$x_c$ features. \spd{} degenerates to a simple marginal plot if training yields a tree with a single leaf node containing all of $x_{(-c)}$.  Algorithm \ref{alg:StratPD} encodes the \spd{} process and the full Python 3 source code is available at {\small \url{https://github.com/parrt/stratpd}}.
+\spd{} trains a decision tree in the usual way but on $(x_{(-c)}, {\bf y})$ rather than $({\bf X}, {\bf y})$. Observations $({\bf x}_{i}, y_i)$ that end up in a tree leaf are, by definition, in the same region of \xnc{} feature space. Training greedily partitions feature space in order to minimize variance of $y_i$ within regions, which partitions feature space into tighter and tighter regions.  Tighter regions imply more similar \xnc{} values. (The collection of variable inequalities among the decision nodes along the path from from the root to a leaf demarcates the region of feature space.)  The training process must leave at least two samples per leaf in order to fit localized linear models. With too few observations in leaf $L$, $\beta_L$ is a poor estimate; with too many observations, $\beta_L$ is overly-sensitive to contributions from non-$x_c$ features. \spd{} degenerates to a simple marginal plot if training yields a tree with a single leaf node containing all of \xnc{}.  Algorithm \ref{alg:StratPD} encodes the \spd{} process and the full Python 3 source code is available at {\small \url{https://github.com/parrt/stratpd}}.
 
-Revisiting the \spd{} plot in \figref{fig:height_vs_weight}(d), derived from the apartment rent data set, each blue line represents the regression line with slope $\beta_L$ through the observations in a single leaf of observations with similar $x_{(-c)}$ features. Lines extend from the minimum to maximum $x_c$ value in $L$ ($R_L$). Dropping the $y$-intercept from the regression line effectively erases the contributions of $x_{(-c)}$ features to $Ly$. Because we are interested in the relative contribution of $x_c$ to $y$, \spd{} plots use zero as a $y$-axis baseline. The black dots represent the integration of the partial derivative estimates up to and including each unique $x_c$ value (except the first $x_c$, whose integral value is 0). The partial derivative estimate at an $x_c$ value is the average slope of the blue lines emanating from that value.  
+Revisiting the \spd{} plot in \figref{fig:height_vs_weight}(d), derived from the apartment rent data set, each blue line represents the regression line with slope $\beta_L$ through the observations in a single leaf of observations with similar \xnc{} features. Lines extend from the minimum to maximum $x_c$ value in $L$ ($R_L$). Dropping the $y$-intercept from the regression line effectively erases the contributions of \xnc{} features to $Ly$. Because we are interested in the relative contribution of $x_c$ to $y$, \spd{} plots use zero as a $y$-axis baseline. The black dots represent the integration of the partial derivative estimates up to and including each unique $x_c$ value (except the first $x_c$, whose integral value is 0). The partial derivative estimate at an $x_c$ value is the average slope of the blue lines emanating from that value.  
 
-Partial dependence through stratification also works for data sets with categorical variables in $x_{(-c)}$, given a suitable similarity measure between observations that supports categorical variables, but identifying an appropriate categorical similarity measure is a well-known issue.  Decision trees, however, support categorical variables easily and effectively by treating categories as unique integers. Algorithm \ref{alg:StratPD}, therefore, works without modification for $x_{(-c)}$ containing categorical variables. When the column of interest, $x_c$, is categorical, however, a new algorithm is required.
+Partial dependence through stratification also works for data sets with categorical variables in \xnc{}, given a suitable similarity measure between observations that supports categorical variables, but identifying an appropriate categorical similarity measure is a well-known issue.  Decision trees, however, support categorical variables easily and effectively by treating categories as unique integers. Algorithm \ref{alg:StratPD}, therefore, works without modification for \xnc{} containing categorical variables. When the column of interest, $x_c$, is categorical, however, a new algorithm is required.
 
 \subsection{StratPD for categorical variables}
 
-The stratification approach can also capture how a categorical variable $x_c$ affects $y$, instead of just a single category at a time (if one were forced to one-hot encode $x_c$). As with purely numeric variables, observations with categorical variables that end up in the same leaf lie in the same region of feature space. (\todo cite breiman proximity matrix and p595 of ESL book). After stratification by a decision tree trained on $(x_{(-c)}, {\bf y})$, we are left with a regression on a single categorical variable. Because categorical variables can be unordered nominal variables, the notion of $y$ slope is not meaningful between two categories. Instead, the \cspd{} algorithm groups leaf observations $(Lx, Ly)$ by the $Lx$ categories, computes the average $Ly$ value per category, and subtracts $min(Ly)$ to erase the $y$-contributions of $x_{(-c)}$.  To get the overall contribution of $x_c$ on $y$ for category $cat$,  \cspd{} averages the leaf contributions for $cat$ across all leaves. See Algorithm \ref{alg:CatStratPD}.
+The stratification approach can also capture how a categorical variable $x_c$ affects $y$, instead of just a single category at a time (if one were forced to one-hot encode $x_c$). As with purely numeric variables, observations with categorical variables that end up in the same leaf lie in the same region of feature space. (\todo cite breiman proximity matrix and p595 of ESL book). After stratification by a decision tree trained on $(x_{(-c)}, {\bf y})$, we are left with a regression on a single categorical variable. Because categorical variables can be unordered nominal variables, the notion of $y$ slope is not meaningful between two categories. Instead, the \cspd{} algorithm groups leaf observations $(Lx, Ly)$ by the $Lx$ categories, computes the average $Ly$ value per category, and subtracts $min(Ly)$ to erase the $y$-contributions of \xnc{}.  To get the overall contribution of $x_c$ on $y$ for category $cat$,  \cspd{} averages the leaf contributions for $cat$ across all leaves. See Algorithm \ref{alg:CatStratPD}.
 
 \figref{fig:state_vs_temp}(a) illustrates \cspd{} operating on a categorical variable, state, in a synthetic weather data set with data from four states over three years. Temperature data varies in sinusoidal fashion over the year with $N(-5,5)$ noise and different baseline temperatures per state, as the marginal plot in \figref{fig:state_vs_temp}(b) shows. To get the partial dependence of temperature on state, \spd{} stratifies by dayofyear and year then groups these similar time buckets by state and computes the average temperature; each blue dot represents a leaf average. The overall temperature estimate per state is the average of those leaf averages, represented by a solid black dash. We use a strip plot to exhibit the variation and density of $y$ values per category. The \cspd{} plot accurately identifies the baseline temperature per state, as does the PD/ICE plot in \figref{fig:state_vs_temp}(c).
 
@@ -204,13 +215,13 @@ The stratification approach can also capture how a categorical variable $x_c$ af
 \end{center}
 \end{figure}
 
-\subsection{Approximating partial derivatives for large regions}
+\subsection{Approximating partial derivatives for large regions}\label{sec:patho}
 
-There is a pathological case to consider where training yields a decision tree with very large leaves, perhaps hundreds or thousands of observations.  This can happen when $x_{(-c)}$ contains a single categorical variable or when the only strongly-predictive variable in $x_{(-c)}$ is categorical.  Training a single linear model through hundreds of $({\bf x}_i, y_i)$ observations is unlikely to capture the relationship.  The weather data set is a case in point. Choosing  $x_c$=dayofyear, leaves $x_{(-c)}$=\{state,year\} and categorical variable state accounts for most of the variation in target variable temperature.  \figref{fig:dayofyear_vs_temp}(a) shows the marginal plot of state versus temperature. A decision tree, $T$, splitting on just state, would group all 365 daily temperature observations for a single state into just one leaf. (The marginal plot is showing the complete sine waves but from the side, edge on.)  The \spd{} algorithm described so far would likely create just four linear models, one per state, and would fail to capture the sine waves. PD and ICE plots, on the other hand, identify the noisy sine waves, as shown in \figref{fig:dayofyear_vs_temp}(b). \todo{uses random forest with how many trees for pd/ice?}
+There is a pathological case to consider where training yields a decision tree with very large leaves, with perhaps hundreds or thousands of observations.  This can happen when \xnc{} contains a single categorical variable or when the only strongly-predictive variable in \xnc{} is categorical.  Training a single linear model through hundreds of $({\bf x}_i, y_i)$ observations is unlikely to capture the relationship.  The weather data set is a case in point. Choosing $x_c$=dayofyear, leaves \xnc{}=\{state,year\} and state accounts for most of the variation in target variable temperature.  \figref{fig:dayofyear_vs_temp}(a) shows the marginal plot of state versus temperature. A decision tree, $T$, splitting on just state, would group all 365 daily temperature observations for a single state into just one leaf. (The marginal plot is showing the complete sine waves but from the side, edge on.)  The \spd{} algorithm described so far would likely create just four linear models, one per state, and would fail to capture the sine waves. PD and ICE plots, on the other hand, identify the noisy sine waves, as shown in \figref{fig:dayofyear_vs_temp}(b). \todo{uses random forest with how many trees for pd/ice?}
 
-To handle the special case where partitioning feature space $x_{(-c)}$ yields a leaf, $L \in T$, with too many $x_c$ observations, \spd{} trains another decision tree, $T'$, to partition $L$'s $x_c$ space in more detail. In the worst case, every region of $x_{(-c)}$ identified by $T$ is too large and \spd{} must create a new decision tree per $L \in T$. \algref{alg:StratPD} (lines 6-9) engages this mechanism when $|L|$ is greater than a threshold (default is 30 observations). The \spd{} plot in \figref{fig:dayofyear_vs_temp}(c) clearly shows the sinusoidal fluctuations of temperature over the year. The PD/ICE plot is not smooth because it relies on predictions from a model that reproduces the noisy data, whereas the \spd{} plot is averaging slopes that are themselves smoothing agents.
+To handle the special case where partitioning feature space \xnc{} yields a leaf, $L \in T$, with too many $x_c$ observations, \spd{} trains another decision tree, $T'$, to partition $L$'s $x_c$ space in more detail. In the worst case, every region of \xnc{} identified by $T$ is too large and \spd{} must create a new decision tree per $L \in T$. \algref{alg:StratPD} (lines 6-9) engages this mechanism when $|L|$ is greater than a threshold (default is 30 observations). The \spd{} plot in \figref{fig:dayofyear_vs_temp}(c) clearly shows the sinusoidal temperature fluctuations over the year. The PD/ICE plot is not smooth because it relies on predictions from a model that reproduces the noisy data, whereas the \spd{} plot is averaging slopes that are themselves smoothing agents.
 
-Without this special case mechanism, the \spd{} plot would have to approximate an entire sine wave with a single line.  Unfortunately, we had to manually choose a minimum leaf size for the nested leaf partitioning, $T'$, to get a proper sine wave.  We recommend trying $T'$ multiple minimum leaf sizes for \spd{} plots when $x_{(-c)}$ has categorical variables and $p$ is small. (The Python implementation allows programmers to set the minimum leaf size for both the $x_{(-c)}$ partitioning with $T$ and second stage partitioning with $T'$.)
+Without this special case mechanism, the \spd{} plot would have to approximate an entire sine wave with a single line.  Unfortunately, we had to manually choose a suitable minimum leaf size for the nested leaf partitioning, $T'$, to get a proper sine wave.  We recommend trying $T'$ multiple minimum leaf sizes for \spd{} plots when \xnc{} has categorical variables and $p$ is small. (The Python implementation allows programmers to set the minimum leaf size for both the \xnc{} partitioning with $T$ and second stage partitioning with $T'$.)
 
 \begin{figure}[htbp]
 \begin{center}
@@ -222,13 +233,34 @@ Without this special case mechanism, the \spd{} plot would have to approximate a
 \end{center}
 \end{figure}
 
-It's worth examining the role of decision trees
+\subsection{Partitioning feature space with trees and forests}
 
-\subsection{how many trees}
+Stratification of $(x_{(-c)}, y)$ into regions of similar observations is at the core of our approach so it's worth examining how \spd{} partitions feature space in some detail.  The goal is to examine $(x_{ic}, y_i)$ pairs for groups of extremely similar \xnc{} values so fluctuations in $y$ are due solely to changes in $x_c$, which yields a piece of the partial dependence of $y$ on $x_c$. \spd{} looks for similar observations because, beyond a few variables, it's not possible to stratify observations by equal \xnc{} values. 
 
-\todo{new stuf} y tells us how to partition the feature space into similar groups that are adjacent regions and features space but have similar y. Technically we don't need supervised y but sometimes unsupervised fails, such in the case where p = 2 or p greater than two but with very weak predictors or noise.  The aim is not prediction; instead it is to partition the feature space into similar regions. Consequently we are not worried about over fitting, in fact we wanted to over fit in the sense that it is getting the best partition possible using all the data and all features. Generalization would suffer but we don't care because we want to know about this particular data set. Decision trees mean we don't need to define a similarity measure and we don't need to define been with or another mechanism to draw regions. The regions are optimal to get similar y.
+Inventing a new partitioning strategy is unnecessary because decision trees already exist that can tesselate \xnc{} feature space into small hypervolumes of similar observations. If a hypervolume is tight enough, then \xnc{} values are very similar and the slope of a regression line through $(Lx, Ly)$ is a good estimate of the partial derivative of $\frac{\partial y}{\partial x_{c}}$ in that region.  If the volume for leaf $L$ is too large, then \xnc{} observations in $L$ are not similar enough to conclude that changes in $y$ are due to $x_c$ alone. By default, our Python implementation of \spd{} creates decision trees with at least two observations per leaf, but depending on $y$, leaf size is unbounded. As discussed in \secref{sec:patho}, large leaves should themselves be partitioned into a collection of smaller leaves using another decision tree, but this time training on $x_c$ rather than \xnc{}.  Because training occurs on \xnc{}, leaf observations can have overlapping $x_c$ regions so, for a given range $R$, \spd{} averages the $\beta_L$ slopes for all $L \in R$ giving $\beta_R$.  The partial derivative across the entire $x_c$ range is the sorted collection of $\beta_R$.
 
-need 5 trees for rent sparse bedroom data
+Decision trees are known to overfit like crazy and are considered weaker than Random Forests(tm) (RF) so \spd's use of decision trees rather than RFs seems an odd choice. In fact, using RFs was our initial approach and the \spd{} source code still supports them. (The only change to the algorithm described in this paper is to iterate over all leaves from all trees, rather than the leaves of a single tree, to collect $\beta_L$ slopes.)  Decision trees are sufficient for partial dependence, however, because the goal is to understand the population described by the data set, not to make predictions; that is what models are for. 
+
+To reduce overfitting, RFs bootstrap and select split variables from a subset of all variables in order to create uncorrelated trees. But, that means increasing bias to some degree because each tree is trained on roughly 2/3 of the training data and without considering some of the variables. Because the goal is to partition {\em all} observations that are similar in {\em all} variables into the same leaf, it is counterproductive to bootstrap and select variables from a subset. Because of this narrow application, there's no point in sacrificing some accuracy for the sake of generality.
+
+random forests are also good at small data sets, need 5 trees for rent sparse bedroom data
+
+Decision trees train on all observations and choose from among all variables when splitting feature space to create decision nodes.
+
+RF or decision tree; effect of ntrees on plots.
+
+
+y also has a role in training.; The regions are optimized to get similar y. 
+
+unsupervised
+
+
+tells us how to partition the feature space into similar groups that are adjacent regions and features space but have similar y. Technically we don't need supervised y but sometimes unsupervised fails, such in the case where p = 2 or p greater than two but with very weak predictors or noise.  The aim is not prediction; instead it is to partition the feature space into similar regions. Consequently we are not worried about over fitting, in fact we wanted to over fit in the sense that it is getting the best partition possible using all the data and all features. Generalization would suffer but we don't care because we want to know about this particular data set. 
+
+Decision trees mean we don't need to define a similarity measure and we don't need to define been with or another mechanism to draw regions. 
+
+
+from before: Observations $({\bf x}_{i}, y_i)$ that end up in a tree leaf are, by definition, in the same region of \xnc{} feature space. Training greedily partitions feature space in order to minimize variance of $y_i$ within regions, which partitions feature space into tighter and tighter regions.  Tighter regions imply more similar \xnc{} values.
 
 1, 5, 10, 30 trees
 
@@ -253,7 +285,7 @@ need 5 trees for rent sparse bedroom data
 
 \section{Experimental Results}
 
-effect of sup/unsup: more accurate grouping. ignore noise. unsup fails if p=2 since $x_{(-c)}$ has p=1 and unsup can't distinguish X from synth X.
+effect of sup/unsup: more accurate grouping. ignore noise. unsup fails if p=2 since \xnc{} has p=1 and unsup can't distinguish X from synth X.
 
 \todo{add car data}
 
@@ -263,14 +295,6 @@ The data set has an equal number of males and females with $x_{pregnant} \sim U(
 weight = 120 + 10(x_{height} - min(x_{height})) + 30x_{pregnant} - 1.2x_{education}
 \]
 
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.7]{images/education_vs_weight_stratpd.png}
-\includegraphics[scale=0.7]{images/education_vs_weight_pdp.png}
-\caption{{\bf  Edu vs weight}}
-\label{fig:edu_vs_weight}
-\end{center}
-\end{figure}
 
 \begin{figure}[htbp]
 \begin{center}
@@ -362,7 +386,7 @@ Actually, the R version of personal dependence may actually do this. See https:/
 \SetAlgoSkip{}
 \SetInd{.5em}{.5em}
 \TitleOfAlgo{{\em StratPD}($X$, $\bf y$, $c$, $hires$=30) {\bf returns} collection of $\beta$ coefficients, $\hat{y}$}
-Train random forest regressor {\it rf} on ($x_{(-c)}$, $\bf y$)\\
+Train random forest regressor {\it rf} on (\xnc{}, $\bf y$)\\
 $leaves$ = leaves(trees({\it rf}))\\
 \ForEach{leaf $L \in leaves$}{
 	$(Lx, Ly)$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
@@ -393,7 +417,7 @@ $\hat{y}$ = numerically integrate $\beta_R$'s at $uniqx$\\
 \SetAlgoSkip{}
 \SetInd{.5em}{.5em}
 \TitleOfAlgo{{\em CatStratPD}($X$, $\bf y$, $c$) {\bf returns} dictionary mapping category to effect on $y$}
-Train random forest regressor {\it rf} on ($x_{(-c)}$, $\bf y$)\\
+Train random forest regressor {\it rf} on (\xnc{}, $\bf y$)\\
 Let $D$ be dictionary mapping category to $y$ value\\
 \ForEach{leaf $L \in {\it rf}$}{
 	$(Lx, Ly)$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
@@ -401,7 +425,7 @@ Let $D$ be dictionary mapping category to $y$ value\\
 		$cat_y$ = $Ly[Lx=cat]$\\
 		\lIf{$|cat_y| < 2$}{{\bf continue}}\\
 		$cat_{avg}$ = $\frac{1}{|cat_y|} \Sigma cat_y$\\
-		$cat_{avg}$ = $cat_{avg} - min(Ly)$\tcp*[r]{\it Strip y contribution from $x_{(-c)}$}
+		$cat_{avg}$ = $cat_{avg} - min(Ly)$\tcp*[r]{\it Strip y contribution from \xnc{}}
 		$D_{cat}$ = $D_{cat} + cat_{avg}$\\
 	}
 }
