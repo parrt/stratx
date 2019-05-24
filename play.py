@@ -380,9 +380,10 @@ def weather():
 
     plt.show()
 
+
 if __name__ == '__main__':
     # rent()
     # meta_rent()
     # weight()
-    meta_weight()
+    # meta_weight()
     # weather()

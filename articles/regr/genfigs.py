@@ -36,6 +36,7 @@ def df_cat_to_catcode(df):
 
 
 def savefig(filename):
+    plt.tight_layout(pad=0, w_pad=0, h_pad=0)
     plt.savefig(f"images/{filename}.pdf")
     plt.savefig(f"images/{filename}.png")
 
@@ -87,46 +88,47 @@ def rent():
     df_rent = df_rent.sample(n=9000)  # get a small subsample
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
+    figsize = (2.5,2.5)
 
     def showcol(colname):
-        fig, ax = plt.subplots(1,1, figsize=(3,3))
+        fig, ax = plt.subplots(1,1, figsize=figsize)
         avg_per_baths = df_rent.groupby(colname).mean()['price']
-        ax.scatter(df_rent[colname], df_rent['price'], alpha=0.07, s=6)#, label="observation")
-        ax.scatter(np.unique(df_rent[colname]), avg_per_baths, c='black', label="average price/{colname}")
+        ax.scatter(df_rent[colname], df_rent['price'], alpha=0.07, s=5)#, label="observation")
+        ax.scatter(np.unique(df_rent[colname]), avg_per_baths, s=6, c='black', label="average price/{colname}")
         ax.set_xlabel(colname)#, fontsize=12)
         ax.set_ylabel("Rent price")#, fontsize=12)
         ax.set_ylim(0,10_000)
         # ax.legend()
-        plt.tight_layout()
+        
         savefig(f"{colname}_vs_price")
         plt.close()
 
-        fig, ax = plt.subplots(1,1, figsize=(3,3))
+        fig, ax = plt.subplots(1,1, figsize=figsize)
         stratpd_plot(X, y, colname, 'price', ax=ax, alpha=.2, nlines=700)
         ax.set_ylim(-1000,5000)
-        plt.tight_layout()
+        
         savefig(f"{colname}_vs_price_stratpd")
         plt.close()
 
         rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
         rf.fit(X, y)
 
-        fig, ax = plt.subplots(1,1, figsize=(3,3))
+        fig, ax = plt.subplots(1,1, figsize=figsize)
         ax.set_ylim(-1000,5000)
         ice = ice_predict(rf, X, colname, 'price', nlines=1000)
         ice_plot(ice, colname, 'price', alpha=.05, ax=ax)
-        plt.tight_layout()
+        
         savefig(f"{colname}_vs_price_pdp")
         plt.close()
 
         lm = Lasso()
         lm.fit(X, y)
 
-        fig, ax = plt.subplots(1,1, figsize=(3,3))
+        fig, ax = plt.subplots(1,1, figsize=figsize)
         ice = ice_predict(lm, X, colname, 'price', nlines=1000)
         ice_plot(ice, colname, 'price', alpha=.05, ax=ax)
         ax.set_ylim(-1000,5000)
-        plt.tight_layout()
+        
         savefig(f"{colname}_vs_price_pdp_lm")
         plt.close()
 
@@ -146,37 +148,64 @@ def meta_rent():
 
     supervised = True
 
-    def onevar(colname, row, alpha=0.05, yrange=None):
+    def onevar(colname, row, yrange=None):
+        alpha = 0.08
         for i, t in enumerate([1, 5, 10, 30]):
-            stratpd_plot(X, y, colname, 'price', ax=axes[i], alpha=alpha,
+            stratpd_plot(X, y, colname, 'price', ax=axes[row,i], alpha=alpha,
                          yrange=yrange,
                          supervised=supervised,
                          show_ylabel = t==1,
                          ntrees=t)
 
-    fig, axes = plt.subplots(1, 4, figsize=(8,2), sharey=True)
+    fig, axes = plt.subplots(3, 4, figsize=(8,6), sharey=True)
+    for i in range(1,4):
+        axes[0, i].get_yaxis().set_visible(False)
+        axes[1, i].get_yaxis().set_visible(False)
+        axes[2, i].get_yaxis().set_visible(False)
+
     onevar('bedrooms', row=0, yrange=(0,3000))
-    plt.tight_layout()
-    savefig(f"bedrooms_vs_price_ntrees")
-    plt.close()
-
-    fig, axes = plt.subplots(1, 4, figsize=(8,2), sharey=True)
     onevar('bathrooms', row=1, yrange=(0,3000))
-    plt.tight_layout()
-    savefig(f"bathrooms_vs_price_ntrees")
-    plt.close()
-
-    fig, axes = plt.subplots(1, 4, figsize=(8,2), sharey=True)
     onevar('latitude', row=2, yrange=(0,3000))
-    plt.tight_layout()
-    savefig(f"latitude_vs_price_ntrees")
+    
+    savefig(f"rent_ntrees")
     plt.close()
 
     # fig, axes = plt.subplots(1, 4, figsize=(8,2), sharey=True)
     # onevar('longitude', row=3, yrange=(-4000,4000))
-    # plt.tight_layout()
+    # 
     # savefig(f"longitude_vs_price_ntrees")
     # plt.close()
+
+
+def unsup_rent():
+    print(f"----------- {inspect.stack()[0][3]} -----------")
+    df_rent = load_rent()
+    df_rent = df_rent.sample(n=9000, random_state=111)  # get a small subsample
+    X = df_rent.drop('price', axis=1)
+    y = df_rent['price']
+
+    X = df_rent.drop('price', axis=1)
+    y = df_rent['price']
+
+    supervised = False
+
+    fig, axes = plt.subplots(3, 2, figsize=(4,6), sharey=True)
+
+    stratpd_plot(X, y, 'bedrooms', 'price', ax=axes[0,0], alpha=.2, supervised=False)
+    stratpd_plot(X, y, 'bedrooms', 'price', ax=axes[0,1], alpha=.2, supervised=True)
+
+    stratpd_plot(X, y, 'bathrooms', 'price', ax=axes[1,0], alpha=.2, supervised=False)
+    stratpd_plot(X, y, 'bathrooms', 'price', ax=axes[1,1], alpha=.2, supervised=True)
+
+    stratpd_plot(X, y, 'latitude', 'price', ax=axes[2,0], alpha=.2, supervised=False)
+    stratpd_plot(X, y, 'latitude', 'price', ax=axes[2,1], alpha=.2, supervised=True)
+
+    for i in range(3):
+        axes[i,1].get_yaxis().set_visible(False)
+
+    
+    savefig(f"rent_unsup")
+    plt.close()
 
 
 def toy_weather_data():
@@ -222,7 +251,7 @@ def weather():
                  hires_min_samples_leaf=13,
                  yrange=(-15,15),
                  pdp_dot_size=2, alpha=.5)
-    plt.tight_layout()
+    
     savefig(f"dayofyear_vs_temp_stratpd")
     plt.close()
 
@@ -232,7 +261,7 @@ def weather():
                     alpha=.3,
                     min_samples_leaf=11,
                  ax=ax)  # , yrange=(0,160))
-    plt.tight_layout()
+    
     savefig(f"state_vs_temp_stratpd")
     plt.close()
 
@@ -242,7 +271,7 @@ def weather():
     fig, ax = plt.subplots(1, 1, figsize=(3, 3))
     ice = ice_predict(rf, X, 'dayofyear', 'temperature')
     ice_plot(ice, 'dayofyear', 'temperature', ax=ax, yrange=(-15,15))
-    plt.tight_layout()
+    
     savefig(f"dayofyear_vs_temp_pdp")
     plt.close()
 
@@ -250,7 +279,7 @@ def weather():
     ice = ice_predict(rf, X, 'state', 'temperature')
     ice_plot(ice, 'state', 'temperature', cats=catencoders['state'],
              ax=ax)
-    plt.tight_layout()
+    
     savefig(f"state_vs_temp_pdp")
     plt.close()
 
@@ -260,7 +289,7 @@ def weather():
     #                 feature_name='state',
     #                 target_name='y',
     #                 fontsize=10, show={'splits'})
-    # plt.tight_layout()
+    # 
     # plt.show()
 
     fig, ax = plt.subplots(1, 1, figsize=(3, 3))
@@ -268,7 +297,7 @@ def weather():
     ax.set_xticklabels(np.concatenate([[''], catencoders['state'].values]))
     ax.set_xlabel("state")
     ax.set_ylabel("temperature")
-    plt.tight_layout()
+    
     savefig(f"state_vs_temp")
     plt.close()
 
@@ -287,7 +316,7 @@ def weather():
     ax.legend(loc='lower left', borderpad=0, labelspacing=0)
     ax.set_xlabel("dayofyear")
     ax.set_ylabel("temperature")
-    plt.tight_layout()
+    
     savefig(f"dayofyear_vs_temp")
     plt.close()
 
@@ -301,70 +330,93 @@ def weight():
     df['pregnant'] = df['pregnant'].astype(int)
     X = df.drop('weight', axis=1)
     y = df['weight']
-
-    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+    figsize=(2.5,2.5)
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
     stratpd_plot(X, y, 'education', 'weight', ax=ax, yrange=(-12, 0), alpha=.1, nlines=700)
-    plt.tight_layout()
     savefig(f"education_vs_weight_stratpd")
     plt.close()
 
-    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
     stratpd_plot(X, y, 'height', 'weight', ax=ax, yrange=(0, 160), alpha=.1, nlines=700)
-    plt.tight_layout()
     savefig(f"height_vs_weight_stratpd")
     plt.close()
 
-    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
     catstratpd_plot(X, y, 'sex', 'weight', ax=ax,
                     alpha=.2,
                     cats=df_raw['sex'].unique(),
                     yrange=(0, 5)
                     )
-    plt.tight_layout()
     savefig(f"sex_vs_weight_stratpd")
     plt.close()
 
-    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
     catstratpd_plot(X, y, 'pregnant', 'weight', ax=ax,
                     alpha=.2,
                     cats=df_raw['pregnant'].unique(),
                     yrange=(-5,35)
                     )
-    plt.tight_layout()
     savefig(f"pregnant_vs_weight_stratpd")
     plt.close()
 
     rf = RandomForestRegressor(n_estimators=50, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
 
-    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = ice_predict(rf, X, 'education', 'weight')
     ice_plot(ice, 'education', 'weight', ax=ax, yrange=(-12, 0))
-    plt.tight_layout()
     savefig(f"education_vs_weight_pdp")
     plt.close()
 
-    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = ice_predict(rf, X, 'height', 'weight')
     ice_plot(ice, 'height', 'weight', ax=ax, yrange=(0, 160))
-    plt.tight_layout()
     savefig(f"height_vs_weight_pdp")
     plt.close()
 
-    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = ice_predict(rf, X, 'sex', 'weight')
     ice_plot(ice, 'sex', 'weight', ax=ax, yrange=(0, 5),
              cats=df_raw['sex'].unique())
-    plt.tight_layout()
     savefig(f"sex_vs_weight_pdp")
     plt.close()
 
-    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = ice_predict(rf, X, 'pregnant', 'weight')
     ice_plot(ice, 'pregnant', 'weight', ax=ax, yrange=(-5, 35),
              cats=df_raw['pregnant'].unique())
-    plt.tight_layout()
     savefig(f"pregnant_vs_weight_pdp")
+    plt.close()
+
+
+def unsup_weight():
+    print(f"----------- {inspect.stack()[0][3]} -----------")
+    df_raw = toy_weight_data(1000)
+    df = df_raw.copy()
+    catencoders = df_string_to_cat(df)
+    df_cat_to_catcode(df)
+    df['pregnant'] = df['pregnant'].astype(int)
+    X = df.drop('weight', axis=1)
+    y = df['weight']
+
+    fig, axes = plt.subplots(2, 2, figsize=(4, 4))
+    stratpd_plot(X, y, 'education', 'weight', ax=axes[0,0], yrange=(-12, 0), alpha=.1, nlines=700, supervised=False)
+    stratpd_plot(X, y, 'education', 'weight', ax=axes[0,1], yrange=(-12, 0), alpha=.1, nlines=700, supervised=True)
+
+    catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[1,0],
+                    alpha=.2,
+                    cats=df_raw['pregnant'].unique(),
+                    yrange=(-5,35), supervised=False)
+    catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[1,1],
+                    alpha=.2,
+                    cats=df_raw['pregnant'].unique(),
+                    yrange=(-5,35), supervised=True)
+
+    axes[0,1].get_yaxis().set_visible(False)
+    axes[1,1].get_yaxis().set_visible(False)
+
+    
+    savefig(f"weight_unsup")
     plt.close()
 
 
@@ -378,30 +430,42 @@ def meta_weight():
     X = df.drop('weight', axis=1)
     y = df['weight']
 
-    fig, axes = plt.subplots(1, 4, figsize=(8,2))
-    stratpd_plot(X, y, 'education', 'weight', ax=axes[0], yrange=(-12,0), alpha=.05, pdp_dot_size=10, show_ylabel=True,
+    fig, axes = plt.subplots(2, 4, figsize=(8,4))
+    for i in range(1,4):
+        axes[0,i].get_yaxis().set_visible(False)
+        axes[1, i].get_yaxis().set_visible(False)
+    stratpd_plot(X, y, 'education', 'weight', ax=axes[0,0], yrange=(-12,0), alpha=.05, pdp_dot_size=10, show_ylabel=True,
                  ntrees=1, max_features=1.0, bootstrap=False)
-    stratpd_plot(X, y, 'education', 'weight', ax=axes[1], yrange=(-12,0), alpha=.05, pdp_dot_size=10, show_ylabel=False,
+    stratpd_plot(X, y, 'education', 'weight', ax=axes[0,1], yrange=(-12,0), alpha=.05, pdp_dot_size=10, show_ylabel=False,
                  ntrees=5, max_features='auto', bootstrap=True)
-    stratpd_plot(X, y, 'education', 'weight', ax=axes[2], yrange=(-12,0), alpha=.05, pdp_dot_size=10, show_ylabel=False,
+    stratpd_plot(X, y, 'education', 'weight', ax=axes[0,2], yrange=(-12,0), alpha=.05, pdp_dot_size=10, show_ylabel=False,
                  ntrees=10, max_features = 'auto', bootstrap = True)
-    stratpd_plot(X, y, 'education', 'weight', ax=axes[3], yrange=(-12,0), alpha=.05, pdp_dot_size=10, show_ylabel=False,
+    stratpd_plot(X, y, 'education', 'weight', ax=axes[0,3], yrange=(-12,0), alpha=.05, pdp_dot_size=10, show_ylabel=False,
                  ntrees=30, max_features='auto', bootstrap=True)
-    plt.tight_layout()
-    savefig(f"education_vs_weight_ntrees")
-    plt.close()
 
-    fig, axes = plt.subplots(1, 4, figsize=(8,2))
-    stratpd_plot(X, y, 'height', 'weight', ax=axes[0], yrange=(0,160), alpha=.05, pdp_dot_size=10, show_ylabel=True,
-                 ntrees=1, max_features=1.0, bootstrap=False)
-    stratpd_plot(X, y, 'height', 'weight', ax=axes[1], yrange=(0,160), alpha=.05, pdp_dot_size=10, show_ylabel=False,
-                 ntrees=5, max_features='auto', bootstrap=True)
-    stratpd_plot(X, y, 'height', 'weight', ax=axes[2], yrange=(0,160), alpha=.05, pdp_dot_size=10, show_ylabel=False,
-                 ntrees=10, max_features = 'auto', bootstrap = True)
-    stratpd_plot(X, y, 'height', 'weight', ax=axes[3], yrange=(0,160), alpha=.05, pdp_dot_size=10, show_ylabel=False,
-                 ntrees=30, max_features='auto', bootstrap=True)
-    plt.tight_layout()
-    savefig(f"height_vs_weight_ntrees")
+    # stratpd_plot(X, y, 'height', 'weight', ax=axes[1,0], yrange=(0,160), alpha=.05, pdp_dot_size=10, show_ylabel=True,
+    #              ntrees=1, max_features=1.0, bootstrap=False)
+    # stratpd_plot(X, y, 'height', 'weight', ax=axes[1,1], yrange=(0,160), alpha=.05, pdp_dot_size=10, show_ylabel=False,
+    #              ntrees=5, max_features='auto', bootstrap=True)
+    # stratpd_plot(X, y, 'height', 'weight', ax=axes[1,2], yrange=(0,160), alpha=.05, pdp_dot_size=10, show_ylabel=False,
+    #              ntrees=10, max_features = 'auto', bootstrap = True)
+    # stratpd_plot(X, y, 'height', 'weight', ax=axes[1,3], yrange=(0,160), alpha=.05, pdp_dot_size=10, show_ylabel=False,
+    #              ntrees=30, max_features='auto', bootstrap=True)
+
+    catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[1,0], alpha=.2, cats=df_raw['pregnant'].unique(), show_ylabel=True,
+                     yrange=(0,35),
+                     ntrees=1, max_features=1.0, bootstrap=False)
+    catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[1,1], alpha=.2, cats=df_raw['pregnant'].unique(), show_ylabel=False,
+                     yrange=(0,35),
+                     ntrees=5, max_features='auto', bootstrap=True)
+    catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[1,2], alpha=.2, cats=df_raw['pregnant'].unique(), show_ylabel=False,
+                     yrange=(0,35),
+                     ntrees=10, max_features='auto', bootstrap=True)
+    catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[1,3], alpha=.2, cats=df_raw['pregnant'].unique(), show_ylabel=False,
+                     yrange=(0,35),
+                     ntrees=30, max_features='auto', bootstrap=True)
+    
+    savefig(f"height_pregnant_vs_weight_ntrees")
     plt.close()
 
     # fig, axes = plt.subplots(1, 4, figsize=(8,2))
@@ -417,7 +481,7 @@ def meta_weight():
     # catstratpd_plot(X, y, 'sex', 'weight', ax=axes[3], alpha=.2, cats=df_raw['sex'].unique(), show_ylabel=False,
     #                  yrange=(0,5),
     #                  ntrees=30, max_features='auto', bootstrap=True)
-    # plt.tight_layout()
+    # 
     # savefig(f"sex_vs_weight_ntrees")
     # plt.close()
     #
@@ -434,7 +498,7 @@ def meta_weight():
     # catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[3], alpha=.2, cats=df_raw['pregnant'].unique(), show_ylabel=False,
     #                  yrange=(0,35),
     #                  ntrees=30, max_features='auto', bootstrap=True)
-    # plt.tight_layout()
+    # 
     # savefig(f"pregnant_vs_weight_ntrees")
     # plt.close()
 
@@ -457,40 +521,27 @@ def additivity():
     X = df.drop('y', axis=1)
     y = df['y']
 
-    min_samples_leaf = 15
-
-    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
-    stratpd_plot(X, y, 'x1', 'y', ax=ax, min_samples_leaf=min_samples_leaf,
-#                 ntrees=50,
+    fig, axes = plt.subplots(2, 2, figsize=(4,4), sharey=True)
+    stratpd_plot(X, y, 'x1', 'y', ax=axes[0,0],
               hires_threshold=10, yrange=(-1, 1), pdp_dot_size=3, alpha=.1, nlines=700)
-    plt.tight_layout()
-    savefig(f"add_x1_y_stratpd")
-    plt.close()
-
-    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
-    stratpd_plot(X, y, 'x2', 'y', ax=ax, min_samples_leaf=min_samples_leaf,
-#                 ntrees=50,
+    
+    stratpd_plot(X, y, 'x2', 'y', ax=axes[1,0],
                  hires_threshold=10, pdp_dot_size=3, alpha=.1, nlines=700)
-    plt.tight_layout()
-    savefig(f"add_x2_y_stratpd")
-    plt.close()
-
+    
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
     print(f"RF OOB {rf.oob_score_}")
 
-    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
     ice = ice_predict(rf, X, 'x1', 'y', numx=20, nlines=700)
-    ice_plot(ice, 'x1', 'y', ax=ax, yrange=(-1, 1))
-    plt.tight_layout()
-    savefig(f"add_x1_y_pdp")
-    plt.close()
-
-    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+    ice_plot(ice, 'x1', 'y', ax=axes[0,1], yrange=(-1, 1), show_ylabel=False)
+    
     ice = ice_predict(rf, X, 'x2', 'y', numx=20, nlines=700)
-    ice_plot(ice, 'x2', 'y', ax=ax, yrange=(-2, 2))
-    plt.tight_layout()
-    savefig(f"add_x2_y_pdp")
+    ice_plot(ice, 'x2', 'y', ax=axes[1,1], yrange=(-2, 2), show_ylabel=False)
+
+    axes[0,1].get_yaxis().set_visible(False)
+    axes[1,1].get_yaxis().set_visible(False)
+
+    savefig(f"additivity")
     plt.close()
 
 
@@ -517,12 +568,9 @@ def bigX():
     
     # Partial deriv is just 0.2 so this is correct. flat deriv curve, net effect line at slope .2
     # ICE is way too shallow and not line at n=1000 even
-    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
-    stratpd_plot(X, y, 'x1', 'y', ax=ax, yrange=(-.1,.5), alpha=.1, nlines=700, pdp_dot_size=2)
-    plt.tight_layout()
-    savefig(f"bigx_x1_y_stratpd")
-    plt.close()
-
+    fig, axes = plt.subplots(3, 2, figsize=(4, 6), sharey=True)
+    stratpd_plot(X, y, 'x1', 'y', ax=axes[0,0], yrange=(-4,4), alpha=.1, nlines=700, pdp_dot_size=2)
+    
     # Partial deriv wrt x2 is -5 plus 10 about half the time so about 0
     # Should not expect a criss-cross like ICE since deriv of 1_x3>=0 is 0 everywhere
     # wrt to any x, even x3. x2 *is* affecting y BUT the net effect at any spot
@@ -531,49 +579,73 @@ def bigX():
     # strip away x1/x3's effect upon y. When we do, x2 has no effect on y.
     # Key is asking right question. Don't look at marginal plot and say obvious.
     # Ask what is net effect at every x2? 0.
-    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
-    stratpd_plot(X, y, 'x2', 'y', ax=ax, yrange=(-4,4), alpha=.1, nlines=700, pdp_dot_size=2)
-    plt.tight_layout()
-    savefig(f"bigx_x2_y_stratpd")
-    plt.close()
-
+    stratpd_plot(X, y, 'x2', 'y', ax=axes[1,0], yrange=(-4,4), alpha=.1, nlines=700, pdp_dot_size=2)
+    
     # Partial deriv wrt x3 of 1_x3>=0 is 0 everywhere so result must be 0
-    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
-    stratpd_plot(X, y, 'x3', 'y', ax=ax, yrange=(-4,4), alpha=.1, nlines=700, pdp_dot_size=2)
-    plt.tight_layout()
-    savefig(f"bigx_x3_y_stratpd")
-    plt.close()
+    stratpd_plot(X, y, 'x3', 'y', ax=axes[2,0], yrange=(-4,4), alpha=.1, nlines=700, pdp_dot_size=2)
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
     print(f"RF OOB {rf.oob_score_}")
     
-    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
     ice = ice_predict(rf, X, 'x1', 'y', numx=10)
-    ice_plot(ice, 'x1', 'y', ax=ax, yrange=(-.1,.5))
-    plt.tight_layout()
-    savefig(f"bigx_x1_y_pdp")
-    plt.close()
-
-    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+    ice_plot(ice, 'x1', 'y', ax=axes[0,1], yrange=(-4,4))
+    
     ice = ice_predict(rf, X, 'x2', 'y', numx=10)
-    ice_plot(ice, 'x2', 'y', ax=ax)
-    plt.tight_layout()
-    savefig(f"bigx_x2_y_pdp")
+    ice_plot(ice, 'x2', 'y', ax=axes[1,1], yrange=(-4,4))
+
+    ice = ice_predict(rf, X, 'x3', 'y', numx=10)
+    ice_plot(ice, 'x3', 'y', ax=axes[2,1], yrange=(-4,4))
+
+    axes[0,1].get_yaxis().set_visible(False)
+    axes[1,1].get_yaxis().set_visible(False)
+    axes[2,1].get_yaxis().set_visible(False)
+
+    savefig(f"bigx")
     plt.close()
 
-    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
-    ice = ice_predict(rf, X, 'x3', 'y', numx=10)
-    ice_plot(ice, 'x3', 'y', ax=ax)
-    plt.tight_layout()
-    savefig(f"bigx_x3_y_pdp")
+
+def unsup_boston():
+    boston = load_boston()
+    print(len(boston.data))
+    df = pd.DataFrame(boston.data, columns=boston.feature_names)
+    df['MEDV'] = boston.target
+
+    X = df.drop('MEDV', axis=1)
+    y = df['MEDV']
+
+    fig, axes = plt.subplots(2, 2, figsize=(4, 4))
+
+    stratpd_plot(X, y, 'AGE', 'MEDV', ax=axes[0,0], yrange=(-20,20), supervised=False, show_xlabel=False)
+    stratpd_plot(X, y, 'AGE', 'MEDV', ax=axes[0,1], yrange=(-20,20), supervised=True, show_xlabel=False)
+
+    rf = RandomForestRegressor(n_estimators=100, oob_score=True)
+    rf.fit(X, y)
+    print(f"RF OOB {rf.oob_score_}")
+
+    axes[1,0].scatter(df['AGE'], y, s=5, alpha=.7)
+    axes[1,0].set_ylabel('MEDV')
+    axes[1,0].set_xlabel('AGE')
+
+    ice = ice_predict(rf, X, 'AGE', 'MEDV', numx=10)
+    ice_plot(ice, 'AGE', 'MEDV', ax=axes[1, 1], yrange=(-20,20))
+
+    axes[0,1].get_yaxis().set_visible(False)
+    axes[1,1].get_yaxis().set_visible(False)
+
+    
+    savefig(f"boston_unsup")
     plt.close()
+
 
 if __name__ == '__main__':
-    rent()
-    meta_rent()
-    weight()
-    meta_weight()
-    weather()
-    additivity()
+    # unsup_boston()
+    # rent()
+    # meta_rent()
+    # unsup_rent()
+    # weight()
+    # meta_weight()
+    # unsup_weight()
+    # weather()
+    # additivity()
     bigX()

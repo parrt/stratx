@@ -68,7 +68,7 @@ def ice2lines(ice:np.ndarray) -> np.ndarray:
 
 def ice_plot(ice, colname, targetname="target", cats=None, ax=None, linewidth=.5, color='#9CD1E3',
              alpha=.1, title=None, yrange=None, pdp=True, pdp_linewidth=.5, pdp_alpha=1,
-             pdp_color='black'):
+             pdp_color='black', show_xlabel=True, show_ylabel=True):
     start = time.time()
     if ax is None:
         fig, ax = plt.subplots(1,1)
@@ -93,8 +93,10 @@ def ice_plot(ice, colname, targetname="target", cats=None, ax=None, linewidth=.5
         ax.set_ylim(*yrange)
     else:
         ax.set_ylim(miny, maxy)
-    ax.set_xlabel(colname)
-    ax.set_ylabel(targetname)
+    if show_xlabel:
+        ax.set_xlabel(colname)
+    if show_ylabel:
+        ax.set_ylabel(targetname)
     if title is not None:
         ax.set_title(title)
     lines = LineCollection(lines, linewidth=linewidth, alpha=alpha, color=color)

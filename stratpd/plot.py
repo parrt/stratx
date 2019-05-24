@@ -198,6 +198,10 @@ def stratpd_plot(X, y, colname, targetname=None,
     :return:
     """
 
+    if ntrees==1:
+        max_features = 1.0
+        bootstrap = False
+
     # print(f"Unique {colname} = {len(np.unique(X[colname]))}/{len(X)}")
     if supervised:
         rf = RandomForestRegressor(n_estimators=ntrees,
@@ -210,7 +214,7 @@ def stratpd_plot(X, y, colname, targetname=None,
         """
         Wow. Breiman's trick works in most cases. Falls apart on Boston housing MEDV target vs AGE
         """
-        # print("USING UNSUPERVISED MODE")
+        print("USING UNSUPERVISED MODE")
         X_synth, y_synth = conjure_twoclass(X)
         rf = RandomForestRegressor(n_estimators=ntrees,
                                    min_samples_leaf=min_samples_leaf,
@@ -218,10 +222,6 @@ def stratpd_plot(X, y, colname, targetname=None,
                                    max_features = 1.0,
                                    oob_score=False)
         rf.fit(X_synth.drop(colname,axis=1), y_synth)
-
-    if ntrees==1:
-        max_features = 1.0
-        bootstrap = False
 
     # print(f"\nModel wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     leaf_xranges, leaf_slopes = \
@@ -348,6 +348,7 @@ def catstratpd_plot(X, y, colname, targetname,
                     title=None,
                     bootstrap=False,
                     max_features=1.0,
+                    supervised=True,
                     show_xlabel=True,
                     show_ylabel=True):
     if min_samples_leaf is None:
@@ -361,11 +362,22 @@ def catstratpd_plot(X, y, colname, targetname,
         max_features = 1.0
         bootstrap = False
 
-    rf = RandomForestRegressor(n_estimators=ntrees,
-                               min_samples_leaf=min_samples_leaf,
-                               bootstrap = bootstrap,
-                               max_features = max_features,
-                               oob_score=False)
+    if supervised:
+        rf = RandomForestRegressor(n_estimators=ntrees,
+                                   min_samples_leaf=min_samples_leaf,
+                                   bootstrap = bootstrap,
+                                   max_features = max_features,
+                                   oob_score=False)
+        rf.fit(X.drop(colname, axis=1), y)
+    else:
+        print("USING UNSUPERVISED MODE")
+        X_synth, y_synth = conjure_twoclass(X)
+        rf = RandomForestRegressor(n_estimators=ntrees,
+                                   min_samples_leaf=min_samples_leaf,
+                                   bootstrap = False,
+                                   max_features = 1.0,
+                                   oob_score=False)
+        rf.fit(X_synth.drop(colname,axis=1), y_synth)
 
     # rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X.drop(colname, axis=1), y)

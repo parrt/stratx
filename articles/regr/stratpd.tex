@@ -154,18 +154,11 @@ As another example, compare the PD/ICE (a) and \spd{} (b) plots in \figref{fig:e
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.7]{images/height_vs_weight_pdp.png}
-\includegraphics[scale=0.7]{images/height_vs_weight_stratpd.png}
-\caption{{\bf  height vs weight}}
-\label{fig:height_vs_weight}
-\end{center}
-\end{figure}
-
-\begin{figure}[htbp]
-\begin{center}
+\includegraphics[scale=0.7]{images/height_vs_weight_stratpd.png}\\
 \includegraphics[scale=0.7]{images/education_vs_weight_pdp.png}
 \includegraphics[scale=0.7]{images/education_vs_weight_stratpd.png}
-\caption{{\bf  Edu vs weight}}
-\label{fig:edu_vs_weight}
+\caption{{\bf  height and educ vs weight}}
+\label{fig:height_education_vs_weight}
 \end{center}
 \end{figure}
 
@@ -217,7 +210,7 @@ The stratification approach can also capture how a categorical variable $x_c$ af
 
 \subsection{Approximating partial derivatives for large regions}\label{sec:patho}
 
-There is a pathological case to consider where training yields a decision tree with very large leaves, with perhaps hundreds or thousands of observations.  This can happen when \xnc{} contains a single categorical variable or when the only strongly-predictive variable in \xnc{} is categorical.  Training a single linear model through hundreds of $({\bf x}_i, y_i)$ observations is unlikely to capture the relationship.  The weather data set is a case in point. Choosing $x_c$=dayofyear, leaves \xnc{}=\{state,year\} and state accounts for most of the variation in target variable temperature.  \figref{fig:dayofyear_vs_temp}(a) shows the marginal plot of state versus temperature. A decision tree, $T$, splitting on just state, would group all 365 daily temperature observations for a single state into just one leaf. (The marginal plot is showing the complete sine waves but from the side, edge on.)  The \spd{} algorithm described so far would likely create just four linear models, one per state, and would fail to capture the sine waves. PD and ICE plots, on the other hand, identify the noisy sine waves, as shown in \figref{fig:dayofyear_vs_temp}(b). \todo{uses random forest with how many trees for pd/ice?}
+There is a pathological case to consider where training yields a decision tree with very large leaves, with perhaps hundreds or thousands of observations.  This can happen when \xnc{} contains a single categorical variable or when the only strongly-predictive variable in \xnc{} is categorical.  Training a single linear model through hundreds of $(Lx, Ly)$ observations is unlikely to capture the relationship.  The weather data set is a case in point. Choosing $x_c$=dayofyear, leaves \xnc{}=\{state,year\} and state accounts for most of the variation in target variable temperature.  \figref{fig:dayofyear_vs_temp}(a) shows the marginal plot of state versus temperature. A decision tree, $T$, splitting on just state, would group all 365 daily temperature observations for a single state into just one leaf. (The marginal plot is showing the complete sine waves but from the side, edge on.)  The \spd{} algorithm described so far would likely create just four linear models, one per state, and would fail to capture the sine waves. PD and ICE plots, on the other hand, identify the noisy sine waves, as shown in \figref{fig:dayofyear_vs_temp}(b). \todo{uses random forest with how many trees for pd/ice?}
 
 To handle the special case where partitioning feature space \xnc{} yields a leaf, $L \in T$, with too many $x_c$ observations, \spd{} trains another decision tree, $T'$, to partition $L$'s $x_c$ space in more detail. In the worst case, every region of \xnc{} identified by $T$ is too large and \spd{} must create a new decision tree per $L \in T$. \algref{alg:StratPD} (lines 6-9) engages this mechanism when $|L|$ is greater than a threshold (default is 30 observations). The \spd{} plot in \figref{fig:dayofyear_vs_temp}(c) clearly shows the sinusoidal temperature fluctuations over the year. The PD/ICE plot is not smooth because it relies on predictions from a model that reproduces the noisy data, whereas the \spd{} plot is averaging slopes that are themselves smoothing agents.
 
@@ -235,51 +228,54 @@ Without this special case mechanism, the \spd{} plot would have to approximate a
 
 \subsection{Partitioning feature space with trees and forests}
 
-Stratification of $(x_{(-c)}, y)$ into regions of similar observations is at the core of our approach so it's worth examining how \spd{} partitions feature space in some detail.  The goal is to examine $(x_{ic}, y_i)$ pairs for groups of extremely similar \xnc{} values so fluctuations in $y$ are due solely to changes in $x_c$, which yields a piece of the partial dependence of $y$ on $x_c$. \spd{} looks for similar observations because, beyond a few variables, it's not possible to stratify observations by equal \xnc{} values. 
+Stratification of $(x_{(-c)}, y)$ into regions of similar observations is at the core of our approach so it's worth examining how \spd{} partitions feature space in more detail.  The goal is to examine $({\bf X}, {\bf y})$ for groups of extremely similar \xnc{} values so fluctuations in $y$ are due solely to changes in $x_c$, which yields a piece of the partial dependence of $y$ on $x_c$. \spd{} looks for similar observations because, beyond a few variables, it's not possible to stratify observations by equal \xnc{} values. 
 
-Inventing a new partitioning strategy is unnecessary because decision trees already exist that can tesselate \xnc{} feature space into small hypervolumes of similar observations. If a hypervolume is tight enough, then \xnc{} values are very similar and the slope of a regression line through $(Lx, Ly)$ is a good estimate of the partial derivative of $\frac{\partial y}{\partial x_{c}}$ in that region.  If the volume for leaf $L$ is too large, then \xnc{} observations in $L$ are not similar enough to conclude that changes in $y$ are due to $x_c$ alone. By default, our Python implementation of \spd{} creates decision trees with at least two observations per leaf, but depending on $y$, leaf size is unbounded. As discussed in \secref{sec:patho}, large leaves should themselves be partitioned into a collection of smaller leaves using another decision tree, but this time training on $x_c$ rather than \xnc{}.  Because training occurs on \xnc{}, leaf observations can have overlapping $x_c$ regions so, for a given range $R$, \spd{} averages the $\beta_L$ slopes for all $L \in R$ giving $\beta_R$.  The partial derivative across the entire $x_c$ range is the sorted collection of $\beta_R$.
+Inventing a new partitioning strategy is unnecessary because decision trees already exist that can tesselate \xnc{} feature space into small hypervolumes of similar observations. If a hypervolume is tight enough, then \xnc{} values are very similar and the slope of a regression line through $(Lx, Ly)$ is a good estimate of the partial derivative of $\frac{\partial y}{\partial x_{c}}$ in that region.  If the volume for leaf $L$ is too large, then \xnc{} observations in $L$ are not similar enough to conclude that changes in $y$ are due to $x_c$ alone. By default, our Python implementation of \spd{} creates decision trees with at least two observations per leaf, but depending on $y$, leaf size is unbounded. As discussed in \secref{sec:patho}, large leaves should themselves be partitioned into a collection of smaller leaves using another decision tree, but this time training and partitioning $x_c$ rather than \xnc{}.  Because training occurs on \xnc{}, leaf observations can have overlapping $x_c$ regions so, for a given range $R$, \spd{} averages the $\beta_L$ slopes for all $L \in R$ giving $\beta_R$.  The partial derivative across the entire $x_c$ range is the sorted collection of $\beta_R$.
 
-Decision trees are known to overfit like crazy and are considered weaker than Random Forests(tm) (RF) so \spd's use of decision trees rather than RFs seems an odd choice. In fact, using RFs was our initial approach and the \spd{} source code still supports them. (The only change to the algorithm described in this paper is to iterate over all leaves from all trees, rather than the leaves of a single tree, to collect $\beta_L$ slopes.)  Decision trees are sufficient for partial dependence, however, because the goal is to understand the population described by the data set, not to make predictions; that is what models are for. 
+Decision trees are known to overfit like mad, which was the impetus for the invention of Random Forests(tm) (RF) \cite{RF}.  \spd's use of decision trees rather than RFs, therefore, seems an odd choice. Indeed, using RFs was our initial approach and the \spd{} source code still supports them. (The only change to the algorithm described in this paper is to iterate over all leaves from all trees, rather than the leaves of a single tree, to collect $\beta_L$ slopes.)  Decision trees are sufficient for partial dependence, however, because the goal is to understand the population described by the data set, not to make predictions; that is what models are for. 
 
-To reduce overfitting, RFs bootstrap and select split variables from a subset of all variables in order to create uncorrelated trees. But, that means increasing bias to some degree because each tree is trained on roughly 2/3 of the training data and without considering some of the variables. Because the goal is to partition {\em all} observations that are similar in {\em all} variables into the same leaf, it is counterproductive to bootstrap and select variables from a subset. Because of this narrow application, there's no point in sacrificing some accuracy for the sake of generality.
+To reduce overfitting, RFs bootstrap and select split variables from a subset of all variables in order to create uncorrelated trees. But, that means increasing bias to some degree because each tree is trained on roughly 2/3 of the training data and without considering some of the variables. Because the goal is to group together {\em all} observations that are similar in {\em all} \xnc{} variables, it is counterproductive to bootstrap and select variables from a subset. Because partial dependence is meant to explore existing $(\bf X, y)$ data rather than future data, there's no point in sacrificing accuracy for the sake of generality. 
 
-random forests are also good at small data sets, need 5 trees for rent sparse bedroom data
+For the data sets we examined during the preparation of this paper, moving from a decision tree to a random forest of various sizes did not affect the partial dependence results; \figref{fig:weight_ntrees} and \figref{fig:rent_ntrees} show some typical results. The integrated partial derivative curves identified by the black dots do not change as the number of trees increases from left to right.  In one simulation run for the rent data set, we did see a difference in the partial dependence dots for an extreme value of the $x_{bedrooms}$ with very few $y$ values, but it's unclear which plot is correct for this real data set. (The answer is unclear because the true partial dependence for a variable of an unknown function is unknown.)
 
-Decision trees train on all observations and choose from among all variables when splitting feature space to create decision nodes.
+The blue lines representing piecewise partial derivative estimates increase in number as the number of partitions (leaves) increases.  Note that the variance of the partial derivative estimates is wider for RFs than for a single decision tree. This is expected because the decision tree leaves contain all observations in a feature space hypervolume and so the estimate will be less biased; RF leaves have at most 2/3, the bootstrapping population size estimate, of the observations for the same hypervolume. The education versus weight plots in \figref{fig:weight_ntrees} illustrate this most clearly. The blue ``cone'' around the partial dependence dots widens as the number of trees increases.  
 
-RF or decision tree; effect of ntrees on plots.
-
-
-y also has a role in training.; The regions are optimized to get similar y. 
-
-unsupervised
-
-
-tells us how to partition the feature space into similar groups that are adjacent regions and features space but have similar y. Technically we don't need supervised y but sometimes unsupervised fails, such in the case where p = 2 or p greater than two but with very weak predictors or noise.  The aim is not prediction; instead it is to partition the feature space into similar regions. Consequently we are not worried about over fitting, in fact we wanted to over fit in the sense that it is getting the best partition possible using all the data and all features. Generalization would suffer but we don't care because we want to know about this particular data set. 
-
-Decision trees mean we don't need to define a similarity measure and we don't need to define been with or another mechanism to draw regions. 
-
-
-from before: Observations $({\bf x}_{i}, y_i)$ that end up in a tree leaf are, by definition, in the same region of \xnc{} feature space. Training greedily partitions feature space in order to minimize variance of $y_i$ within regions, which partitions feature space into tighter and tighter regions.  Tighter regions imply more similar \xnc{} values.
-
-1, 5, 10, 30 trees
+Increasing the number of trees does not improve accuracy and increases the time complexity linearly in the number of trees, which is roughly what we see in practice.  For example, using a single decision tree to partition a 9000-observation rent data set sample and generate a plot takes 1.5s on our 4.0Ghz processor but about 50s for 30 trees (first row, far right of \figref{fig:rent_ntrees}).
 
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[scale=0.7]{images/education_vs_weight_ntrees.png}\\
-\includegraphics[scale=0.7]{images/pregnant_vs_weight_ntrees.png}\\
-\caption{{\bf  weight ntrees}}
+\includegraphics[scale=0.5]{images/height_pregnant_vs_weight_ntrees.png}
+\caption{{\bf  weight ntrees 1, 5, 10, 30 trees}}
 \label{fig:weight_ntrees}
 \end{center}
 \end{figure}
 
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[scale=0.7]{images/bathrooms_vs_price_ntrees.png}\\
-\includegraphics[scale=0.7]{images/bedrooms_vs_price_ntrees.png}\\
-\includegraphics[scale=0.7]{images/latitude_vs_price_ntrees.png}
-\caption{{\bf  rent ntrees}}
+\includegraphics[scale=0.5]{images/rent_ntrees.png}
+\caption{{\bf  rent ntrees 1, 5, 10, 30 trees}}
 \label{fig:rent_ntrees}
+\end{center}
+\end{figure}
+
+Decision trees choose feature space hypervolumes that minimize the variance in $y$, but $y$ is technically not needed to partition \xnc{} into similar regions. \cite{RFunsup} described how to use random forests in an unsupervised fashion by considering the original $\bf X$ matrix as class 1 and a synthesized $\bf X'$ as class 2, which works equally well for decision trees. $\bf X'$ is just $\bf X$ with each $x_j$ column permuted, effectively sampling from the $x_j$'s marginal distributions. \figref{fig:rent_weight_unsup} shows typical results from three variables from the rent data set and two variables from the synthesized weight data set.  The left column shows unsupervised partitioning of $\bf X$ and the right column shows the usual supervised partitioning with $(\bf X, y)$. The results are very similar but the variance of the partial derivative estimates for the unsupervised case appears to be a bit wider. The \spd{} unsupervised and supervised plots for categorical variable $x_{pregnant}$ in \figref{fig:rent_weight_unsup}(b) are virtually indistinguishable to the eye. 
+
+\figref{fig:boston_unsup} illustrates a case where unsupervised partitioning fails: AGE versus MEDV (median house value) from the well-known Boston housing data set \todo{ref ICE's use in their paper}. The top row shows the unsupervised then supervised \spd{} plots, while the bottom left is the traditional AGE versus MEDV marginal plot and the bottom right is the PD/ICE plot. We tried simulations using a random forest with 10 trees, but the unsupervised \spd{} plot was still erratic. The failure could be from the small size (506 observations), but in the end, there's no point in doing unsupervised partitioning when $y$ is always available. (Partial dependence makes no sense without $y$.)
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.7]{images/rent_unsup.png}
+\includegraphics[scale=0.7]{images/weight_unsup.png}
+\caption{{\bf  rent and weight unsupervised}}
+\label{fig:rent_weight_unsup}
+\end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.7]{images/boston_unsup.png}
+\caption{{\bf   Boston unsup}}
+\label{fig:boston_unsup}
 \end{center}
 \end{figure}
 
@@ -295,43 +291,14 @@ The data set has an equal number of males and females with $x_{pregnant} \sim U(
 weight = 120 + 10(x_{height} - min(x_{height})) + 30x_{pregnant} - 1.2x_{education}
 \]
 
+$y = 0.2x_1 - 5x_2 + 10x_2\mathbf{1}_{x_3 \geq 0} + \epsilon$, $x_1, x_2, x_3$ are U(-1,1), Sample size 1000
 
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[scale=0.7]{images/pregnant_vs_weight_stratpd.png}
-\includegraphics[scale=0.7]{images/pregnant_vs_weight_pdp.png}\\
-\includegraphics[scale=0.7]{images/sex_vs_weight_stratpd.png}
-\includegraphics[scale=0.7]{images/sex_vs_weight_pdp.png}
-\caption{{\bf  pregnant vs weight}}
-\label{fig:pregnant_vs_weight}
-\end{center}
-\end{figure}
-
-
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.7]{images/add_x1_y_stratpd.png}
-\includegraphics[scale=0.7]{images/add_x1_y_pdp.png}
-\\
-\includegraphics[scale=0.7]{images/add_x2_y_stratpd.png}
-\includegraphics[scale=0.7]{images/add_x2_y_pdp.png}
-\caption{{\bf  additive from ICE x1, x2 vs y; $y = x_1^2 + x_2 + \epsilon$, $x_1, x_2, x_3$ are U(-1,1) Sample size 1000}}
-\label{fig:add_x1_y_stratpd}
-\end{center}
-\end{figure}
-
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.7]{images/bigx_x1_y_stratpd.png}
-\includegraphics[scale=0.7]{images/bigx_x1_y_pdp.png}
-\\
-\includegraphics[scale=0.7]{images/bigx_x2_y_stratpd.png}
-\includegraphics[scale=0.7]{images/bigx_x2_y_pdp.png}
-\\
-\includegraphics[scale=0.7]{images/bigx_x3_y_stratpd.png}
-\includegraphics[scale=0.7]{images/bigx_x3_y_pdp.png}
-\caption{{\bf  big X from ICE $y = 0.2x_1 - 5x_2 + 10x_2\mathbf{1}_{x_3 \geq 0} + \epsilon$, $x_1, x_2, x_3$ are U(-1,1), Sample size 1000}}
-\label{fig:add_x1_y_stratpd}
+\includegraphics[scale=0.8]{images/bigx.png}
+\includegraphics[scale=0.7]{images/additivity.png}
+\caption{{\bf big X from ICE, additivity from PD/ICE}}
+\label{fig:bigx_y_stratpd}
 \end{center}
 \end{figure}
 
