@@ -238,7 +238,7 @@ def weather():
     df_cat_to_catcode(df)
     X = df.drop('temperature', axis=1)
     y = df['temperature']
-
+    figsize=(2.5,2.5)
     """
     The scale diff between states, obscures the sinusoidal nature of the
     dayofyear vs temp plot. With noise N(0,5) gotta zoom in -3,3 on mine too.
@@ -246,7 +246,7 @@ def weather():
     Flip to N(-5,5) which is more realistic and we see sinusoid for both, even at
     scale. yep, the N(0,5) was obscuring sine for both. 
     """
-    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
     stratpd_plot(X, y, 'dayofyear', 'temperature', ax=ax,
                  hires_min_samples_leaf=13,
                  yrange=(-15,15),
@@ -255,7 +255,7 @@ def weather():
     savefig(f"dayofyear_vs_temp_stratpd")
     plt.close()
 
-    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
     catstratpd_plot(X, y, 'state', 'temperature', cats=catencoders['state'],
                     sort=None,
                     alpha=.3,
@@ -268,14 +268,14 @@ def weather():
     rf = RandomForestRegressor(n_estimators=30, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
 
-    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = ice_predict(rf, X, 'dayofyear', 'temperature')
     ice_plot(ice, 'dayofyear', 'temperature', ax=ax, yrange=(-15,15))
     
     savefig(f"dayofyear_vs_temp_pdp")
     plt.close()
 
-    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = ice_predict(rf, X, 'state', 'temperature')
     ice_plot(ice, 'state', 'temperature', cats=catencoders['state'],
              ax=ax)
@@ -283,7 +283,7 @@ def weather():
     savefig(f"state_vs_temp_pdp")
     plt.close()
 
-    # fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+    # fig, ax = plt.subplots(1, 1, figsize=figsize)
     # rtreeviz_univar(ax,
     #                 X['state'], y,
     #                 feature_name='state',
@@ -292,7 +292,7 @@ def weather():
     # 
     # plt.show()
 
-    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
     ax.scatter(X['state'], y, alpha=.05, s=20)
     ax.set_xticklabels(np.concatenate([[''], catencoders['state'].values]))
     ax.set_xlabel("state")
@@ -301,7 +301,7 @@ def weather():
     savefig(f"state_vs_temp")
     plt.close()
 
-    fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
     df = df_raw.copy()
     avgtmp = df.groupby(['state','dayofyear'])[['temperature']].mean()
     avgtmp = avgtmp.reset_index()
@@ -646,6 +646,6 @@ if __name__ == '__main__':
     # weight()
     # meta_weight()
     # unsup_weight()
-    # weather()
+    weather()
     # additivity()
-    bigX()
+    # bigX()
