@@ -88,52 +88,38 @@ def rent():
     df_rent = df_rent.sample(n=9000)  # get a small subsample
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
-    figsize = (2.5,2.5)
+    figsize = (5,5)
+    colname='bathrooms'
 
-    def showcol(colname):
-        fig, ax = plt.subplots(1,1, figsize=figsize)
-        avg_per_baths = df_rent.groupby(colname).mean()['price']
-        ax.scatter(df_rent[colname], df_rent['price'], alpha=0.07, s=5)#, label="observation")
-        ax.scatter(np.unique(df_rent[colname]), avg_per_baths, s=6, c='black', label="average price/{colname}")
-        ax.set_xlabel(colname)#, fontsize=12)
-        ax.set_ylabel("Rent price")#, fontsize=12)
-        ax.set_ylim(0,10_000)
-        # ax.legend()
-        
-        savefig(f"{colname}_vs_price")
-        plt.close()
+    fig, axes = plt.subplots(2,2, figsize=figsize)
+    avg_per_baths = df_rent.groupby(colname).mean()['price']
+    axes[0,0].scatter(df_rent[colname], df_rent['price'], alpha=0.07, s=5)#, label="observation")
+    axes[0,0].scatter(np.unique(df_rent[colname]), avg_per_baths, s=6, c='black', label="average price/{colname}")
+    axes[0,0].set_ylabel("price")#, fontsize=12)
+    axes[0,0].set_ylim(0,10_000)
+    # ax.legend()
 
-        fig, ax = plt.subplots(1,1, figsize=figsize)
-        stratpd_plot(X, y, colname, 'price', ax=ax, alpha=.2, nlines=700)
-        ax.set_ylim(-1000,5000)
-        
-        savefig(f"{colname}_vs_price_stratpd")
-        plt.close()
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
+    rf.fit(X, y)
 
-        rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
-        rf.fit(X, y)
+    ice = ice_predict(rf, X, colname, 'price', nlines=1000)
+    ice_plot(ice, colname, 'price', alpha=.05, ax=axes[0,1], show_xlabel=False)
+    axes[0,1].set_ylim(-1000,5000)
 
-        fig, ax = plt.subplots(1,1, figsize=figsize)
-        ax.set_ylim(-1000,5000)
-        ice = ice_predict(rf, X, colname, 'price', nlines=1000)
-        ice_plot(ice, colname, 'price', alpha=.05, ax=ax)
-        
-        savefig(f"{colname}_vs_price_pdp")
-        plt.close()
+    lm = Lasso()
+    lm.fit(X, y)
 
-        lm = Lasso()
-        lm.fit(X, y)
+    ice = ice_predict(lm, X, colname, 'price', nlines=1000)
+    ice_plot(ice, colname, 'price', alpha=.05, ax=axes[1,0], show_ylabel=False)
+    axes[1,0].set_ylim(-1000,5000)
 
-        fig, ax = plt.subplots(1,1, figsize=figsize)
-        ice = ice_predict(lm, X, colname, 'price', nlines=1000)
-        ice_plot(ice, colname, 'price', alpha=.05, ax=ax)
-        ax.set_ylim(-1000,5000)
-        
-        savefig(f"{colname}_vs_price_pdp_lm")
-        plt.close()
+    stratpd_plot(X, y, colname, 'price', ax=axes[1,1], alpha=.2)
+    axes[1,1].set_ylim(-1000,5000)
 
-    # showcol('bedrooms')
-    showcol('bathrooms')
+    #axes[1,1].get_yaxis().set_visible(False)
+
+    savefig(f"{colname}_vs_price")
+    plt.close()
 
 
 def meta_rent():
@@ -277,8 +263,7 @@ def weather():
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = ice_predict(rf, X, 'state', 'temperature')
-    ice_plot(ice, 'state', 'temperature', cats=catencoders['state'],
-             ax=ax)
+    ice_plot(ice, 'state', 'temperature', cats=catencoders['state'], ax=ax)
     
     savefig(f"state_vs_temp_pdp")
     plt.close()
@@ -332,12 +317,14 @@ def weight():
     y = df['weight']
     figsize=(2.5,2.5)
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    stratpd_plot(X, y, 'education', 'weight', ax=ax, yrange=(-12, 0), alpha=.1, nlines=700)
+    stratpd_plot(X, y, 'education', 'weight', ax=ax, yrange=(-12, 0), alpha=.1, nlines=700, show_ylabel=False)
+#    ax.get_yaxis().set_visible(False)
     savefig(f"education_vs_weight_stratpd")
     plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    stratpd_plot(X, y, 'height', 'weight', ax=ax, yrange=(0, 160), alpha=.1, nlines=700)
+    stratpd_plot(X, y, 'height', 'weight', ax=ax, yrange=(0, 160), alpha=.1, nlines=700, show_ylabel=False)
+#    ax.get_yaxis().set_visible(False)
     savefig(f"height_vs_weight_stratpd")
     plt.close()
 
@@ -643,9 +630,9 @@ if __name__ == '__main__':
     # rent()
     # meta_rent()
     # unsup_rent()
-    # weight()
+    weight()
     # meta_weight()
     # unsup_weight()
-    weather()
+    # weather()
     # additivity()
     # bigX()
