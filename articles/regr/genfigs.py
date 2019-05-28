@@ -167,15 +167,11 @@ def unsup_rent():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     df_rent = load_rent()
     df_rent = df_rent.sample(n=9000, random_state=111)  # get a small subsample
-    X = df_rent.drop('price', axis=1)
-    y = df_rent['price']
 
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
 
-    supervised = False
-
-    fig, axes = plt.subplots(3, 2, figsize=(4,6), sharey=True)
+    fig, axes = plt.subplots(3, 2, figsize=(4,6))
 
     stratpd_plot(X, y, 'bedrooms', 'price', ax=axes[0,0], alpha=.2, supervised=False)
     stratpd_plot(X, y, 'bedrooms', 'price', ax=axes[0,1], alpha=.2, supervised=True)
@@ -629,10 +625,10 @@ if __name__ == '__main__':
     # unsup_boston()
     # rent()
     # meta_rent()
-    # unsup_rent()
-    weight()
+    unsup_rent()
+    # weight()
     # meta_weight()
-    # unsup_weight()
+    unsup_weight()
     # weather()
     # additivity()
     # bigX()
