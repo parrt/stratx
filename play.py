@@ -17,6 +17,7 @@ from rfpimp import *
 from scipy.integrate import cumtrapz
 from stratpd.plot import *
 from stratpd.ice import *
+from scipy.stats import spearmanr
 
 def df_string_to_cat(df:pd.DataFrame) -> dict:
     catencoders = {}
@@ -36,7 +37,7 @@ def toy_weight_data(n):
     df = pd.DataFrame()
     nmen = n//2
     nwomen = n//2
-    df['ID'] = range(100,100+n)
+    # df['ID'] = range(100,100+n)
     df['sex'] = ['M']*nmen + ['F']*nwomen
     df.loc[df['sex']=='F','pregnant'] = np.random.randint(0,2,size=(nwomen,))
     df.loc[df['sex']=='M','pregnant'] = 0
@@ -51,6 +52,28 @@ def toy_weight_data(n):
     df['pregnant'] = df['pregnant'].astype(bool)
     df['education'] = df['education'].astype(int)
     return df
+
+def dep_cars():
+    df_cars = pd.read_csv("notebooks/data/auto-mpg.csv")
+    df_cars = df_cars[df_cars['horsepower'] != '?']  # drop the few missing values
+    df_cars['horsepower'] = df_cars['horsepower'].astype(float)
+    df_cars.head(5)
+
+    X = df_cars[['horsepower', 'weight']]
+    print(feature_corr_matrix(X))
+    C = np.corrcoef(X.values.T)
+    print(C)
+
+def dep_weight():
+    df_raw = toy_weight_data(1000)
+    df = df_raw.copy()
+    catencoders = df_string_to_cat(df)
+    df_cat_to_catcode(df)
+    df['pregnant'] = df['pregnant'].astype(int)
+    X = df.drop('weight', axis=1)
+    print(feature_corr_matrix(X))
+    C = np.corrcoef(X.values.T)
+    print(C)
 
 def weight():
     df_raw = toy_weight_data(1000)
@@ -385,5 +408,7 @@ if __name__ == '__main__':
     # rent()
     # meta_rent()
     # weight()
+    dep_weight()
+    dep_cars()
     # meta_weight()
     # weather()

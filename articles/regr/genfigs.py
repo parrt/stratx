@@ -621,14 +621,79 @@ def unsup_boston():
     plt.close()
 
 
+def lm_plot(X, y, colname, targetname,ax=None):
+    r_col = LinearRegression()
+    r_col.fit(X[[colname]], y)
+    ax.scatter(X[colname], y, alpha=.12, label=None)
+    ax.set_xlabel(colname)
+    ax.set_ylabel(targetname)
+    col = X[colname]
+    # y_pred_hp = r_col.predict(col.values.reshape(-1, 1))
+    # ax.plot(col, y_pred_hp, ":", linewidth=1, c='red', label='y ~ horsepower')
+    r = LinearRegression()
+    r.fit(X, y)
+    xcol = np.linspace(np.min(col), np.max(col), num=100)
+    ci = X.columns.get_loc(colname)
+    ax.plot(xcol, xcol * r.coef_[ci] + r_col.intercept_, linewidth=1, c='orange', label=f"$\\beta_{{{colname}}}$")
+    left30 = xcol[int(len(xcol) * .3)]
+    ax.text(left30, left30*r.coef_[ci] + r_col.intercept_, f"$\\beta_{{{colname}}}$={r.coef_[ci]:.3f}")
+
+def cars():
+    df_cars = pd.read_csv("../../notebooks/data/auto-mpg.csv")
+    df_cars = df_cars[df_cars['horsepower'] != '?']  # drop the few missing values
+    df_cars['horsepower'] = df_cars['horsepower'].astype(float)
+    df_cars.head(5)
+
+    X = df_cars[['horsepower', 'weight']]
+    y = df_cars['mpg']
+
+    fig, axes = plt.subplots(2, 3, figsize=(8,4))
+    lm_plot(X, y, 'horsepower', 'mpg', ax=axes[0,0])
+
+    lm_plot(X, y, 'weight', 'mpg', ax=axes[1,0])
+
+    stratpd_plot(X, y, 'horsepower', 'mpg', ax=axes[0,2], xrange=(45,235), yrange=(-20,20), show_ylabel=False)
+    stratpd_plot(X, y, 'weight', 'mpg', ax=axes[1,2], xrange=(1600,5200), yrange=(-20,20), show_ylabel=False)
+
+    rf = RandomForestRegressor(n_estimators=50, min_samples_leaf=1, oob_score=True)
+    rf.fit(X, y)
+    ice = ice_predict(rf, X, 'horsepower', 'mpg', numx=100)
+    ice_plot(ice, 'horsepower', 'mpg', ax=axes[0, 1], yrange=(-20,20), show_ylabel=False)
+    ice = ice_predict(rf, X, 'weight', 'mpg', numx=100)
+    ice_plot(ice, 'weight', 'mpg', ax=axes[1, 1], yrange=(-20,20), show_ylabel=False)
+
+    # draw regr line for horsepower
+    r = LinearRegression()
+    r.fit(X, y)
+    colname = 'horsepower'
+    col = X[colname]
+    xcol = np.linspace(np.min(col), np.max(col), num=100)
+    ci = X.columns.get_loc(colname)
+    beta0 = -r.coef_[ci]*min(col) # solved for beta0 to get y-intercept
+    axes[0,1].plot(xcol, xcol * r.coef_[ci], linewidth=1, c='orange', label=f"$\\beta_{{{colname}}}$")
+    axes[0,2].plot(xcol, xcol * r.coef_[ci]+4, linewidth=1, c='orange', label=f"$\\beta_{{{colname}}}$")
+
+    # draw regr line for weight
+    colname = 'weight'
+    col = X[colname]
+    xcol = np.linspace(np.min(col), np.max(col), num=100)
+    ci = X.columns.get_loc(colname)
+    beta0 = -r.coef_[ci]*min(col) # solved for beta0 to get y-intercept
+    axes[1,1].plot(xcol, xcol * r.coef_[ci]+12, linewidth=1, c='orange', label=f"$\\beta_{{{colname}}}$")
+    axes[1,2].plot(xcol, xcol * r.coef_[ci]+13, linewidth=1, c='orange', label=f"$\\beta_{{{colname}}}$")
+    axes[1, 1].set_xlim(1600,5200)
+    savefig("cars")
+
+
 if __name__ == '__main__':
+    cars()
     # unsup_boston()
     # rent()
     # meta_rent()
-    unsup_rent()
+    # unsup_rent()
     # weight()
     # meta_weight()
-    unsup_weight()
+    # unsup_weight()
     # weather()
     # additivity()
     # bigX()
