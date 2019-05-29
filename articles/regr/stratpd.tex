@@ -362,13 +362,13 @@ Actually, the R version of personal dependence may actually do this. See https:/
 \SetAlgoSkip{}
 \SetInd{.5em}{.5em}
 \TitleOfAlgo{{\em StratPD}($X$, $\bf y$, $c$, $hires$=30) {\bf returns} collection of $\beta$ coefficients, $\hat{y}$}
-Train random forest regressor {\it rf} on (\xnc{}, $\bf y$)\\
-$leaves$ = leaves(trees({\it rf}))\\
+Train decision tree regressor $T$ on (\xnc{}, $\bf y$)\\
+$leaves$ = leaves($T$)\\
 \ForEach{leaf $L \in leaves$}{
 	$(Lx, Ly)$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
 	\If{$|L| > hires$}{
-		Train random forest regressor {\it rf'} on $(Lx, Ly)$\\
-		Add leaves(trees({\it rf'})) to $leaves$\\
+		Train decision tree regressor $T'$ on $(Lx, Ly)$\\
+		Add leaves($T'$) to $leaves$\\
 	}
 	$R_L$ = $[min(Lx), max(Lx)]$\\
 	\lIf{left$(R_L)$ = right$(R_r)$}{{\bf continue}}\\
@@ -377,7 +377,7 @@ $leaves$ = leaves(trees({\it rf}))\\
 $uniqx$ = sorted(unique($x_c$))\\
 \For{$i=1$ {\bf to} $|uniqx|-1$}{
 	$R$ = $(uniqx_i, uniqx_{i+1})$\\
-	\ForEach{leaf $L \in {\it rf}$}{
+	\ForEach{leaf $L \in leaves$}{
 		$\beta_{R} = \frac{1}{|R_L \in R|}\Sigma_{R_L \in R}\beta_L$\\
 	}
 }
@@ -393,9 +393,9 @@ $\hat{y}$ = numerically integrate $\beta_R$'s at $uniqx$\\
 \SetAlgoSkip{}
 \SetInd{.5em}{.5em}
 \TitleOfAlgo{{\em CatStratPD}($X$, $\bf y$, $c$) {\bf returns} dictionary mapping category to effect on $y$}
-Train random forest regressor {\it rf} on (\xnc{}, $\bf y$)\\
+Train decision tree regressor $T$ on (\xnc{}, $\bf y$)\\
 Let $D$ be dictionary mapping category to $y$ value\\
-\ForEach{leaf $L \in {\it rf}$}{
+\ForEach{leaf $L \in T$}{
 	$(Lx, Ly)$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
 	\ForEach{$cat \in Lx$}{
 		$cat_y$ = $Ly[Lx=cat]$\\

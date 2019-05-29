@@ -163,7 +163,7 @@ def avg_slope_at_x(uniq_x, leaf_ranges, leaf_slopes):
     return avg_slope_at_x
 
 
-def stratpd_plot(X, y, colname, targetname=None,
+def plot_stratpd(X, y, colname, targetname=None,
                  ax=None,
                  ntrees=1,
                  min_samples_leaf=2,
@@ -337,7 +337,7 @@ def catwise_leaves(rf, X, y, colname):
     return leaf_histos
 
 
-def catstratpd_plot(X, y, colname, targetname,
+def plot_catstratpd(X, y, colname, targetname,
                     cats=None,
                     ax=None,
                     sort='ascending',

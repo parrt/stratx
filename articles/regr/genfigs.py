@@ -113,7 +113,7 @@ def rent():
     ice_plot(ice, colname, 'price', alpha=.05, ax=axes[1,0], show_ylabel=False)
     axes[1,0].set_ylim(-1000,5000)
 
-    stratpd_plot(X, y, colname, 'price', ax=axes[1,1], alpha=.2)
+    plot_stratpd(X, y, colname, 'price', ax=axes[1, 1], alpha=.2)
     axes[1,1].set_ylim(-1000,5000)
 
     #axes[1,1].get_yaxis().set_visible(False)
@@ -137,7 +137,7 @@ def meta_rent():
     def onevar(colname, row, yrange=None):
         alpha = 0.08
         for i, t in enumerate([1, 5, 10, 30]):
-            stratpd_plot(X, y, colname, 'price', ax=axes[row,i], alpha=alpha,
+            plot_stratpd(X, y, colname, 'price', ax=axes[row, i], alpha=alpha,
                          yrange=yrange,
                          supervised=supervised,
                          show_ylabel = t==1,
@@ -173,14 +173,14 @@ def unsup_rent():
 
     fig, axes = plt.subplots(3, 2, figsize=(4,6))
 
-    stratpd_plot(X, y, 'bedrooms', 'price', ax=axes[0,0], alpha=.2, supervised=False)
-    stratpd_plot(X, y, 'bedrooms', 'price', ax=axes[0,1], alpha=.2, supervised=True)
+    plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 0], alpha=.2, supervised=False)
+    plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 1], alpha=.2, supervised=True)
 
-    stratpd_plot(X, y, 'bathrooms', 'price', ax=axes[1,0], alpha=.2, supervised=False)
-    stratpd_plot(X, y, 'bathrooms', 'price', ax=axes[1,1], alpha=.2, supervised=True)
+    plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 0], alpha=.2, supervised=False)
+    plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 1], alpha=.2, supervised=True)
 
-    stratpd_plot(X, y, 'latitude', 'price', ax=axes[2,0], alpha=.2, supervised=False)
-    stratpd_plot(X, y, 'latitude', 'price', ax=axes[2,1], alpha=.2, supervised=True)
+    plot_stratpd(X, y, 'latitude', 'price', ax=axes[2, 0], alpha=.2, supervised=False)
+    plot_stratpd(X, y, 'latitude', 'price', ax=axes[2, 1], alpha=.2, supervised=True)
 
     for i in range(3):
         axes[i,1].get_yaxis().set_visible(False)
@@ -229,7 +229,7 @@ def weather():
     scale. yep, the N(0,5) was obscuring sine for both. 
     """
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    stratpd_plot(X, y, 'dayofyear', 'temperature', ax=ax,
+    plot_stratpd(X, y, 'dayofyear', 'temperature', ax=ax,
                  hires_min_samples_leaf=13,
                  yrange=(-15,15),
                  pdp_dot_size=2, alpha=.5)
@@ -238,11 +238,11 @@ def weather():
     plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    catstratpd_plot(X, y, 'state', 'temperature', cats=catencoders['state'],
+    plot_catstratpd(X, y, 'state', 'temperature', cats=catencoders['state'],
                     sort=None,
                     alpha=.3,
                     min_samples_leaf=11,
-                 ax=ax)  # , yrange=(0,160))
+                    ax=ax)  # , yrange=(0,160))
     
     savefig(f"state_vs_temp_stratpd")
     plt.close()
@@ -313,19 +313,19 @@ def weight():
     y = df['weight']
     figsize=(2.5,2.5)
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    stratpd_plot(X, y, 'education', 'weight', ax=ax, yrange=(-12, 0), alpha=.1, nlines=700, show_ylabel=False)
+    plot_stratpd(X, y, 'education', 'weight', ax=ax, yrange=(-12, 0), alpha=.1, nlines=700, show_ylabel=False)
 #    ax.get_yaxis().set_visible(False)
     savefig(f"education_vs_weight_stratpd")
     plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    stratpd_plot(X, y, 'height', 'weight', ax=ax, yrange=(0, 160), alpha=.1, nlines=700, show_ylabel=False)
+    plot_stratpd(X, y, 'height', 'weight', ax=ax, yrange=(0, 160), alpha=.1, nlines=700, show_ylabel=False)
 #    ax.get_yaxis().set_visible(False)
     savefig(f"height_vs_weight_stratpd")
     plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    catstratpd_plot(X, y, 'sex', 'weight', ax=ax,
+    plot_catstratpd(X, y, 'sex', 'weight', ax=ax,
                     alpha=.2,
                     cats=df_raw['sex'].unique(),
                     yrange=(0, 5)
@@ -334,7 +334,7 @@ def weight():
     plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    catstratpd_plot(X, y, 'pregnant', 'weight', ax=ax,
+    plot_catstratpd(X, y, 'pregnant', 'weight', ax=ax,
                     alpha=.2,
                     cats=df_raw['pregnant'].unique(),
                     yrange=(-5,35)
@@ -383,14 +383,14 @@ def unsup_weight():
     y = df['weight']
 
     fig, axes = plt.subplots(2, 2, figsize=(4, 4))
-    stratpd_plot(X, y, 'education', 'weight', ax=axes[0,0], yrange=(-12, 0), alpha=.1, nlines=700, supervised=False)
-    stratpd_plot(X, y, 'education', 'weight', ax=axes[0,1], yrange=(-12, 0), alpha=.1, nlines=700, supervised=True)
+    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 0], yrange=(-12, 0), alpha=.1, nlines=700, supervised=False)
+    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 1], yrange=(-12, 0), alpha=.1, nlines=700, supervised=True)
 
-    catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[1,0],
+    plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 0],
                     alpha=.2,
                     cats=df_raw['pregnant'].unique(),
                     yrange=(-5,35), supervised=False)
-    catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[1,1],
+    plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 1],
                     alpha=.2,
                     cats=df_raw['pregnant'].unique(),
                     yrange=(-5,35), supervised=True)
@@ -417,13 +417,13 @@ def meta_weight():
     for i in range(1,4):
         axes[0,i].get_yaxis().set_visible(False)
         axes[1, i].get_yaxis().set_visible(False)
-    stratpd_plot(X, y, 'education', 'weight', ax=axes[0,0], yrange=(-12,0), alpha=.05, pdp_dot_size=10, show_ylabel=True,
+    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 0], yrange=(-12, 0), alpha=.05, pdp_dot_size=10, show_ylabel=True,
                  ntrees=1, max_features=1.0, bootstrap=False)
-    stratpd_plot(X, y, 'education', 'weight', ax=axes[0,1], yrange=(-12,0), alpha=.05, pdp_dot_size=10, show_ylabel=False,
+    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 1], yrange=(-12, 0), alpha=.05, pdp_dot_size=10, show_ylabel=False,
                  ntrees=5, max_features='auto', bootstrap=True)
-    stratpd_plot(X, y, 'education', 'weight', ax=axes[0,2], yrange=(-12,0), alpha=.05, pdp_dot_size=10, show_ylabel=False,
+    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 2], yrange=(-12, 0), alpha=.05, pdp_dot_size=10, show_ylabel=False,
                  ntrees=10, max_features = 'auto', bootstrap = True)
-    stratpd_plot(X, y, 'education', 'weight', ax=axes[0,3], yrange=(-12,0), alpha=.05, pdp_dot_size=10, show_ylabel=False,
+    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 3], yrange=(-12, 0), alpha=.05, pdp_dot_size=10, show_ylabel=False,
                  ntrees=30, max_features='auto', bootstrap=True)
 
     # stratpd_plot(X, y, 'height', 'weight', ax=axes[1,0], yrange=(0,160), alpha=.05, pdp_dot_size=10, show_ylabel=True,
@@ -435,18 +435,18 @@ def meta_weight():
     # stratpd_plot(X, y, 'height', 'weight', ax=axes[1,3], yrange=(0,160), alpha=.05, pdp_dot_size=10, show_ylabel=False,
     #              ntrees=30, max_features='auto', bootstrap=True)
 
-    catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[1,0], alpha=.2, cats=df_raw['pregnant'].unique(), show_ylabel=True,
-                     yrange=(0,35),
-                     ntrees=1, max_features=1.0, bootstrap=False)
-    catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[1,1], alpha=.2, cats=df_raw['pregnant'].unique(), show_ylabel=False,
-                     yrange=(0,35),
-                     ntrees=5, max_features='auto', bootstrap=True)
-    catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[1,2], alpha=.2, cats=df_raw['pregnant'].unique(), show_ylabel=False,
-                     yrange=(0,35),
-                     ntrees=10, max_features='auto', bootstrap=True)
-    catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[1,3], alpha=.2, cats=df_raw['pregnant'].unique(), show_ylabel=False,
-                     yrange=(0,35),
-                     ntrees=30, max_features='auto', bootstrap=True)
+    plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 0], alpha=.2, cats=df_raw['pregnant'].unique(), show_ylabel=True,
+                    yrange=(0,35),
+                    ntrees=1, max_features=1.0, bootstrap=False)
+    plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 1], alpha=.2, cats=df_raw['pregnant'].unique(), show_ylabel=False,
+                    yrange=(0,35),
+                    ntrees=5, max_features='auto', bootstrap=True)
+    plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 2], alpha=.2, cats=df_raw['pregnant'].unique(), show_ylabel=False,
+                    yrange=(0,35),
+                    ntrees=10, max_features='auto', bootstrap=True)
+    plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 3], alpha=.2, cats=df_raw['pregnant'].unique(), show_ylabel=False,
+                    yrange=(0,35),
+                    ntrees=30, max_features='auto', bootstrap=True)
     
     savefig(f"height_pregnant_vs_weight_ntrees")
     plt.close()
@@ -505,10 +505,10 @@ def additivity():
     y = df['y']
 
     fig, axes = plt.subplots(2, 2, figsize=(4,4), sharey=True)
-    stratpd_plot(X, y, 'x1', 'y', ax=axes[0,0],
-              hires_threshold=10, yrange=(-1, 1), pdp_dot_size=3, alpha=.1, nlines=700)
+    plot_stratpd(X, y, 'x1', 'y', ax=axes[0, 0],
+                 hires_threshold=10, yrange=(-1, 1), pdp_dot_size=3, alpha=.1, nlines=700)
     
-    stratpd_plot(X, y, 'x2', 'y', ax=axes[1,0],
+    plot_stratpd(X, y, 'x2', 'y', ax=axes[1, 0],
                  hires_threshold=10, pdp_dot_size=3, alpha=.1, nlines=700)
     
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
@@ -552,7 +552,7 @@ def bigX():
     # Partial deriv is just 0.2 so this is correct. flat deriv curve, net effect line at slope .2
     # ICE is way too shallow and not line at n=1000 even
     fig, axes = plt.subplots(3, 2, figsize=(4, 6), sharey=True)
-    stratpd_plot(X, y, 'x1', 'y', ax=axes[0,0], yrange=(-4,4), alpha=.1, nlines=700, pdp_dot_size=2)
+    plot_stratpd(X, y, 'x1', 'y', ax=axes[0, 0], yrange=(-4, 4), alpha=.1, nlines=700, pdp_dot_size=2)
     
     # Partial deriv wrt x2 is -5 plus 10 about half the time so about 0
     # Should not expect a criss-cross like ICE since deriv of 1_x3>=0 is 0 everywhere
@@ -562,10 +562,10 @@ def bigX():
     # strip away x1/x3's effect upon y. When we do, x2 has no effect on y.
     # Key is asking right question. Don't look at marginal plot and say obvious.
     # Ask what is net effect at every x2? 0.
-    stratpd_plot(X, y, 'x2', 'y', ax=axes[1,0], yrange=(-4,4), alpha=.1, nlines=700, pdp_dot_size=2)
+    plot_stratpd(X, y, 'x2', 'y', ax=axes[1, 0], yrange=(-4, 4), alpha=.1, nlines=700, pdp_dot_size=2)
     
     # Partial deriv wrt x3 of 1_x3>=0 is 0 everywhere so result must be 0
-    stratpd_plot(X, y, 'x3', 'y', ax=axes[2,0], yrange=(-4,4), alpha=.1, nlines=700, pdp_dot_size=2)
+    plot_stratpd(X, y, 'x3', 'y', ax=axes[2, 0], yrange=(-4, 4), alpha=.1, nlines=700, pdp_dot_size=2)
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
@@ -599,8 +599,8 @@ def unsup_boston():
 
     fig, axes = plt.subplots(2, 2, figsize=(4, 4))
 
-    stratpd_plot(X, y, 'AGE', 'MEDV', ax=axes[0,0], yrange=(-20,20), supervised=False, show_xlabel=False)
-    stratpd_plot(X, y, 'AGE', 'MEDV', ax=axes[0,1], yrange=(-20,20), supervised=True, show_xlabel=False)
+    plot_stratpd(X, y, 'AGE', 'MEDV', ax=axes[0, 0], yrange=(-20, 20), supervised=False, show_xlabel=False)
+    plot_stratpd(X, y, 'AGE', 'MEDV', ax=axes[0, 1], yrange=(-20, 20), supervised=True, show_xlabel=False)
 
     rf = RandomForestRegressor(n_estimators=100, oob_score=True)
     rf.fit(X, y)
@@ -654,8 +654,8 @@ def cars():
 
     lm_plot(X, y, 'weight', 'mpg', ax=axes[1,0])
 
-    stratpd_plot(X, y, 'horsepower', 'mpg', ax=axes[0,2], xrange=(45,235), yrange=(-20,20), show_ylabel=False)
-    stratpd_plot(X, y, 'weight', 'mpg', ax=axes[1,2], xrange=(1600,5200), yrange=(-20,20), show_ylabel=False)
+    plot_stratpd(X, y, 'horsepower', 'mpg', ax=axes[0, 2], xrange=(45, 235), yrange=(-20, 20), show_ylabel=False)
+    plot_stratpd(X, y, 'weight', 'mpg', ax=axes[1, 2], xrange=(1600, 5200), yrange=(-20, 20), show_ylabel=False)
 
     rf = RandomForestRegressor(n_estimators=50, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)

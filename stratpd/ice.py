@@ -67,7 +67,7 @@ def ice2lines(ice:np.ndarray) -> np.ndarray:
 
 
 def ice_plot(ice, colname, targetname="target", cats=None, ax=None, linewidth=.5, color='#9CD1E3',
-             alpha=.1, title=None, yrange=None, pdp=True, pdp_linewidth=.5, pdp_alpha=1,
+             alpha=.1, title=None, xrange=None, yrange=None, pdp=True, pdp_linewidth=.5, pdp_alpha=1,
              pdp_color='black', show_xlabel=True, show_ylabel=True):
     start = time.time()
     if ax is None:
@@ -113,7 +113,10 @@ def ice_plot(ice, colname, targetname="target", cats=None, ax=None, linewidth=.5
             ax.set_xticklabels(cats)
             ax.set_xlim(1, ncats)
     else:
-        ax.set_xlim(minx, maxx)
+        if xrange is not None:
+            ax.set_xlim(*xrange)
+        else:
+            ax.set_xlim(minx, maxx)
 
     if pdp:
         uniq_values = ice.iloc[0,:]
