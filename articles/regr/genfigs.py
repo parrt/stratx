@@ -631,12 +631,14 @@ def lm_plot(X, y, colname, targetname,ax=None):
     # y_pred_hp = r_col.predict(col.values.reshape(-1, 1))
     # ax.plot(col, y_pred_hp, ":", linewidth=1, c='red', label='y ~ horsepower')
     r = LinearRegression()
-    r.fit(X, y)
+    r.fit(X[['horsepower','weight']], y)
     xcol = np.linspace(np.min(col), np.max(col), num=100)
     ci = X.columns.get_loc(colname)
     ax.plot(xcol, xcol * r.coef_[ci] + r_col.intercept_, linewidth=1, c='orange', label=f"$\\beta_{{{colname}}}$")
-    left30 = xcol[int(len(xcol) * .3)]
-    ax.text(left30, left30*r.coef_[ci] + r_col.intercept_, f"$\\beta_{{{colname}}}$={r.coef_[ci]:.3f}")
+    left40 = xcol[int(len(xcol) * .4)]
+    ax.text(min(xcol), max(y)*.94, f"$\hat{{y}} = \\beta_0 + \\beta_1 x_{{horsepower}} + \\beta_2 x_{{weight}}$")
+    i = 1 if colname=='horsepower' else 2
+    ax.text(left40, left40*r.coef_[ci] + r_col.intercept_, f"$\\beta_{i}$={r.coef_[ci]:.3f}")
 
 def cars():
     df_cars = pd.read_csv("../../notebooks/data/auto-mpg.csv")
@@ -647,7 +649,7 @@ def cars():
     X = df_cars[['horsepower', 'weight']]
     y = df_cars['mpg']
 
-    fig, axes = plt.subplots(2, 3, figsize=(8,4))
+    fig, axes = plt.subplots(2, 3, figsize=(9,4))
     lm_plot(X, y, 'horsepower', 'mpg', ax=axes[0,0])
 
     lm_plot(X, y, 'weight', 'mpg', ax=axes[1,0])
@@ -679,7 +681,7 @@ def cars():
     xcol = np.linspace(np.min(col), np.max(col), num=100)
     ci = X.columns.get_loc(colname)
     beta0 = -r.coef_[ci]*min(col) # solved for beta0 to get y-intercept
-    axes[1,1].plot(xcol, xcol * r.coef_[ci]+12, linewidth=1, c='orange', label=f"$\\beta_{{{colname}}}$")
+    axes[1,1].plot(xcol, xcol * r.coef_[ci]+11, linewidth=1, c='orange', label=f"$\\beta_{{{colname}}}$")
     axes[1,2].plot(xcol, xcol * r.coef_[ci]+13, linewidth=1, c='orange', label=f"$\\beta_{{{colname}}}$")
     axes[1, 1].set_xlim(1600,5200)
     savefig("cars")

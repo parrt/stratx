@@ -60,9 +60,15 @@ def dep_cars():
     df_cars.head(5)
 
     X = df_cars[['horsepower', 'weight']]
+    y = df_cars['mpg']
     print(feature_corr_matrix(X))
     C = np.corrcoef(X.values.T)
     print(C)
+
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
+    rf.fit(X, y)
+
+    print(feature_dependence_matrix(X))
 
 def dep_weight():
     df_raw = toy_weight_data(1000)
@@ -71,9 +77,15 @@ def dep_weight():
     df_cat_to_catcode(df)
     df['pregnant'] = df['pregnant'].astype(int)
     X = df.drop('weight', axis=1)
+    y = df['weight']
     print(feature_corr_matrix(X))
     C = np.corrcoef(X.values.T)
     print(C)
+
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
+    rf.fit(X, y)
+
+    print(feature_dependence_matrix(X))
 
 def weight():
     df_raw = toy_weight_data(1000)
