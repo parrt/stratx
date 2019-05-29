@@ -111,7 +111,7 @@ def collect_leaf_slopes(rf, X, y, colname, hires_threshold, hires_min_samples_le
         leaf_x = one_leaf_samples[colname].values
         leaf_y = y.iloc[samples].values
         if len(samples)>hires_threshold:
-            #print(f"BIG {len(samples)}!!!")
+            print(f"BIG {len(samples)}!!!")
             leaf_xranges_, leaf_yranges_, leaf_slopes_ = \
                 hires_slopes_from_one_leaf(leaf_x, leaf_y, hires_min_samples_leaf)
             leaf_slopes.extend(leaf_slopes_)
@@ -157,7 +157,6 @@ def avg_slope_at_x(uniq_x, leaf_ranges, leaf_slopes):
     # The value could be genuinely zero so we use nan not 0 for out-of-range
     # Now average horiz across the matrix, averaging within each range
     avg_slope_at_x = np.nanmean(slopes, axis=1)
-
     stop = time.time()
     # print(f"avg_slope_at_x {stop - start:.3f}s")
     return avg_slope_at_x
@@ -178,6 +177,7 @@ def plot_stratpd(X, y, colname, targetname=None,
                  show_dx_line=False,
                  show_xlabel=True,
                  show_ylabel=True,
+                 connect_pdp_dots=False,
                  supervised=True,
                  bootstrap=False,
                  max_features = 1.0):
@@ -227,8 +227,13 @@ def plot_stratpd(X, y, colname, targetname=None,
     leaf_xranges, leaf_slopes = \
         collect_leaf_slopes(rf, X, y, colname, hires_threshold=hires_threshold,
                             hires_min_samples_leaf=hires_min_samples_leaf)
-    uniq_x = sorted(np.unique(X[colname]))
+    uniq_x = np.array(sorted(np.unique(X[colname])))
     slope_at_x = avg_slope_at_x(uniq_x, leaf_xranges, leaf_slopes)
+    # Drop any nan slopes; implies we have no reliable data for that range
+    # Make sure to drop uniq_x values too :)
+    nanidx = ~np.isnan(slope_at_x)
+    slope_at_x = slope_at_x[nanidx]
+    uniq_x = uniq_x[nanidx]
     # print(f'uniq_x = [{", ".join([f"{x:4.1f}" for x in uniq_x])}]')
     # print(f'slopes = [{", ".join([f"{s:4.1f}" for s in slope_at_x])}]')
 
@@ -246,24 +251,15 @@ def plot_stratpd(X, y, colname, targetname=None,
     # print(uniq_x, len(uniq_x))
     # print(curve, len(curve))
 
-    # if 0 is in x feature and not on left/right edge, get y at 0
-    # and shift so that is x,y 0 point.
-    # nx = len(uniq_x)
-    # if uniq_x[int(nx*0.05)]<0 or uniq_x[-int(nx*0.05)]>0:
-    #     closest_x_to_0 = np.abs(uniq_x - 0.0).argmin()
-    #     y = curve[closest_x_to_0]
-    #     curve -= y  # shift
-    # Nah. starting with 0 is best
-
     ax.scatter(uniq_x, curve,
                s=pdp_dot_size, alpha=1,
                c='black', label="Avg piecewise linear")
 
-    if show_dx_line:
+    if connect_pdp_dots:
         ax.plot(uniq_x, curve, ':',
-                   alpha=1,
-                   lw=1,
-                   c='grey')
+                alpha=1,
+                lw=1,
+                c='grey')
 
     segments = []
     for xr, slope in zip(leaf_xranges, leaf_slopes):
@@ -292,6 +288,14 @@ def plot_stratpd(X, y, colname, targetname=None,
         ax.set_ylabel(targetname)
     if title is not None:
         ax.set_title(title)
+
+    if show_dx_line:
+        r = LinearRegression()
+        r.fit(uniq_x.reshape(-1,1), curve)
+        x = np.linspace(np.min(uniq_x), np.max(uniq_x), num=100)
+        ax.plot(x, x * r.coef_[0] + r.intercept_, linewidth=1, c='orange')
+
+    return uniq_x, curve
 
 
 def catwise_leaves(rf, X, y, colname):

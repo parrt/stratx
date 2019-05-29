@@ -18,6 +18,7 @@ from scipy.integrate import cumtrapz
 from stratpd.plot import *
 from stratpd.ice import *
 from scipy.stats import spearmanr
+from sklearn import svm
 
 def df_string_to_cat(df:pd.DataFrame) -> dict:
     catencoders = {}
@@ -416,8 +417,131 @@ def weather():
     plt.show()
 
 
+def multi_joint_distr():
+    np.random.seed(42)
+    df = pd.DataFrame(np.random.multivariate_normal([6, 6, 6, 6],
+                                                    [
+                                                        [1,  4, .5,  3],
+                                                        [4,  1,  2,  .3],
+                                                        [.5, 2,  1,  .8],
+                                                        [3,  .3, .8,  1]
+                                                    ],
+                                                    1000),
+                      columns=['x1','x2','x3','x4'])
+    df['y'] = df['x1'] + df['x2'] + df['x3'] + df['x4']
+    X = df.drop('y', axis=1)
+    y = df['y']
+
+    r = LinearRegression()
+    r.fit(X, y)
+    print(r.coef_) # should be all 1s
+
+    yrange = (-2, 15)
+    min_samples_leaf = 60
+
+    fig, axes = plt.subplots(5, 4, figsize=(8,8))
+
+    axes[0,0].scatter(X['x1'],y,s=5, alpha=.3)
+    axes[0, 0].set_xlim(0,12)
+    axes[0, 0].set_ylim(0,45)
+    axes[0,1].scatter(X['x2'],y,s=5, alpha=.3)
+    axes[0, 1].set_xlim(0,12)
+    axes[0, 1].set_ylim(3,45)
+    axes[0, 2].scatter(X['x3'],y,s=5, alpha=.3)
+    axes[0, 2].set_xlim(0,12)
+    axes[0, 2].set_ylim(3,45)
+    axes[0, 3].scatter(X['x4'],y,s=5, alpha=.3)
+    axes[0, 3].set_xlim(0,12)
+    axes[0, 3].set_ylim(3,45)
+
+    # axes[0, 0].set_xlabel("x1")
+    # axes[0, 1].set_xlabel("x2")
+    # axes[0, 2].set_xlabel("x3")
+    axes[0, 0].set_ylabel("y")
+
+    uniqx, pdp = \
+        plot_stratpd(X, y, 'x1', 'y', ax=axes[1,0], xrange=(0,12),
+                     # show_dx_line=True,
+                     min_samples_leaf=min_samples_leaf,
+                     hires_threshold=200,
+                     yrange=yrange, show_xlabel=False, show_ylabel=True)
+    r = LinearRegression()
+    r.fit(uniqx.reshape(-1, 1), pdp)
+    axes[1,0].text(3,7,f"Slope={r.coef_[0]:.2f}")
+
+    uniqx, pdp = \
+        plot_stratpd(X, y, 'x2', 'y', ax=axes[1,1], xrange=(0,12),
+                     # show_dx_line=True,
+                     min_samples_leaf=min_samples_leaf,
+                     hires_threshold=200,
+                     yrange=yrange, show_xlabel=False, show_ylabel=False)
+    r = LinearRegression()
+    r.fit(uniqx.reshape(-1, 1), pdp)
+    axes[1,1].text(3,7,f"Slope={r.coef_[0]:.2f}")
+
+    uniqx, pdp = \
+        plot_stratpd(X, y, 'x3', 'y', ax=axes[1,2], xrange=(0,12),
+                     # show_dx_line=True,
+                     min_samples_leaf=min_samples_leaf,
+                     hires_threshold=200,
+                     yrange=yrange, show_xlabel=False, show_ylabel=False)
+    r = LinearRegression()
+    r.fit(uniqx.reshape(-1, 1), pdp)
+    axes[1,2].text(3,7,f"Slope={r.coef_[0]:.2f}")
+
+    uniqx, pdp = \
+        plot_stratpd(X, y, 'x4', 'y', ax=axes[1,3], xrange=(0,12),
+                     # show_dx_line=True,
+                     min_samples_leaf=min_samples_leaf,
+                     hires_threshold=200,
+                     yrange=yrange, show_xlabel=False, show_ylabel=False)
+    r = LinearRegression()
+    r.fit(uniqx.reshape(-1, 1), pdp)
+    axes[1,3].text(3,7,f"Slope={r.coef_[0]:.2f}")
+
+    axes[1,0].text(3,10,'StratPD', horizontalalignment='left')
+    axes[1,1].text(3,10,'StratPD', horizontalalignment='left')
+    axes[1,2].text(3,10,'StratPD', horizontalalignment='left')
+    axes[1,3].text(3,10,'StratPD', horizontalalignment='left')
+
+    regrs = [
+        RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True),
+        svm.SVR(gamma='scale'),
+        LinearRegression()]
+    row = 2
+    for regr in regrs:
+        regr.fit(X, y)
+        rname = regr.__class__.__name__
+        if rname=='SVR':
+            rname = "SVM"
+        if rname=='RandomForestRegressor':
+            rname = "RF"
+        if rname=='LinearRegression':
+            rname = 'Linear'
+
+        show_xlabel = True if row==4 else False
+
+        axes[row,0].text(3, 10, rname, horizontalalignment='left')
+        axes[row,1].text(3, 10, rname, horizontalalignment='left')
+        axes[row,2].text(3, 10, rname, horizontalalignment='left')
+        axes[row,3].text(3, 10, rname, horizontalalignment='left')
+        ice = ice_predict(regr, X, 'x1', 'y')
+        ice_plot(ice, 'x1', 'y', ax=axes[row, 0], xrange=(0,12), yrange=yrange, show_xlabel=show_xlabel, show_ylabel=True)
+        ice = ice_predict(regr, X, 'x2', 'y')
+        ice_plot(ice, 'x2', 'y', ax=axes[row, 1], xrange=(0,12), yrange=yrange, show_xlabel=show_xlabel, show_ylabel=False)
+        ice = ice_predict(regr, X, 'x3', 'y')
+        ice_plot(ice, 'x3', 'y', ax=axes[row, 2], xrange=(0,12), yrange=yrange, show_xlabel=show_xlabel, show_ylabel=False)
+        ice = ice_predict(regr, X, 'x4', 'y')
+        ice_plot(ice, 'x4', 'y', ax=axes[row, 3], xrange=(0,12), yrange=yrange, show_xlabel=show_xlabel, show_ylabel=False)
+        row += 1
+
+    plt.tight_layout()
+    plt.show()
+
+
 if __name__ == '__main__':
-    rent()
+    multi_joint_distr()
+    # rent()
     # meta_rent()
     # weight()
     # dep_weight()
