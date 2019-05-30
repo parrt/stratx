@@ -21,7 +21,8 @@ from stratx.partdep import *
 from stratx.ice import *
 import inspect
 import shap
-
+from sklearn import svm
+from sklearn.neighbors import KNeighborsRegressor
 
 def df_string_to_cat(df:pd.DataFrame) -> dict:
     catencoders = {}
@@ -50,7 +51,7 @@ def savefig(filename):
     plt.tight_layout(pad=0, w_pad=0, h_pad=0)
     plt.savefig(f"images/{filename}.pdf")
     plt.savefig(f"images/{filename}.png", dpi=300)
-
+    plt.close()
 
 def boston():
     boston = load_boston()
@@ -140,9 +141,10 @@ def weight():
     X = df.drop('weight', axis=1)
     y = df['weight']
     plot_all_imp(X, y)
-
     savefig("weight")
 
+    plot_all_imp_and_models(X, y)
+    savefig("weight_models")
 
 def meta_weight():
     df_raw = toy_weight_data(1000)
@@ -169,7 +171,7 @@ def meta_weight():
     savefig("weight_leaf_size")
 
 
-def plot_all_imp(X, y, figsize=None):
+def plot_all_imp(X, y, model=None, figsize=None):
     if figsize is None:
         ncols = len(X.columns)
         if ncols<=5:
@@ -182,11 +184,12 @@ def plot_all_imp(X, y, figsize=None):
     I = strat_importances(X, y, min_samples_leaf=50, hires_threshold=1000)
     plot_importances(I, ax=axes[0], color='#fee090')
 
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=False)
-    rf.fit(X, y)
+    if model is None:
+        model = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=False)
+        model.fit(X, y)
 
     start = time.time()
-    explainer = shap.TreeExplainer(rf)
+    explainer = shap.TreeExplainer(model)
     shap_values = explainer.shap_values(X)
     shap_values = np.mean(np.abs(shap_values), axis=0) # measure avg magnitude
     stop = time.time()
@@ -196,13 +199,13 @@ def plot_all_imp(X, y, figsize=None):
     I = I.sort_values('Importance', ascending=False)
     plot_importances(I, ax=axes[1])
 
-    I = importances(rf, X, y)
+    I = importances(model, X, y)
     plot_importances(I, ax=axes[2])
 
-    I = dropcol_importances(rf, X, y)
+    I = dropcol_importances(model, X, y)
     plot_importances(I, ax=axes[3])
 
-    I = pd.DataFrame(data={'Feature':X.columns, 'Importance':rf.feature_importances_})
+    I = pd.DataFrame(data={'Feature':X.columns, 'Importance':model.feature_importances_})
     I = I.set_index('Feature')
     I = I.sort_values('Importance', ascending=False)
     plot_importances(I, ax=axes[4])
@@ -214,9 +217,82 @@ def plot_all_imp(X, y, figsize=None):
     axes[4].set_title('Gini')
 
 
+def plot_all_imp_and_models(X, y, figsize=None):
+    if figsize is None:
+        ncols = len(X.columns)
+        if ncols<=5:
+            figsize = (11, 0.3 * ncols * 3)
+        else:
+            figsize = (11, 0.22 * ncols * 3)
+
+    fig, axes = plt.subplots(nrows=3, ncols=5, figsize=figsize)
+
+    I = strat_importances(X, y, min_samples_leaf=50, hires_threshold=1000)
+    plot_importances(I, ax=axes[0,0], color='#fee090')
+
+    regrs = [
+        RandomForestRegressor(n_estimators=100, min_samples_leaf=1),
+#        svm.SVR(gamma='scale'),
+        KNeighborsRegressor(5),
+        LinearRegression()]
+
+    row = 0
+    for regr in regrs:
+        regr.fit(X, y)
+        rname = regr.__class__.__name__
+        if rname=='SVR':
+            rname = "SVM"
+        if rname=='RandomForestRegressor':
+            rname = "RF"
+        if rname=='LinearRegression':
+            rname = 'Linear'
+        axes[row,1].set_title(rname)
+        axes[row,2].set_title(rname)
+        axes[row,3].set_title(rname)
+        axes[row,4].set_title(rname)
+
+        start = time.time()
+        if isinstance(regr, RandomForestRegressor):
+            explainer = shap.TreeExplainer(regr)
+        elif isinstance(regr, LinearRegression):
+            explainer = shap.LinearExplainer(regr, X, feature_dependence="correlation", nsamples=100)
+        else:
+            print(f"regr is {regr}, {regr.__class__}")
+            explainer = shap.KernelExplainer(regr.predict, X.sample(n=25), link='identity')
+
+        shap_values = explainer.shap_values(X)
+        shap_values = np.mean(np.abs(shap_values), axis=0) # measure avg magnitude
+        stop = time.time()
+        print(f"SHAP time {(stop-start):.1f}s")
+        I = pd.DataFrame(data={'Feature':X.columns, 'Importance':shap_values})
+        I = I.set_index('Feature')
+        I = I.sort_values('Importance', ascending=False)
+        plot_importances(I, ax=axes[row,1])
+
+        I = importances(regr, X, y)
+        plot_importances(I, ax=axes[row,2])
+
+        I = dropcol_importances(regr, X, y)
+        plot_importances(I, ax=axes[row,3])
+
+        if isinstance(regr, RandomForestRegressor):
+            I = pd.DataFrame(data={'Feature':X.columns, 'Importance':regr.feature_importances_})
+            I = I.set_index('Feature')
+            I = I.sort_values('Importance', ascending=False)
+            plot_importances(I, ax=axes[row,4])
+
+        row += 1
+
+    axes[0,0].set_title('StratIm')
+    axes[0,1].set_title('SHAP')
+    axes[0,2].set_title('Permutation')
+    axes[0,3].set_title('Dropcol')
+    axes[0,4].set_title('Gini')
+
+
 if __name__ == '__main__':
-    rent()
-    boston()
-    cars()
+    # rent()
+    # boston()
+    # cars()
     weight()
-    meta_weight()
+    # meta_weight()

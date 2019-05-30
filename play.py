@@ -441,7 +441,7 @@ def multi_joint_distr():
     print(r.coef_) # should be all 1s
 
     yrange = (-2, 15)
-    min_samples_leaf = 60
+    min_samples_leaf = 50
 
     fig, axes = plt.subplots(5, 4, figsize=(8,8))
 
@@ -467,7 +467,7 @@ def multi_joint_distr():
         for j in range(1,4):
             axes[i,j].get_yaxis().set_visible(False)
 
-    uniqx, pdp = \
+    uniqx, pdp, r2_at_x = \
         plot_stratpd(X, y, 'x1', 'y', ax=axes[1,0], xrange=(0,12),
                      # show_dx_line=True,
                      min_samples_leaf=min_samples_leaf,
@@ -477,7 +477,7 @@ def multi_joint_distr():
     r.fit(uniqx.reshape(-1, 1), pdp)
     axes[1,0].text(3,7,f"Slope={r.coef_[0]:.2f}")
 
-    uniqx, pdp = \
+    uniqx, pdp, r2_at_x = \
         plot_stratpd(X, y, 'x2', 'y', ax=axes[1,1], xrange=(0,12),
                      # show_dx_line=True,
                      min_samples_leaf=min_samples_leaf,
@@ -487,7 +487,7 @@ def multi_joint_distr():
     r.fit(uniqx.reshape(-1, 1), pdp)
     axes[1,1].text(3,7,f"Slope={r.coef_[0]:.2f}")
 
-    uniqx, pdp = \
+    uniqx, pdp, r2_at_x = \
         plot_stratpd(X, y, 'x3', 'y', ax=axes[1,2], xrange=(0,12),
                      # show_dx_line=True,
                      min_samples_leaf=min_samples_leaf,
@@ -497,7 +497,7 @@ def multi_joint_distr():
     r.fit(uniqx.reshape(-1, 1), pdp)
     axes[1,2].text(3,7,f"Slope={r.coef_[0]:.2f}")
 
-    uniqx, pdp = \
+    uniqx, pdp, r2_at_x = \
         plot_stratpd(X, y, 'x4', 'y', ax=axes[1,3], xrange=(0,12),
                      # show_dx_line=True,
                      min_samples_leaf=min_samples_leaf,
@@ -614,9 +614,8 @@ def plot_all_imp(X, y):
 
 
 if __name__ == '__main__':
-    imp_boston()
     # imp_cars()
-    # multi_joint_distr()
+    multi_joint_distr()
     # rent()
     # meta_rent()
     # weight()
