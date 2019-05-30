@@ -459,6 +459,10 @@ def multi_joint_distr():
     # axes[0, 2].set_xlabel("x3")
     axes[0, 0].set_ylabel("y")
 
+    for i in range(5):
+        for j in range(1,4):
+            axes[i,j].get_yaxis().set_visible(False)
+
     uniqx, pdp = \
         plot_stratpd(X, y, 'x1', 'y', ax=axes[1,0], xrange=(0,12),
                      # show_dx_line=True,
