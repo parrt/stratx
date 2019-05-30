@@ -15,11 +15,12 @@ from sklearn.ensemble.partial_dependence import partial_dependence, plot_partial
 from pdpbox import pdp
 from rfpimp import *
 from scipy.integrate import cumtrapz
-from stratpd.plot import *
-from stratpd.ice import *
-from stratpd.featimp import *
+from stratx.partdep import *
+from stratx.ice import *
+from stratx.featimp import *
 from scipy.stats import spearmanr
 from sklearn import svm
+import shap
 
 def df_string_to_cat(df:pd.DataFrame) -> dict:
     catencoders = {}
@@ -554,14 +555,8 @@ def imp_boston():
     X = df.drop('MEDV', axis=1)
     y = df['MEDV']
 
-    colnames = X.columns.values
-    ncols = len(colnames)
-    # fig, axes = plt.subplots(1, 1)
+    plot_all_imp(X, y)
 
-    plot_strat_importances(X, y, 'MEDV')
-
-    plt.tight_layout()
-    plt.show()
 
 def imp_cars():
     df_cars = pd.read_csv("notebooks/data/auto-mpg.csv")
@@ -578,22 +573,40 @@ def imp_cars():
     # X = df_cars[['horsepower', 'weight', 'noise']]
     X = df_cars.drop(['mpg','name'], axis=1)
     y = df_cars['mpg']
+    plot_all_imp(X, y)
 
-    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(9,4))
+
+def plot_all_imp(X, y):
+    fig, axes = plt.subplots(nrows=1, ncols=5, figsize=(12,4))
     plot_strat_importances(X, y, ax=axes[0], min_samples_leaf=20)
 
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=False)
     rf.fit(X, y)
 
-    I = importances(rf, X, y)
+    explainer = shap.TreeExplainer(rf)
+    shap_values = explainer.shap_values(X)
+    shap_values = np.mean(np.abs(shap_values), axis=0) # measure avg magnitude
+    I = pd.DataFrame(data={'Feature':X.columns, 'Importance':shap_values})
+    I = I.set_index('Feature')
+    I = I.sort_values('Importance', ascending=False)
     plot_importances(I, ax=axes[1])
 
-    I = dropcol_importances(rf, X, y)
+    I = importances(rf, X, y)
     plot_importances(I, ax=axes[2])
 
+    I = dropcol_importances(rf, X, y)
+    plot_importances(I, ax=axes[3])
+
+    I = pd.DataFrame(data={'Feature':X.columns, 'Importance':rf.feature_importances_})
+    I = I.set_index('Feature')
+    I = I.sort_values('Importance', ascending=False)
+    plot_importances(I, ax=axes[4])
+
     axes[0].set_title('StratIm')
-    axes[1].set_title('Permutation')
-    axes[2].set_title('Dropcol')
+    axes[1].set_title('SHAP')
+    axes[2].set_title('Permutation')
+    axes[3].set_title('Dropcol')
+    axes[4].set_title('Gini')
     plt.tight_layout()
     plt.show()
 

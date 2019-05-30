@@ -16,8 +16,8 @@ from sklearn.ensemble.partial_dependence import partial_dependence, plot_partial
 from pdpbox import pdp
 from rfpimp import *
 from scipy.integrate import cumtrapz
-from stratpd.plot import *
-from stratpd.ice import *
+from stratx.partdep import *
+from stratx.ice import *
 import inspect
 
 def df_string_to_cat(df:pd.DataFrame) -> dict:

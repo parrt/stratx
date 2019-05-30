@@ -131,8 +131,6 @@ def collect_leaf_slopes(rf, X, y, colname, hires_threshold, hires_min_samples_le
         leaf_slopes.append(lm.coef_[0])
         r2 = lm.score(leaf_x.reshape(-1, 1), leaf_y)
         y_ = lm.predict(leaf_x.reshape(-1, 1))
-        if colname=='noise':
-            print(f"R^2 {r2}; leaf_x={leaf_x}, leaf_y={leaf_y}, predicts={y_}")
         leaf_r2.append(r2)
         leaf_xranges.append(r)
     leaf_slopes = np.array(leaf_slopes)

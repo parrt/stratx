@@ -14,7 +14,7 @@ from pandas.api.types import is_string_dtype, is_object_dtype, is_categorical_dt
     is_bool_dtype
 from scipy.integrate import cumtrapz
 from dtreeviz.trees import *
-from stratpd.plot import *
+from stratx.partdep import *
 
 
 def strat_importances(X, y,
@@ -51,7 +51,7 @@ def strat_importances(X, y,
     colnames = X.columns.values
     imp = []
     for colname in colnames:
-        print(colname)
+        # print(colname)
         i = getimp(X, y, colname)
         imp.append(i)
 
