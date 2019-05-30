@@ -19,9 +19,9 @@ from stratx.partdep import *
 
 def strat_importances(X, y,
                       ntrees=1,
-                      min_samples_leaf=10,
-                      hires_min_samples_leaf=5,
-                      hires_threshold=50,
+                      min_samples_leaf=50,
+                      hires_min_samples_leaf=50,
+                      hires_threshold=300,
                       bootstrap=False,
                       max_features=1.0):
 
@@ -61,28 +61,28 @@ def strat_importances(X, y,
     return I
 
 
-def plot_strat_importances(X, y,
-                           ax=None,
-                           ntrees=1,
-                           min_samples_leaf=10,
-                           hires_min_samples_leaf=5,
-                           hires_threshold=50,
-                           xrange=None,
-                           yrange=None,
-                           title=None,
-                           show_xlabel=True,
-                           show_ylabel=True,
-                           color='#fee090',
-                           bootstrap=False,
-                           max_features=1.0):
-
-    I = strat_importances(X, y, ntrees, min_samples_leaf, hires_min_samples_leaf, hires_threshold,
-                          bootstrap, max_features)
-    if ax is None:
-        fig, ax = plt.subplots(1,1)
-
-    from rfpimp import plot_importances
-    plot_importances(I, ax=ax, color=color)
+# def plot_strat_importances(X, y,
+#                            ax=None,
+#                            ntrees=1,
+#                            min_samples_leaf=10,
+#                            hires_min_samples_leaf=5,
+#                            hires_threshold=50,
+#                            xrange=None,
+#                            yrange=None,
+#                            title=None,
+#                            show_xlabel=True,
+#                            show_ylabel=True,
+#                            color='#fee090',
+#                            bootstrap=False,
+#                            max_features=1.0):
+#
+#     I = strat_importances(X, y, ntrees, min_samples_leaf, hires_min_samples_leaf, hires_threshold,
+#                           bootstrap, max_features)
+#     if ax is None:
+#         fig, ax = plt.subplots(1,1)
+#
+#     from rfpimp import plot_importances
+#     plot_importances(I, ax=ax, color=color)
     # ax.set_xlim(0, 1.0)
     # barcontainer = ax.barh(y=range(len(colnames)), width=I['Importance'],
     #                        #                                height=barcounts * unit,

@@ -551,6 +551,8 @@ def imp_boston():
     print(len(boston.data))
     df = pd.DataFrame(boston.data, columns=boston.feature_names)
     df['MEDV'] = boston.target
+    c = .5
+    df['noise'] = np.random.random(len(df)) * c
 
     X = df.drop('MEDV', axis=1)
     y = df['MEDV']
@@ -612,8 +614,8 @@ def plot_all_imp(X, y):
 
 
 if __name__ == '__main__':
-    # imp_boston()
-    imp_cars()
+    imp_boston()
+    # imp_cars()
     # multi_joint_distr()
     # rent()
     # meta_rent()

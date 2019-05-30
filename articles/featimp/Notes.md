@@ -25,6 +25,7 @@ simple idea: "amount of y variance explained by x_c with all else being equal"
 * insensitive to codep
 * simple
 * can show how feat impo changes over x_c range
+* much faster than SHAP; takes 26s with TreeExplainer for 2000 rent records. :(  95s for 4000 rent records.  There are 400k.
 
 ## Articles, related work
 
