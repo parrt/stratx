@@ -17,6 +17,7 @@ from rfpimp import *
 from scipy.integrate import cumtrapz
 from stratpd.plot import *
 from stratpd.ice import *
+from stratpd.featimp import *
 from scipy.stats import spearmanr
 from sklearn import svm
 
@@ -106,11 +107,13 @@ def weight():
 
     plot_stratpd(X, y, 'education', 'weight', ax=axes[1][0],
                  yrange=(-12,0),
-                 nlines = 500
+                 nlines = 500,
+                 hires_threshold=100
                  )
     plot_stratpd(X, y, 'height', 'weight', ax=axes[2][0],
                  yrange=(0,160),
-                 nlines = 1000
+                 nlines = 1000,
+                 hires_threshold=100
                  )
     plot_catstratpd(X, y, 'sex', 'weight', ax=axes[3][0],
                     alpha=.2,
@@ -217,7 +220,7 @@ def rent():
     df_rent = df[['bedrooms', 'bathrooms', 'latitude', 'longitude', 'price']]
     df_rent.head()
 
-    df_rent = df_rent.sample(n=8000)  # get a small subsample
+    # df_rent = df_rent.sample(n=8000)  # get a small subsample
 
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
@@ -347,21 +350,21 @@ def weather():
                  # min_samples_leaf=2,
                  hires_min_samples_leaf=13
                  , yrange=(-10,10))
-    plot_stratpd(X, y, 'dayofyear', 'temperature', ax=axes[1][1],
-                 ntrees=5,
-                 # min_samples_leaf=5,
-                 hires_min_samples_leaf=13
-                 , yrange=(-10,10))
-    plot_stratpd(X, y, 'dayofyear', 'temperature', ax=axes[2][0],
-                 ntrees=10,
-                 # min_samples_leaf=7,
-                 hires_min_samples_leaf=13
-                 , yrange=(-10,10))
-    plot_stratpd(X, y, 'dayofyear', 'temperature', ax=axes[2][1],
-                 ntrees=20,
-                 # min_samples_leaf=20,
-                 hires_min_samples_leaf=13
-                 , yrange=(-10,10))
+    # plot_stratpd(X, y, 'dayofyear', 'temperature', ax=axes[1][1],
+    #              ntrees=5,
+    #              # min_samples_leaf=5,
+    #              hires_min_samples_leaf=13
+    #              , yrange=(-10,10))
+    # plot_stratpd(X, y, 'dayofyear', 'temperature', ax=axes[2][0],
+    #              ntrees=10,
+    #              # min_samples_leaf=7,
+    #              hires_min_samples_leaf=13
+    #              , yrange=(-10,10))
+    # plot_stratpd(X, y, 'dayofyear', 'temperature', ax=axes[2][1],
+    #              ntrees=20,
+    #              # min_samples_leaf=20,
+    #              hires_min_samples_leaf=13
+    #              , yrange=(-10,10))
 
     # catstratpd_plot(X, y, 'state', 'temperature', cats=catencoders['state'],
     #                 ax=axes[2][0])  # , yrange=(0,160))
@@ -542,9 +545,63 @@ def multi_joint_distr():
     plt.tight_layout()
     plt.show()
 
+def imp_boston():
+    boston = load_boston()
+    print(len(boston.data))
+    df = pd.DataFrame(boston.data, columns=boston.feature_names)
+    df['MEDV'] = boston.target
+
+    X = df.drop('MEDV', axis=1)
+    y = df['MEDV']
+
+    colnames = X.columns.values
+    ncols = len(colnames)
+    # fig, axes = plt.subplots(1, 1)
+
+    plot_strat_importances(X, y, 'MEDV')
+
+    plt.tight_layout()
+    plt.show()
+
+def imp_cars():
+    df_cars = pd.read_csv("notebooks/data/auto-mpg.csv")
+    df_cars = df_cars[df_cars['horsepower'] != '?']  # drop the few missing values
+    df_cars['horsepower'] = df_cars['horsepower'].astype(float)
+    df_cars.head(5)
+
+    catencoders = df_string_to_cat(df_cars)
+    df_cat_to_catcode(df_cars)
+
+    c = .5
+    df_cars['noise'] = np.random.random(len(df_cars)) * c
+
+    # X = df_cars[['horsepower', 'weight', 'noise']]
+    X = df_cars.drop(['mpg','name'], axis=1)
+    y = df_cars['mpg']
+
+    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(9,4))
+    plot_strat_importances(X, y, ax=axes[0], min_samples_leaf=20)
+
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
+    rf.fit(X, y)
+
+    I = importances(rf, X, y)
+    plot_importances(I, ax=axes[1])
+
+    I = dropcol_importances(rf, X, y)
+    plot_importances(I, ax=axes[2])
+
+    axes[0].set_title('StratIm')
+    axes[1].set_title('Permutation')
+    axes[2].set_title('Dropcol')
+    plt.tight_layout()
+    plt.show()
+
 
 if __name__ == '__main__':
-    multi_joint_distr()
+    # imp_boston()
+    imp_cars()
+    # multi_joint_distr()
     # rent()
     # meta_rent()
     # weight()

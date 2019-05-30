@@ -73,6 +73,7 @@ def hires_slopes_from_one_leaf(x:np.ndarray, y:np.ndarray, hires_min_samples_lea
     rf.fit(X, y)
     leaves = leaf_samples(rf, X)
     leaf_slopes = []
+    leaf_r2 = []
     leaf_xranges = []
     leaf_yranges = []
     for samples in leaves:
@@ -85,11 +86,12 @@ def hires_slopes_from_one_leaf(x:np.ndarray, y:np.ndarray, hires_min_samples_lea
         lm = LinearRegression()
         lm.fit(leaf_x.reshape(-1, 1), leaf_y)
         leaf_slopes.append(lm.coef_[0])
+        leaf_r2.append(lm.score(leaf_x.reshape(-1, 1), leaf_y))
         leaf_xranges.append(r)
         leaf_yranges.append((leaf_y[0], leaf_y[-1]))
     stop = time.time()
     # print(f"hires_slopes_from_one_leaf {stop - start:.3f}s")
-    return leaf_xranges, leaf_yranges, leaf_slopes
+    return leaf_xranges, leaf_yranges, leaf_slopes, leaf_r2
 
 
 def collect_leaf_slopes(rf, X, y, colname, hires_threshold, hires_min_samples_leaf):
@@ -104,6 +106,7 @@ def collect_leaf_slopes(rf, X, y, colname, hires_threshold, hires_min_samples_le
     """
     start = time.time()
     leaf_slopes = []
+    leaf_r2 = []
     leaf_xranges = []
     leaves = leaf_samples(rf, X.drop(colname, axis=1))
     for samples in leaves:
@@ -112,9 +115,10 @@ def collect_leaf_slopes(rf, X, y, colname, hires_threshold, hires_min_samples_le
         leaf_y = y.iloc[samples].values
         if len(samples)>hires_threshold:
             print(f"BIG {len(samples)}!!!")
-            leaf_xranges_, leaf_yranges_, leaf_slopes_ = \
+            leaf_xranges_, leaf_yranges_, leaf_slopes_, leaf_r2_ = \
                 hires_slopes_from_one_leaf(leaf_x, leaf_y, hires_min_samples_leaf)
             leaf_slopes.extend(leaf_slopes_)
+            leaf_r2.extend(leaf_r2_)
             leaf_xranges.extend(leaf_xranges_)
             continue
 
@@ -125,29 +129,34 @@ def collect_leaf_slopes(rf, X, y, colname, hires_threshold, hires_min_samples_le
         lm = LinearRegression()
         lm.fit(leaf_x.reshape(-1, 1), leaf_y)
         leaf_slopes.append(lm.coef_[0])
+        r2 = lm.score(leaf_x.reshape(-1, 1), leaf_y)
+        y_ = lm.predict(leaf_x.reshape(-1, 1))
+        if colname=='noise':
+            print(f"R^2 {r2}; leaf_x={leaf_x}, leaf_y={leaf_y}, predicts={y_}")
+        leaf_r2.append(r2)
         leaf_xranges.append(r)
     leaf_slopes = np.array(leaf_slopes)
     leaf_xranges = np.array(leaf_xranges)
     stop = time.time()
     print(f"collect_leaf_slopes {stop - start:.3f}s")
-    return leaf_xranges, leaf_slopes
+    return leaf_xranges, leaf_slopes, leaf_r2
 
 
-def avg_slope_at_x(uniq_x, leaf_ranges, leaf_slopes):
+def avg_values_at_x(uniq_x, leaf_ranges, leaf_values):
     """
-    Slope at max(x) is NaN since we have not data beyond that point.
+    Value at max(x) is NaN since we have not data beyond that point.
     :param leaf_ranges:
-    :param leaf_slopes:
+    :param leaf_values:
     :return:
     """
     start = time.time()
     nx = len(uniq_x)
-    nslopes = len(leaf_slopes)
+    nslopes = len(leaf_values)
     slopes = np.zeros(shape=(nx, nslopes))
     i = 0  # leaf index; we get a line for each leaf
     # collect the slope for each range (taken from a leaf) as collection of
     # flat lines across the same x range
-    for r, slope in zip(leaf_ranges, leaf_slopes):
+    for r, slope in zip(leaf_ranges, leaf_values):
         s = np.full(nx, slope) # s has value scope at all locations (flat line)
         # now trim line so it's only valid in range r
         s[np.where(uniq_x < r[0])] = np.nan
@@ -156,10 +165,10 @@ def avg_slope_at_x(uniq_x, leaf_ranges, leaf_slopes):
         i += 1
     # The value could be genuinely zero so we use nan not 0 for out-of-range
     # Now average horiz across the matrix, averaging within each range
-    avg_slope_at_x = np.nanmean(slopes, axis=1)
+    avg_value_at_x = np.nanmean(slopes, axis=1)
     stop = time.time()
-    # print(f"avg_slope_at_x {stop - start:.3f}s")
-    return avg_slope_at_x
+    # print(f"avg_value_at_x {stop - start:.3f}s")
+    return avg_value_at_x
 
 
 def plot_stratpd(X, y, colname, targetname=None,
@@ -168,7 +177,7 @@ def plot_stratpd(X, y, colname, targetname=None,
                  min_samples_leaf=2,
                  hires_min_samples_leaf=5,
                  alpha=.5,
-                 hires_threshold=30,
+                 hires_threshold=50,
                  xrange=None,
                  yrange=None,
                  pdp_dot_size=5,
@@ -178,26 +187,11 @@ def plot_stratpd(X, y, colname, targetname=None,
                  show_xlabel=True,
                  show_ylabel=True,
                  connect_pdp_dots=False,
+                 show_importance=True,
+                 imp_color='#fdae61',
                  supervised=True,
                  bootstrap=False,
                  max_features = 1.0):
-    """
-
-    :param X:
-    :param y:
-    :param colname:
-    :param targetname:
-    :param ax:
-    :param ntrees:
-    :param min_samples_leaf:
-    :param alpha:
-    :param hires_threshold:
-    :param xrange:
-    :param yrange:
-    :param show_derivative:
-    :return:
-    """
-
     if ntrees==1:
         max_features = 1.0
         bootstrap = False
@@ -224,16 +218,18 @@ def plot_stratpd(X, y, colname, targetname=None,
         rf.fit(X_synth.drop(colname,axis=1), y_synth)
 
     # print(f"\nModel wo {colname} OOB R^2 {rf.oob_score_:.5f}")
-    leaf_xranges, leaf_slopes = \
+    leaf_xranges, leaf_slopes, leaf_r2 = \
         collect_leaf_slopes(rf, X, y, colname, hires_threshold=hires_threshold,
                             hires_min_samples_leaf=hires_min_samples_leaf)
     uniq_x = np.array(sorted(np.unique(X[colname])))
-    slope_at_x = avg_slope_at_x(uniq_x, leaf_xranges, leaf_slopes)
+    slope_at_x = avg_values_at_x(uniq_x, leaf_xranges, leaf_slopes)
+    r2_at_x = avg_values_at_x(uniq_x, leaf_xranges, leaf_r2)
     # Drop any nan slopes; implies we have no reliable data for that range
     # Make sure to drop uniq_x values too :)
-    nanidx = ~np.isnan(slope_at_x)
-    slope_at_x = slope_at_x[nanidx]
-    uniq_x = uniq_x[nanidx]
+    notnan_idx = ~np.isnan(slope_at_x) # should be same for slope_at_x and r2_at_x
+    slope_at_x = slope_at_x[notnan_idx]
+    uniq_x = uniq_x[notnan_idx]
+    r2_at_x = r2_at_x[notnan_idx]
     # print(f'uniq_x = [{", ".join([f"{x:4.1f}" for x in uniq_x])}]')
     # print(f'slopes = [{", ".join([f"{s:4.1f}" for s in slope_at_x])}]')
 
@@ -289,13 +285,24 @@ def plot_stratpd(X, y, colname, targetname=None,
     if title is not None:
         ax.set_title(title)
 
+    mx = np.max(uniq_x)
     if show_dx_line:
         r = LinearRegression()
         r.fit(uniq_x.reshape(-1,1), curve)
-        x = np.linspace(np.min(uniq_x), np.max(uniq_x), num=100)
+        x = np.linspace(np.min(uniq_x), mx, num=100)
         ax.plot(x, x * r.coef_[0] + r.intercept_, linewidth=1, c='orange')
 
-    return uniq_x, curve
+    if show_importance:
+        other = ax.twinx()
+        other.set_ylim(0,1.0)
+        other.tick_params(axis='y', colors=imp_color)
+        other.set_ylabel("Feature importance", fontdict={"color":imp_color})
+        other.plot(uniq_x, r2_at_x, lw=1, c=imp_color)
+        a,b = ax.get_xlim()
+        other.plot(b - (b-a)*.03, np.mean(r2_at_x), marker='>', c=imp_color)
+        # other.plot(mx - (mx-mnx)*.02, np.mean(r2_at_x), marker='>', c=imp_color)
+
+    return uniq_x, curve, r2_at_x
 
 
 def catwise_leaves(rf, X, y, colname):
