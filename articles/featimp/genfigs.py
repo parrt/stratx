@@ -147,7 +147,7 @@ def weight():
     savefig("weight_models")
 
 def meta_weight():
-    df_raw = toy_weight_data(1000)
+    df_raw = toy_weight_data(2000)
     df = df_raw.copy()
 
     addnoise(df, 3)
@@ -159,10 +159,10 @@ def meta_weight():
     y = df['weight']
 
     ncols = len(X.columns)
-    fig, axes = plt.subplots(nrows=1, ncols=6, figsize=(12, 0.22 * ncols))
+    fig, axes = plt.subplots(nrows=1, ncols=7, figsize=(15, 0.22 * ncols))
 
     i = 0
-    for n in [2, 5, 10, 20, 50, 100]:
+    for n in [2, 5, 10, 20, 50, 100, 200]:
         I = strat_importances(X, y, min_samples_leaf=n, hires_threshold=1000)
         plot_importances(I, ax=axes[i], color='#fee090')
         axes[i].set_title(f"{n} samples / leaf")
@@ -257,7 +257,7 @@ def plot_all_imp_and_models(X, y, figsize=None):
         elif isinstance(regr, LinearRegression):
             explainer = shap.LinearExplainer(regr, X, feature_dependence="correlation", nsamples=100)
         else:
-            print(f"regr is {regr}, {regr.__class__}")
+            # way too slow to be useful
             explainer = shap.KernelExplainer(regr.predict, X.sample(n=25), link='identity')
 
         shap_values = explainer.shap_values(X)
@@ -294,5 +294,5 @@ if __name__ == '__main__':
     # rent()
     # boston()
     # cars()
-    weight()
-    # meta_weight()
+    # weight()
+    meta_weight()

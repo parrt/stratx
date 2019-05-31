@@ -8,6 +8,7 @@ from sklearn.linear_model import LinearRegression, Lasso
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
+# from scipy.stats.rv_continuous import entropy as scipy_entropy
 
 import time
 from pandas.api.types import is_string_dtype, is_object_dtype, is_categorical_dtype, is_bool_dtype
@@ -94,6 +95,11 @@ def hires_slopes_from_one_leaf(x:np.ndarray, y:np.ndarray, hires_min_samples_lea
     return leaf_xranges, leaf_yranges, leaf_slopes, leaf_r2
 
 
+# def entropy(x, base=np.e):
+#     _, counts = np.unique(x, return_counts=True)
+#     return scipy_entropy(counts, base=base)
+
+
 def collect_leaf_slopes(rf, X, y, colname, hires_threshold, hires_min_samples_leaf):
     """
     For each leaf of each tree of the random forest rf (trained on all features
@@ -130,7 +136,10 @@ def collect_leaf_slopes(rf, X, y, colname, hires_threshold, hires_min_samples_le
         lm.fit(leaf_x.reshape(-1, 1), leaf_y)
         leaf_slopes.append(lm.coef_[0])
         r2 = lm.score(leaf_x.reshape(-1, 1), leaf_y)
-        y_ = lm.predict(leaf_x.reshape(-1, 1))
+        # print(f"Entropy of not {colname}")
+        # for i in range(len(X.columns)):
+        #     e = entropy(one_leaf_samples.iloc[:,i].values)
+        #     print(f"\tentropy of col {X.columns[i]}[{len(leaf_x)}] values = {e:.2f}")
         leaf_r2.append(r2)
         leaf_xranges.append(r)
     leaf_slopes = np.array(leaf_slopes)
