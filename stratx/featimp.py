@@ -21,8 +21,8 @@ def strat_importances(X, y,
                       ntrees=1,
                       min_samples_leaf=50,
                       hires_min_samples_leaf=50,
-                      hires_threshold=300,
-                      hires_window_width=.1,
+                      hires_r2_threshold=.3,
+                      hires_n_threshold=5,
                       bootstrap=False,
                       max_features=1.0):
 
@@ -35,8 +35,9 @@ def strat_importances(X, y,
                                    oob_score=False)
         rf.fit(X.drop(colname, axis=1), y)
         leaf_xranges, leaf_slopes, leaf_r2 = \
-            collect_leaf_slopes(rf, X, y, colname, hires_r2_threshold=hires_threshold,
-                                hires_min_samples_leaf=hires_min_samples_leaf, hires_window_width=hires_window_width)
+            collect_leaf_slopes(rf, X, y, colname, hires_r2_threshold=hires_r2_threshold,
+                                hires_min_samples_leaf=hires_min_samples_leaf,
+                                hires_n_threshold=hires_n_threshold)
         uniq_x = np.array(sorted(np.unique(X[colname])))
         r2_at_x = avg_values_at_x(uniq_x, leaf_xranges, leaf_r2)
         imp = np.nanmean(r2_at_x)

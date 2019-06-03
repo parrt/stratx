@@ -122,7 +122,7 @@ def rent():
     plt.close()
 
 
-def meta_rent():
+def rent_ntrees():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     df_rent = load_rent()
     df_rent = df_rent.sample(n=9000, random_state=111)  # get a small subsample
@@ -139,7 +139,7 @@ def meta_rent():
         for i, t in enumerate([1, 5, 10, 30]):
             plot_stratpd(X, y, colname, 'price', ax=axes[row, i], alpha=alpha,
                          yrange=yrange,
-                         hires_r2_threshold=0.5,
+                         min_r2_hires=0.5,
                          supervised=supervised,
                          show_ylabel = t==1,
                          ntrees=t)
@@ -157,11 +157,108 @@ def meta_rent():
     savefig(f"rent_ntrees")
     plt.close()
 
-    # fig, axes = plt.subplots(1, 4, figsize=(8,2), sharey=True)
-    # onevar('longitude', row=3, yrange=(-4000,4000))
-    # 
-    # savefig(f"longitude_vs_price_ntrees")
-    # plt.close()
+
+def meta_rent():
+    df_rent = load_rent()
+
+    # df_rent = df_rent.sample(n=8000, random_state=111)  # get a small subsample
+
+    X = df_rent.drop('price', axis=1)
+    y = df_rent['price']
+
+    min_r2_hires = .01
+    min_samples_leaf_hires = .1
+    plot_meta(X, y, colnames=['bedrooms','bathrooms','latitude','longitude'], targetname='rent',
+              min_r2_hires=min_r2_hires,
+              min_samples_leaf_hires=min_samples_leaf_hires)
+    savefig(f"meta_rent_r2_{min_r2_hires:.2f}_hires_{min_samples_leaf_hires:.2f}")
+    # plt.show()
+
+    min_r2_hires = .1
+    min_samples_leaf_hires = .1
+    plot_meta(X, y, colnames=['bedrooms','bathrooms','latitude','longitude'], targetname='rent',
+              min_r2_hires=min_r2_hires,
+              min_samples_leaf_hires=min_samples_leaf_hires)
+    savefig(f"meta_rent_r2_{min_r2_hires:.2f}_hires_{min_samples_leaf_hires:.2f}")
+
+    min_r2_hires = .1
+    min_samples_leaf_hires = .2
+    plot_meta(X, y, colnames=['bedrooms','bathrooms','latitude','longitude'], targetname='rent',
+              min_r2_hires=min_r2_hires,
+              min_samples_leaf_hires=min_samples_leaf_hires)
+    savefig(f"meta_rent_r2_{min_r2_hires:.2f}_hires_{min_samples_leaf_hires:.2f}")
+
+    min_r2_hires = .1
+    min_samples_leaf_hires = .3
+    plot_meta(X, y, colnames=['bedrooms','bathrooms','latitude','longitude'], targetname='rent',
+              min_r2_hires=min_r2_hires,
+              min_samples_leaf_hires=min_samples_leaf_hires)
+    savefig(f"meta_rent_r2_{min_r2_hires:.2f}_hires_{min_samples_leaf_hires:.2f}")
+
+    min_r2_hires = .5
+    min_samples_leaf_hires = .1
+    plot_meta(X, y, colnames=['bedrooms','bathrooms','latitude','longitude'], targetname='rent',
+              min_r2_hires=min_r2_hires,
+              min_samples_leaf_hires=min_samples_leaf_hires)
+    savefig(f"meta_rent_r2_{min_r2_hires:.2f}_hires_{min_samples_leaf_hires:.2f}")
+
+    # plt.show()
+
+
+def meta_boston():
+    boston = load_boston()
+    print(len(boston.data))
+    df = pd.DataFrame(boston.data, columns=boston.feature_names)
+    df['MEDV'] = boston.target
+
+    X = df.drop('MEDV', axis=1)
+    y = df['MEDV']
+
+    for min_r2_hires in [.01,.1,.2,.5]:
+        for min_samples_leaf_hires in [.01, .1, .2, .3]:
+            plot_meta(X, y, colnames=['LSTAT', 'RM', 'CRIM', 'DIS'], targetname='MEDV',
+                      min_r2_hires=min_r2_hires,
+                      min_samples_leaf_hires=min_samples_leaf_hires)
+            savefig(f"meta_boston_r2_{min_r2_hires:.2f}_hires_{min_samples_leaf_hires:.2f}")
+
+
+def marginal_plot(X, y, colname, targetname, ax=None):
+    ax.scatter(X[colname], y, alpha=.10, label=None)
+    ax.set_xlabel(colname)
+    ax.set_ylabel(targetname)
+    col = X[colname]
+
+    r = LinearRegression()
+    r.fit(X[[colname]], y)
+    xcol = np.linspace(np.min(col), np.max(col), num=100)
+    yhat = r.predict(xcol.reshape(-1, 1))
+    ax.plot(xcol, yhat, linewidth=1, c='orange', label=f"$\\beta_{{{colname}}}$")
+    ax.text(min(xcol)*1.02, max(y)*.95, f"$\\beta_{{{colname}}}$={r.coef_[0]:.3f}")
+
+
+def plot_meta(X, y, colnames, targetname, min_r2_hires, min_samples_leaf_hires, yrange=None):
+    min_samples_leaf_values = [2, 5, 10, 30, 50, 100, 200]
+
+    nrows = len(colnames)
+    ncols = len(min_samples_leaf_values)
+    fig, axes = plt.subplots(nrows, ncols+1, figsize=((ncols+1)*2.5, nrows*2.5))
+
+    row = 0
+    for colname in colnames:
+        marginal_plot(X, y, colname, targetname, ax=axes[row, 0])
+        col = 1
+        for meta in min_samples_leaf_values:
+            print(f"---------- min_samples_leaf={meta} ----------- ")
+            plot_stratpd(X, y, colname, 'price', ax=axes[row, col],
+                         min_r2_hires=min_r2_hires,
+                         min_samples_leaf_hires=min_samples_leaf_hires,
+                         min_samples_leaf=meta,
+                         yrange=yrange,
+                         ntrees=1)
+            axes[row, col].set_title(f"leafsz={meta}, min R^2={min_r2_hires:.2f}\nhires leafsz={min_samples_leaf_hires:.2f}",
+                                     fontsize=9)
+            col += 1
+        row += 1
 
 
 def unsup_rent():
@@ -231,7 +328,7 @@ def weather():
     """
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'dayofyear', 'temperature', ax=ax,
-                 hires_min_samples_leaf=15,
+                 min_samples_leaf_hires=15,
                  yrange=(-15,15),
                  pdp_dot_size=2, alpha=.5)
 
@@ -547,13 +644,13 @@ def meta_additivity():
     col = 1
     for s in [2, 30, 50, 60]:
         print(f"------------------- SIZE {s} --------------------")
-        hires_r2_threshold = .3
-        hires_min_samples_leaf = .25
+        min_r2_hires = .3
+        min_samples_leaf_hires = .25
         plot_stratpd(X, y, 'x1', 'y', ax=axes[0, col],
                      min_samples_leaf=s,
-                     hires_min_samples_leaf=hires_min_samples_leaf,
-                     hires_r2_threshold=hires_r2_threshold,
-                     hires_n_threshold=10,
+                     min_samples_leaf_hires=min_samples_leaf_hires,
+                     min_r2_hires=min_r2_hires,
+                     min_samples_hires=10,
                      show_importance=True,
                      yrange=(-1, 1),
                      pdp_dot_size=2, alpha=.4)
@@ -565,7 +662,7 @@ def meta_additivity():
                         target_name='y',
                         fontsize=10, show={'splits'})
 
-        axes[0,col].set_title(f"leaf sz {s}, hires {hires_r2_threshold}\nhires leaf sz {hires_min_samples_leaf}")
+        axes[0,col].set_title(f"leaf sz {s}, hires {min_r2_hires}\nhires leaf sz {min_samples_leaf_hires}")
         col += 1
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
@@ -712,7 +809,6 @@ def cars():
     df_cars = pd.read_csv("../../notebooks/data/auto-mpg.csv")
     df_cars = df_cars[df_cars['horsepower'] != '?']  # drop the few missing values
     df_cars['horsepower'] = df_cars['horsepower'].astype(float)
-    df_cars.head(5)
 
     X = df_cars[['horsepower', 'weight']]
     y = df_cars['mpg']
@@ -754,17 +850,36 @@ def cars():
     axes[1, 1].set_xlim(1600,5200)
     savefig("cars")
 
+def meta_cars():
+    df_cars = pd.read_csv("../../notebooks/data/auto-mpg.csv")
+    df_cars = df_cars[df_cars['horsepower'] != '?']  # drop the few missing values
+    df_cars['horsepower'] = df_cars['horsepower'].astype(float)
+
+    X = df_cars[['horsepower', 'weight']]
+    y = df_cars['mpg']
+
+    for min_r2_hires in [.01,.1,.2,.5]:
+        for min_samples_leaf_hires in [.01, .1, .2, .3]:
+            plot_meta(X, y, colnames=['horsepower','weight'], targetname='mpg',
+                      min_r2_hires=min_r2_hires,
+                      min_samples_leaf_hires=min_samples_leaf_hires)
+            savefig(f"meta_cars_r2_{min_r2_hires:.2f}_hires_{min_samples_leaf_hires:.2f}")
+            # plt.show()
+
 
 if __name__ == '__main__':
     # cars()
+    # meta_cars()
     # unsup_boston()
     # rent()
+    # rent_ntrees()
+    meta_boston()
     # meta_rent()
     # unsup_rent()
     # weight()
     # meta_weight()
     # unsup_weight()
     # weather()
-    meta_additivity()
+    # meta_additivity()
     # additivity()
     # bigX()

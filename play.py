@@ -273,37 +273,36 @@ def meta_rent():
     df_rent = df[['bedrooms', 'bathrooms', 'latitude', 'longitude', 'price']]
     df_rent.head()
 
-    df_rent = df_rent.sample(n=8000, random_state=111)  # get a small subsample
+    # df_rent = df_rent.sample(n=8000, random_state=111)  # get a small subsample
 
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
 
-    supervised = True
+    plot_meta(X, y, colnames=['bedrooms','bathrooms','latitude','longitude'])
 
-    def onevar(colname, row, yrange):
-        for i, t in enumerate([1, 1, 1, 1]):
-            plot_stratpd(X, y, colname, 'price', ax=axes[row, i], alpha=.05,
+
+def plot_meta(X, y, colnames, yrange=None):
+    min_samples_leaf_values = [2, 5, 10, 30, 50, 100, 200]
+
+    min_r2_hires = .2
+
+    nrows = len(colnames)
+    ncols = len(min_samples_leaf_values)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(ncols*3, nrows*3))
+    row = 0
+    for colname in colnames:
+        col = 0
+        for meta in min_samples_leaf_values:
+            print(f"---------- min_samples_leaf={meta} ----------- ")
+            plot_stratpd(X, y, colname, 'price', ax=axes[row, col],
+                         min_r2_hires=min_r2_hires,
+                         min_samples_leaf=meta,
                          yrange=yrange,
-                         supervised=supervised,
-                         ntrees=t)
+                         ntrees=1)
+            axes[row, col].set_title(f"samples/leaf={meta}, min R^2={min_r2_hires}")
+            col += 1
+        row += 1
 
-    fig, axes = plt.subplots(4, 4, figsize=(8,8), sharey=True)
-    onevar('bedrooms', row=0, yrange=(0,3000))
-    plt.tight_layout()
-    plt.show()
-
-    fig, axes = plt.subplots(4, 4, figsize=(8,8), sharey=True)
-    onevar('bathrooms', row=1, yrange=(0,3000))
-    plt.tight_layout()
-    plt.show()
-
-    fig, axes = plt.subplots(4, 4, figsize=(8,8), sharey=True)
-    onevar('latitude', row=2, yrange=(0,3000))
-    plt.tight_layout()
-    plt.show()
-
-    fig, axes = plt.subplots(4, 4, figsize=(8,8), sharey=True)
-    onevar('longitude', row=3)
     plt.tight_layout()
     plt.show()
 
@@ -347,7 +346,7 @@ def weather():
 
     fig, axes = plt.subplots(4, 5, figsize=(22, 10))
 
-    hires_min_samples_leaf = 15
+    min_samples_leaf_hires = 15
 
     j = 0
     for sz in [0.05, .10, .20, .30, .40]:
@@ -363,12 +362,12 @@ def weather():
                 y_ = df_['temperature']
                 uniq_x, curve, r2_at_x = \
                     plot_stratpd(X_, y_, 'dayofyear', 'temperature', ax=axes[0][j],
-                             min_samples_leaf=2,
-                             hires_min_samples_leaf=sz,
-                             hires_r2_threshold=0.35,
-                             alpha=.5,
-                             pdp_dot_size=0,
-                             yrange=(-10,10))
+                                 min_samples_leaf=2,
+                                 min_samples_leaf_hires=sz,
+                                 min_r2_hires=0.35,
+                                 alpha=.5,
+                                 pdp_dot_size=0,
+                                 yrange=(-10,10))
 
                 for x_,y_ in zip(uniq_x,curve):
                     combined_curve[x_] += y_
@@ -378,12 +377,12 @@ def weather():
             axes[0,j].scatter(all_x, combined_curve, c='red', s=3)
 
         plot_stratpd(X, y, 'dayofyear', 'temperature', ax=axes[0][j],
-                 min_samples_leaf=365,
-                 hires_min_samples_leaf=hires_min_samples_leaf,
-                 hires_r2_threshold=0.5,
-                 # hires_nbins=sz,
-                 alpha=.3,
-                 yrange=(-20,20))
+                     min_samples_leaf=365,
+                     min_samples_leaf_hires=min_samples_leaf_hires,
+                     min_r2_hires=0.5,
+                     # hires_nbins=sz,
+                     alpha=.3,
+                     yrange=(-20,20))
 
         axes[0][j].set_title(f"{2} samples/leaf\n{sz} hires samples/leaf")
         j += 1
@@ -394,17 +393,17 @@ def weather():
     # plot_stratpd(X, y, 'dayofyear', 'temperature', ax=axes[1][1],
     #              ntrees=5,
     #              # min_samples_leaf=5,
-    #              hires_min_samples_leaf=13
+    #              min_samples_leaf_hires=13
     #              , yrange=(-10,10))
     # plot_stratpd(X, y, 'dayofyear', 'temperature', ax=axes[2][0],
     #              ntrees=10,
     #              # min_samples_leaf=7,
-    #              hires_min_samples_leaf=13
+    #              min_samples_leaf_hires=13
     #              , yrange=(-10,10))
     # plot_stratpd(X, y, 'dayofyear', 'temperature', ax=axes[2][1],
     #              ntrees=20,
     #              # min_samples_leaf=20,
-    #              hires_min_samples_leaf=13
+    #              min_samples_leaf_hires=13
     #              , yrange=(-10,10))
 
     # catstratpd_plot(X, y, 'state', 'temperature', cats=catencoders['state'],
@@ -508,7 +507,7 @@ def multi_joint_distr():
             axes[i,j].get_yaxis().set_visible(False)
 
     min_samples_leaf = .005
-    hires_r2_threshold = .3
+    min_r2_hires = .3
     hires_window_width = .3
     uniqx, pdp, r2_at_x = \
         plot_stratpd(X, y, 'x1', 'y', ax=axes[1,0], xrange=(0,12),
@@ -680,17 +679,17 @@ def meta_additivity():
     axes[1,0].set_xlabel("x2")
     axes[1,0].set_ylabel("y")
 
-    hires_r2_threshold = .3
-    # hires_min_samples_leaf = 50//3
+    min_r2_hires = .3
+    # min_samples_leaf_hires = 50//3
     min_samples_leaf = 50
     hires_window_width = .4
     plot_stratpd(X, y, 'x1', 'y', ax=axes[0, 1],
                  ntrees=1,
                  bootstrap=False,
                  min_samples_leaf=min_samples_leaf,
-                 # hires_min_samples_leaf=hires_min_samples_leaf,
+                 # min_samples_leaf_hires=min_samples_leaf_hires,
                  hires_window_width=hires_window_width,
-                 hires_r2_threshold=hires_r2_threshold,
+                 min_r2_hires=min_r2_hires,
                  show_importance=True,
                  yrange=(-1, 1),
                  pdp_dot_size=2, alpha=.4)
@@ -705,7 +704,7 @@ def meta_additivity():
     axes[1,1].set_ylabel("y")
 
     axes[0,0].set_title("$y = x_1^2 + x_2 + \epsilon$")
-    axes[0,1].set_title(f"leaf sz {min_samples_leaf}, hires {hires_r2_threshold}\nhires h {hires_window_width}")
+    axes[0,1].set_title(f"leaf sz {min_samples_leaf}, hires {min_r2_hires}\nhires h {hires_window_width}")
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
@@ -723,9 +722,9 @@ if __name__ == '__main__':
     # imp_cars()
     # multi_joint_distr()
     # rent()
-    # meta_rent()
+    meta_rent()
     # weight()
     # dep_weight()
     # dep_cars()
     # meta_weight()
-    weather()
+    # weather()

@@ -146,29 +146,29 @@ def weight():
     plot_all_imp_and_models(X, y)
     savefig("weight_models")
 
-def meta_weight():
-    df_raw = toy_weight_data(2000)
-    df = df_raw.copy()
-
-    addnoise(df, 3)
-
-    df_string_to_cat(df)
-    df_cat_to_catcode(df)
-    df['pregnant'] = df['pregnant'].astype(int)
-    X = df.drop('weight', axis=1)
-    y = df['weight']
-
-    ncols = len(X.columns)
-    fig, axes = plt.subplots(nrows=1, ncols=7, figsize=(15, 0.22 * ncols))
-
-    i = 0
-    for n in [2, 5, 10, 20, 50, 100, 200]:
-        I = strat_importances(X, y, min_samples_leaf=n, hires_threshold=1000)
-        plot_importances(I, ax=axes[i], color='#fee090')
-        axes[i].set_title(f"{n} samples / leaf")
-        i += 1
-
-    savefig("weight_leaf_size")
+# def meta_weight():
+#     df_raw = toy_weight_data(2000)
+#     df = df_raw.copy()
+#
+#     addnoise(df, 3)
+#
+#     df_string_to_cat(df)
+#     df_cat_to_catcode(df)
+#     df['pregnant'] = df['pregnant'].astype(int)
+#     X = df.drop('weight', axis=1)
+#     y = df['weight']
+#
+#     ncols = len(X.columns)
+#     fig, axes = plt.subplots(nrows=1, ncols=7, figsize=(15, 0.22 * ncols))
+#
+#     i = 0
+#     for n in [2, 5, 10, 20, 50, 100, 200]:
+#         I = strat_importances(X, y, min_samples_leaf=n, hires_threshold=1000)
+#         plot_importances(I, ax=axes[i], color='#fee090')
+#         axes[i].set_title(f"{n} samples / leaf")
+#         i += 1
+#
+#     savefig("weight_leaf_size")
 
 
 def plot_all_imp(X, y, model=None, figsize=None):
@@ -295,4 +295,4 @@ if __name__ == '__main__':
     # boston()
     # cars()
     # weight()
-    meta_weight()
+    # meta_weight()

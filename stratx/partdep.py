@@ -227,11 +227,11 @@ def collect_leaf_slopes(rf, X, y, colname,
         lm.fit(leaf_x.reshape(-1, 1), leaf_y)
         r2 = lm.score(leaf_x.reshape(-1, 1), leaf_y)
 
-        rpercent = (r[1] - r[0]) * 100.0 / (allr[1] - allr[0])
-        print(f"{len(leaf_x)} obs, R^2 y ~ X[{colname}] = {r2:.2f}, in range {r} is {rpercent:.2f}%")
+        # rpercent = (r[1] - r[0]) * 100.0 / (allr[1] - allr[0])
+        # print(f"{len(leaf_x)} obs, R^2 y ~ X[{colname}] = {r2:.2f}, in range {r} is {rpercent:.2f}%")
 
         if r2 < hires_r2_threshold and len(leaf_x) > hires_n_threshold: # if linear model for y ~ X[colname] is too crappy, go hires
-            print(f"BIG {len(leaf_x)}, R^2 of y ~ X[{colname}] = {r2:.2f} < {hires_r2_threshold}!!!")
+            # print(f"BIG {len(leaf_x)}, R^2 of y ~ X[{colname}] = {r2:.2f} < {hires_r2_threshold}!!!")
             leaf_xranges_, leaf_slopes_, leaf_r2_ = \
                 hires_slopes_from_one_leaf(leaf_x, leaf_y, hires_min_samples_leaf=hires_min_samples_leaf)
 
@@ -291,10 +291,9 @@ def plot_stratpd(X, y, colname, targetname=None,
                  ax=None,
                  ntrees=1,
                  min_samples_leaf=.01,
-                 alpha=.5,
-                 hires_r2_threshold=0.1,
-                 hires_n_threshold=20,
-                 hires_min_samples_leaf=.01,
+                 min_r2_hires=0.1,
+                 min_samples_hires=20,
+                 min_samples_leaf_hires=.01,
                  xrange=None,
                  yrange=None,
                  pdp_dot_size=5,
@@ -308,13 +307,15 @@ def plot_stratpd(X, y, colname, targetname=None,
                  imp_color='#fdae61',
                  supervised=True,
                  bootstrap=False,
-                 max_features = 1.0):
+                 max_features = 1.0,
+                 alpha=.5
+                 ):
     if ntrees==1:
         max_features = 1.0
         bootstrap = False
 
-    if hires_r2_threshold>1.0:
-        hires_r2_threshold = 1.0
+    if min_r2_hires>1.0:
+        min_r2_hires = 1.0
 
     # print(f"Unique {colname} = {len(np.unique(X[colname]))}/{len(X)}")
     if supervised:
@@ -340,9 +341,9 @@ def plot_stratpd(X, y, colname, targetname=None,
     uniq_x = np.array(sorted(np.unique(X[colname])))
     # print(f"\nModel wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     leaf_xranges, leaf_slopes, leaf_r2 = \
-        collect_leaf_slopes(rf, X, y, colname, hires_r2_threshold=hires_r2_threshold,
-                            hires_n_threshold=hires_n_threshold,
-                            hires_min_samples_leaf=hires_min_samples_leaf)
+        collect_leaf_slopes(rf, X, y, colname, hires_r2_threshold=min_r2_hires,
+                            hires_n_threshold=min_samples_hires,
+                            hires_min_samples_leaf=min_samples_leaf_hires)
     slope_at_x = avg_values_at_x(uniq_x, leaf_xranges, leaf_slopes)
     r2_at_x = avg_values_at_x(uniq_x, leaf_xranges, leaf_r2)
     # Drop any nan slopes; implies we have no reliable data for that range
