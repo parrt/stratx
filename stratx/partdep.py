@@ -41,9 +41,7 @@ def leaf_samples(rf, X:np.ndarray):
                array([21, 22, 23, 24, 25, 26, 27, 28, 29]), ... )
         """
         sample_idxs_in_leaf = d.groupby(f'tree{i}')['index'].apply(lambda x: x.values)
-        if len(sample_idxs_in_leaf) >= 2:
-            # can't detect changes with just one sample
-            leaf_samples.extend(sample_idxs_in_leaf)
+        leaf_samples.extend(sample_idxs_in_leaf) # add [...sample idxs...] for each leaf
     return leaf_samples
 
 
@@ -55,44 +53,136 @@ def dtree_leaf_samples(dtree, X:np.ndarray):
     return sample_idxs_in_leaf
 
 
-def hires_slopes_from_one_leaf(x:np.ndarray, y:np.ndarray, hires_min_samples_leaf:int):
-    start = time.time()
-    X = x.reshape(-1,1)
+def hires_slopes_from_one_leaf_h(x:np.ndarray, y:np.ndarray, h:float):
     """
-    Bootstrapping appears to be important, giving much better sine curve for weather().
-    Tried many diff min_samples_leaf and min_samples_leaf=10 is largest value I feel
-    comfortable with and gives good sine curve. Gotta keep cost down here as we might
-    call this a lot.
-    
-    Tried single estimator w/o boostrap. Terrible.
+    Split x range into bins of width h and return
     """
-    rf = RandomForestRegressor(n_estimators=1,
-                               min_samples_leaf=hires_min_samples_leaf,
-                               max_features=1.0,
-                               bootstrap=False,
-                               )
-    rf.fit(X, y)
-    leaves = leaf_samples(rf, X)
     leaf_slopes = []
     leaf_r2 = []
     leaf_xranges = []
-    leaf_yranges = []
+
+    uniq_x = np.array(sorted(np.unique(x)))
+    # print(f"uniq x {uniq_x}")
+    for ix in uniq_x:
+        bin_x = x[(x >= ix) & (x < ix + h)]
+        bin_y = y[(x >= ix) & (x < ix + h)]
+        print()
+        print(bin_x)
+        print(bin_y)
+        if len(bin_x)==0:
+            continue
+        r = (np.min(bin_x), np.max(bin_y))
+        if np.isclose(r[0], r[1]):
+            # print(f"ignoring xleft=xright @ {r[0]}")
+            continue
+
+        lm = LinearRegression()
+        lm.fit(bin_x.reshape(-1, 1), bin_y)
+        r2 = lm.score(bin_x.reshape(-1, 1), bin_y)
+
+        leaf_slopes.append(lm.coef_[0])
+        leaf_xranges.append(r)
+        leaf_r2.append(r2)
+
+    return leaf_xranges, leaf_slopes, leaf_r2
+
+def hires_slopes_from_one_leaf_nbins(x:np.ndarray, y:np.ndarray, nbins:int):
+    """
+    Split x range into bins of width h and return
+    """
+    leaf_slopes = []
+    leaf_r2 = []
+    leaf_xranges = []
+
+    bins = np.linspace(np.min(x), np.max(x), num=nbins, endpoint=True)
+    binned_idx = np.digitize(x, bins)
+
+    for i in range(1, nbins+1):
+        bin_x = x[binned_idx == i]
+        bin_y = y[binned_idx == i]
+        if len(bin_x)==0:
+            continue
+        r = (np.min(bin_x), np.max(bin_y))
+        if np.isclose(r[0], r[1]):
+            # print(f"ignoring xleft=xright @ {r[0]}")
+            continue
+
+        lm = LinearRegression()
+        lm.fit(bin_x.reshape(-1, 1), bin_y)
+        r2 = lm.score(bin_x.reshape(-1, 1), bin_y)
+
+        leaf_slopes.append(lm.coef_[0])
+        leaf_xranges.append(r)
+        leaf_r2.append(r2)
+
+    return leaf_xranges, leaf_slopes, leaf_r2
+
+def hires_slopes_from_one_leaf(x:np.ndarray, y:np.ndarray, hires_min_samples_leaf:int):
+    start = time.time()
+    X = x.reshape(-1,1)
+
+    r2s = []
+    r2xNs = []
+    allr = (np.min(x), np.max(x))
+
+    # hires_min_samples_leaf = int( (np.max(x) - np.min(x)) * hires_window_width )
+    # print(f"setting hires_min_samples_leaf = {hires_min_samples_leaf}")
+
+    # dbg = True
+    dbg = False
+    if dbg:
+        print(f"\t{len(x)} samples")
+        plt.scatter(x, y, c='black', s=.5)
+        lm = LinearRegression()
+        lm.fit(x.reshape(-1, 1), y)
+        r2 = lm.score(x.reshape(-1, 1), y)
+        px = np.linspace(min(x), max(x), 20)
+        plt.plot(px, lm.predict(px.reshape(-1, 1)), lw=.5, c='red', label=f"R^2 {r2:.2f}")
+
+    rf = RandomForestRegressor(n_estimators=1,
+                               min_samples_leaf=hires_min_samples_leaf, # "percent" or number of samples allowed per leaf
+                               max_features=1.0,
+                               bootstrap=False)
+    rf.fit(X, y)
+    leaves = leaf_samples(rf, X)
+    # print(f"{len(leaves)} leaves")
+    leaf_slopes = []
+    leaf_r2 = []
+    leaf_xranges = []
+    # leaf_yranges = []
     for samples in leaves:
         leaf_x = X[samples]
         leaf_y = y[samples]
         r = (np.min(leaf_x), np.max(leaf_x))
         if np.isclose(r[0], r[1]):
             # print(f"ignoring xleft=xright @ {r[0]}")
+            # print(f"Ignoring range {r} from {x} -> {y}")
             continue
         lm = LinearRegression()
         lm.fit(leaf_x.reshape(-1, 1), leaf_y)
         leaf_slopes.append(lm.coef_[0])
-        leaf_r2.append(lm.score(leaf_x.reshape(-1, 1), leaf_y))
+        r2 = lm.score(leaf_x.reshape(-1, 1), leaf_y)
+
+        r2s.append(r2)
+        r2xNs.append(r2 * len(leaf_x))
+        # print(f"\tHIRES {len(leaf_x)} obs, leaf R^2 {r2:.2f}, R^2*n {r2*len(leaf_x):.2f}, range {allr}")
+        if dbg:
+            px = np.linspace(r[0], r[1], 20)
+            plt.plot(px, lm.predict(px.reshape(-1,1)), lw=.5, c='blue', label=f"R^2 {r2:.2f}")
+
+        leaf_r2.append(r2)
         leaf_xranges.append(r)
-        leaf_yranges.append((leaf_y[0], leaf_y[-1]))
+        # leaf_yranges.append((leaf_y[0], leaf_y[-1]))
+
+    # print(f"\tAvg leaf R^2 {np.mean(r2s):.4f}, avg x len {np.mean(r2xNs)}")
+
+    if dbg:
+        plt.legend(loc='upper left', borderpad=0, labelspacing=0)
+        plt.show()
+
     stop = time.time()
     # print(f"hires_slopes_from_one_leaf {stop - start:.3f}s")
-    return leaf_xranges, leaf_yranges, leaf_slopes, leaf_r2
+    return leaf_xranges, leaf_slopes, leaf_r2
 
 
 # def entropy(x, base=np.e):
@@ -100,7 +190,10 @@ def hires_slopes_from_one_leaf(x:np.ndarray, y:np.ndarray, hires_min_samples_lea
 #     return scipy_entropy(counts, base=base)
 
 
-def collect_leaf_slopes(rf, X, y, colname, hires_threshold, hires_min_samples_leaf):
+def collect_leaf_slopes(rf, X, y, colname,
+                        hires_r2_threshold,
+                        hires_n_threshold,
+                        hires_min_samples_leaf):
     """
     For each leaf of each tree of the random forest rf (trained on all features
     except colname), get the samples then isolate the column of interest X values
@@ -111,35 +204,51 @@ def collect_leaf_slopes(rf, X, y, colname, hires_threshold, hires_min_samples_le
     Return for each leaf, the range of X[colname] and associated slope for that range.
     """
     start = time.time()
+    # ci = X.columns.get_loc(colname)
     leaf_slopes = []
     leaf_r2 = []
     leaf_xranges = []
+
+    allr = (np.min(X[colname]), np.max(X[colname]))
+
     leaves = leaf_samples(rf, X.drop(colname, axis=1))
+    print(f"{len(leaves)} leaves in T")
     for samples in leaves:
         one_leaf_samples = X.iloc[samples]
         leaf_x = one_leaf_samples[colname].values
         leaf_y = y.iloc[samples].values
-        if len(samples)>hires_threshold:
-            print(f"BIG {len(samples)}!!!")
-            leaf_xranges_, leaf_yranges_, leaf_slopes_, leaf_r2_ = \
-                hires_slopes_from_one_leaf(leaf_x, leaf_y, hires_min_samples_leaf)
-            leaf_slopes.extend(leaf_slopes_)
-            leaf_r2.extend(leaf_r2_)
-            leaf_xranges.extend(leaf_xranges_)
-            continue
 
         r = (np.min(leaf_x), np.max(leaf_x))
         if np.isclose(r[0], r[1]):
             # print(f"ignoring xleft=xright @ {r[0]}")
             continue
+
         lm = LinearRegression()
         lm.fit(leaf_x.reshape(-1, 1), leaf_y)
-        leaf_slopes.append(lm.coef_[0])
+        r2 = lm.score(leaf_x.reshape(-1, 1), leaf_y)
+
+        rpercent = (r[1] - r[0]) * 100.0 / (allr[1] - allr[0])
+        print(f"{len(leaf_x)} obs, R^2 y ~ X[{colname}] = {r2:.2f}, in range {r} is {rpercent:.2f}%")
+
+        if r2 < hires_r2_threshold and len(leaf_x) > hires_n_threshold: # if linear model for y ~ X[colname] is too crappy, go hires
+            print(f"BIG {len(leaf_x)}, R^2 of y ~ X[{colname}] = {r2:.2f} < {hires_r2_threshold}!!!")
+            leaf_xranges_, leaf_slopes_, leaf_r2_ = \
+                hires_slopes_from_one_leaf(leaf_x, leaf_y, hires_min_samples_leaf=hires_min_samples_leaf)
+
+            leaf_slopes.extend(leaf_slopes_)
+            leaf_r2.extend(leaf_r2_)
+            leaf_xranges.extend(leaf_xranges_)
+            continue
+
+        #print(f"All R^2 {LM_r2:.3f} for {len(leaf_x)} samples with {LM.coef_[ci]:.2f} beta vs Lx,Ly beta {lm.coef_[0]:.2f}")
+
+        leaf_slopes.append(lm.coef_[0]) # better to use univariate slope it seems
         r2 = lm.score(leaf_x.reshape(-1, 1), leaf_y)
         # print(f"Entropy of not {colname}")
         # for i in range(len(X.columns)):
         #     e = entropy(one_leaf_samples.iloc[:,i].values)
         #     print(f"\tentropy of col {X.columns[i]}[{len(leaf_x)}] values = {e:.2f}")
+
         leaf_r2.append(r2)
         leaf_xranges.append(r)
     leaf_slopes = np.array(leaf_slopes)
@@ -181,10 +290,11 @@ def avg_values_at_x(uniq_x, leaf_ranges, leaf_values):
 def plot_stratpd(X, y, colname, targetname=None,
                  ax=None,
                  ntrees=1,
-                 min_samples_leaf=2,
-                 hires_min_samples_leaf=5,
+                 min_samples_leaf=.01,
                  alpha=.5,
-                 hires_threshold=50,
+                 hires_r2_threshold=0.1,
+                 hires_n_threshold=20,
+                 hires_min_samples_leaf=.01,
                  xrange=None,
                  yrange=None,
                  pdp_dot_size=5,
@@ -194,7 +304,7 @@ def plot_stratpd(X, y, colname, targetname=None,
                  show_xlabel=True,
                  show_ylabel=True,
                  connect_pdp_dots=False,
-                 show_importance=True,
+                 show_importance=False,
                  imp_color='#fdae61',
                  supervised=True,
                  bootstrap=False,
@@ -202,6 +312,9 @@ def plot_stratpd(X, y, colname, targetname=None,
     if ntrees==1:
         max_features = 1.0
         bootstrap = False
+
+    if hires_r2_threshold>1.0:
+        hires_r2_threshold = 1.0
 
     # print(f"Unique {colname} = {len(np.unique(X[colname]))}/{len(X)}")
     if supervised:
@@ -224,11 +337,12 @@ def plot_stratpd(X, y, colname, targetname=None,
                                    oob_score=False)
         rf.fit(X_synth.drop(colname,axis=1), y_synth)
 
+    uniq_x = np.array(sorted(np.unique(X[colname])))
     # print(f"\nModel wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     leaf_xranges, leaf_slopes, leaf_r2 = \
-        collect_leaf_slopes(rf, X, y, colname, hires_threshold=hires_threshold,
+        collect_leaf_slopes(rf, X, y, colname, hires_r2_threshold=hires_r2_threshold,
+                            hires_n_threshold=hires_n_threshold,
                             hires_min_samples_leaf=hires_min_samples_leaf)
-    uniq_x = np.array(sorted(np.unique(X[colname])))
     slope_at_x = avg_values_at_x(uniq_x, leaf_xranges, leaf_slopes)
     r2_at_x = avg_values_at_x(uniq_x, leaf_xranges, leaf_r2)
     # Drop any nan slopes; implies we have no reliable data for that range

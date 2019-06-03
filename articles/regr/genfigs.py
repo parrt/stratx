@@ -139,6 +139,7 @@ def meta_rent():
         for i, t in enumerate([1, 5, 10, 30]):
             plot_stratpd(X, y, colname, 'price', ax=axes[row, i], alpha=alpha,
                          yrange=yrange,
+                         hires_r2_threshold=0.5,
                          supervised=supervised,
                          show_ylabel = t==1,
                          ntrees=t)
@@ -230,10 +231,10 @@ def weather():
     """
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'dayofyear', 'temperature', ax=ax,
-                 hires_min_samples_leaf=13,
+                 hires_min_samples_leaf=15,
                  yrange=(-15,15),
                  pdp_dot_size=2, alpha=.5)
-    
+
     savefig(f"dayofyear_vs_temp_stratpd")
     plt.close()
 
@@ -243,7 +244,7 @@ def weather():
                     alpha=.3,
                     min_samples_leaf=11,
                     ax=ax)  # , yrange=(0,160))
-    
+
     savefig(f"state_vs_temp_stratpd")
     plt.close()
 
@@ -253,14 +254,14 @@ def weather():
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = ice_predict(rf, X, 'dayofyear', 'temperature')
     ice_plot(ice, 'dayofyear', 'temperature', ax=ax, yrange=(-15,15))
-    
+
     savefig(f"dayofyear_vs_temp_pdp")
     plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = ice_predict(rf, X, 'state', 'temperature')
     ice_plot(ice, 'state', 'temperature', cats=catencoders['state'], ax=ax)
-    
+
     savefig(f"state_vs_temp_pdp")
     plt.close()
 
@@ -270,7 +271,7 @@ def weather():
     #                 feature_name='state',
     #                 target_name='y',
     #                 fontsize=10, show={'splits'})
-    # 
+    #
     # plt.show()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
@@ -278,7 +279,7 @@ def weather():
     ax.set_xticklabels(np.concatenate([[''], catencoders['state'].values]))
     ax.set_xlabel("state")
     ax.set_ylabel("temperature")
-    
+
     savefig(f"state_vs_temp")
     plt.close()
 
@@ -297,7 +298,7 @@ def weather():
     ax.legend(loc='lower left', borderpad=0, labelspacing=0)
     ax.set_xlabel("dayofyear")
     ax.set_ylabel("temperature")
-    
+
     savefig(f"dayofyear_vs_temp")
     plt.close()
 
@@ -486,11 +487,11 @@ def meta_weight():
     # plt.close()
 
 
-def additivity_data(n):
+def additivity_data(n, sd=1.0):
     x1 = np.random.uniform(-1, 1, size=n)
     x2 = np.random.uniform(-1, 1, size=n)
 
-    y = x1*x1 + x2 + np.random.normal(0, 1, size=n)
+    y = x1**2 + x2 + np.random.normal(0, sd, size=n)
     df = pd.DataFrame()
     df['x1'] = x1
     df['x2'] = x2
@@ -500,16 +501,19 @@ def additivity_data(n):
 def additivity():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     n = 1000
-    df = additivity_data(n=n)
+    df = additivity_data(n=n, sd=.8)
     X = df.drop('y', axis=1)
     y = df['y']
 
     fig, axes = plt.subplots(2, 2, figsize=(4,4), sharey=True)
     plot_stratpd(X, y, 'x1', 'y', ax=axes[0, 0],
-                 hires_threshold=10, yrange=(-1, 1), pdp_dot_size=3, alpha=.1, nlines=700)
+                 yrange=(-1, 1),
+                 # min_samples_leaf=15,
+                 pdp_dot_size=3, alpha=.5)
     
     plot_stratpd(X, y, 'x2', 'y', ax=axes[1, 0],
-                 hires_threshold=10, pdp_dot_size=3, alpha=.1, nlines=700)
+                 # min_samples_leaf=15,
+                 pdp_dot_size=3, alpha=.1, nlines=700)
     
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
@@ -525,6 +529,70 @@ def additivity():
     axes[1,1].get_yaxis().set_visible(False)
 
     savefig(f"additivity")
+    # plt.show()
+    plt.close()
+
+
+def meta_additivity():
+    np.random.seed(42)
+    print(f"----------- {inspect.stack()[0][3]} -----------")
+    n = 1000
+    sd = .8
+    df = additivity_data(n=n, sd=sd)
+    X = df.drop('y', axis=1)
+    y = df['y']
+
+    fig, axes = plt.subplots(2, 7, figsize=(22, 6), sharey=False)
+
+    col = 1
+    for s in [2, 30, 50, 60]:
+        print(f"------------------- SIZE {s} --------------------")
+        hires_r2_threshold = .3
+        hires_min_samples_leaf = .25
+        plot_stratpd(X, y, 'x1', 'y', ax=axes[0, col],
+                     min_samples_leaf=s,
+                     hires_min_samples_leaf=hires_min_samples_leaf,
+                     hires_r2_threshold=hires_r2_threshold,
+                     hires_n_threshold=10,
+                     show_importance=True,
+                     yrange=(-1, 1),
+                     pdp_dot_size=2, alpha=.4)
+
+        rtreeviz_univar(axes[1, col],
+                        X['x2'], y,
+                        min_samples_leaf=s,
+                        feature_name='x2',
+                        target_name='y',
+                        fontsize=10, show={'splits'})
+
+        axes[0,col].set_title(f"leaf sz {s}, hires {hires_r2_threshold}\nhires leaf sz {hires_min_samples_leaf}")
+        col += 1
+
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
+    rf.fit(X, y)
+    print(f"RF OOB {rf.oob_score_}")
+
+    axes[0,0].scatter(X['x1'], y, alpha=.12, label=None)
+    axes[0,0].set_xlabel("x1")
+    axes[0,0].set_ylabel("y")
+    axes[1,0].scatter(X['x2'], y, alpha=.12, label=None)
+    axes[1,0].set_xlabel("x2")
+    axes[1,0].set_ylabel("y")
+
+    # ice = ice_predict(rf, X, 'x1', 'y', numx=20, nlines=700)
+    # ice_plot(ice, 'x1', 'y', ax=axes[0, 0], yrange=(-1, 1), show_ylabel=False)
+
+    # ice = ice_predict(rf, X, 'x2', 'y', numx=20, nlines=700)
+    # ice_plot(ice, 'x2', 'y', ax=axes[1, 0], yrange=(-2, 2), show_ylabel=False)
+
+    axes[0, 1].get_yaxis().set_visible(False)
+    axes[1, 1].get_yaxis().set_visible(False)
+
+    axes[0,0].set_title(f"$y = x_1^2 + x_2 + \epsilon$\n$\epsilon \sim N(0,{sd:.2f})$")
+
+    savefig(f"meta_additivity")
+    plt.tight_layout()
+    plt.show()
     plt.close()
 
 
@@ -688,7 +756,7 @@ def cars():
 
 
 if __name__ == '__main__':
-    cars()
+    # cars()
     # unsup_boston()
     # rent()
     # meta_rent()
@@ -697,5 +765,6 @@ if __name__ == '__main__':
     # meta_weight()
     # unsup_weight()
     # weather()
+    meta_additivity()
     # additivity()
     # bigX()

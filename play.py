@@ -109,12 +109,10 @@ def weight():
     plot_stratpd(X, y, 'education', 'weight', ax=axes[1][0],
                  yrange=(-12,0),
                  nlines = 500,
-                 hires_threshold=100
                  )
     plot_stratpd(X, y, 'height', 'weight', ax=axes[2][0],
                  yrange=(0,160),
                  nlines = 1000,
-                 hires_threshold=100
                  )
     plot_catstratpd(X, y, 'sex', 'weight', ax=axes[3][0],
                     alpha=.2,
@@ -221,7 +219,7 @@ def rent():
     df_rent = df[['bedrooms', 'bathrooms', 'latitude', 'longitude', 'price']]
     df_rent.head()
 
-    # df_rent = df_rent.sample(n=8000)  # get a small subsample
+    # df_rent = df_rent.sample(n=10000)  # get a small subsample
 
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
@@ -229,10 +227,19 @@ def rent():
     supervised = True
 
     fig, axes = plt.subplots(4, 2, figsize=(8,16))
-    plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 0], alpha=.2, yrange=(0, 3000), nlines=1000, supervised=supervised)
-    plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 0], alpha=.2, yrange=(0, 3000), nlines=1000, supervised=supervised)
-    plot_stratpd(X, y, 'latitude', 'price', ax=axes[2, 0], alpha=.2, yrange=(0, 3000), nlines=1000, supervised=supervised)
-    plot_stratpd(X, y, 'longitude', 'price', ax=axes[3, 0], alpha=.2, nlines=1000, supervised=supervised)
+    min_samples_leaf = 3#0.0001
+    plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 0],
+                 min_samples_leaf=min_samples_leaf,
+                 alpha=.2, yrange=(0, 3000), nlines=1000, supervised=supervised)
+    plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 0],
+                 min_samples_leaf=min_samples_leaf,
+                 alpha=.2, yrange=(0, 3000), nlines=1000, supervised=supervised)
+    plot_stratpd(X, y, 'latitude', 'price', ax=axes[2, 0],
+                 min_samples_leaf=min_samples_leaf,
+                 alpha=.2, yrange=(0, 3000), nlines=1000, supervised=supervised)
+    plot_stratpd(X, y, 'longitude', 'price', ax=axes[3, 0],
+                 min_samples_leaf=min_samples_leaf,
+                 alpha=.2, nlines=1000, supervised=supervised)
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
@@ -302,55 +309,88 @@ def meta_rent():
 
 
 def toy_weather_data():
-    def temp(x): return np.sin((x+365/2)*(2*np.pi)/365)
+    def temp(x): return np.sin((x+365/2)*(2*np.pi)/365)*10
     def noise(state): return np.random.normal(-5, 5, sum(df['state'] == state))
+    states = ['CA', 'CO', 'AZ', 'WA']
+    bases = [70, 40, 90, 60]
+    # np.random.choice(states, len(df))
+    states_dfs = []
+    for base,state in zip(bases,states):
+        df = pd.DataFrame()
+        df['dayofyear'] = range(1,365+1)
+        df['state'] = state
+        df['temperature'] = temp(df['dayofyear']) + base + noise(state)
+        states_dfs.append(df)
 
-    df = pd.DataFrame()
-    df['dayofyear'] = range(1,365+1)
-    df['state'] = np.random.choice(['CA','CO','AZ','WA'], len(df))
-    df['temperature'] = temp(df['dayofyear'])
-    df.loc[df['state']=='CA','temperature'] = 70 + df.loc[df['state']=='CA','temperature'] * noise('CA')
-    df.loc[df['state']=='CO','temperature'] = 40 + df.loc[df['state']=='CO','temperature'] * noise('CO')
-    df.loc[df['state']=='AZ','temperature'] = 90 + df.loc[df['state']=='AZ','temperature'] * noise('AZ')
-    df.loc[df['state']=='WA','temperature'] = 60 + df.loc[df['state']=='WA','temperature'] * noise('WA')
-    return df
+    return pd.concat(states_dfs, axis=0)
 
 
 def weather():
-    df_yr1 = toy_weather_data()
-    df_yr1['year']=1980
-    df_yr2 = toy_weather_data()
-    df_yr2['year']=1981
-    df_yr3 = toy_weather_data()
-    df_yr3['year']=1982
-    df_raw = pd.concat([df_yr1, df_yr2, df_yr3], axis=0)
+    # np.random.seed(66)
+    nyears = 5
+    years = []
+    for y in range(1980,1980+nyears):
+        df_ = toy_weather_data()
+        df_['year']=y
+        years.append(df_)
+
+    df_raw = pd.concat(years, axis=0)
+
+    # df_raw.drop('year', axis=1, inplace=True)
     df = df_raw.copy()
+    print(df.head(5))
+
     catencoders = df_string_to_cat(df)
-    print(catencoders)
     df_cat_to_catcode(df)
     X = df.drop('temperature', axis=1)
     y = df['temperature']
 
-    fig, axes = plt.subplots(4, 2, figsize=(8, 8),
-                             gridspec_kw={'height_ratios': [.2, 3, 3, 3]})
+    fig, axes = plt.subplots(4, 5, figsize=(22, 10))
 
-    axes[0, 0].get_xaxis().set_visible(False)
-    axes[0, 1].get_xaxis().set_visible(False)
-    axes[0, 0].axis('off')
-    axes[0, 1].axis('off')
+    hires_min_samples_leaf = 15
 
-    """
-    The scale diff between states, obscures the sinusoidal nature of the
-    dayofyear vs temp plot. With noise N(0,5) gotta zoom in -3,3 on mine too.
-    otherwise, smooth quasilinear plot with lots of bristles showing volatility.
-    Flip to N(-5,5) which is more realistic and we see sinusoid for both, even at
-    scale. yep, the N(0,5) was obscuring sine for both. 
-    """
-    plot_stratpd(X, y, 'dayofyear', 'temperature', ax=axes[1][0],
-                 ntrees=1,
-                 # min_samples_leaf=2,
-                 hires_min_samples_leaf=13
-                 , yrange=(-10,10))
+    j = 0
+    for sz in [0.05, .10, .20, .30, .40]:
+        print(f"---------- {sz} samples/leaf -------------")
+
+        if False:
+            all_x = sorted(np.unique(X['dayofyear']))
+            combined_curve = defaultdict(float)
+            nboots = 1
+            for i in range(nboots): # bootstrap
+                df_ = df.sample(n=len(X), replace=True)
+                X_ = df_.drop('temperature', axis=1)
+                y_ = df_['temperature']
+                uniq_x, curve, r2_at_x = \
+                    plot_stratpd(X_, y_, 'dayofyear', 'temperature', ax=axes[0][j],
+                             min_samples_leaf=2,
+                             hires_min_samples_leaf=sz,
+                             hires_r2_threshold=0.35,
+                             alpha=.5,
+                             pdp_dot_size=0,
+                             yrange=(-10,10))
+
+                for x_,y_ in zip(uniq_x,curve):
+                    combined_curve[x_] += y_
+            all_x = np.array(list(combined_curve.keys()))
+            combined_curve = np.array(list(combined_curve.values()))
+            combined_curve /= nboots
+            axes[0,j].scatter(all_x, combined_curve, c='red', s=3)
+
+        plot_stratpd(X, y, 'dayofyear', 'temperature', ax=axes[0][j],
+                 min_samples_leaf=365,
+                 hires_min_samples_leaf=hires_min_samples_leaf,
+                 hires_r2_threshold=0.5,
+                 # hires_nbins=sz,
+                 alpha=.3,
+                 yrange=(-20,20))
+
+        axes[0][j].set_title(f"{2} samples/leaf\n{sz} hires samples/leaf")
+        j += 1
+
+    plt.title(f"{nyears} years")
+
+
     # plot_stratpd(X, y, 'dayofyear', 'temperature', ax=axes[1][1],
     #              ntrees=5,
     #              # min_samples_leaf=5,
@@ -372,49 +412,49 @@ def weather():
     #
     # rf = RandomForestRegressor(n_estimators=30, min_samples_leaf=1, oob_score=True)
     # rf.fit(X, y)
-    #
+    # #
     # ice = ice_predict(rf, X, 'dayofyear', 'temperature')
-    # ice_plot(ice, 'dayofyear', 'temperature', ax=axes[1, 1])  # , yrange=(-12,0))
+    # ice_plot(ice, 'dayofyear', 'temperature', ax=axes[3, 2])  # , yrange=(-12,0))
     #
     # ice = ice_predict(rf, X, 'state', 'temperature')
     # ice_plot(ice, 'state', 'temperature', cats=catencoders['state'],
-    #          ax=axes[2, 1])  # , yrange=(-12,0))
+    #          ax=axes[3, 3])  # , yrange=(-12,0))
     #
-    df = df_raw.copy()
-    avgtmp = df.groupby(['state','dayofyear'])[['temperature']].mean()
-    # avgtmp.sort_values('dayofyear')
-    avgtmp = avgtmp.reset_index()
-    print(avgtmp.reset_index().head(10))
-    ca = avgtmp.query('state=="CA"')
-    co = avgtmp.query('state=="CO"')
-    az = avgtmp.query('state=="AZ"')
-    wa = avgtmp.query('state=="WA"')
-    axes[3, 0].plot(ca['dayofyear'], ca['temperature'], label="CA")
-    axes[3, 0].plot(co['dayofyear'], co['temperature'], label="CO")
-    axes[3, 0].plot(az['dayofyear'], az['temperature'], label="AZ")
-    axes[3, 0].plot(wa['dayofyear'], wa['temperature'], label="WA")
-    # axes[3, 0].plot(df.loc[df['state'] == 'CA', 'dayofyear'],
-    #                 df.loc[df['state'] == 'CA', 'temperature'], label="CA")
-    # axes[3, 0].plot(df.loc[df['state'] == 'CO', 'dayofyear'],
-    #                 df.loc[df['state'] == 'CO', 'temperature'], label="CO")
-    # axes[3, 0].plot(df.loc[df['state'] == 'AZ', 'dayofyear'],
-    #                 df.loc[df['state'] == 'AZ', 'temperature'], label="AZ")
-    # axes[3, 0].plot(df.loc[df['state'] == 'WA', 'dayofyear'],
-    #                 df.loc[df['state'] == 'WA', 'temperature'], label="WA")
-    axes[3, 0].legend()
-    axes[3, 0].set_title('Raw data')
-    axes[3, 0].set_ylabel('Temperature')
-    axes[3, 0].set_xlabel('Dataframe row index')
+    if True:
+        df = df_raw.copy()
+        avgtmp = df.groupby(['state','dayofyear'])[['temperature']].mean()
+        # avgtmp.sort_values('dayofyear')
+        avgtmp = avgtmp.reset_index()
+        ca = avgtmp.query('state=="CA"')
+        co = avgtmp.query('state=="CO"')
+        az = avgtmp.query('state=="AZ"')
+        wa = avgtmp.query('state=="WA"')
+        axes[3, 0].plot(ca['dayofyear'], ca['temperature'], label="CA", lw=.5)
+        axes[3, 0].plot(co['dayofyear'], co['temperature'], label="CO", lw=.5)
+        axes[3, 0].plot(az['dayofyear'], az['temperature'], label="AZ", lw=.5)
+        axes[3, 0].plot(wa['dayofyear'], wa['temperature'], label="WA", lw=.5)
+        # axes[3, 0].plot(df.loc[df['state'] == 'CA', 'dayofyear'],
+        #                 df.loc[df['state'] == 'CA', 'temperature'], label="CA")
+        # axes[3, 0].plot(df.loc[df['state'] == 'CO', 'dayofyear'],
+        #                 df.loc[df['state'] == 'CO', 'temperature'], label="CO")
+        # axes[3, 0].plot(df.loc[df['state'] == 'AZ', 'dayofyear'],
+        #                 df.loc[df['state'] == 'AZ', 'temperature'], label="AZ")
+        # axes[3, 0].plot(df.loc[df['state'] == 'WA', 'dayofyear'],
+        #                 df.loc[df['state'] == 'WA', 'temperature'], label="WA")
+        axes[3, 0].legend()
+        axes[3, 0].set_title('Raw data')
+        axes[3, 0].set_ylabel('Temperature')
+        axes[3, 0].set_xlabel('Dataframe row index')
 
-    rtreeviz_univar(axes[3, 1],
-                    X['state'], y,
-                    feature_name='state',
-                    target_name='y',
-                    min_samples_leaf=2,
-                    fontsize=10)
-    axes[3, 1].set_title(f'state space partition with min_samples_leaf={2}')
-    axes[3, 1].set_xlabel("state")
-    axes[3, 1].set_ylabel("y")
+        rtreeviz_univar(axes[3, 1],
+                        X['state'], y,
+                        feature_name='state',
+                        target_name='y',
+                        min_samples_leaf=2,
+                        fontsize=10)
+        axes[3, 1].set_title(f'state space partition with min_samples_leaf={2}')
+        axes[3, 1].set_xlabel("state")
+        axes[3, 1].set_ylabel("y")
 
     plt.tight_layout()
 
@@ -422,15 +462,16 @@ def weather():
 
 
 def multi_joint_distr():
-    np.random.seed(42)
+    # np.random.seed(42)
+    n = 1000
     df = pd.DataFrame(np.random.multivariate_normal([6, 6, 6, 6],
                                                     [
-                                                        [1,  4, .5,  3],
-                                                        [4,  1,  2,  .3],
+                                                        [1,  5, .5,  3],
+                                                        [5,  1,  2,  .3],
                                                         [.5, 2,  1,  .8],
                                                         [3,  .3, .8,  1]
                                                     ],
-                                                    1000),
+                                                    n),
                       columns=['x1','x2','x3','x4'])
     df['y'] = df['x1'] + df['x2'] + df['x3'] + df['x4']
     X = df.drop('y', axis=1)
@@ -441,7 +482,6 @@ def multi_joint_distr():
     print(r.coef_) # should be all 1s
 
     yrange = (-2, 15)
-    min_samples_leaf = 50
 
     fig, axes = plt.subplots(5, 4, figsize=(8,8))
 
@@ -467,11 +507,13 @@ def multi_joint_distr():
         for j in range(1,4):
             axes[i,j].get_yaxis().set_visible(False)
 
+    min_samples_leaf = .005
+    hires_r2_threshold = .3
+    hires_window_width = .3
     uniqx, pdp, r2_at_x = \
         plot_stratpd(X, y, 'x1', 'y', ax=axes[1,0], xrange=(0,12),
                      # show_dx_line=True,
                      min_samples_leaf=min_samples_leaf,
-                     hires_threshold=200,
                      yrange=yrange, show_xlabel=False, show_ylabel=True)
     r = LinearRegression()
     r.fit(uniqx.reshape(-1, 1), pdp)
@@ -481,7 +523,6 @@ def multi_joint_distr():
         plot_stratpd(X, y, 'x2', 'y', ax=axes[1,1], xrange=(0,12),
                      # show_dx_line=True,
                      min_samples_leaf=min_samples_leaf,
-                     hires_threshold=200,
                      yrange=yrange, show_xlabel=False, show_ylabel=False)
     r = LinearRegression()
     r.fit(uniqx.reshape(-1, 1), pdp)
@@ -491,7 +532,6 @@ def multi_joint_distr():
         plot_stratpd(X, y, 'x3', 'y', ax=axes[1,2], xrange=(0,12),
                      # show_dx_line=True,
                      min_samples_leaf=min_samples_leaf,
-                     hires_threshold=200,
                      yrange=yrange, show_xlabel=False, show_ylabel=False)
     r = LinearRegression()
     r.fit(uniqx.reshape(-1, 1), pdp)
@@ -501,7 +541,6 @@ def multi_joint_distr():
         plot_stratpd(X, y, 'x4', 'y', ax=axes[1,3], xrange=(0,12),
                      # show_dx_line=True,
                      min_samples_leaf=min_samples_leaf,
-                     hires_threshold=200,
                      yrange=yrange, show_xlabel=False, show_ylabel=False)
     r = LinearRegression()
     r.fit(uniqx.reshape(-1, 1), pdp)
@@ -613,13 +652,80 @@ def plot_all_imp(X, y):
     plt.show()
 
 
+def additivity_data(n, sd=1.0):
+    x1 = np.random.uniform(-1, 1, size=n)
+    x2 = np.random.uniform(-1, 1, size=n)
+
+    y = x1**2 + x2 + np.random.normal(0, sd, size=n)
+    # y = x1**2 #+ np.random.normal(0, 1, size=n)
+    df = pd.DataFrame()
+    df['x1'] = x1
+    df['x2'] = x2
+    df['y'] = y
+    return df
+
+def meta_additivity():
+    # np.random.seed(99)
+    n = 1000
+    df = additivity_data(n=n, sd=.7)
+    X = df.drop('y', axis=1)
+    y = df['y']
+
+    fig, axes = plt.subplots(2, 2, figsize=(10, 10), sharey=False)
+
+    axes[0,0].scatter(X['x1'], y, alpha=.12, label=None)
+    axes[0,0].set_xlabel("x1")
+    axes[0,0].set_ylabel("y")
+    axes[1,0].scatter(X['x2'], y, alpha=.12, label=None)
+    axes[1,0].set_xlabel("x2")
+    axes[1,0].set_ylabel("y")
+
+    hires_r2_threshold = .3
+    # hires_min_samples_leaf = 50//3
+    min_samples_leaf = 50
+    hires_window_width = .4
+    plot_stratpd(X, y, 'x1', 'y', ax=axes[0, 1],
+                 ntrees=1,
+                 bootstrap=False,
+                 min_samples_leaf=min_samples_leaf,
+                 # hires_min_samples_leaf=hires_min_samples_leaf,
+                 hires_window_width=hires_window_width,
+                 hires_r2_threshold=hires_r2_threshold,
+                 show_importance=True,
+                 yrange=(-1, 1),
+                 pdp_dot_size=2, alpha=.4)
+
+    rtreeviz_univar(axes[1, 1],
+                    X['x2'], y,
+                    min_samples_leaf=min_samples_leaf,
+                    feature_name='x2',
+                    target_name='y',
+                    fontsize=10, show={'splits'})
+    axes[1,1].set_xlabel("x2")
+    axes[1,1].set_ylabel("y")
+
+    axes[0,0].set_title("$y = x_1^2 + x_2 + \epsilon$")
+    axes[0,1].set_title(f"leaf sz {min_samples_leaf}, hires {hires_r2_threshold}\nhires h {hires_window_width}")
+
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
+    rf.fit(X, y)
+    print(f"RF OOB {rf.oob_score_}")
+
+    # axes[0, 1].get_yaxis().set_visible(False)
+    # axes[1, 1].get_yaxis().set_visible(False)
+
+
+    plt.show()
+    plt.close()
+
 if __name__ == '__main__':
+    # meta_additivity()
     # imp_cars()
-    multi_joint_distr()
+    # multi_joint_distr()
     # rent()
     # meta_rent()
     # weight()
     # dep_weight()
     # dep_cars()
     # meta_weight()
-    # weather()
+    weather()
