@@ -166,8 +166,18 @@ def meta_rent():
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
 
-    min_r2_hires = .01
+    yranges = None
+
+    min_r2_hires = 0.0
     min_samples_leaf_hires = .1
+    plot_meta(X, y, colnames=['bedrooms','bathrooms','latitude','longitude'], targetname='rent',
+              min_r2_hires=min_r2_hires,
+              min_samples_leaf_hires=min_samples_leaf_hires)
+    savefig(f"meta_rent_r2_{min_r2_hires:.2f}_hires_{min_samples_leaf_hires:.2f}")
+    # plt.show()
+
+    min_r2_hires = 0.0
+    min_samples_leaf_hires = .2
     plot_meta(X, y, colnames=['bedrooms','bathrooms','latitude','longitude'], targetname='rent',
               min_r2_hires=min_r2_hires,
               min_samples_leaf_hires=min_samples_leaf_hires)
@@ -462,7 +472,7 @@ def meta_weather():
 
     savefig(f"meta_weather_r2_{min_r2_hires}_hires_{min_samples_leaf_hires}")
     plt.tight_layout()
-    plt.show()
+    # plt.show()
     plt.close()
 
 def weight():
@@ -667,7 +677,7 @@ def meta_weight():
                       min_r2_hires=min_r2_hires,
                       min_samples_leaf_hires=min_samples_leaf_hires, yranges=yranges)
             savefig(f"meta_weight_r2_{min_r2_hires:.2f}_hires_{min_samples_leaf_hires:.2f}")
-            plt.show()
+            # plt.show()
 
 def additivity_data(n, sd=1.0):
     x1 = np.random.uniform(-1, 1, size=n)
@@ -774,7 +784,7 @@ def meta_additivity():
 
     savefig(f"meta_additivity_r2_{min_r2_hires}_hires_{min_samples_leaf_hires}")
     plt.tight_layout()
-    plt.show()
+    # plt.show()
     plt.close()
 
 
@@ -943,7 +953,9 @@ def meta_cars():
     X = df_cars[['horsepower', 'weight']]
     y = df_cars['mpg']
 
-    for min_r2_hires in [.01,.1,.2,.5]:
+    yranges = None
+
+    for min_r2_hires in [.01,.1,.2,.5,1.0]:
         for min_samples_leaf_hires in [.01, .1, .2, .3]:
             plot_meta(X, y, colnames=['horsepower','weight'], targetname='mpg',
                       min_r2_hires=min_r2_hires,
@@ -955,17 +967,17 @@ def meta_cars():
 
 if __name__ == '__main__':
     # cars()
-    # meta_cars()
+    meta_cars()
     # unsup_boston()
     # rent()
     # rent_ntrees()
     # meta_boston()
     # meta_weight()
-    # meta_rent()
+    meta_rent()
     # unsup_rent()
     # weight()
     # unsup_weight()
-    meta_weather()
+    # meta_weather()
     # weather()
     # meta_additivity()
     # additivity()
