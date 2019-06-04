@@ -35,6 +35,10 @@ def df_cat_to_catcode(df):
             df[col] = df[col].cat.codes + 1
 
 
+def fix_missing_num(df, colname):
+    df[colname+'_na'] = pd.isnull(df[colname])
+    df[colname].fillna(df[colname].median(), inplace=True)
+
 def savefig(filename):
     plt.tight_layout(pad=0, w_pad=0, h_pad=0)
     plt.savefig(f"images/{filename}.pdf")
@@ -965,15 +969,79 @@ def meta_cars():
             # plt.show()
 
 
+def bulldozer():
+    def onecol(_, X, y, colname, axes, row, yrange):
+        avg_per_baths = df.groupby(colname).mean()['SalePrice']
+        axes[row, 0].scatter(X[colname], y, alpha=0.07, s=3)  # , label="observation")
+        # axes[row, 0].scatter(np.unique(df[colname]), avg_per_baths, s=6, c='black',
+        #                    label="average SalePrice/{colname}")
+        axes[row, 0].set_ylabel("SalePrice")  # , fontsize=12)
+        axes[row, 0].set_xlabel(colname)  # , fontsize=12)
+        # ax.legend()
+        plot_stratpd(X, y, colname, 'SalePrice', ax=axes[row,2], nlines=500, yrange=yrange)
+        rf = RandomForestRegressor(n_estimators=10, min_samples_leaf=1, oob_score=True)
+        rf.fit(X, y)
+        ice = ice_predict(rf, X, colname, 'SalePrice', nlines=500)
+        ice_plot(ice, colname, 'SalePrice', alpha=.05, ax=axes[row,1])
+        axes[row, 1].set_xlabel(colname)  # , fontsize=12)
+        axes[row,1].set_ylim(*yrange)
+
+    # to get that file, download Train.csv from
+    # [Blue Book for Bulldozers](https://www.kaggle.com/c/bluebook-for-bulldozers/data)
+    # There are 401,126 records with 52 columns
+    # (you must be logged in to get data)
+    # The raw csv is superslow to load, but feather is fast so load then save as feather
+
+    df = pd.read_feather("../../notebooks/data/bulldozer-train.feather")
+    basefeatures = ['ModelID',
+                    'datasource', 'YearMade',
+                    # some missing values but use anyway:
+                    'auctioneerID', 'MachineHoursCurrentMeter']
+
+    # Get subsample; it's a (sorted) timeseries so get last records not random
+    df = df.iloc[-10_000:]  # take only last 100,000 records
+
+    df.loc[df.YearMade < 1950, 'YearMade'] = df['YearMade'].median()
+
+    df['MachineHoursCurrentMeter'].fillna(df['MachineHoursCurrentMeter'].median(), inplace=True)
+
+    df.loc[df.eval("MachineHoursCurrentMeter==0"), 'MachineHoursCurrentMeter'] = \
+        df['MachineHoursCurrentMeter'].median()
+
+    df = df.fillna(0)  # flip missing numeric values to zeros
+
+    X, y = df[basefeatures], df['SalePrice']
+
+    fig, axes = plt.subplots(3,3, figsize=(9,6))
+
+    onecol(df, X, y, 'YearMade', axes, 0, yrange=(-1000,40000))
+    onecol(df, X, y, 'MachineHoursCurrentMeter', axes, 1, yrange=(-1500,10000))
+
+    axes[2, 0].scatter(X['ModelID'], y, alpha=0.07, s=3)  # , label="observation")
+    axes[2, 0].set_ylabel("SalePrice")  # , fontsize=12)
+    axes[2, 0].set_xlabel('ModelID')  # , fontsize=12)
+
+    rf = RandomForestRegressor(n_estimators=10, min_samples_leaf=1)
+    rf.fit(X, y)
+
+    ice = ice_predict(rf, X, 'ModelID', 'SalePrice')
+    ice_plot(ice, 'ModelID', 'SalePrice', alpha=.05, ax=axes[2,1])
+
+    plot_catstratpd(X, y, 'ModelID', 'SalePrice', cats=np.unique(df['ModelID']), ax=axes[2,2], sort='ascending')
+
+    plt.show()
+
+
 if __name__ == '__main__':
+    bulldozer()
     # cars()
-    meta_cars()
+    # meta_cars()
     # unsup_boston()
     # rent()
     # rent_ntrees()
     # meta_boston()
     # meta_weight()
-    meta_rent()
+    # meta_rent()
     # unsup_rent()
     # weight()
     # unsup_weight()
