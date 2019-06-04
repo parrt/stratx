@@ -156,7 +156,7 @@ def hires_slopes_from_one_leaf(x:np.ndarray, y:np.ndarray, hires_min_samples_lea
         r = (np.min(leaf_x), np.max(leaf_x))
         if np.isclose(r[0], r[1]):
             # print(f"ignoring xleft=xright @ {r[0]}")
-            # print(f"Ignoring range {r} from {x} -> {y}")
+            # print(f"Ignoring range {r} from {leaf_x.T} -> {leaf_y}")
             continue
         lm = LinearRegression()
         lm.fit(leaf_x.reshape(-1, 1), leaf_y)
@@ -212,7 +212,7 @@ def collect_leaf_slopes(rf, X, y, colname,
     allr = (np.min(X[colname]), np.max(X[colname]))
 
     leaves = leaf_samples(rf, X.drop(colname, axis=1))
-    print(f"{len(leaves)} leaves in T")
+    # print(f"{len(leaves)} leaves in T")
     for samples in leaves:
         one_leaf_samples = X.iloc[samples]
         leaf_x = one_leaf_samples[colname].values
@@ -231,14 +231,21 @@ def collect_leaf_slopes(rf, X, y, colname,
         # print(f"{len(leaf_x)} obs, R^2 y ~ X[{colname}] = {r2:.2f}, in range {r} is {rpercent:.2f}%")
 
         if r2 < hires_r2_threshold and len(leaf_x) > hires_n_threshold: # if linear model for y ~ X[colname] is too crappy, go hires
-            # print(f"BIG {len(leaf_x)}, R^2 of y ~ X[{colname}] = {r2:.2f} < {hires_r2_threshold}!!!")
+            print(f"BIG {len(leaf_x)}, R^2 of y ~ X[{colname}] = {r2:.2f} < {hires_r2_threshold}!!!")
             leaf_xranges_, leaf_slopes_, leaf_r2_ = \
                 hires_slopes_from_one_leaf(leaf_x, leaf_y, hires_min_samples_leaf=hires_min_samples_leaf)
 
-            leaf_slopes.extend(leaf_slopes_)
-            leaf_r2.extend(leaf_r2_)
-            leaf_xranges.extend(leaf_xranges_)
-            continue
+            if len(leaf_slopes_)>0:
+                leaf_slopes.extend(leaf_slopes_)
+                leaf_r2.extend(leaf_r2_)
+                leaf_xranges.extend(leaf_xranges_)
+                continue
+            else:
+                # sounds like hires_min_samples_leaf is too small and values are ints;
+                # e.g., hires_min_samples_leaf=.05 and x range of 1..10. If even spread,
+                # hires_min_samples_leaf will get single x value, which can't tell us about
+                # change in y over x as x isn't changing. Fall back onto non-hires
+                pass # keep going as if this hadn't happened
 
         #print(f"All R^2 {LM_r2:.3f} for {len(leaf_x)} samples with {LM.coef_[ci]:.2f} beta vs Lx,Ly beta {lm.coef_[0]:.2f}")
 
@@ -290,10 +297,10 @@ def avg_values_at_x(uniq_x, leaf_ranges, leaf_values):
 def plot_stratpd(X, y, colname, targetname=None,
                  ax=None,
                  ntrees=1,
-                 min_samples_leaf=.01,
+                 min_samples_leaf=5,
                  min_r2_hires=0.1,
-                 min_samples_hires=20,
-                 min_samples_leaf_hires=.01,
+                 min_samples_hires=10,
+                 min_samples_leaf_hires=.10,
                  xrange=None,
                  yrange=None,
                  pdp_dot_size=5,
@@ -369,9 +376,7 @@ def plot_stratpd(X, y, colname, targetname=None,
     # print(uniq_x, len(uniq_x))
     # print(curve, len(curve))
 
-    ax.scatter(uniq_x, curve,
-               s=pdp_dot_size, alpha=1,
-               c='black', label="Avg piecewise linear")
+    ax.scatter(uniq_x, curve, s=pdp_dot_size, alpha=1, c='black')
 
     if connect_pdp_dots:
         ax.plot(uniq_x, curve, ':',

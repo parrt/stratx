@@ -178,28 +178,28 @@ def meta_rent():
     min_samples_leaf_hires = .1
     plot_meta(X, y, colnames=['bedrooms','bathrooms','latitude','longitude'], targetname='rent',
               min_r2_hires=min_r2_hires,
-              min_samples_leaf_hires=min_samples_leaf_hires)
+              min_samples_leaf_hires=min_samples_leaf_hires, yranges=yranges)
     savefig(f"meta_rent_r2_{min_r2_hires:.2f}_hires_{min_samples_leaf_hires:.2f}")
 
     min_r2_hires = .1
     min_samples_leaf_hires = .2
     plot_meta(X, y, colnames=['bedrooms','bathrooms','latitude','longitude'], targetname='rent',
               min_r2_hires=min_r2_hires,
-              min_samples_leaf_hires=min_samples_leaf_hires)
+              min_samples_leaf_hires=min_samples_leaf_hires, yranges=yranges)
     savefig(f"meta_rent_r2_{min_r2_hires:.2f}_hires_{min_samples_leaf_hires:.2f}")
 
     min_r2_hires = .1
     min_samples_leaf_hires = .3
     plot_meta(X, y, colnames=['bedrooms','bathrooms','latitude','longitude'], targetname='rent',
               min_r2_hires=min_r2_hires,
-              min_samples_leaf_hires=min_samples_leaf_hires)
+              min_samples_leaf_hires=min_samples_leaf_hires, yranges=yranges)
     savefig(f"meta_rent_r2_{min_r2_hires:.2f}_hires_{min_samples_leaf_hires:.2f}")
 
     min_r2_hires = .5
     min_samples_leaf_hires = .1
     plot_meta(X, y, colnames=['bedrooms','bathrooms','latitude','longitude'], targetname='rent',
               min_r2_hires=min_r2_hires,
-              min_samples_leaf_hires=min_samples_leaf_hires)
+              min_samples_leaf_hires=min_samples_leaf_hires, yranges=yranges)
     savefig(f"meta_rent_r2_{min_r2_hires:.2f}_hires_{min_samples_leaf_hires:.2f}")
 
     # plt.show()
@@ -214,11 +214,14 @@ def meta_boston():
     X = df.drop('MEDV', axis=1)
     y = df['MEDV']
 
-    for min_r2_hires in [.01,.1,.2,.5]:
+    yranges = [(-30,0), (0,30), (-8,8), (-11, 0)]
+
+    for min_r2_hires in [.01,.1,.2,.5, 1.0]:
         for min_samples_leaf_hires in [.01, .1, .2, .3]:
             plot_meta(X, y, colnames=['LSTAT', 'RM', 'CRIM', 'DIS'], targetname='MEDV',
                       min_r2_hires=min_r2_hires,
-                      min_samples_leaf_hires=min_samples_leaf_hires)
+                      min_samples_leaf_hires=min_samples_leaf_hires,
+                      yranges=yranges)
             savefig(f"meta_boston_r2_{min_r2_hires:.2f}_hires_{min_samples_leaf_hires:.2f}")
 
 
@@ -236,28 +239,39 @@ def marginal_plot(X, y, colname, targetname, ax=None):
     ax.text(min(xcol)*1.02, max(y)*.95, f"$\\beta_{{{colname}}}$={r.coef_[0]:.3f}")
 
 
-def plot_meta(X, y, colnames, targetname, min_r2_hires, min_samples_leaf_hires, yrange=None):
+def plot_meta(X, y, colnames, targetname, min_r2_hires, min_samples_leaf_hires, yranges=None):
     min_samples_leaf_values = [2, 5, 10, 30, 50, 100, 200]
 
     nrows = len(colnames)
     ncols = len(min_samples_leaf_values)
-    fig, axes = plt.subplots(nrows, ncols+1, figsize=((ncols+1)*2.5, nrows*2.5))
+    fig, axes = plt.subplots(nrows, ncols+2, figsize=((ncols+2)*2.5, nrows*2.5))
+
+    if yranges is None:
+        yranges = [None]*len(colnames)
 
     row = 0
-    for colname in colnames:
+    for i,colname in enumerate(colnames):
         marginal_plot(X, y, colname, targetname, ax=axes[row, 0])
-        col = 1
+        col = 2
         for meta in min_samples_leaf_values:
-            print(f"---------- min_samples_leaf={meta} ----------- ")
-            plot_stratpd(X, y, colname, 'price', ax=axes[row, col],
+            print(f"---------- min_samples_leaf={meta}, min R^2={min_r2_hires:.2f}, hires leafsz={min_samples_leaf_hires:.2f} ----------- ")
+            plot_stratpd(X, y, colname, targetname, ax=axes[row, col],
                          min_r2_hires=min_r2_hires,
                          min_samples_leaf_hires=min_samples_leaf_hires,
                          min_samples_leaf=meta,
-                         yrange=yrange,
+                         yrange=yranges[i],
                          ntrees=1)
             axes[row, col].set_title(f"leafsz={meta}, min R^2={min_r2_hires:.2f}\nhires leafsz={min_samples_leaf_hires:.2f}",
                                      fontsize=9)
             col += 1
+        row += 1
+
+    rf = RandomForestRegressor(n_estimators=30, min_samples_leaf=1, oob_score=True)
+    rf.fit(X, y)
+    row = 0
+    for i,colname in enumerate(colnames):
+        ice = ice_predict(rf, X, colname, targetname)
+        ice_plot(ice, colname, targetname, ax=axes[row,1])
         row += 1
 
 
@@ -400,6 +414,57 @@ def weather():
     plt.close()
 
 
+def meta_weather():
+    # np.random.seed(66)
+
+    min_r2_hires = 1.0
+    # min_samples_leaf_hires = .2
+
+    nyears = 5
+    years = []
+    for y in range(1980,1980+nyears):
+        df_ = toy_weather_data()
+        df_['year']=y
+        years.append(df_)
+
+    df_raw = pd.concat(years, axis=0)
+
+    # df_raw.drop('year', axis=1, inplace=True)
+    df = df_raw.copy()
+    print(df.head(5))
+
+    catencoders = df_string_to_cat(df)
+    df_cat_to_catcode(df)
+    X = df.drop('temperature', axis=1)
+    y = df['temperature']
+
+    fig, axes = plt.subplots(4+1, 7, figsize=(22, (4+1)*2.8), sharey=False)
+    row = 0
+    for min_samples_leaf_hires in [.01, .1, .2, .3, .5]:
+        col = 0
+        for s in [2, 5, 10, 30, 50, 60, 100]:
+            print(f"------------------- SIZE {s} --------------------")
+            # if col>1: axes[row, col].get_yaxis().set_visible(False)
+            plot_stratpd(X, y, 'dayofyear', 'temp', ax=axes[row, col],
+                         min_samples_leaf=s,
+                         min_samples_leaf_hires=min_samples_leaf_hires,
+                         min_r2_hires=min_r2_hires,
+                         min_samples_hires=10,
+                         # show_importance=True,
+                         yrange=(-10, 10),
+                         pdp_dot_size=2, alpha=.4,
+                         show_ylabel=False)
+
+            axes[row,col].set_title(f"leaf sz {s}, hires {min_r2_hires}\nhires leaf sz {min_samples_leaf_hires}",
+                                    fontsize=9)
+            col += 1
+        row += 1
+
+    savefig(f"meta_weather_r2_{min_r2_hires}_hires_{min_samples_leaf_hires}")
+    plt.tight_layout()
+    plt.show()
+    plt.close()
+
 def weight():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     df_raw = toy_weight_data(1000)
@@ -501,7 +566,7 @@ def unsup_weight():
     plt.close()
 
 
-def meta_weight():
+def weight_ntrees():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     df_raw = toy_weight_data(1000)
     df = df_raw.copy()
@@ -584,6 +649,26 @@ def meta_weight():
     # plt.close()
 
 
+def meta_weight():
+    print(f"----------- {inspect.stack()[0][3]} -----------")
+    df_raw = toy_weight_data(1000)
+    df = df_raw.copy()
+    catencoders = df_string_to_cat(df)
+    df_cat_to_catcode(df)
+    df['pregnant'] = df['pregnant'].astype(int)
+    X = df.drop('weight', axis=1)
+    y = df['weight']
+
+    yranges=[(0,150), (-10,0)]
+
+    for min_r2_hires in [.1]:#[.01, .1, .2, .5]:
+        for min_samples_leaf_hires in [.01, .1, .2, .3]:
+            plot_meta(X, y, colnames=['height', 'education'], targetname='weight',
+                      min_r2_hires=min_r2_hires,
+                      min_samples_leaf_hires=min_samples_leaf_hires, yranges=yranges)
+            savefig(f"meta_weight_r2_{min_r2_hires:.2f}_hires_{min_samples_leaf_hires:.2f}")
+            plt.show()
+
 def additivity_data(n, sd=1.0):
     x1 = np.random.uniform(-1, 1, size=n)
     x2 = np.random.uniform(-1, 1, size=n)
@@ -598,18 +683,20 @@ def additivity_data(n, sd=1.0):
 def additivity():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     n = 1000
-    df = additivity_data(n=n, sd=.8)
+    df = additivity_data(n=n, sd=.8) # quite noisy
     X = df.drop('y', axis=1)
     y = df['y']
 
     fig, axes = plt.subplots(2, 2, figsize=(4,4), sharey=True)
     plot_stratpd(X, y, 'x1', 'y', ax=axes[0, 0],
                  yrange=(-1, 1),
-                 # min_samples_leaf=15,
+                 min_samples_leaf=30,
+                 min_samples_leaf_hires=.3,
                  pdp_dot_size=3, alpha=.5)
     
     plot_stratpd(X, y, 'x2', 'y', ax=axes[1, 0],
-                 # min_samples_leaf=15,
+                 min_samples_leaf=30,
+                 min_samples_leaf_hires=.3,
                  pdp_dot_size=3, alpha=.1, nlines=700)
     
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
@@ -631,63 +718,61 @@ def additivity():
 
 
 def meta_additivity():
-    np.random.seed(42)
     print(f"----------- {inspect.stack()[0][3]} -----------")
     n = 1000
-    sd = .8
-    df = additivity_data(n=n, sd=sd)
-    X = df.drop('y', axis=1)
-    y = df['y']
+    noises = [0, .2, .5, .8, 1.0]
+    min_r2_hires = 1.0
+    min_samples_leaf_hires = .2
 
-    fig, axes = plt.subplots(2, 7, figsize=(22, 6), sharey=False)
+    fig, axes = plt.subplots(len(noises)+1, 7, figsize=(22, (len(noises)+1)*2.8), sharey=False)
+
+    row = 0
+    for sd in noises:
+        df = additivity_data(n=n, sd=sd)
+        X = df.drop('y', axis=1)
+        y = df['y']
+        col = 1
+        for s in [2, 5, 10, 30, 50, 60]:
+            print(f"------------------- noise {sd}, SIZE {s} --------------------")
+            if col>1: axes[row, col].get_yaxis().set_visible(False)
+            plot_stratpd(X, y, 'x1', 'y', ax=axes[row, col],
+                         min_samples_leaf=s,
+                         min_samples_leaf_hires=min_samples_leaf_hires,
+                         min_r2_hires=min_r2_hires,
+                         min_samples_hires=10,
+                         # show_importance=True,
+                         yrange=(-1, 1),
+                         pdp_dot_size=2, alpha=.4,
+                         show_ylabel=False)
+
+            axes[row,col].set_title(f"leaf sz {s}, hires {min_r2_hires}\nhires leaf sz {min_samples_leaf_hires}",
+                                  fontsize=9)
+            col += 1
+        row += 1
+
+    lastrow = len(noises)
+
+    row = 0
+    for sd in noises:
+        axes[row, 0].scatter(X['x1'], y, alpha=.12, label=None)
+        axes[row, 0].set_xlabel("x1")
+        axes[row, 0].set_ylabel("y")
+        axes[row, 0].set_ylim(-5, 5)
+        axes[row, 0].set_title(f"$y = x_1^2 + x_2 + \epsilon$, $\epsilon \sim N(0,{sd:.2f})$")
+        row += 1
 
     col = 1
-    for s in [2, 30, 50, 60]:
-        print(f"------------------- SIZE {s} --------------------")
-        min_r2_hires = .3
-        min_samples_leaf_hires = .25
-        plot_stratpd(X, y, 'x1', 'y', ax=axes[0, col],
-                     min_samples_leaf=s,
-                     min_samples_leaf_hires=min_samples_leaf_hires,
-                     min_r2_hires=min_r2_hires,
-                     min_samples_hires=10,
-                     show_importance=True,
-                     yrange=(-1, 1),
-                     pdp_dot_size=2, alpha=.4)
-
-        rtreeviz_univar(axes[1, col],
+    for s in [2, 5, 10, 30, 50, 60]:
+        rtreeviz_univar(axes[lastrow, col],
                         X['x2'], y,
                         min_samples_leaf=s,
                         feature_name='x2',
                         target_name='y',
                         fontsize=10, show={'splits'})
-
-        axes[0,col].set_title(f"leaf sz {s}, hires {min_r2_hires}\nhires leaf sz {min_samples_leaf_hires}")
+        axes[lastrow, col].set_xlabel("x1")
         col += 1
 
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
-    rf.fit(X, y)
-    print(f"RF OOB {rf.oob_score_}")
-
-    axes[0,0].scatter(X['x1'], y, alpha=.12, label=None)
-    axes[0,0].set_xlabel("x1")
-    axes[0,0].set_ylabel("y")
-    axes[1,0].scatter(X['x2'], y, alpha=.12, label=None)
-    axes[1,0].set_xlabel("x2")
-    axes[1,0].set_ylabel("y")
-
-    # ice = ice_predict(rf, X, 'x1', 'y', numx=20, nlines=700)
-    # ice_plot(ice, 'x1', 'y', ax=axes[0, 0], yrange=(-1, 1), show_ylabel=False)
-
-    # ice = ice_predict(rf, X, 'x2', 'y', numx=20, nlines=700)
-    # ice_plot(ice, 'x2', 'y', ax=axes[1, 0], yrange=(-2, 2), show_ylabel=False)
-
-    axes[0, 1].get_yaxis().set_visible(False)
-    axes[1, 1].get_yaxis().set_visible(False)
-
-    axes[0,0].set_title(f"$y = x_1^2 + x_2 + \epsilon$\n$\epsilon \sim N(0,{sd:.2f})$")
-
-    savefig(f"meta_additivity")
+    savefig(f"meta_additivity_r2_{min_r2_hires}_hires_{min_samples_leaf_hires}")
     plt.tight_layout()
     plt.show()
     plt.close()
@@ -862,7 +947,8 @@ def meta_cars():
         for min_samples_leaf_hires in [.01, .1, .2, .3]:
             plot_meta(X, y, colnames=['horsepower','weight'], targetname='mpg',
                       min_r2_hires=min_r2_hires,
-                      min_samples_leaf_hires=min_samples_leaf_hires)
+                      min_samples_leaf_hires=min_samples_leaf_hires,
+                      yranges=yranges)
             savefig(f"meta_cars_r2_{min_r2_hires:.2f}_hires_{min_samples_leaf_hires:.2f}")
             # plt.show()
 
@@ -873,12 +959,13 @@ if __name__ == '__main__':
     # unsup_boston()
     # rent()
     # rent_ntrees()
-    meta_boston()
+    # meta_boston()
+    # meta_weight()
     # meta_rent()
     # unsup_rent()
     # weight()
-    # meta_weight()
     # unsup_weight()
+    meta_weather()
     # weather()
     # meta_additivity()
     # additivity()
