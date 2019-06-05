@@ -106,15 +106,15 @@ def rent():
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
 
-    ice = ice_predict(rf, X, colname, 'price', nlines=1000)
-    ice_plot(ice, colname, 'price', alpha=.05, ax=axes[0,1], show_xlabel=False)
+    ice = predict_ice(rf, X, colname, 'price', nlines=1000)
+    plot_ice(ice, colname, 'price', alpha=.05, ax=axes[0, 1], show_xlabel=False)
     axes[0,1].set_ylim(-1000,5000)
 
     lm = Lasso()
     lm.fit(X, y)
 
-    ice = ice_predict(lm, X, colname, 'price', nlines=1000)
-    ice_plot(ice, colname, 'price', alpha=.05, ax=axes[1,0], show_ylabel=False)
+    ice = predict_ice(lm, X, colname, 'price', nlines=1000)
+    plot_ice(ice, colname, 'price', alpha=.05, ax=axes[1, 0], show_ylabel=False)
     axes[1,0].set_ylim(-1000,5000)
 
     plot_stratpd(X, y, colname, 'price', ax=axes[1, 1], alpha=.2)
@@ -284,8 +284,8 @@ def plot_meta(X, y, colnames, targetname, min_r2_hires, min_samples_leaf_hires, 
     rf.fit(X, y)
     row = 0
     for i,colname in enumerate(colnames):
-        ice = ice_predict(rf, X, colname, targetname)
-        ice_plot(ice, colname, targetname, ax=axes[row,1])
+        ice = predict_ice(rf, X, colname, targetname)
+        plot_ice(ice, colname, targetname, ax=axes[row, 1])
         row += 1
 
 
@@ -377,15 +377,15 @@ def weather():
     rf.fit(X, y)
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    ice = ice_predict(rf, X, 'dayofyear', 'temperature')
-    ice_plot(ice, 'dayofyear', 'temperature', ax=ax, yrange=(-15,15))
+    ice = predict_ice(rf, X, 'dayofyear', 'temperature')
+    plot_ice(ice, 'dayofyear', 'temperature', ax=ax, yrange=(-15, 15))
 
     savefig(f"dayofyear_vs_temp_pdp")
     plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    ice = ice_predict(rf, X, 'state', 'temperature')
-    ice_plot(ice, 'state', 'temperature', cats=catencoders['state'], ax=ax)
+    ice = predict_ice(rf, X, 'state', 'temperature')
+    plot_ice(ice, 'state', 'temperature', cats=catencoders['state'], ax=ax)
 
     savefig(f"state_vs_temp_pdp")
     plt.close()
@@ -523,27 +523,27 @@ def weight():
     rf.fit(X, y)
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    ice = ice_predict(rf, X, 'education', 'weight')
-    ice_plot(ice, 'education', 'weight', ax=ax, yrange=(-12, 0))
+    ice = predict_ice(rf, X, 'education', 'weight')
+    plot_ice(ice, 'education', 'weight', ax=ax, yrange=(-12, 0))
     savefig(f"education_vs_weight_pdp")
     plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    ice = ice_predict(rf, X, 'height', 'weight')
-    ice_plot(ice, 'height', 'weight', ax=ax, yrange=(0, 160))
+    ice = predict_ice(rf, X, 'height', 'weight')
+    plot_ice(ice, 'height', 'weight', ax=ax, yrange=(0, 160))
     savefig(f"height_vs_weight_pdp")
     plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    ice = ice_predict(rf, X, 'sex', 'weight')
-    ice_plot(ice, 'sex', 'weight', ax=ax, yrange=(0, 5),
+    ice = predict_ice(rf, X, 'sex', 'weight')
+    plot_ice(ice, 'sex', 'weight', ax=ax, yrange=(0, 5),
              cats=df_raw['sex'].unique())
     savefig(f"sex_vs_weight_pdp")
     plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    ice = ice_predict(rf, X, 'pregnant', 'weight')
-    ice_plot(ice, 'pregnant', 'weight', ax=ax, yrange=(-5, 35),
+    ice = predict_ice(rf, X, 'pregnant', 'weight')
+    plot_ice(ice, 'pregnant', 'weight', ax=ax, yrange=(-5, 35),
              cats=df_raw['pregnant'].unique())
     savefig(f"pregnant_vs_weight_pdp")
     plt.close()
@@ -717,11 +717,11 @@ def additivity():
     rf.fit(X, y)
     print(f"RF OOB {rf.oob_score_}")
 
-    ice = ice_predict(rf, X, 'x1', 'y', numx=20, nlines=700)
-    ice_plot(ice, 'x1', 'y', ax=axes[0,1], yrange=(-1, 1), show_ylabel=False)
+    ice = predict_ice(rf, X, 'x1', 'y', numx=20, nlines=700)
+    plot_ice(ice, 'x1', 'y', ax=axes[0, 1], yrange=(-1, 1), show_ylabel=False)
     
-    ice = ice_predict(rf, X, 'x2', 'y', numx=20, nlines=700)
-    ice_plot(ice, 'x2', 'y', ax=axes[1,1], yrange=(-2, 2), show_ylabel=False)
+    ice = predict_ice(rf, X, 'x2', 'y', numx=20, nlines=700)
+    plot_ice(ice, 'x2', 'y', ax=axes[1, 1], yrange=(-2, 2), show_ylabel=False)
 
     axes[0,1].get_yaxis().set_visible(False)
     axes[1,1].get_yaxis().set_visible(False)
@@ -835,14 +835,14 @@ def bigX():
     rf.fit(X, y)
     print(f"RF OOB {rf.oob_score_}")
     
-    ice = ice_predict(rf, X, 'x1', 'y', numx=10)
-    ice_plot(ice, 'x1', 'y', ax=axes[0,1], yrange=(-4,4))
+    ice = predict_ice(rf, X, 'x1', 'y', numx=10)
+    plot_ice(ice, 'x1', 'y', ax=axes[0, 1], yrange=(-4, 4))
     
-    ice = ice_predict(rf, X, 'x2', 'y', numx=10)
-    ice_plot(ice, 'x2', 'y', ax=axes[1,1], yrange=(-4,4))
+    ice = predict_ice(rf, X, 'x2', 'y', numx=10)
+    plot_ice(ice, 'x2', 'y', ax=axes[1, 1], yrange=(-4, 4))
 
-    ice = ice_predict(rf, X, 'x3', 'y', numx=10)
-    ice_plot(ice, 'x3', 'y', ax=axes[2,1], yrange=(-4,4))
+    ice = predict_ice(rf, X, 'x3', 'y', numx=10)
+    plot_ice(ice, 'x3', 'y', ax=axes[2, 1], yrange=(-4, 4))
 
     axes[0,1].get_yaxis().set_visible(False)
     axes[1,1].get_yaxis().set_visible(False)
@@ -874,8 +874,8 @@ def unsup_boston():
     axes[1,0].set_ylabel('MEDV')
     axes[1,0].set_xlabel('AGE')
 
-    ice = ice_predict(rf, X, 'AGE', 'MEDV', numx=10)
-    ice_plot(ice, 'AGE', 'MEDV', ax=axes[1, 1], yrange=(-20,20))
+    ice = predict_ice(rf, X, 'AGE', 'MEDV', numx=10)
+    plot_ice(ice, 'AGE', 'MEDV', ax=axes[1, 1], yrange=(-20, 20))
 
     axes[0,1].get_yaxis().set_visible(False)
     axes[1,1].get_yaxis().set_visible(False)
@@ -922,10 +922,10 @@ def cars():
 
     rf = RandomForestRegressor(n_estimators=50, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
-    ice = ice_predict(rf, X, 'horsepower', 'mpg', numx=100)
-    ice_plot(ice, 'horsepower', 'mpg', ax=axes[0, 1], yrange=(-20,20), show_ylabel=False)
-    ice = ice_predict(rf, X, 'weight', 'mpg', numx=100)
-    ice_plot(ice, 'weight', 'mpg', ax=axes[1, 1], yrange=(-20,20), show_ylabel=False)
+    ice = predict_ice(rf, X, 'horsepower', 'mpg', numx=100)
+    plot_ice(ice, 'horsepower', 'mpg', ax=axes[0, 1], yrange=(-20, 20), show_ylabel=False)
+    ice = predict_ice(rf, X, 'weight', 'mpg', numx=100)
+    plot_ice(ice, 'weight', 'mpg', ax=axes[1, 1], yrange=(-20, 20), show_ylabel=False)
 
     # draw regr line for horsepower
     r = LinearRegression()
@@ -972,17 +972,17 @@ def meta_cars():
 def bulldozer():
     def onecol(_, X, y, colname, axes, row, yrange):
         avg_per_baths = df.groupby(colname).mean()['SalePrice']
-        axes[row, 0].scatter(X[colname], y, alpha=0.07, s=3)  # , label="observation")
+        axes[row, 0].scatter(X[colname], y, alpha=0.07, s=4)  # , label="observation")
         # axes[row, 0].scatter(np.unique(df[colname]), avg_per_baths, s=6, c='black',
         #                    label="average SalePrice/{colname}")
         axes[row, 0].set_ylabel("SalePrice")  # , fontsize=12)
         axes[row, 0].set_xlabel(colname)  # , fontsize=12)
         # ax.legend()
-        plot_stratpd(X, y, colname, 'SalePrice', ax=axes[row,2], nlines=500, yrange=yrange)
+        plot_stratpd(X, y, colname, 'SalePrice', ax=axes[row,2], nlines=500, yrange=yrange, show_ylabel=False)
         rf = RandomForestRegressor(n_estimators=10, min_samples_leaf=1, oob_score=True)
         rf.fit(X, y)
-        ice = ice_predict(rf, X, colname, 'SalePrice', nlines=500)
-        ice_plot(ice, colname, 'SalePrice', alpha=.05, ax=axes[row,1])
+        ice = predict_ice(rf, X, colname, 'SalePrice', nlines=500)
+        plot_ice(ice, colname, 'SalePrice', alpha=.05, ax=axes[row, 1], show_ylabel=False)
         axes[row, 1].set_xlabel(colname)  # , fontsize=12)
         axes[row,1].set_ylim(*yrange)
 
@@ -999,7 +999,7 @@ def bulldozer():
                     'auctioneerID', 'MachineHoursCurrentMeter']
 
     # Get subsample; it's a (sorted) timeseries so get last records not random
-    df = df.iloc[-10_000:]  # take only last 100,000 records
+    df = df.iloc[-100:]  # take only last 100,000 records
 
     df.loc[df.YearMade < 1950, 'YearMade'] = df['YearMade'].median()
 
@@ -1012,10 +1012,10 @@ def bulldozer():
 
     X, y = df[basefeatures], df['SalePrice']
 
-    fig, axes = plt.subplots(3,3, figsize=(9,6))
+    fig, axes = plt.subplots(3,3, figsize=(9,9))
 
-    onecol(df, X, y, 'YearMade', axes, 0, yrange=(-1000,40000))
-    onecol(df, X, y, 'MachineHoursCurrentMeter', axes, 1, yrange=(-1500,10000))
+    # onecol(df, X, y, 'YearMade', axes, 0, yrange=(-1000,40000))
+    # onecol(df, X, y, 'MachineHoursCurrentMeter', axes, 1, yrange=(-1500,10000))
 
     axes[2, 0].scatter(X['ModelID'], y, alpha=0.07, s=3)  # , label="observation")
     axes[2, 0].set_ylabel("SalePrice")  # , fontsize=12)
@@ -1024,11 +1024,15 @@ def bulldozer():
     rf = RandomForestRegressor(n_estimators=10, min_samples_leaf=1)
     rf.fit(X, y)
 
-    ice = ice_predict(rf, X, 'ModelID', 'SalePrice')
-    ice_plot(ice, 'ModelID', 'SalePrice', alpha=.05, ax=axes[2,1])
+    ice = predict_ice(rf, X, 'ModelID', 'SalePrice')
+    plot_catice(ice, 'ModelID', targetname='SalePrice', cats=np.unique(df['ModelID']),
+                alpha=.05, ax=axes[2, 1], yrange=(-20000, 130000), show_ylabel=False)
 
-    plot_catstratpd(X, y, 'ModelID', 'SalePrice', cats=np.unique(df['ModelID']), ax=axes[2,2], sort='ascending')
 
+    # plot_catstratpd(X, y, 'ModelID', 'SalePrice', cats=np.unique(df['ModelID']), ax=axes[2,2], sort='ascending',
+    #                 yrange=(-20000,130000), show_ylabel=False)
+
+    savefig("bulldozer")
     plt.show()
 
 

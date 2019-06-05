@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from  matplotlib.collections import LineCollection
 import time
 
-def ice_predict(model, X:pd.DataFrame, colname:str, targetname="target", numx=50, nlines=None):
+def predict_ice(model, X:pd.DataFrame, colname:str, targetname="target", numx=50, nlines=None):
     """
     Return dataframe with one row per observation in X and one column
     per unique value of column identified by colname.
@@ -66,7 +66,7 @@ def ice2lines(ice:np.ndarray) -> np.ndarray:
     return np.array(lines)
 
 
-def ice_plot(ice, colname, targetname="target", cats=None, ax=None, linewidth=.5, color='#9CD1E3',
+def plot_ice(ice, colname, cats=None, targetname="target", ax=None, linewidth=.5, color='#9CD1E3',
              alpha=.1, title=None, xrange=None, yrange=None, pdp=True, pdp_linewidth=.5, pdp_alpha=1,
              pdp_color='black', show_xlabel=True, show_ylabel=True):
     start = time.time()
@@ -122,6 +122,92 @@ def ice_plot(ice, colname, targetname="target", cats=None, ax=None, linewidth=.5
         uniq_values = ice.iloc[0,:]
         ax.plot(uniq_values, avg_y - min_pdp_y,
                 alpha=pdp_alpha, linewidth=pdp_linewidth, c=pdp_color)
+
+    stop = time.time()
+    # print(f"plot_ICE {stop - start:.3f}s")
+
+
+def plot_catice(ice, colname, targetname, cats, ax=None, linewidth=.5,
+                color='#9CD1E3',
+                alpha=.1, title=None, xrange=None, yrange=None, pdp=True,
+                pdp_linewidth=.5, pdp_alpha=1,
+                pdp_color='black', show_xlabel=True, show_ylabel=True,
+                sort='ascending'):
+    start = time.time()
+    if ax is None:
+        fig, ax = plt.subplots(1,1)
+
+    avg_y = np.mean(ice[1:], axis=0)
+
+    min_pdp_y = avg_y[0] if cats is None else 0
+    # if 0 is in x feature and not on left/right edge, get y at 0
+    # and shift so that is x,y 0 point.
+    linex = ice.iloc[0,:] # get unique x values from first row
+    nx = len(linex)
+    if linex[int(nx*0.05)]<0 or linex[-int(nx*0.05)]>0:
+        closest_x_to_0 = np.abs(linex - 0.0).argmin()
+        min_pdp_y = avg_y[closest_x_to_0]
+
+    pdp_curve = avg_y - min_pdp_y
+
+    lines = ice2lines(ice)
+    lines[:,:,1] = lines[:,:,1] - min_pdp_y
+    # lines[:,:,0] scans all lines, all points in a line, and gets x column
+    minx, maxx = np.min(lines[:,:,0]), np.max(lines[:,:,0])
+    miny, maxy = np.min(lines[:,:,1]), np.max(lines[:,:,1])
+    if yrange is not None:
+        ax.set_ylim(*yrange)
+    else:
+        ax.set_ylim(miny, maxy)
+    if show_xlabel:
+        ax.set_xlabel(colname)
+    if show_ylabel:
+        ax.set_ylabel(targetname)
+    if title is not None:
+        ax.set_title(title)
+
+    # strip plot
+    ncats = len(cats)
+    nleaves = len(lines)
+
+    sort_indexes = range(ncats)
+    if sort == 'ascending':
+        sort_indexes = pdp_curve.argsort()
+        cats = cats[sort_indexes]
+    elif sort == 'descending':
+        sort_indexes = pdp_curve.argsort()[::-1]  # reversed
+        cats = cats[sort_indexes]
+
+    min_value = np.min(pdp_curve)
+
+    xloc = 1
+    sigma = .02
+    mu = 0
+    x_noise = np.random.normal(mu, sigma, size=nleaves) # to make strip plot
+    for i in sort_indexes:
+        # ax.scatter(x_noise + xloc, leaf_histos.iloc[i]-min_value,
+        #            alpha=alpha, marker='o', s=10,
+        #            c='#9CD1E3')
+        ax.plot([xloc - .1, xloc + .1], [pdp_curve[i]-min_value] * 2,
+                c='black', linewidth=2)
+        xloc += 1
+    ax.set_xticks(range(1, ncats + 1))
+    ax.set_xticklabels(cats)
+
+    # if True in cats or False in cats:
+    #     ax.set_xticks(range(0, 1+1))
+    #     ax.set_xticklabels(cats)
+    #     ax.set_xlim(0, 1)
+    # else:
+    #     ncats = len(cats)
+    #     ax.set_xticks(range(1, ncats+1))
+    #     ax.set_xticklabels(cats)
+    #     ax.set_xlim(1, ncats)
+
+    # if pdp:
+    #     uniq_values = ice.iloc[0,:]
+    #     ax.plot(uniq_values, pdp_curve,
+    #             alpha=pdp_alpha, linewidth=pdp_linewidth, c=pdp_color)
 
     stop = time.time()
     # print(f"plot_ICE {stop - start:.3f}s")
