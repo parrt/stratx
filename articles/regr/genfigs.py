@@ -970,6 +970,8 @@ def meta_cars():
 
 
 def bulldozer():
+    # np.random.seed(42)
+
     def onecol(_, X, y, colname, axes, row, yrange):
         avg_per_baths = df.groupby(colname).mean()['SalePrice']
         axes[row, 0].scatter(X[colname], y, alpha=0.07, s=4)  # , label="observation")
@@ -999,7 +1001,7 @@ def bulldozer():
                     'auctioneerID', 'MachineHoursCurrentMeter']
 
     # Get subsample; it's a (sorted) timeseries so get last records not random
-    df = df.iloc[-100:]  # take only last 100,000 records
+    df = df.iloc[-1000:]  # take only last 100,000 records
 
     df.loc[df.YearMade < 1950, 'YearMade'] = df['YearMade'].median()
 
@@ -1024,15 +1026,14 @@ def bulldozer():
     rf = RandomForestRegressor(n_estimators=10, min_samples_leaf=1)
     rf.fit(X, y)
 
-    ice = predict_ice(rf, X, 'ModelID', 'SalePrice')
+    ice = predict_catice(rf, X, 'ModelID', 'SalePrice', cats=np.unique(X['ModelID']))
     plot_catice(ice, 'ModelID', targetname='SalePrice', cats=np.unique(df['ModelID']),
-                alpha=.05, ax=axes[2, 1], yrange=(-20000, 130000), show_ylabel=False)
+                alpha=.05, ax=axes[2, 1], yrange=(-20000, 130000), show_ylabel=False, sort='ascending')
 
+    plot_catstratpd(X, y, 'ModelID', 'SalePrice', cats=np.unique(df['ModelID']), ax=axes[2,2], sort='ascending',
+                    yrange=(-20000,130000), show_ylabel=False)
 
-    # plot_catstratpd(X, y, 'ModelID', 'SalePrice', cats=np.unique(df['ModelID']), ax=axes[2,2], sort='ascending',
-    #                 yrange=(-20000,130000), show_ylabel=False)
-
-    savefig("bulldozer")
+    # savefig("bulldozer")
     plt.show()
 
 

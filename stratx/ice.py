@@ -4,7 +4,12 @@ import matplotlib.pyplot as plt
 from  matplotlib.collections import LineCollection
 import time
 
-def predict_ice(model, X:pd.DataFrame, colname:str, targetname="target", numx=50, nlines=None):
+def predict_catice(model, X:pd.DataFrame, colname:str, targetname, cats):
+    return predict_ice(model=model, X=X, colname=colname, targetname=targetname,
+                       cats=cats)
+
+
+def predict_ice(model, X:pd.DataFrame, colname:str, targetname="target", cats=None, numx=50, nlines=None):
     """
     Return dataframe with one row per observation in X and one column
     per unique value of column identified by colname.
@@ -20,9 +25,14 @@ def predict_ice(model, X:pd.DataFrame, colname:str, targetname="target", numx=50
     """
     start = time.time()
     save = X[colname].copy()
-    if nlines is not None:
+
+    if cats is not None:
+        linex = np.unique(cats)
+        numx = None
+        nlines = None
+    elif nlines is not None:
         X = X.sample(nlines, replace=False)
-    if numx is not None:
+    elif numx is not None:
         linex = np.linspace(np.min(X[colname]), np.max(X[colname]), numx)
     else:
         linex = sorted(X[colname].unique())
@@ -48,8 +58,8 @@ def ice2lines(ice:np.ndarray) -> np.ndarray:
     """
     Return a 3D array of 2D matrices holding X coordinates in col 0 and
     Y coordinates in col 1. result[0] is first 2D matrix of [X,Y] points
-    in a single ICE line for single sample. Shape of result is:
-    (nsamples,nuniquevalues,2)
+    in a single ICE line for single observations. Shape of result is:
+    (nobservations,nuniquevalues,2)
     """
     start = time.time()
     linex = ice.iloc[0,:] # get unique x values from first row
@@ -130,35 +140,51 @@ def plot_ice(ice, colname, cats=None, targetname="target", ax=None, linewidth=.5
 def plot_catice(ice, colname, targetname, cats, ax=None, linewidth=.5,
                 color='#9CD1E3',
                 alpha=.1, title=None, xrange=None, yrange=None, pdp=True,
-                pdp_linewidth=.5, pdp_alpha=1,
+                pdp_marker_width=.5, pdp_alpha=1,
                 pdp_color='black', show_xlabel=True, show_ylabel=True,
                 sort='ascending'):
     start = time.time()
     if ax is None:
         fig, ax = plt.subplots(1,1)
 
+    ncats = len(cats)
+
     avg_y = np.mean(ice[1:], axis=0)
 
-    min_pdp_y = avg_y[0] if cats is None else 0
-    # if 0 is in x feature and not on left/right edge, get y at 0
-    # and shift so that is x,y 0 point.
-    linex = ice.iloc[0,:] # get unique x values from first row
-    nx = len(linex)
-    if linex[int(nx*0.05)]<0 or linex[-int(nx*0.05)]>0:
-        closest_x_to_0 = np.abs(linex - 0.0).argmin()
-        min_pdp_y = avg_y[closest_x_to_0]
+    lines = ice2lines(ice)
 
+    nobs = lines.shape[0]
+    nx = lines.shape[1]
+
+    sort_indexes = range(ncats)
+    if sort == 'ascending':
+        sort_indexes = avg_y.argsort()
+        cats = cats[sort_indexes]
+    elif sort == 'descending':
+        sort_indexes = avg_y.argsort()[::-1]  # reversed
+        cats = cats[sort_indexes]
+
+    # find leftmost value (lowest value if sorted ascending) and shift by this
+    min_pdp_y = avg_y[sort_indexes[0]]
+    lines[:,:,1] = lines[:,:,1] - min_pdp_y
     pdp_curve = avg_y - min_pdp_y
 
-    lines = ice2lines(ice)
-    lines[:,:,1] = lines[:,:,1] - min_pdp_y
-    # lines[:,:,0] scans all lines, all points in a line, and gets x column
-    minx, maxx = np.min(lines[:,:,0]), np.max(lines[:,:,0])
-    miny, maxy = np.min(lines[:,:,1]), np.max(lines[:,:,1])
+    # plot predicted values for each category at each observation point
+    xlocs = np.arange(ncats)
+    print(f"shape {lines.shape}, ncats {ncats}, nx {nx}, len(pdp) {len(pdp_curve)}")
+    for i in range(nobs): # for each observation
+        ax.scatter(xlocs, lines[i,sort_indexes,1], # lines[i] is ith observation
+                   alpha=alpha, marker='o', s=10,
+                   c='#9CD1E3')
+
+    if pdp:
+        ax.scatter(xlocs, pdp_curve[sort_indexes], c=pdp_color, s=pdp_marker_width, alpha=pdp_alpha)
+
+    ax.set_xticks(range(1, ncats + 1))
+    ax.set_xticklabels(cats)
+
     if yrange is not None:
         ax.set_ylim(*yrange)
-    else:
-        ax.set_ylim(miny, maxy)
     if show_xlabel:
         ax.set_xlabel(colname)
     if show_ylabel:
@@ -166,48 +192,15 @@ def plot_catice(ice, colname, targetname, cats, ax=None, linewidth=.5,
     if title is not None:
         ax.set_title(title)
 
-    # strip plot
-    ncats = len(cats)
-    nleaves = len(lines)
-
-    sort_indexes = range(ncats)
-    if sort == 'ascending':
-        sort_indexes = pdp_curve.argsort()
-        cats = cats[sort_indexes]
-    elif sort == 'descending':
-        sort_indexes = pdp_curve.argsort()[::-1]  # reversed
-        cats = cats[sort_indexes]
-
-    min_value = np.min(pdp_curve)
-
-    xloc = 1
-    sigma = .02
-    mu = 0
-    x_noise = np.random.normal(mu, sigma, size=nleaves) # to make strip plot
-    for i in sort_indexes:
-        # ax.scatter(x_noise + xloc, leaf_histos.iloc[i]-min_value,
-        #            alpha=alpha, marker='o', s=10,
-        #            c='#9CD1E3')
-        ax.plot([xloc - .1, xloc + .1], [pdp_curve[i]-min_value] * 2,
-                c='black', linewidth=2)
-        xloc += 1
-    ax.set_xticks(range(1, ncats + 1))
-    ax.set_xticklabels(cats)
-
-    # if True in cats or False in cats:
-    #     ax.set_xticks(range(0, 1+1))
-    #     ax.set_xticklabels(cats)
-    #     ax.set_xlim(0, 1)
-    # else:
-    #     ncats = len(cats)
-    #     ax.set_xticks(range(1, ncats+1))
-    #     ax.set_xticklabels(cats)
-    #     ax.set_xlim(1, ncats)
-
-    # if pdp:
-    #     uniq_values = ice.iloc[0,:]
-    #     ax.plot(uniq_values, pdp_curve,
-    #             alpha=pdp_alpha, linewidth=pdp_linewidth, c=pdp_color)
+    if True in cats or False in cats:
+        ax.set_xticks(range(0, 1+1))
+        ax.set_xticklabels(cats)
+        ax.set_xlim(0, 1)
+    else:
+        ncats = len(cats)
+        ax.set_xticks(range(1, ncats+1))
+        ax.set_xticklabels(cats)
+        ax.set_xlim(1, ncats)
 
     stop = time.time()
-    # print(f"plot_ICE {stop - start:.3f}s")
+    print(f"plot_catice {stop - start:.3f}s")
