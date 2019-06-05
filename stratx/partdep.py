@@ -480,22 +480,26 @@ def plot_catstratpd(X, y, colname, targetname,
                     ax=None,
                     sort='ascending',
                     ntrees=1,
-                    min_samples_leaf=None,
+                    min_samples_leaf=10,
                     alpha=.15,
                     yrange=None,
                     title=None,
                     bootstrap=False,
                     max_features=1.0,
                     supervised=True,
+                    pdp_marker_width=.5,
+                    pdp_color='black',
+                    style:('strip','scatter')='strip',
                     show_xlabel=True,
-                    show_ylabel=True):
-    if min_samples_leaf is None:
-        # rule of thumb: for binary, 2 samples / leaf seems good
-        # but num cats + 3 seems better for non-binary
-        min_samples_leaf = len(np.unique(X[colname]))
-        if min_samples_leaf>2:
-            min_samples_leaf += 3
-
+                    show_ylabel=True,
+                    show_xticks=True):
+    # if min_samples_leaf is None:
+    #     # rule of thumb: for binary, 2 samples / leaf seems good
+    #     # but num cats + 3 seems better for non-binary
+    #     min_samples_leaf = len(np.unique(X[colname]))
+    #     if min_samples_leaf>2:
+    #         min_samples_leaf += 3
+    #
     if ntrees==1:
         max_features = 1.0
         bootstrap = False
@@ -523,6 +527,9 @@ def plot_catstratpd(X, y, colname, targetname,
     leaf_histos = catwise_leaves(rf, X, y, colname)
     avg_per_cat = np.nanmean(leaf_histos, axis=1)
 
+    if len(cats)>50:
+        show_xticks = False # failsafe
+
     if ax is None:
         fig, ax = plt.subplots(1, 1)
 
@@ -539,19 +546,43 @@ def plot_catstratpd(X, y, colname, targetname,
 
     min_value = np.min(avg_per_cat)
 
-    xloc = 1
-    sigma = .02
-    mu = 0
-    x_noise = np.random.normal(mu, sigma, size=nleaves) # to make strip plot
-    for i in sort_indexes:
-        ax.scatter(x_noise + xloc, leaf_histos.iloc[i]-min_value,
-                   alpha=alpha, marker='o', s=10,
-                   c='#9CD1E3')
-        ax.plot([xloc - .1, xloc + .1], [avg_per_cat[i]-min_value] * 2,
-                c='black', linewidth=2)
-        xloc += 1
+    # if too many categories, can't do strip plot
+    if style=='strip':
+        xloc = 1
+        sigma = .02
+        mu = 0
+        x_noise = np.random.normal(mu, sigma, size=nleaves) # to make strip plot
+        for i in sort_indexes:
+            ax.scatter(x_noise + xloc, leaf_histos.iloc[i]-min_value,
+                       alpha=alpha, marker='o', s=10,
+                       c='#9CD1E3')
+            ax.plot([xloc - .1, xloc + .1], [avg_per_cat[i]-min_value] * 2,
+                    c='black', linewidth=2)
+            xloc += 1
+    else: # do straight plot
+        xlocs = np.arange(1,ncats+1)
+        """
+        
+                       leaf0       leaf1
+        category
+        1         166.430176  186.796956
+        2         219.590349  176.448626
+        """
+        sorted_histos = leaf_histos.iloc[sort_indexes,:]
+        xloc = 1
+        for i in range(nleaves):
+            ax.scatter(xlocs, sorted_histos.iloc[:,i] - min_value,
+                       alpha=alpha, marker='o', s=5,
+                       c='#9CD1E3')
+            xloc += 1
+        ax.scatter(xlocs, avg_per_cat[sort_indexes]-min_value, c=pdp_color, s=pdp_marker_width)
+
     ax.set_xticks(range(1, ncats + 1))
-    ax.set_xticklabels(cats)
+    if show_xticks: # sometimes too many
+        ax.set_xticklabels(cats)
+    else:
+        ax.set_xticklabels([])
+        ax.tick_params(axis='x', which='both', bottom=False)
 
     if show_xlabel:
         ax.set_xlabel(colname)

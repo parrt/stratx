@@ -42,7 +42,7 @@ def fix_missing_num(df, colname):
 def savefig(filename):
     plt.tight_layout(pad=0, w_pad=0, h_pad=0)
     plt.savefig(f"images/{filename}.pdf")
-    plt.savefig(f"images/{filename}.png")
+    plt.savefig(f"images/{filename}.png", dpi=300)
 
 
 def toy_weight_data(n):
@@ -346,6 +346,8 @@ def weather():
     df_cat_to_catcode(df)
     X = df.drop('temperature', axis=1)
     y = df['temperature']
+    cats = np.unique(df['state'])
+
     figsize=(2.5,2.5)
     """
     The scale diff between states, obscures the sinusoidal nature of the
@@ -356,7 +358,7 @@ def weather():
     """
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'dayofyear', 'temperature', ax=ax,
-                 min_samples_leaf_hires=15,
+                 # min_samples_leaf_hires=15,
                  yrange=(-15,15),
                  pdp_dot_size=2, alpha=.5)
 
@@ -364,10 +366,9 @@ def weather():
     plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    plot_catstratpd(X, y, 'state', 'temperature', cats=catencoders['state'],
-                    sort=None,
+    plot_catstratpd(X, y, 'state', 'temperature', cats=cats,
                     alpha=.3,
-                    min_samples_leaf=11,
+                    style='strip',
                     ax=ax)  # , yrange=(0,160))
 
     savefig(f"state_vs_temp_stratpd")
@@ -384,8 +385,8 @@ def weather():
     plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    ice = predict_ice(rf, X, 'state', 'temperature')
-    plot_ice(ice, 'state', 'temperature', cats=catencoders['state'], ax=ax)
+    ice = predict_catice(rf, X, 'state', 'temperature')
+    plot_catice(ice, 'state', 'temperature', cats=catencoders['state'], ax=ax, pdp_marker_width=10)
 
     savefig(f"state_vs_temp_pdp")
     plt.close()
@@ -594,11 +595,11 @@ def weight_ntrees():
     for i in range(1,4):
         axes[0,i].get_yaxis().set_visible(False)
         axes[1, i].get_yaxis().set_visible(False)
-    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 0], yrange=(-12, 0), alpha=.05, pdp_dot_size=10, show_ylabel=True,
+    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 0], yrange=(-12, 0), alpha=.1, pdp_dot_size=10, show_ylabel=True,
                  ntrees=1, max_features=1.0, bootstrap=False)
-    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 1], yrange=(-12, 0), alpha=.05, pdp_dot_size=10, show_ylabel=False,
+    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 1], yrange=(-12, 0), alpha=.1, pdp_dot_size=10, show_ylabel=False,
                  ntrees=5, max_features='auto', bootstrap=True)
-    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 2], yrange=(-12, 0), alpha=.05, pdp_dot_size=10, show_ylabel=False,
+    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 2], yrange=(-12, 0), alpha=.08, pdp_dot_size=10, show_ylabel=False,
                  ntrees=10, max_features = 'auto', bootstrap = True)
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 3], yrange=(-12, 0), alpha=.05, pdp_dot_size=10, show_ylabel=False,
                  ntrees=30, max_features='auto', bootstrap=True)
@@ -697,7 +698,7 @@ def additivity_data(n, sd=1.0):
 def additivity():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     n = 1000
-    df = additivity_data(n=n, sd=.8) # quite noisy
+    df = additivity_data(n=n, sd=1) # quite noisy
     X = df.drop('y', axis=1)
     y = df['y']
 
@@ -705,11 +706,13 @@ def additivity():
     plot_stratpd(X, y, 'x1', 'y', ax=axes[0, 0],
                  yrange=(-1, 1),
                  min_samples_leaf=30,
+                 min_r2_hires=.2,
                  min_samples_leaf_hires=.3,
                  pdp_dot_size=3, alpha=.5)
     
     plot_stratpd(X, y, 'x2', 'y', ax=axes[1, 0],
                  min_samples_leaf=30,
+                 min_r2_hires=.2,
                  min_samples_leaf_hires=.3,
                  pdp_dot_size=3, alpha=.1, nlines=700)
     
@@ -983,7 +986,7 @@ def bulldozer():
         plot_stratpd(X, y, colname, 'SalePrice', ax=axes[row,2], nlines=500, yrange=yrange, show_ylabel=False)
         rf = RandomForestRegressor(n_estimators=10, min_samples_leaf=1, oob_score=True)
         rf.fit(X, y)
-        ice = predict_ice(rf, X, colname, 'SalePrice', nlines=500)
+        ice = predict_ice(rf, X, colname, 'SalePrice')
         plot_ice(ice, colname, 'SalePrice', alpha=.05, ax=axes[row, 1], show_ylabel=False)
         axes[row, 1].set_xlabel(colname)  # , fontsize=12)
         axes[row,1].set_ylim(*yrange)
@@ -995,50 +998,67 @@ def bulldozer():
     # The raw csv is superslow to load, but feather is fast so load then save as feather
 
     df = pd.read_feather("../../notebooks/data/bulldozer-train.feather")
-    basefeatures = ['ModelID',
-                    'datasource', 'YearMade',
-                    # some missing values but use anyway:
-                    'auctioneerID', 'MachineHoursCurrentMeter']
+    basefeatures = ['ModelID', 'datasource', 'YearMade', 'MachineHoursCurrentMeter']
 
     # Get subsample; it's a (sorted) timeseries so get last records not random
-    df = df.iloc[-1000:]  # take only last 100,000 records
+    df = df.iloc[-10_000:]  # take only last 100,000 records
 
-    df.loc[df.YearMade < 1950, 'YearMade'] = df['YearMade'].median()
+    df = df[df['YearMade'] >= 1950]
+    df = df[df['MachineHoursCurrentMeter']>0]
 
-    df['MachineHoursCurrentMeter'].fillna(df['MachineHoursCurrentMeter'].median(), inplace=True)
-
-    df.loc[df.eval("MachineHoursCurrentMeter==0"), 'MachineHoursCurrentMeter'] = \
-        df['MachineHoursCurrentMeter'].median()
-
-    df = df.fillna(0)  # flip missing numeric values to zeros
+    df = df[basefeatures+['SalePrice']].reindex()
+    df = df.dropna(axis='rows') # drop any rows with nan
 
     X, y = df[basefeatures], df['SalePrice']
 
     fig, axes = plt.subplots(3,3, figsize=(9,9))
 
-    # onecol(df, X, y, 'YearMade', axes, 0, yrange=(-1000,40000))
-    # onecol(df, X, y, 'MachineHoursCurrentMeter', axes, 1, yrange=(-1500,10000))
+    onecol(df, X, y, 'YearMade', axes, 0, yrange=(-1000,40000))
+    onecol(df, X, y, 'MachineHoursCurrentMeter', axes, 1, yrange=(-1500,20000))
 
-    axes[2, 0].scatter(X['ModelID'], y, alpha=0.07, s=3)  # , label="observation")
+    # show marginal plot sorted by model's sale price
+    sort_indexes = y.argsort()
+
+    modelids = X['ModelID'].values
+    sorted_modelids = modelids[sort_indexes]
+    sorted_ys = y.values[sort_indexes]
+    cats = np.unique(sorted_modelids)
+    cats = modelids[sort_indexes]
+    ncats = len(cats)
+
+    axes[2, 0].set_xticks(range(1, ncats + 1))
+    axes[2, 0].set_xticklabels([])
+    # axes[2, 0].get_xaxis().set_visible(False)
+
+    xlocs = np.arange(1,ncats+1)
+    axes[2, 0].scatter(xlocs, sorted_ys, alpha=0.2, s=5)  # , label="observation")
     axes[2, 0].set_ylabel("SalePrice")  # , fontsize=12)
     axes[2, 0].set_xlabel('ModelID')  # , fontsize=12)
+    axes[2, 0].tick_params(axis='x', which='both', bottom=False)
 
     rf = RandomForestRegressor(n_estimators=10, min_samples_leaf=1)
     rf.fit(X, y)
 
-    ice = predict_catice(rf, X, 'ModelID', 'SalePrice', cats=np.unique(X['ModelID']))
+    ice = predict_catice(rf, X, 'ModelID', 'SalePrice', nlines=1000, cats=np.unique(X['ModelID']))
     plot_catice(ice, 'ModelID', targetname='SalePrice', cats=np.unique(df['ModelID']),
-                alpha=.05, ax=axes[2, 1], yrange=(-20000, 130000), show_ylabel=False, sort='ascending')
+                alpha=.05, ax=axes[2, 1], yrange=(0, 130000), show_ylabel=False,
+                sort='ascending',
+                show_xticks=False)
 
     plot_catstratpd(X, y, 'ModelID', 'SalePrice', cats=np.unique(df['ModelID']), ax=axes[2,2], sort='ascending',
-                    yrange=(-20000,130000), show_ylabel=False)
+                    min_samples_leaf=5,
+                    yrange=(0,130000), show_ylabel=False,
+                    alpha=1.0,
+                    style='scatter',
+                    show_xticks=False)
 
-    # savefig("bulldozer")
+    savefig("bulldozer")
+    plt.tight_layout()
     plt.show()
 
 
 if __name__ == '__main__':
-    bulldozer()
+    # bulldozer()
     # cars()
     # meta_cars()
     # unsup_boston()
@@ -1051,7 +1071,8 @@ if __name__ == '__main__':
     # weight()
     # unsup_weight()
     # meta_weather()
+    # weight_ntrees()
     # weather()
     # meta_additivity()
-    # additivity()
+    additivity()
     # bigX()
