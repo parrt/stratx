@@ -351,11 +351,16 @@ Actually, the R version of personal dependence may actually do this. See https:/
 
 \section{notes}
 
-noisy $\sigma^2 = 1.0$ additivity. adding bootstrap trees had no effect on $x_1^2$.  to defeat super noisy stuff we have to increase the number of samples per leaf for $T$ and $T'$; min\_samples\_leaf=30, min\_samples\_leaf\_hires=.4 seems pretty good.  leaving min\_r2 as .5 is fine.  The .4 seems to be a big deal.   adding trees with bootstrapping definitely does not seem to affect anything.  For $x_2$, however, reducing r2 threshold to .1 helps a lot capture slope of two because the linear model is a good approximation to the linear relationship. Leaving r2 at .5 gets a slope of one instead of two. min\_samples\_leaf\_hires doesn't seem important for $x_2$ once we reduce r2 threshold. we also don't have to increase the minimum samples per leaf of T. just the r2 thing makes it work well. the biggest thing is reduce the amount of noise. what is effect or more data but still noisy???
+noisy $\sigma^2 = 1.0$ additivity. adding bootstrap trees had no effect on $x_1^2$.  to defeat super noisy stuff we have to increase the number of samples per leaf for $T$ and $T'$; min\_samples\_leaf=30, min\_samples\_leaf\_hires=.4 seems pretty good.  leaving min\_r2 as .5 is fine.  The .4 seems to be a big deal.   adding trees with bootstrapping definitely does not seem to affect anything.  For $x_2$, however, reducing r2 threshold to .1 helps a lot capture slope of two because the linear model is a good approximation to the linear relationship. Leaving r2 at .5 gets a slope of one instead of two. min\_samples\_leaf\_hires doesn't seem important for $x_2$ once we reduce r2 threshold. we also don't have to increase the minimum samples per leaf of T. just the r2 thing makes it work well. the biggest thing is reduce the amount of noise. what is effect or more data but still noisy??? going from 1000 to 2 to 3 to 4000 has no effect; still can't see $x_1^2$ with  default parameters.
 
 similarly, dayofyear vs temperature sine wave does a little better with min\_samples\_leaf=30 due to noise
 
-dup'd column. max curve 2657, max curve with dup 1791 with dup'd bedrooms col.  If i do 20 trees, auto max features, bootstrapping, i get: max curve 2657, max curve with dup 2161. 100 trees: max curve 2657, max curve with dup 2245. ICE for comparison: max ICE curve 2600, max curve with dup 1136. it seems to get hit more! Wow. max\_features=2 and we return to normal with 10 trees: max curve 2657, max curve with dup 2910. Wow. even 2 trees works: max curve 2657, max curve with dup 3039. Turn off bootstrap (2 trees, max feat 2): max curve 2657, max curve with dup 2595. 10 trees, 2 features: max curve 2657, max curve with dup 2623. hooray!  the reason that the ice plot is lowered is due to the data, which has very few data points in the high range of bedrooms. The average is maybe 1.2, so for roughly half the trees, the prediction will be for 1.2 bedrooms no matter what the duplicated bedroom column says.  This problem occurs for strongly predictive features in RF. Linear model couldn't handle duplicate column. \spd{} must use randomness to overcome duplicated columns, but bootstrapping is not important and in fact a negative as we discussed.  
+dup'd column. max curve 2657, max curve with dup 1791 with dup'd bedrooms col.  If i do 20 trees, auto max features, bootstrapping, i get: max curve 2657, max curve with dup 2161. 100 trees: max curve 2657, max curve with dup 2245. ICE for comparison: max ICE curve 2600, max curve with dup 1136. it seems to get hit more! Wow. max\_features=2 and we return to normal with 10 trees: max curve 2657, max curve with dup 2910. Wow. even 2 trees works: max curve 2657, max curve with dup 3039. Turn off bootstrap (2 trees, max feat 2): max curve 2657, max curve with dup 2595. 10 trees, 2 features: max curve 2657, max curve with dup 2623. hooray!  the reason that the ice plot is lowered is due to the data, which has very few data points in the high range of bedrooms. The average is maybe 1.2, so for roughly half the trees, the prediction will be for 1.2 bedrooms no matter what the duplicated bedroom column says.  This problem occurs for strongly predictive features in RF. Linear model couldn't handle duplicate column. \spd{} must use randomness to overcome duplicated columns, but bootstrapping is not important and in fact a negative as we discussed.   tried again with a single max feature and it seems overestimate now:
+
+features = ['bedrooms', 'bathrooms', 'latitude', 'longitude']
+max curve 2657, max curve with dup 3509 (10 trees, 1 features, yes bootstrap)
+max curve 2657, max curve with dup 3277 (10 trees, 1 features, no bootstrap)
+max curve 2657, max curve with dup 2910 (10 trees, 2 features, yes bootstrap)
 
 do the same thing again for bathrooms.
 max ICE curve 3257, max curve with dup 1291
@@ -367,6 +372,8 @@ max curve 2640, max curve with dup 1020 (10 trees, 3 features, yes bootstrap)
 max curve 2640, max curve with dup 1142 (10 trees, 2 features, yes bootstrap)
 max curve 2640, max curve with dup 2412 (10 trees, 1 features, yes bootstrap)
 max curve 2640, max curve with dup 2178 (20 trees, 1 features, yes bootstrap)
+
+Try rent again with noise instead of a duplication column. A single column of noise scaled by 50 dollars does not affect the ice plot (using RF) or the \spd{} plot, as expected.
 
 \section{Conclusion}
 \label{sec:conc}

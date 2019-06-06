@@ -34,6 +34,12 @@ def df_cat_to_catcode(df):
         if is_categorical_dtype(df[col]):
             df[col] = df[col].cat.codes + 1
 
+def addnoise(df, n=1, c=0.5, prefix=''):
+    if n==1:
+        df[f'{prefix}noise'] = np.random.random(len(df)) * c
+        return
+    for i in range(n):
+        df[f'{prefix}noise{i+1}'] = np.random.random(len(df)) * c
 
 def fix_missing_num(df, colname):
     df[colname+'_na'] = pd.isnull(df[colname])
@@ -127,14 +133,17 @@ def rent():
 
 
 def rent_extra_cols():
-    def onecol(colname):
+    def plot_with_extracol(colname, type:('noise','dup')='dup'):
         features = ['bedrooms', 'bathrooms', 'latitude', 'longitude']
 
         fig, axes = plt.subplots(2,3, figsize=(7.5,5), sharey=True)
 
         df_rent = load_rent()
         df_rent = df_rent.sample(n=9000)  # get a small subsample
-        df_rent[colname+'_dup'] = df_rent[colname]
+        if type=='noise':
+            addnoise(df_rent, n=1, c=50, prefix=colname+'_')
+        else:
+            df_rent[colname+'_dup'] = df_rent[colname]
         # df_rent[colname+'_dupdup'] = df_rent[colname]
 
         X = df_rent[features]
@@ -150,7 +159,7 @@ def rent_extra_cols():
         axes[0,0].set_ylim(-1000,5000)
 
         # with dup'd column
-        X = df_rent[features+[colname+'_dup']]
+        X = df_rent[features+[colname+'_'+type]]
         y = df_rent['price']
         rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
         rf.fit(X, y)
@@ -167,15 +176,15 @@ def rent_extra_cols():
             plot_stratpd(X, y, colname, 'price', ax=axes[1, 0], alpha=.2, show_xlabel=True, show_ylabel=False)
         axes[1, 0].set_ylim(-1000,5000)
 
-        X = df_rent[features+[colname+'_dup']]
+        X = df_rent[features+[colname+'_'+type]]
         y = df_rent['price']
         plot_stratpd(X, y, colname, 'price', ax=axes[1, 1], alpha=.2, show_ylabel=False)
         axes[1, 1].set_ylim(-1000,5000)
         uniq_x_, curve_, r2_at_x_ = \
             plot_stratpd(X, y, colname, 'price', ax=axes[1, 2], alpha=.2, show_xlabel=True, show_ylabel=False,
                      ntrees=10,
-                     max_features=1,
-                     bootstrap=True
+                     max_features=2,
+                     bootstrap=False
                      )
         axes[1, 2].set_ylim(-1000,5000)
 
@@ -190,9 +199,10 @@ def rent_extra_cols():
     np.random.seed(42)
     print(f"----------- {inspect.stack()[0][3]} -----------")
 
-    colname = 'bathrooms'
-    onecol(colname)
-    savefig(f"{colname}_vs_price_dup_{colname}")
+    type = 'dup'
+    colname = 'bedrooms'
+    plot_with_extracol(colname, type=type)
+    savefig(f"{colname}_vs_price_dup_{colname}_{type}")
     plt.tight_layout()
     plt.show()
     plt.close()
@@ -770,7 +780,7 @@ def additivity_data(n, sd=1.0):
 def additivity():
     np.random.seed(54)
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    n = 1000
+    n = 4000
     df = additivity_data(n=n, sd=1) # quite noisy
     X = df.drop('y', axis=1)
     y = df['y']
@@ -778,18 +788,12 @@ def additivity():
     fig, axes = plt.subplots(2, 2, figsize=(4,4), sharey=True)
     plot_stratpd(X, y, 'x1', 'y', ax=axes[0, 0],
                  yrange=(-1, 1),
-                 # ntrees=20,
-                 # max_features=1.0,
-                 # bootstrap=True,
                  min_samples_leaf=30,
-                 # min_r2_hires=.1,
                  min_samples_leaf_hires=.4,
                  pdp_dot_size=3, alpha=.1)
     
     plot_stratpd(X, y, 'x2', 'y', ax=axes[1, 0],
-                 # min_samples_leaf=30,
                  min_r2_hires=.1,
-                 # min_samples_leaf_hires=.4,
                  pdp_dot_size=3, alpha=.1, nlines=700)
     
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
