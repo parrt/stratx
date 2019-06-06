@@ -34,7 +34,7 @@ def strat_importances(X, y,
                                    max_features=max_features,
                                    oob_score=False)
         rf.fit(X.drop(colname, axis=1), y)
-        leaf_xranges, leaf_slopes, leaf_r2 = \
+        leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2 = \
             collect_leaf_slopes(rf, X, y, colname, hires_r2_threshold=hires_r2_threshold,
                                 hires_min_samples_leaf=hires_min_samples_leaf,
                                 hires_n_threshold=hires_n_threshold)

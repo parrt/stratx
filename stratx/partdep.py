@@ -149,7 +149,7 @@ def hires_slopes_from_one_leaf(x:np.ndarray, y:np.ndarray, hires_min_samples_lea
     leaf_slopes = []
     leaf_r2 = []
     leaf_xranges = []
-    # leaf_yranges = []
+    leaf_sizes = []
     for samples in leaves:
         leaf_x = X[samples]
         leaf_y = y[samples]
@@ -172,7 +172,7 @@ def hires_slopes_from_one_leaf(x:np.ndarray, y:np.ndarray, hires_min_samples_lea
 
         leaf_r2.append(r2)
         leaf_xranges.append(r)
-        # leaf_yranges.append((leaf_y[0], leaf_y[-1]))
+        leaf_sizes.append(len(samples))
 
     # print(f"\tAvg leaf R^2 {np.mean(r2s):.4f}, avg x len {np.mean(r2xNs)}")
 
@@ -182,7 +182,7 @@ def hires_slopes_from_one_leaf(x:np.ndarray, y:np.ndarray, hires_min_samples_lea
 
     stop = time.time()
     # print(f"hires_slopes_from_one_leaf {stop - start:.3f}s")
-    return leaf_xranges, leaf_slopes, leaf_r2
+    return leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2
 
 
 # def entropy(x, base=np.e):
@@ -201,13 +201,15 @@ def collect_leaf_slopes(rf, X, y, colname,
     We don't need to subtract the minimum y value before regressing because
     the slope won't be different. (We are ignoring the intercept of the regression line).
 
-    Return for each leaf, the range of X[colname] and associated slope for that range.
+    Return for each leaf, the range of X[colname], num obs, associated slope for
+    that range, r^2 of line through points.
     """
     start = time.time()
     # ci = X.columns.get_loc(colname)
     leaf_slopes = []
     leaf_r2 = []
     leaf_xranges = []
+    leaf_sizes = []
 
     allr = (np.min(X[colname]), np.max(X[colname]))
 
@@ -232,13 +234,14 @@ def collect_leaf_slopes(rf, X, y, colname,
 
         if r2 < hires_r2_threshold and len(leaf_x) > hires_n_threshold: # if linear model for y ~ X[colname] is too crappy, go hires
             print(f"BIG {len(leaf_x)}, R^2 of y ~ X[{colname}] = {r2:.2f} < {hires_r2_threshold}!!!")
-            leaf_xranges_, leaf_slopes_, leaf_r2_ = \
+            leaf_xranges_, leaf_sizes_, leaf_slopes_, leaf_r2_ = \
                 hires_slopes_from_one_leaf(leaf_x, leaf_y, hires_min_samples_leaf=hires_min_samples_leaf)
 
             if len(leaf_slopes_)>0:
                 leaf_slopes.extend(leaf_slopes_)
                 leaf_r2.extend(leaf_r2_)
                 leaf_xranges.extend(leaf_xranges_)
+                leaf_sizes.extend(leaf_sizes_)
                 continue
             else:
                 # sounds like hires_min_samples_leaf is too small and values are ints;
@@ -258,11 +261,13 @@ def collect_leaf_slopes(rf, X, y, colname,
 
         leaf_r2.append(r2)
         leaf_xranges.append(r)
-    leaf_slopes = np.array(leaf_slopes)
+        leaf_sizes.append(len(samples))
     leaf_xranges = np.array(leaf_xranges)
+    leaf_sizes = np.array(leaf_sizes)
+    leaf_slopes = np.array(leaf_slopes)
     stop = time.time()
     print(f"collect_leaf_slopes {stop - start:.3f}s")
-    return leaf_xranges, leaf_slopes, leaf_r2
+    return leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2
 
 
 def avg_values_at_x(uniq_x, leaf_ranges, leaf_values):
@@ -347,7 +352,7 @@ def plot_stratpd(X, y, colname, targetname=None,
 
     uniq_x = np.array(sorted(np.unique(X[colname])))
     # print(f"\nModel wo {colname} OOB R^2 {rf.oob_score_:.5f}")
-    leaf_xranges, leaf_slopes, leaf_r2 = \
+    leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2 = \
         collect_leaf_slopes(rf, X, y, colname, hires_r2_threshold=min_r2_hires,
                             hires_n_threshold=min_samples_hires,
                             hires_min_samples_leaf=min_samples_leaf_hires)

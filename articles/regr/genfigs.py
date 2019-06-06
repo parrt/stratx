@@ -889,23 +889,32 @@ def unsup_boston():
 
 
 def lm_plot(X, y, colname, targetname,ax=None):
-    r_col = LinearRegression()
-    r_col.fit(X[[colname]], y)
     ax.scatter(X[colname], y, alpha=.12, label=None)
     ax.set_xlabel(colname)
     ax.set_ylabel(targetname)
     col = X[colname]
     # y_pred_hp = r_col.predict(col.values.reshape(-1, 1))
     # ax.plot(col, y_pred_hp, ":", linewidth=1, c='red', label='y ~ horsepower')
+
     r = LinearRegression()
     r.fit(X[['horsepower','weight']], y)
+
     xcol = np.linspace(np.min(col), np.max(col), num=100)
-    ci = X.columns.get_loc(colname)
-    ax.plot(xcol, xcol * r.coef_[ci] + r_col.intercept_, linewidth=1, c='orange', label=f"$\\beta_{{{colname}}}$")
-    left40 = xcol[int(len(xcol) * .4)]
-    ax.text(min(xcol), max(y)*.94, f"$\hat{{y}} = \\beta_0 + \\beta_1 x_{{horsepower}} + \\beta_2 x_{{weight}}$")
-    i = 1 if colname=='horsepower' else 2
-    ax.text(left40, left40*r.coef_[ci] + r_col.intercept_, f"$\\beta_{i}$={r.coef_[ci]:.3f}")
+    ci = 0 if colname=='horsepower' else 1
+    # use beta from y ~ hp + weight
+    ax.plot(xcol, xcol * r.coef_[ci] + r.intercept_, linewidth=1, c='orange')
+    ax.text(min(xcol)*1.02, max(y)*.95, f"$\\beta_{{{colname}}}$={r.coef_[ci]:.3f}")
+
+
+    # r = LinearRegression()
+    # r.fit(X[['horsepower','weight']], y)
+    # xcol = np.linspace(np.min(col), np.max(col), num=100)
+    # ci = X.columns.get_loc(colname)
+    # # ax.plot(xcol, xcol * r.coef_[ci] + r_col.intercept_, linewidth=1, c='orange', label=f"$\\beta_{{{colname}}}$")
+    # left40 = xcol[int(len(xcol) * .4)]
+    # ax.text(min(xcol), max(y)*.94, f"$\hat{{y}} = \\beta_0 + \\beta_1 x_{{horsepower}} + \\beta_2 x_{{weight}}$")
+    # i = 1 if colname=='horsepower' else 2
+    # # ax.text(left40, left40*r.coef_[ci] + r_col.intercept_, f"$\\beta_{i}$={r.coef_[ci]:.3f}")
 
 def cars():
     df_cars = pd.read_csv("../../notebooks/data/auto-mpg.csv")
@@ -939,7 +948,7 @@ def cars():
     ci = X.columns.get_loc(colname)
     beta0 = -r.coef_[ci]*min(col) # solved for beta0 to get y-intercept
     axes[0,1].plot(xcol, xcol * r.coef_[ci], linewidth=1, c='orange', label=f"$\\beta_{{{colname}}}$")
-    axes[0,2].plot(xcol, xcol * r.coef_[ci]+4, linewidth=1, c='orange', label=f"$\\beta_{{{colname}}}$")
+    axes[0,2].plot(xcol, xcol * r.coef_[ci], linewidth=1, c='orange', label=f"$\\beta_{{{colname}}}$")
 
     # draw regr line for weight
     colname = 'weight'
@@ -978,11 +987,8 @@ def bulldozer():
     def onecol(_, X, y, colname, axes, row, yrange):
         avg_per_baths = df.groupby(colname).mean()['SalePrice']
         axes[row, 0].scatter(X[colname], y, alpha=0.07, s=4)  # , label="observation")
-        # axes[row, 0].scatter(np.unique(df[colname]), avg_per_baths, s=6, c='black',
-        #                    label="average SalePrice/{colname}")
         axes[row, 0].set_ylabel("SalePrice")  # , fontsize=12)
         axes[row, 0].set_xlabel(colname)  # , fontsize=12)
-        # ax.legend()
         plot_stratpd(X, y, colname, 'SalePrice', ax=axes[row,2], nlines=500, yrange=yrange, show_ylabel=False)
         rf = RandomForestRegressor(n_estimators=10, min_samples_leaf=1, oob_score=True)
         rf.fit(X, y)
@@ -1001,7 +1007,7 @@ def bulldozer():
     basefeatures = ['ModelID', 'datasource', 'YearMade', 'MachineHoursCurrentMeter']
 
     # Get subsample; it's a (sorted) timeseries so get last records not random
-    df = df.iloc[-10_000:]  # take only last 100,000 records
+    df = df.iloc[-10_000:]  # take only last 10,000 records
 
     df = df[df['YearMade'] >= 1950]
     df = df[df['MachineHoursCurrentMeter']>0]
@@ -1022,7 +1028,6 @@ def bulldozer():
     modelids = X['ModelID'].values
     sorted_modelids = modelids[sort_indexes]
     sorted_ys = y.values[sort_indexes]
-    cats = np.unique(sorted_modelids)
     cats = modelids[sort_indexes]
     ncats = len(cats)
 
@@ -1054,12 +1059,12 @@ def bulldozer():
 
     savefig("bulldozer")
     plt.tight_layout()
-    plt.show()
+    # plt.show()
 
 
 if __name__ == '__main__':
     # bulldozer()
-    # cars()
+    cars()
     # meta_cars()
     # unsup_boston()
     # rent()
@@ -1074,5 +1079,5 @@ if __name__ == '__main__':
     # weight_ntrees()
     # weather()
     # meta_additivity()
-    additivity()
+    # additivity()
     # bigX()
