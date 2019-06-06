@@ -126,6 +126,78 @@ def rent():
     plt.close()
 
 
+def rent_extra_cols():
+    def onecol(colname):
+        features = ['bedrooms', 'bathrooms', 'latitude', 'longitude']
+
+        fig, axes = plt.subplots(2,3, figsize=(7.5,5), sharey=True)
+
+        df_rent = load_rent()
+        df_rent = df_rent.sample(n=9000)  # get a small subsample
+        df_rent[colname+'_dup'] = df_rent[colname]
+        # df_rent[colname+'_dupdup'] = df_rent[colname]
+
+        X = df_rent[features]
+        y = df_rent['price']
+        rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
+        rf.fit(X, y)
+
+        # ICE ON ROW 1
+        # do it w/o dup'd column
+        ice = predict_ice(rf, X, colname, 'price', nlines=1000)
+        uniq_x, pdp_curve = \
+            plot_ice(ice, colname, 'price', alpha=.05, ax=axes[0, 0], show_xlabel=False)
+        axes[0,0].set_ylim(-1000,5000)
+
+        # with dup'd column
+        X = df_rent[features+[colname+'_dup']]
+        y = df_rent['price']
+        rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
+        rf.fit(X, y)
+        ice = predict_ice(rf, X, colname, 'price', nlines=1000)
+        uniq_x_, pdp_curve_ = \
+            plot_ice(ice, colname, 'price', alpha=.05, ax=axes[0,1], show_xlabel=True, show_ylabel=False)
+        axes[0,1].set_ylim(-1000,5000)
+        print(f"max ICE curve {np.max(pdp_curve):.0f}, max curve with dup {np.max(pdp_curve_):.0f}")
+
+        # STRATPD ON ROW 2
+        X = df_rent[features]
+        y = df_rent['price']
+        uniq_x, curve, r2_at_x = \
+            plot_stratpd(X, y, colname, 'price', ax=axes[1, 0], alpha=.2, show_xlabel=True, show_ylabel=False)
+        axes[1, 0].set_ylim(-1000,5000)
+
+        X = df_rent[features+[colname+'_dup']]
+        y = df_rent['price']
+        plot_stratpd(X, y, colname, 'price', ax=axes[1, 1], alpha=.2, show_ylabel=False)
+        axes[1, 1].set_ylim(-1000,5000)
+        uniq_x_, curve_, r2_at_x_ = \
+            plot_stratpd(X, y, colname, 'price', ax=axes[1, 2], alpha=.2, show_xlabel=True, show_ylabel=False,
+                     ntrees=10,
+                     max_features=1,
+                     bootstrap=True
+                     )
+        axes[1, 2].set_ylim(-1000,5000)
+
+        print(f"max curve {np.max(curve):.0f}, max curve with dup {np.max(curve_):.0f}")
+
+        axes[0,2].get_xaxis().set_visible(False)
+        axes[0,2].get_yaxis().set_visible(False)
+
+        axes[0,0].get_xaxis().set_visible(False)
+        axes[0,1].get_xaxis().set_visible(False)
+
+    np.random.seed(42)
+    print(f"----------- {inspect.stack()[0][3]} -----------")
+
+    colname = 'bathrooms'
+    onecol(colname)
+    savefig(f"{colname}_vs_price_dup_{colname}")
+    plt.tight_layout()
+    plt.show()
+    plt.close()
+
+
 def rent_ntrees():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     df_rent = load_rent()
@@ -358,7 +430,7 @@ def weather():
     """
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'dayofyear', 'temperature', ax=ax,
-                 # min_samples_leaf_hires=15,
+                 min_samples_leaf=30,
                  yrange=(-15,15),
                  pdp_dot_size=2, alpha=.5)
 
@@ -696,6 +768,7 @@ def additivity_data(n, sd=1.0):
     return df
 
 def additivity():
+    np.random.seed(54)
     print(f"----------- {inspect.stack()[0][3]} -----------")
     n = 1000
     df = additivity_data(n=n, sd=1) # quite noisy
@@ -705,15 +778,18 @@ def additivity():
     fig, axes = plt.subplots(2, 2, figsize=(4,4), sharey=True)
     plot_stratpd(X, y, 'x1', 'y', ax=axes[0, 0],
                  yrange=(-1, 1),
+                 # ntrees=20,
+                 # max_features=1.0,
+                 # bootstrap=True,
                  min_samples_leaf=30,
-                 min_r2_hires=.2,
-                 min_samples_leaf_hires=.3,
-                 pdp_dot_size=3, alpha=.5)
+                 # min_r2_hires=.1,
+                 min_samples_leaf_hires=.4,
+                 pdp_dot_size=3, alpha=.1)
     
     plot_stratpd(X, y, 'x2', 'y', ax=axes[1, 0],
-                 min_samples_leaf=30,
-                 min_r2_hires=.2,
-                 min_samples_leaf_hires=.3,
+                 # min_samples_leaf=30,
+                 min_r2_hires=.1,
+                 # min_samples_leaf_hires=.4,
                  pdp_dot_size=3, alpha=.1, nlines=700)
     
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
@@ -730,7 +806,7 @@ def additivity():
     axes[1,1].get_yaxis().set_visible(False)
 
     savefig(f"additivity")
-    # plt.show()
+    plt.show()
     plt.close()
 
 
@@ -791,7 +867,7 @@ def meta_additivity():
 
     savefig(f"meta_additivity_r2_{min_r2_hires}_hires_{min_samples_leaf_hires}")
     plt.tight_layout()
-    # plt.show()
+    plt.show()
     plt.close()
 
 
@@ -1063,8 +1139,9 @@ def bulldozer():
 
 
 if __name__ == '__main__':
+    rent_extra_cols()
     # bulldozer()
-    cars()
+    # cars()
     # meta_cars()
     # unsup_boston()
     # rent()

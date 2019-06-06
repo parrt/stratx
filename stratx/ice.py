@@ -122,14 +122,15 @@ def plot_ice(ice, colname, targetname="target", ax=None, linewidth=.5, color='#9
     else:
         ax.set_xlim(minx, maxx)
 
+    uniq_x = ice.iloc[0, :]
+    pdp_curve = avg_y - min_pdp_y
     if pdp:
-        uniq_values = ice.iloc[0,:]
-        ax.plot(uniq_values, avg_y - min_pdp_y,
+        ax.plot(uniq_x, pdp_curve,
                 alpha=pdp_alpha, linewidth=pdp_linewidth, c=pdp_color)
 
     stop = time.time()
     # print(f"plot_ICE {stop - start:.3f}s")
-
+    return uniq_x, pdp_curve
 
 def plot_catice(ice, colname, targetname,
                 cats, # cat names indexed by cat code
