@@ -259,25 +259,36 @@ def collect_leaf_slopes(rf, X, y, colname,
 
 def avg_values_at_x(uniq_x, leaf_ranges, leaf_values, leaf_weights):
     """
+    Compute the weighted average of leaf_values at each uniq_x.
+
     Value at max(x) is NaN since we have no data beyond that point.
     """
     start = time.time()
     nx = len(uniq_x)
     nslopes = len(leaf_values)
     slopes = np.zeros(shape=(nx, nslopes))
+    weights = np.zeros(shape=(nx, nslopes))
     i = 0  # leaf index; we get a line for each leaf
     # collect the slope for each range (taken from a leaf) as collection of
     # flat lines across the same x range
-    for r, slope in zip(leaf_ranges, leaf_values):
-        s = np.full(nx, slope) # s has value scope at all locations (flat line)
-        # now trim line so it's only valid in range r
-        s[np.where(uniq_x < r[0])] = np.nan
-        s[np.where(uniq_x >= r[1])] = np.nan # don't set slope on right edge
+    for r, slope, w in zip(leaf_ranges, leaf_values, leaf_weights):
+        s = np.full(nx, slope*w, dtype=float) # s has value*weight at all locations (flat line)
+        # now trim line so it's only valid in range r;
+        # don't set slope on right edge
+        s[np.where( (uniq_x < r[0]) | (uniq_x >= r[1]) )] = np.nan
         slopes[:, i] = s
+        # track weight (num obs in leaf) per range also so we can divide by total
+        # obs per range to get weighted average below
+        ws = np.full(nx, w, dtype=float)
+        ws[np.where( (uniq_x < r[0]) | (uniq_x >= r[1]) )] = np.nan
+        weights[:, i] = ws
         i += 1
     # The value could be genuinely zero so we use nan not 0 for out-of-range
     # Now average horiz across the matrix, averaging within each range
-    avg_value_at_x = np.nanmean(slopes, axis=1)
+    # avg_value_at_x = np.nanmean(slopes, axis=1)
+    sum_values_at_x = np.nansum(slopes, axis=1)
+    sum_weights_at_x = np.nansum(weights, axis=1)
+    avg_value_at_x = sum_values_at_x / sum_weights_at_x
     stop = time.time()
     # print(f"avg_value_at_x {stop - start:.3f}s")
     return avg_value_at_x
