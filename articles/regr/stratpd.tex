@@ -288,17 +288,9 @@ The point is that partitioning \xnc{}  with a decision tree is more about $\bf X
 \end{center}
 \end{figure}
 
-\section{Related Work}
+\todo{is this where we put edge cases of hyper parameters, num cols, etc? ref future experiment section. what are degenerate cases? approximation error.}
 
-% There are a few basic approaches to identifying the partial effect of a single variable on the target or response variable:
-%
-% \begin{itemize}
-% \item Stratification
-% \item Beta coefficients from linear model without regularization
-% \item Marginal plots
-% \item PDP/ICE
-% \item Accumulated Local Effects (https://arxiv.org/abs/1612.08468) (ALE) plots
-% \end{itemize}
+\section{Related Work}
 
 \spd{} is most closely related to two recently proposed methods for model interpretability: partial dependence plots (PDP) and individual conditional expectation (ICE) plots. Suppose that $\mathbf{X}$ is an $n \times d$ matrix whose columns are the $d$ observed features, and $\mathbf{y}$ is a response vector. \spd{}, PDP and ICE each seek to describe the dependence of $\mathbf{y}$ on some small collection of features $x_C$, where $C \subset \{1, \ldots, d\}$; however they do so in substantially different ways. The starting point for any marginal dependence method is to assume that there is some unknown model $f(\cdot)$ that describes the relationship between $\mathbf{X}$ and the response $\mathbf{y}$:
 
