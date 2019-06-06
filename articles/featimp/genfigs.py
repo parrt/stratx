@@ -88,7 +88,6 @@ def rent():
     df = pd.read_json('../../notebooks/data/train.json')
 
     # Create ideal numeric data set w/o outliers etc...
-    # Create ideal numeric data set w/o outliers etc...
     df = df[(df.price > 1_000) & (df.price < 10_000)]
     df = df[df.bathrooms <= 6]  # There's almost no data for above
     df = df[(df.longitude != 0) | (df.latitude != 0)]
@@ -104,7 +103,9 @@ def rent():
     y = df_rent['price']
     plot_all_imp(X, y)
 
-    savefig("rent")
+    # savefig("rent")
+    plt.tight_layout()
+    plt.show()
 
 def toy_weight_data(n):
     df = pd.DataFrame()
@@ -181,23 +182,24 @@ def plot_all_imp(X, y, model=None, figsize=None):
 
     fig, axes = plt.subplots(nrows=1, ncols=5, figsize=figsize)
 
-    I = strat_importances(X, y, min_samples_leaf=50, hires_threshold=1000)
+    I = strat_importances(X, y)
     plot_importances(I, ax=axes[0], color='#fee090')
 
     if model is None:
         model = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=False)
         model.fit(X, y)
 
-    start = time.time()
-    explainer = shap.TreeExplainer(model)
-    shap_values = explainer.shap_values(X)
-    shap_values = np.mean(np.abs(shap_values), axis=0) # measure avg magnitude
-    stop = time.time()
-    print(f"SHAP time {(stop-start):.1f}s")
-    I = pd.DataFrame(data={'Feature':X.columns, 'Importance':shap_values})
-    I = I.set_index('Feature')
-    I = I.sort_values('Importance', ascending=False)
-    plot_importances(I, ax=axes[1])
+    if False:
+        start = time.time()
+        explainer = shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(X)
+        shap_values = np.mean(np.abs(shap_values), axis=0) # measure avg magnitude
+        stop = time.time()
+        print(f"SHAP time {(stop-start):.1f}s")
+        I = pd.DataFrame(data={'Feature':X.columns, 'Importance':shap_values})
+        I = I.set_index('Feature')
+        I = I.sort_values('Importance', ascending=False)
+        plot_importances(I, ax=axes[1])
 
     I = importances(model, X, y)
     plot_importances(I, ax=axes[2])
@@ -291,7 +293,7 @@ def plot_all_imp_and_models(X, y, figsize=None):
 
 
 if __name__ == '__main__':
-    # rent()
+    rent()
     # boston()
     # cars()
     # weight()
