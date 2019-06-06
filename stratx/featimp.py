@@ -39,7 +39,7 @@ def strat_importances(X, y,
                                 hires_min_samples_leaf=hires_min_samples_leaf,
                                 hires_n_threshold=hires_n_threshold)
         uniq_x = np.array(sorted(np.unique(X[colname])))
-        r2_at_x = avg_values_at_x(uniq_x, leaf_xranges, leaf_r2)
+        r2_at_x = avg_values_at_x(uniq_x, leaf_xranges, leaf_r2, leaf_sizes)
         imp = np.nanmean(r2_at_x)
         # print(f'{colname:15s} uniq_x = [{", ".join([f"{x:4.1f}" for x in uniq_x])}]')
         # print(f'{colname:15s} r2_at_x = [{", ".join([f"{s:4.2f}" for s in r2_at_x])}]')

@@ -185,11 +185,6 @@ def hires_slopes_from_one_leaf(x:np.ndarray, y:np.ndarray, hires_min_samples_lea
     return leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2
 
 
-# def entropy(x, base=np.e):
-#     _, counts = np.unique(x, return_counts=True)
-#     return scipy_entropy(counts, base=base)
-
-
 def collect_leaf_slopes(rf, X, y, colname,
                         hires_r2_threshold,
                         hires_n_threshold,
@@ -205,13 +200,10 @@ def collect_leaf_slopes(rf, X, y, colname,
     that range, r^2 of line through points.
     """
     start = time.time()
-    # ci = X.columns.get_loc(colname)
     leaf_slopes = []
     leaf_r2 = []
     leaf_xranges = []
     leaf_sizes = []
-
-    allr = (np.min(X[colname]), np.max(X[colname]))
 
     leaves = leaf_samples(rf, X.drop(colname, axis=1))
     # print(f"{len(leaves)} leaves in T")
@@ -244,7 +236,7 @@ def collect_leaf_slopes(rf, X, y, colname,
                 leaf_sizes.extend(leaf_sizes_)
                 continue
             else:
-                # sounds like hires_min_samples_leaf is too small and values are ints;
+                # looks like hires_min_samples_leaf is too small and values are ints;
                 # e.g., hires_min_samples_leaf=.05 and x range of 1..10. If even spread,
                 # hires_min_samples_leaf will get single x value, which can't tell us about
                 # change in y over x as x isn't changing. Fall back onto non-hires
@@ -254,11 +246,6 @@ def collect_leaf_slopes(rf, X, y, colname,
 
         leaf_slopes.append(lm.coef_[0]) # better to use univariate slope it seems
         r2 = lm.score(leaf_x.reshape(-1, 1), leaf_y)
-        # print(f"Entropy of not {colname}")
-        # for i in range(len(X.columns)):
-        #     e = entropy(one_leaf_samples.iloc[:,i].values)
-        #     print(f"\tentropy of col {X.columns[i]}[{len(leaf_x)}] values = {e:.2f}")
-
         leaf_r2.append(r2)
         leaf_xranges.append(r)
         leaf_sizes.append(len(samples))
@@ -270,12 +257,9 @@ def collect_leaf_slopes(rf, X, y, colname,
     return leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2
 
 
-def avg_values_at_x(uniq_x, leaf_ranges, leaf_values):
+def avg_values_at_x(uniq_x, leaf_ranges, leaf_values, leaf_weights):
     """
-    Value at max(x) is NaN since we have not data beyond that point.
-    :param leaf_ranges:
-    :param leaf_values:
-    :return:
+    Value at max(x) is NaN since we have no data beyond that point.
     """
     start = time.time()
     nx = len(uniq_x)
@@ -356,8 +340,8 @@ def plot_stratpd(X, y, colname, targetname=None,
         collect_leaf_slopes(rf, X, y, colname, hires_r2_threshold=min_r2_hires,
                             hires_n_threshold=min_samples_hires,
                             hires_min_samples_leaf=min_samples_leaf_hires)
-    slope_at_x = avg_values_at_x(uniq_x, leaf_xranges, leaf_slopes)
-    r2_at_x = avg_values_at_x(uniq_x, leaf_xranges, leaf_r2)
+    slope_at_x = avg_values_at_x(uniq_x, leaf_xranges, leaf_slopes, leaf_sizes)
+    r2_at_x = avg_values_at_x(uniq_x, leaf_xranges, leaf_r2, leaf_sizes)
     # Drop any nan slopes; implies we have no reliable data for that range
     # Make sure to drop uniq_x values too :)
     notnan_idx = ~np.isnan(slope_at_x) # should be same for slope_at_x and r2_at_x

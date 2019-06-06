@@ -219,7 +219,7 @@ def rent():
     df_rent = df[['bedrooms', 'bathrooms', 'latitude', 'longitude', 'price']]
     df_rent.head()
 
-    # df_rent = df_rent.sample(n=10000)  # get a small subsample
+    df_rent = df_rent.sample(n=10000)  # get a small subsample
 
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
@@ -721,8 +721,8 @@ if __name__ == '__main__':
     # meta_additivity()
     # imp_cars()
     # multi_joint_distr()
-    # rent()
-    meta_rent()
+    rent()
+    # meta_rent()
     # weight()
     # dep_weight()
     # dep_cars()
