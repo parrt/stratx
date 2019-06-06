@@ -204,7 +204,7 @@ def rent_extra_cols():
     plot_with_extracol(colname, type=type)
     savefig(f"{colname}_vs_price_dup_{colname}_{type}")
     plt.tight_layout()
-    plt.show()
+    # plt.show()
     plt.close()
 
 
@@ -572,6 +572,7 @@ def weight():
     X = df.drop('weight', axis=1)
     y = df['weight']
     figsize=(2.5,2.5)
+
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'education', 'weight', ax=ax, yrange=(-12, 0), alpha=.1, nlines=700, show_ylabel=False)
 #    ax.get_yaxis().set_visible(False)
@@ -618,16 +619,14 @@ def weight():
     plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    ice = predict_ice(rf, X, 'sex', 'weight')
-    plot_ice(ice, 'sex', 'weight', ax=ax, yrange=(0, 5),
-             cats=df_raw['sex'].unique())
+    ice = predict_catice(rf, X, 'sex', 'weight')
+    plot_catice(ice, 'sex', 'weight', cats=df_raw['sex'].unique(), ax=ax, yrange=(0, 5), pdp_marker_width=15)
     savefig(f"sex_vs_weight_pdp")
     plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    ice = predict_ice(rf, X, 'pregnant', 'weight')
-    plot_ice(ice, 'pregnant', 'weight', ax=ax, yrange=(-5, 35),
-             cats=df_raw['pregnant'].unique())
+    ice = predict_catice(rf, X, 'pregnant', 'weight', cats=df_raw['pregnant'].unique())
+    plot_catice(ice, 'pregnant', 'weight', cats=df_raw['pregnant'].unique(), ax=ax, yrange=(-5, 35), pdp_marker_width=15)
     savefig(f"pregnant_vs_weight_pdp")
     plt.close()
 
@@ -778,7 +777,6 @@ def additivity_data(n, sd=1.0):
     return df
 
 def additivity():
-    np.random.seed(54)
     print(f"----------- {inspect.stack()[0][3]} -----------")
     n = 4000
     df = additivity_data(n=n, sd=1) # quite noisy
@@ -793,7 +791,7 @@ def additivity():
                  pdp_dot_size=3, alpha=.1)
     
     plot_stratpd(X, y, 'x2', 'y', ax=axes[1, 0],
-                 min_r2_hires=.1,
+                 # min_r2_hires=.1,
                  pdp_dot_size=3, alpha=.1, nlines=700)
     
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
@@ -810,7 +808,7 @@ def additivity():
     axes[1,1].get_yaxis().set_visible(False)
 
     savefig(f"additivity")
-    plt.show()
+    # plt.show()
     plt.close()
 
 
@@ -871,7 +869,7 @@ def meta_additivity():
 
     savefig(f"meta_additivity_r2_{min_r2_hires}_hires_{min_samples_leaf_hires}")
     plt.tight_layout()
-    plt.show()
+    # plt.show()
     plt.close()
 
 
@@ -1137,24 +1135,24 @@ def bulldozer():
                     style='scatter',
                     show_xticks=False)
 
-    savefig("bulldozer")
+    # savefig("bulldozer")
     plt.tight_layout()
     # plt.show()
 
 
 if __name__ == '__main__':
-    rent_extra_cols()
-    bulldozer()
-    cars()
-    meta_cars()
-    unsup_boston()
-    rent()
-    rent_ntrees()
-    meta_boston()
-    meta_weight()
-    meta_rent()
-    unsup_rent()
-    weight()
+    # rent_extra_cols()
+    # bulldozer()
+    # cars()
+    # meta_cars()
+    # unsup_boston()
+    # rent()
+    # rent_ntrees()
+    # meta_boston()
+    # meta_weight()
+    # meta_rent()
+    # unsup_rent()
+    # weight()
     unsup_weight()
     meta_weather()
     weight_ntrees()

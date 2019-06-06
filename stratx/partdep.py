@@ -225,7 +225,7 @@ def collect_leaf_slopes(rf, X, y, colname,
         # print(f"{len(leaf_x)} obs, R^2 y ~ X[{colname}] = {r2:.2f}, in range {r} is {rpercent:.2f}%")
 
         if r2 < hires_r2_threshold and len(leaf_x) > hires_n_threshold: # if linear model for y ~ X[colname] is too crappy, go hires
-            print(f"BIG {len(leaf_x)}, R^2 of y ~ X[{colname}] = {r2:.2f} < {hires_r2_threshold}!!!")
+            # print(f"BIG {len(leaf_x)}, R^2 of y ~ X[{colname}] = {r2:.2f} < {hires_r2_threshold}!!!")
             leaf_xranges_, leaf_sizes_, leaf_slopes_, leaf_r2_ = \
                 hires_slopes_from_one_leaf(leaf_x, leaf_y, hires_min_samples_leaf=hires_min_samples_leaf)
 

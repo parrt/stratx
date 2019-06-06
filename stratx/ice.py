@@ -134,7 +134,7 @@ def plot_ice(ice, colname, targetname="target", ax=None, linewidth=.5, color='#9
 
 def plot_catice(ice, colname, targetname,
                 cats, # cat names indexed by cat code
-                ax=None, linewidth=.5,
+                ax=None,
                 color='#9CD1E3',
                 alpha=.1, title=None, yrange=None, pdp=True,
                 pdp_marker_width=.5, pdp_alpha=1,
@@ -154,7 +154,7 @@ def plot_catice(ice, colname, targetname,
     nobs = lines.shape[0]
     nx = lines.shape[1]
 
-    sort_indexes = range(ncats)
+    sort_indexes = range(1,ncats+1)
     if sort == 'ascending':
         sort_indexes = avg_y.argsort()
         cats = cats[sort_indexes]
@@ -168,7 +168,10 @@ def plot_catice(ice, colname, targetname,
     pdp_curve = avg_y - min_pdp_y
 
     # plot predicted values for each category at each observation point
-    xlocs = np.arange(1,ncats+1)
+    if True in cats or False in cats:
+        xlocs = np.arange(0, ncats)
+    else:
+        xlocs = np.arange(1,ncats+1)
     # print(f"shape {lines.shape}, ncats {ncats}, nx {nx}, len(pdp) {len(pdp_curve)}")
     for i in range(nobs): # for each observation
         ax.scatter(xlocs, lines[i,sort_indexes,1], # lines[i] is ith observation
@@ -189,7 +192,8 @@ def plot_catice(ice, colname, targetname,
 
     if True in cats or False in cats:
         ax.set_xticks(range(0, 1+1))
-        ax.set_xlim(0, 1)
+        # ax.set_xlim(0, 1)
+        pass
     else:
         ax.set_xticks(range(1, ncats+1))
 
