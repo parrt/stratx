@@ -65,7 +65,7 @@
 {
   \title{{\fontfamily{cmr}\textsc{StratPD}}: \bf A Localized Approach to Partial Dependence Plots for Codependent Variables}
 
-  \author{Terence Parr and James Wilson\\
+  \author{Terence Parr and James D. Wilson\\
       University of San Francisco\\
 }
   \maketitle
@@ -88,7 +88,7 @@ Pithy abstract here.
 \end{abstract}
 
 \noindent%
-{\it Keywords:} beer, bbq
+{\it Keywords:} causal inference, feature importance, model interpretability, random forests
 %\vfill
 
 %\newpage
@@ -98,7 +98,7 @@ Pithy abstract here.
 
 In practice, machine learning model interpretation is just as important as obtaining an accurate model. Feature importance is one such interpretation tool, which indicates the relative predictive power of each feature and is helpful when making business decisions. For example, in a model predicting apartment rent prices, the important features often identify what renters are willing to pay for. On the other hand, feature importance does not identify the relationship itself between features (explanatory variables),  and the target (response) variable.  Knowing these relationships tells model users a great deal about their data and, indirectly, the associated real-world population. For example, public health officials might be interested in how years of education affect body weight, given a set of observations sampled from a population.
 
-Given just one or two features, a plot of features versus the target lets us visualize the exact relationship, this approach does not work for data sets with more than two features because we cannot visualize more than three dimensions.
+Given just one feature, a plot of the response against the feature can be used to visualize the marginal effect of the feature exactly. Given two or more features, one can similarly plot the marginal effects of each feature separately; however, the analysis is complicated by the interactions of the variables. Generally, pairwise interaction plots are used to visualize interactions between each pair of variables; however, these are limited to pairwise analyses. Indeed, this approach cannot directly visualize interactions along more than three dimensions.
 
 To get around this limitation, traditional marginal plots project other axes onto the plane associated with the feature of interest and target variable.  That means that marginal plots do not isolate the specific contribution of a feature of interest to the target. For example, a marginal plot of sex (male/female) versus body weight would likely show that, on average, men are heavier than women. While true, men are also taller than women on average, which likely accounts for most of the difference in average weight. It's unlikely that two ``identical'' people, differing only in sex, would be appreciably different in weight.  
 
@@ -288,68 +288,72 @@ The point is that partitioning \xnc{}  with a decision tree is more about $\bf X
 \end{center}
 \end{figure}
 
-\section{Experimental Results}
-
-effect of sup/unsup: more accurate grouping. ignore noise. unsup fails if p=2 since \xnc{} has p=1 and unsup can't distinguish X from synth X.
-
-\todo{add car data}
-
-The data set has an equal number of males and females with $x_{pregnant} \sim U(0,1)$ if female, 65 + $U(-4.5,5)$ if female, and $x_{height} = 68 + U(-7,8)$ if male. 
-
-\[
-weight = 120 + 10(x_{height} - min(x_{height})) + 30x_{pregnant} - 1.2x_{education}
-\]
-
-$y = 0.2x_1 - 5x_2 + 10x_2\mathbf{1}_{x_3 \geq 0} + \epsilon$, $x_1, x_2, x_3$ are U(-1,1), Sample size 1000
-
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.8]{images/bigx.png}
-\includegraphics[scale=0.7]{images/additivity.png}
-\caption{{\bf big X from ICE, additivity from PD/ICE}}
-\label{fig:bigx_y_stratpd}
-\end{center}
-\end{figure}
-
 \section{Related Work}
 
-There are a few basic approaches to identifying the partial effect of a single variable on the target or response variable:
+% There are a few basic approaches to identifying the partial effect of a single variable on the target or response variable:
+%
+% \begin{itemize}
+% \item Stratification
+% \item Beta coefficients from linear model without regularization
+% \item Marginal plots
+% \item PDP/ICE
+% \item Accumulated Local Effects (https://arxiv.org/abs/1612.08468) (ALE) plots
+% \end{itemize}
 
-\begin{itemize}
-\item Stratification
-\item Beta coefficients from linear model without regularization
-\item Marginal plots
-\item PDP/ICE
-\item Accumulated Local Effects (https://arxiv.org/abs/1612.08468) (ALE) plots
-\end{itemize}
+\spd{} is most closely related to two recently proposed methods for model interpretability: partial dependence plots (PDP) and individual conditional expectation (ICE) plots. Suppose that $\mathbf{X}$ is an $n \times d$ matrix whose columns are the $d$ observed features, and $\mathbf{y}$ is a response vector. \spd{}, PDP and ICE each seek to describe the dependence of $\mathbf{y}$ on some small collection of features $x_C$, where $C \subset \{1, \ldots, d\}$; however they do so in substantially different ways. The starting point for any marginal dependence method is to assume that there is some unknown model $f(\cdot)$ that describes the relationship between $\mathbf{X}$ and the response $\mathbf{y}$:
 
-PDP math shows that features added or multiplied times the remaining F approximation completely describe the partial dependence; I assume that means that interactions are not a problem.
+$$\mathbf{y} = f(\mathbf{X}).$$
 
-Most importantly, \spd{} is model-independent in the sense that it does not expect nor rely on a user's model trained on $({\bf X}, {\bf y})$.  \spd{} does, of course, use models internally: a random forest for stratification and multiple linear models for estimating local partial derivatives.  The biggest difference is that \spd{} does not use predictions from any these models, which means prediction accuracy is irrelevant.  (\todo{refer to unsupervised learning trick}.)  In contrast, PD and ICE rely completely on the model supplied by the user and its accuracy.  Some implementations lay a grid across $x_c$'s range and, therefore, potentially make predictions based upon values not present in $x_c$. Also, as discussed, PD and ICE potentially conjure up nonsensical ${\bf }_i$ feature vectors, due to codependencies, and incorporate resulting predictions into plots.
+PDP and ICE each rely on the practitioner first estimating $f$ with some machine learning model before estimating partial effects. Given a fitted model $\widehat{f}$, PDP and ALE estimate the partial effect between $x_C$ and the fitted model $\widehat{f}$. An important feature of \spd{} is that it directly characterizes the relationship between $\mathbf{y}$ and $x_C$ \emph{without} the need for ever training a machine learning model. In this way \spd{} is {model-independent} and will characterize marginal relationships the same way no matter the user's choice of machine learning algorithm. To better understand the differences in \spd{} and these related methods, we describe them in more detail below.
 
-\spd{} was designed to support codependent features, which violates an assumption of PD and ICE. While ICE exposes variable interactions, it is still susceptible to variable codependencies causing misleading plots.
+Let $\overline{C} = \{1, \ldots, d\} \setminus C$ denote the index of the features in $\mathbf{X}$ excluding those in $C$ and let $x_{\overline{C}}$ denote the collection of these features. \cite{PDP} introduced the partial dependence function $\widehat{f}^{PDP}_C(x_C)$, which is defined as:
 
-do we need to talk about LIME? http://arxiv.org/pdf/1602.04938v1.pdf ?Why Should I Trust You?? Explaining the Predictions of Any Classifier.
+\begin{equation*}\label{eq:PDP} \widehat{f}^{PDP}_C(x_C): = \mathbb{E}_{\overline{C}}\left[\widehat{f}(\mathbf{X})\right] = \int \widehat{f}(\mathbf{X}) d\mathbb{P}(x_{\overline{C}})\end{equation*}
 
-there are other ways to stratify X, such as quartiles or binning of some kind but we have to choose the bins or the similarity measure.
 
-talk about the derivative plot being meaningless in ICE.  they are smoothing and then taking the derivative of suspicious data.
+The function $\widehat{f}_C(x_C)$ describes the average marginal effect that the features $x_C$ has on the prediction $\widehat{f}$. The partial dependence of $x_C$ is a global representation of variable dependence and averages over any heterogeneous relationships between $\mathbf{y}$ and $x_C$. 
+
+The individual conditional expectation (ICE) plot from \cite{ICE} is a local method which estimates the partial dependence of the prediction $\widehat{f}(\mathbf{X})$ on $x_C$ across individual observations. Suppose that $(x_{C_i}, x_{\overline{C}_i})$ are the values of the $i$th row of $\mathbf{X}$. For each $i$, the ICE plot produces a curve from the fitted model over all values of $x_C$ while holding $x_{\overline{C}_i}$ fixed. In particular, for observation $i$ the following curve is plotted $\widehat{f}^{(i)}_C = \widehat{f}((\{x_{C_i}\}_{i = 1}^n, x_{\overline{C}_i}))$. Unlike PDP, ICE can be used to  identify heterogeneous relationships between the fitted model and the features of interest $x_C$. By construction, the PDP curve for a variable $x_C$ is the average over all ICE curves for that variable. In practice, typically both ICE and PDP are used to describe the partial dependence of $\mathbf{y}$ on $x_C$ {\color{red} Figure blah gives an example of the PDP and ICE plots for the true model blah}
+
+An important limitation of PDP and ICE is that they require independence of the features in $\mathbf{X}$. This is rarely the case in practice, and in such situations these plots lead to faulty inference and misinterpretation (see \cite{apley2016visualizing} for a discussion). \cite{apley2016visualizing} introduced the accumulated local effects (ALE) strategy to overcome the independence limitation. The ALE plot is an average partial dependence of $x_C$ on $\widehat{f}$ that is calculated through the accumulation of local changes in the prediction for small windows of $x_C$. Local changes are measured as gradients of $\widehat{f}$ with respect to $x_C$ while $x_{\overline{C}}$ is held fixed. Although the ALE plot is unbiased in the presence of codependent features, it still has some disadvantages. Unlike \spd{}, ALE is not directly suitable for categorical variables as an ordering of each variable is needed for the calculation of gradients of $\widehat{f}$. Furthermore, the user must determine the number of intervals to use for calculating an ALE plot, and there is no general advice on how to do this.
+
+%LIME
+\cite{ribeiro2016should} proposed the local interpretable model-agnostic explanations (LIME) method as a strategy to interpret machine learning predictions. For a prediction of interest, LIME learns an interpretable model, on a small neighborhood of data around that prediction that explains the relationship between variables and the response locally. In contrast to \spd{}, LIME is used to create local interpretable models for each prediction; however, it does not directly assess the partial dependence of the response on a subset of variables. Like LIME, \spd{} also relies upon local interpretable models; however, \spd{} does this to explain partial dependence relationships rather than correlative relationships between the response and features. 
+
+%Shapley
+The Shapley strategy, introduced in \cite{lundberg2016unexpected}, is a permutation-based method for estimating the relationship between $\mathbf{y}$ and a variable $x_C$ through a fitted model $\widehat{f}$. In this method, the marginal effect of $x_C$ is represented by the Shapely value, which is the average change in the prediction made from the original data $\widehat{f}$ and the prediction made when all other variables $x_{\overline{C}}$ have been randomly shuffled in the dataset. The permuting of $x_{\overline{C}}$ is repeated many times and the average Shapely value is reported as the importance. Like PDP, ICE, and ALE, the Shapely strategy is also dependent on the machine learning model fitted. Further, like any permutation method, this strategy can suffer from nonsensical observations due to the permuting of $x_{\overline{C}}$, which are subsequently incorporated in the estimated dependence. This is especially problematic in the case of highly correlated features. Finally, a major disadvantage of the Shapely strategy is its computational complexity due to repeated permutations. 
+
+{\color{red} Add summary here. Add discussion of stratification / causal effects via propensity score matching}
+% $$\widehat{f}^{ALE}_C(x_C): = \int_{z_o}^{x_C}\mathbb{E}_{\overline{C}|C}\left[\dfrac{\partial \widehat{f}(\mathbf{X})}{\partial x_C} | x_C = z\right] dz = \int_{z_o}^{x_C}\int_{x_{\overline{C}}} \dfrac{\partial \widehat{f}(\mathbf{X})}{\partial x_C} \mathbb{P}(x | z)dxdz, $$
+%Put a plot of ICE, PDP, and ALE, econometric stuff, 
+% \noindent where $\mathbb{P}(x | z)$ is the conditional distribution of $x_{\overline{C}}$ given $x_C$.
+
+
+% To summarize the hazards of PD and ICE plots, (i) both are strongly affected by the model chosen by the user, (ii) to obtain accurate plots, PD and ICE rely on the accuracy of the underlying model, which might sacrifice local accuracy to minimize some global loss function. Both plots display model prediction results rather than the data itself. (iii) The potentially inaccurate model feeds off of potentially nonsensical, synthesized observations arising from variable codependencies. What we need is an accurate mechanism that does not rely on, nor make predictions from, a user's model and a mechanism that does not assume mutually independent features.
+
+
+% PDP math shows that features added or multiplied times the remaining F approximation completely describe the partial dependence; I assume that means that interactions are not a problem.
+
+% Most importantly, \spd{} is model-independent in the sense that it does not expect nor rely on a user's model trained on $({\bf X}, {\bf y})$.  \spd{} does, of course, use models internally: a random forest for stratification and multiple linear models for estimating local partial derivatives.  The biggest difference is that \spd{} does not use predictions from any these models, which means prediction accuracy is irrelevant.  (\todo{refer to unsupervised learning trick}.)  In contrast, PD and ICE rely completely on the model supplied by the user and its accuracy.  Some implementations lay a grid across $x_c$'s range and, therefore, potentially make predictions based upon values not present in $x_c$. Also, as discussed, PD and ICE potentially conjure up nonsensical ${\bf }_i$ feature vectors, due to codependencies, and incorporate resulting predictions into plots.
+%
+%
+%
+%
+% \spd{} was designed to support codependent features, which violates an assumption of PD and ICE. While ICE exposes variable interactions, it is still susceptible to variable codependencies causing misleading plots.
+%
+% do we need to talk about LIME? http://arxiv.org/pdf/1602.04938v1.pdf ?Why Should I Trust You?? Explaining the Predictions of Any Classifier.
+%
+% there are other ways to stratify X, such as quartiles or binning of some kind but we have to choose the bins or the similarity measure.
+%
+% talk about the derivative plot being meaningless in ICE.  they are smoothing and then taking the derivative of suspicious data.
+%
+% propensity stuff James mentioned
+%
+% talk about how we do not presume independence of features
  
-propensity stuff James mentioned
+% This python package seems to do PDP, LIME etc... https://github.com/oracle/Skater
 
-talk about how we do not presume independence of features
- 
-This python package seems to do PDP, LIME etc... https://github.com/oracle/Skater
-
-\section{Future work}
-
-This work describes regressors only, ignoring partial dependence for classifiers.  Research reveals no papers or implementation for classifiers. Friedman, however, briefly describes a partial dependence mechanism for classification whereby $k$-class logistic regression (one-versus-rest) equations indicate the probability of seeing class $k$ at $\bf{x}$.  This suffers from the same interaction-based bias as the regressor model.
-
-better handle on hyper parameters; summarize what we know now.
-
-Actually, the R version of personal dependence may actually do this. See https://christophm.github.io/interpretable-ml-book/pdp.html where he describes PDP for cancer prediction and gets probabilities out.
-
-\section{notes}
+\section{Experimental Results}
 
 Q: how does noisy columns affect ability to identify data features? does adding more data help?
 
@@ -382,6 +386,35 @@ max curve 2640, max curve with dup 2412 (10 trees, 1 features, yes bootstrap)
 max curve 2640, max curve with dup 2178 (20 trees, 1 features, yes bootstrap)
 
 Try rent again with noise instead of a duplication column. A single column of noise scaled by 50 dollars does not affect the ice plot (using RF) or the \spd{} plot, as expected.
+
+effect of sup/unsup: more accurate grouping. ignore noise. unsup fails if p=2 since \xnc{} has p=1 and unsup can't distinguish X from synth X.
+
+\todo{add car data}
+
+The data set has an equal number of males and females with $x_{pregnant} \sim U(0,1)$ if female, 65 + $U(-4.5,5)$ if female, and $x_{height} = 68 + U(-7,8)$ if male. 
+
+\[
+weight = 120 + 10(x_{height} - min(x_{height})) + 30x_{pregnant} - 1.2x_{education}
+\]
+
+$y = 0.2x_1 - 5x_2 + 10x_2\mathbf{1}_{x_3 \geq 0} + \epsilon$, $x_1, x_2, x_3$ are U(-1,1), Sample size 1000
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.8]{images/bigx.png}
+\includegraphics[scale=0.7]{images/additivity.png}
+\caption{{\bf big X from ICE, additivity from PD/ICE}}
+\label{fig:bigx_y_stratpd}
+\end{center}
+\end{figure}
+
+\section{Future work}
+
+This work describes regressors only, ignoring partial dependence for classifiers.  Research reveals no papers or implementation for classifiers. Friedman, however, briefly describes a partial dependence mechanism for classification whereby $k$-class logistic regression (one-versus-rest) equations indicate the probability of seeing class $k$ at $\bf{x}$.  This suffers from the same interaction-based bias as the regressor model.
+
+better handle on hyper parameters; summarize what we know now.
+
+Actually, the R version of personal dependence may actually do this. See https://christophm.github.io/interpretable-ml-book/pdp.html where he describes PDP for cancer prediction and gets probabilities out.
 
 \section{Conclusion}
 \label{sec:conc}
