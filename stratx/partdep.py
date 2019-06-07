@@ -158,7 +158,7 @@ def collect_leaf_slopes(rf, X, y, colname,
         # print(f"{len(leaf_x)} obs, R^2 y ~ X[{colname}] = {r2:.2f}, in range {r} is {rpercent:.2f}%")
 
         if r2 < min_r2_hires and len(leaf_x) > min_samples_hires: # if linear model for y ~ X[colname] is too crappy, go hires
-            # print(f"BIG {len(leaf_x)}, R^2 of y ~ X[{colname}] = {r2:.2f} < {min_r2_hires}!!!")
+            print(f"BIG {len(leaf_x)}, R^2 of y ~ X[{colname}] = {r2:.2f} < {min_r2_hires}!!!")
             leaf_xranges_, leaf_sizes_, leaf_slopes_, leaf_r2_ = \
                 hires_slopes_from_one_leaf(leaf_x, leaf_y, hires_min_samples_leaf=min_samples_leaf_hires)
 
@@ -182,6 +182,7 @@ def collect_leaf_slopes(rf, X, y, colname,
         leaf_r2.append(r2)
         leaf_xranges.append(r)
         leaf_sizes.append(len(samples))
+        # leaf_sizes.append(1 / np.var(leaf_x))
     leaf_xranges = np.array(leaf_xranges)
     leaf_sizes = np.array(leaf_sizes)
     leaf_slopes = np.array(leaf_slopes)
@@ -317,13 +318,18 @@ def plot_stratpd(X, y, colname, targetname=None,
                 lw=1,
                 c='grey')
 
+    # widths = []
     segments = []
     for xr, slope in zip(leaf_xranges, leaf_slopes):
-        y_delta = slope * (xr[1] - xr[0])
+        w = np.abs(xr[1] - xr[0])
+        # widths.append(w)
+        y_delta = slope * (w)
         closest_x_i = np.abs(uniq_x - xr[0]).argmin() # find curve point for xr[0]
         y = curve[closest_x_i]
         one_line = [(xr[0],y), (xr[1], y+y_delta)]
         segments.append( one_line )
+
+    # print(f"Avg width is {np.mean(widths):.2f} in {len(leaf_sizes)} leaves")
 
     if nlines is not None:
         idxs = np.random.randint(low=0, high=len(segments), size=nlines)
@@ -363,6 +369,33 @@ def plot_stratpd(X, y, colname, targetname=None,
         # other.plot(mx - (mx-mnx)*.02, np.mean(r2_at_x), marker='>', c=imp_color)
 
     return uniq_x, curve, r2_at_x
+
+
+def do_my_binning(x:np.ndarray, y:np.ndarray, h:float):
+    """
+    Split x range into bins of width h from X[colname] space
+    """
+    leaf_bin_avgs = []
+
+    uniq_x = np.array(sorted(np.unique(x)))
+    # print(f"uniq x {uniq_x}")
+    for ix in uniq_x:
+        bin_x = x[(x >= ix) & (x < ix + h)]
+        bin_y = y[(x >= ix) & (x < ix + h)]
+        print()
+        print(bin_x)
+        print(bin_y)
+        if len(bin_x)==0:
+            continue
+        r = (np.min(bin_x), np.max(bin_y))
+        if np.isclose(r[0], r[1]):
+            # print(f"ignoring xleft=xright @ {r[0]}")
+            continue
+
+        leaf_bin_avgs.append(lm.coef_[0])
+
+    return leaf_bin_avgs
+
 
 
 def catwise_leaves(rf, X, y, colname):
@@ -414,11 +447,11 @@ def plot_catstratpd(X, y, colname, targetname,
                     sort='ascending',
                     ntrees=1,
                     min_samples_leaf=10,
+                    max_features=1.0,
+                    bootstrap=False,
                     alpha=.15,
                     yrange=None,
                     title=None,
-                    bootstrap=False,
-                    max_features=1.0,
                     supervised=True,
                     pdp_marker_width=.5,
                     pdp_color='black',
@@ -426,13 +459,6 @@ def plot_catstratpd(X, y, colname, targetname,
                     show_xlabel=True,
                     show_ylabel=True,
                     show_xticks=True):
-    # if min_samples_leaf is None:
-    #     # rule of thumb: for binary, 2 samples / leaf seems good
-    #     # but num cats + 3 seems better for non-binary
-    #     min_samples_leaf = len(np.unique(X[colname]))
-    #     if min_samples_leaf>2:
-    #         min_samples_leaf += 3
-    #
     if ntrees==1:
         max_features = 1.0
         bootstrap = False
