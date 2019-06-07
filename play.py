@@ -91,6 +91,7 @@ def dep_weight():
     print(feature_dependence_matrix(X))
 
 def weight():
+    np.random.seed(42)
     df_raw = toy_weight_data(1000)
     df = df_raw.copy()
     catencoders = df_string_to_cat(df)
@@ -109,33 +110,40 @@ def weight():
     plot_stratpd(X, y, 'education', 'weight', ax=axes[1][0],
                  yrange=(-12,0),
                  nlines = 500,
+                 alpha=.1
                  )
     plot_stratpd(X, y, 'height', 'weight', ax=axes[2][0],
                  yrange=(0,160),
                  nlines = 1000,
                  )
     plot_catstratpd(X, y, 'sex', 'weight', ax=axes[3][0],
-                    alpha=.2,
+                    alpha=1,
+                    min_samples_leaf=2,
                     cats=df_raw['sex'].unique(),
+                    zero_center=True,
                     yrange=(0,5)
                     )
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[4][0],
-                    alpha=.2,
+                    alpha=1,
                     cats=df_raw['pregnant'].unique(),
+                    zero_center=True,
                     yrange=(0,35)
                     )
 
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
+    rf = RandomForestRegressor(n_estimators=50, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
 
-    # ice = ice_predict(rf, X, 'education', 'weight')
-    # ice_plot(ice, 'education', 'weight', ax=axes[1, 1], yrange=(-12, 0))
-    # ice = ice_predict(rf, X, 'height', 'weight')
-    # ice_plot(ice, 'height', 'weight', ax=axes[2, 1], yrange=(0, 160))
-    # ice = ice_predict(rf, X, 'sex', 'weight')
-    # ice_plot(ice, 'sex', 'weight', ax=axes[3,1], yrange=(0,5), cats=df_raw['sex'].unique())
-    # ice = ice_predict(rf, X, 'pregnant', 'weight')
-    # ice_plot(ice, 'pregnant', 'weight', ax=axes[4,1], yrange=(0,10), cats=df_raw['pregnant'].unique())
+    ice = predict_ice(rf, X, 'education', 'weight')
+    plot_ice(ice, 'education', 'weight', ax=axes[1,1], yrange=(-12, 0))
+
+    ice = predict_ice(rf, X, 'height', 'weight')
+    plot_ice(ice, 'height', 'weight', ax=axes[2,1], yrange=(0, 160))
+
+    ice = predict_catice(rf, X, 'sex', 'weight')
+    plot_catice(ice, 'sex', 'weight', cats=df_raw['sex'].unique(), ax=axes[3,1], yrange=(0, 5), pdp_marker_width=15)
+
+    ice = predict_catice(rf, X, 'pregnant', 'weight', cats=df_raw['pregnant'].unique())
+    plot_catice(ice, 'pregnant', 'weight', cats=df_raw['pregnant'].unique(), ax=axes[4,1], yrange=(-5, 35), pdp_marker_width=15)
 
     fig.suptitle("weight = 120 + 10*(height-min(height)) + 10*pregnant - 1.2*education", size=14)
 
@@ -219,7 +227,7 @@ def rent():
     df_rent = df[['bedrooms', 'bathrooms', 'latitude', 'longitude', 'price']]
     df_rent.head()
 
-    df_rent = df_rent.sample(n=5000)  # get a small subsample
+    df_rent = df_rent.sample(n=10000)  # get a small subsample
 
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
@@ -231,17 +239,22 @@ def rent():
     plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 0],
                  min_samples_leaf=min_samples_leaf,
                  alpha=.2, yrange=(0, 3000), nlines=1000, supervised=supervised)
-    plot_catstratpd(X, y, 'bedrooms', 'price', cats=np.unique(X['bedrooms']), ax=axes[0, 1],
-                 min_samples_leaf=min_samples_leaf,
-                 alpha=1, yrange=(0, 3000), sort=None)
-
+    plot_catstratpd(X, y, 'bedrooms', 'price', cats=np.unique(X['bedrooms']),
+                    ax=axes[0, 1],
+                    min_samples_leaf=min_samples_leaf,
+                    alpha=1,
+                    # yrange=(0, 3000),
+                    sort=None)
 
     plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 0],
                  min_samples_leaf=min_samples_leaf,
-                 alpha=.2, yrange=(0, 3000), nlines=1000, supervised=supervised)
-    plot_catstratpd(X, y, 'bathrooms', 'price', cats=np.unique(X['bedrooms']), ax=axes[1, 1],
-                 min_samples_leaf=min_samples_leaf,
-                 alpha=1, yrange=(0, 3000), sort=None)
+                 alpha=.2, yrange=(-500, 3000), nlines=1000, supervised=supervised)
+    plot_catstratpd(X, y, 'bathrooms', 'price', cats=np.unique(X['bedrooms']),
+                    ax=axes[1, 1],
+                    min_samples_leaf=min_samples_leaf,
+                    alpha=1,
+                    # yrange=(0, 3000),
+                    sort=None)
 
     # plot_stratpd(X, y, 'latitude', 'price', ax=axes[2, 0],
     #              min_samples_leaf=min_samples_leaf,
@@ -256,14 +269,14 @@ def rent():
     # rf = Lasso()
     # rf.fit(X, y)
 
-    # ice = ice_predict(rf, X, 'bedrooms', 'price')
-    # ice_plot(ice, 'bedrooms', 'price', ax=axes[0, 1], alpha=.05, yrange=(0,3000))
-    # ice = ice_predict(rf, X, 'bathrooms', 'price')
-    # ice_plot(ice, 'bathrooms', 'price', alpha=.05, ax=axes[1, 1])
-    # ice = ice_predict(rf, X, 'latitude', 'price')
-    # ice_plot(ice, 'latitude', 'price', ax=axes[2, 1], alpha=.05, yrange=(0,1700))
-    # ice = ice_predict(rf, X, 'longitude', 'price')
-    # ice_plot(ice, 'longitude', 'price', ax=axes[3, 1], alpha=.05, yrange=(-750,3000))
+    # ice = predict_ice(rf, X, 'bedrooms', 'price')
+    # plot_ice(ice, 'bedrooms', 'price', ax=axes[0, 1], alpha=.05, yrange=(0,3000))
+    # ice = predict_ice(rf, X, 'bathrooms', 'price')
+    # plot_ice(ice, 'bathrooms', 'price', alpha=.05, ax=axes[1, 1])
+    # ice = predict_ice(rf, X, 'latitude', 'price')
+    # plot_ice(ice, 'latitude', 'price', ax=axes[2, 1], alpha=.05, yrange=(0,1700))
+    # ice = predict_ice(rf, X, 'longitude', 'price')
+    # plot_ice(ice, 'longitude', 'price', ax=axes[3, 1], alpha=.05, yrange=(-750,3000))
 
     plt.tight_layout()
     plt.show()
@@ -421,11 +434,11 @@ def weather():
     # rf = RandomForestRegressor(n_estimators=30, min_samples_leaf=1, oob_score=True)
     # rf.fit(X, y)
     # #
-    # ice = ice_predict(rf, X, 'dayofyear', 'temperature')
-    # ice_plot(ice, 'dayofyear', 'temperature', ax=axes[3, 2])  # , yrange=(-12,0))
+    # ice = predict_ice(rf, X, 'dayofyear', 'temperature')
+    # plot_ice(ice, 'dayofyear', 'temperature', ax=axes[3, 2])  # , yrange=(-12,0))
     #
-    # ice = ice_predict(rf, X, 'state', 'temperature')
-    # ice_plot(ice, 'state', 'temperature', cats=catencoders['state'],
+    # ice = predict_ice(rf, X, 'state', 'temperature')
+    # plot_ice(ice, 'state', 'temperature', cats=catencoders['state'],
     #          ax=axes[3, 3])  # , yrange=(-12,0))
     #
     if True:
@@ -730,9 +743,9 @@ if __name__ == '__main__':
     # meta_additivity()
     # imp_cars()
     # multi_joint_distr()
-    rent()
+    # rent()
     # meta_rent()
-    # weight()
+    weight()
     # dep_weight()
     # dep_cars()
     # meta_weight()

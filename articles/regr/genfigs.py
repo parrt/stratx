@@ -588,8 +588,10 @@ def weight():
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_catstratpd(X, y, 'sex', 'weight', ax=ax,
                     alpha=.2,
+                    min_samples_leaf=2,
                     cats=df_raw['sex'].unique(),
-                    yrange=(0, 5)
+                    yrange=(0, 5),
+                    zero_center=True
                     )
     savefig(f"sex_vs_weight_stratpd")
     plt.close()
@@ -598,7 +600,8 @@ def weight():
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=ax,
                     alpha=.2,
                     cats=df_raw['pregnant'].unique(),
-                    yrange=(-5,35)
+                    yrange=(-5,35),
+                    zero_center=True
                     )
     savefig(f"pregnant_vs_weight_stratpd")
     plt.close()

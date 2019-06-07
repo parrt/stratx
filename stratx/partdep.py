@@ -249,7 +249,7 @@ def plot_stratpd(X, y, colname, targetname=None,
                  supervised=True,
                  bootstrap=False,
                  max_features = 1.0,
-                 alpha=.5
+                 alpha=.4
                  ):
     if ntrees==1:
         max_features = 1.0
@@ -421,18 +421,15 @@ def catwise_leaves(rf, X, y, colname):
     for samples in leaves:
         combined = Xy.iloc[samples]
         # print("\n", combined)
-        min_y = np.min(combined.iloc[:, -1])
         avg_cat_y = combined.groupby(colname).mean()
         avg_cat_y = avg_cat_y.iloc[:,-1]
         if len(avg_cat_y) < 2:
             # print(f"ignoring len {len(avg_cat_y)} cat leaf")
             continue
-        # record how much bump or drop we get per category above
-        # minimum change seen by any category (works even when all are negative)
-        # This assignment copies cat bumps to appropriate cat row using index
+        # record avg y value per cat in this leaf
+        # This assignment copies cat y avgs to appropriate cat row using index
         # leaving cats w/o representation as nan
-        relative_changes_per_cat = avg_cat_y - min_y
-        leaf_histos['leaf' + str(ci)] = relative_changes_per_cat
+        leaf_histos['leaf' + str(ci)] = avg_cat_y
         ci += 1
 
     # print(leaf_histos)
@@ -441,6 +438,7 @@ def catwise_leaves(rf, X, y, colname):
     return leaf_histos
 
 
+# only works for ints, not floats
 def plot_catstratpd(X, y, colname, targetname,
                     cats=None,
                     ax=None,
@@ -449,6 +447,7 @@ def plot_catstratpd(X, y, colname, targetname,
                     min_samples_leaf=10,
                     max_features=1.0,
                     bootstrap=False,
+                    zero_center=False,
                     alpha=.15,
                     yrange=None,
                     title=None,
@@ -503,7 +502,10 @@ def plot_catstratpd(X, y, colname, targetname,
         sort_indexes = avg_per_cat.argsort()[::-1]  # reversed
         cats = cats[sort_indexes]
 
-    min_value = np.min(avg_per_cat)
+    if zero_center:
+        min_avg_value = np.min(avg_per_cat)
+    else:
+        min_avg_value = 0
 
     # if too many categories, can't do strip plot
     if style=='strip':
@@ -512,10 +514,10 @@ def plot_catstratpd(X, y, colname, targetname,
         mu = 0
         x_noise = np.random.normal(mu, sigma, size=nleaves) # to make strip plot
         for i in sort_indexes:
-            ax.scatter(x_noise + xloc, leaf_histos.iloc[i]-min_value,
+            ax.scatter(x_noise + xloc, leaf_histos.iloc[i]-min_avg_value,
                        alpha=alpha, marker='o', s=10,
                        c='#9CD1E3')
-            ax.plot([xloc - .1, xloc + .1], [avg_per_cat[i]-min_value] * 2,
+            ax.plot([xloc - .1, xloc + .1], [avg_per_cat[i]-min_avg_value] * 2,
                     c='black', linewidth=2)
             xloc += 1
     else: # do straight plot
@@ -530,11 +532,11 @@ def plot_catstratpd(X, y, colname, targetname,
         sorted_histos = leaf_histos.iloc[sort_indexes,:]
         xloc = 1
         for i in range(nleaves):
-            ax.scatter(xlocs, sorted_histos.iloc[:,i] - min_value,
+            ax.scatter(xlocs, sorted_histos.iloc[:,i] - min_avg_value,
                        alpha=alpha, marker='o', s=5,
                        c='#9CD1E3')
             xloc += 1
-        ax.scatter(xlocs, avg_per_cat[sort_indexes]-min_value, c=pdp_color, s=pdp_marker_width)
+        ax.scatter(xlocs, avg_per_cat[sort_indexes]-min_avg_value, c=pdp_color, s=pdp_marker_width)
 
     ax.set_xticks(range(1, ncats + 1))
     if show_xticks: # sometimes too many
@@ -553,7 +555,7 @@ def plot_catstratpd(X, y, colname, targetname,
     if yrange is not None:
         ax.set_ylim(*yrange)
 
-    return cats, avg_per_cat[sort_indexes]-min_value
+    return cats, avg_per_cat[sort_indexes]-min_avg_value
 
 
 # -------------- S U P P O R T ---------------
