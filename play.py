@@ -219,7 +219,7 @@ def rent():
     df_rent = df[['bedrooms', 'bathrooms', 'latitude', 'longitude', 'price']]
     df_rent.head()
 
-    df_rent = df_rent.sample(n=10000)  # get a small subsample
+    df_rent = df_rent.sample(n=5000)  # get a small subsample
 
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
@@ -231,18 +231,27 @@ def rent():
     plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 0],
                  min_samples_leaf=min_samples_leaf,
                  alpha=.2, yrange=(0, 3000), nlines=1000, supervised=supervised)
+    plot_catstratpd(X, y, 'bedrooms', 'price', cats=np.unique(X['bedrooms']), ax=axes[0, 1],
+                 min_samples_leaf=min_samples_leaf,
+                 alpha=1, yrange=(0, 3000), sort=None)
+
+
     plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 0],
                  min_samples_leaf=min_samples_leaf,
                  alpha=.2, yrange=(0, 3000), nlines=1000, supervised=supervised)
-    plot_stratpd(X, y, 'latitude', 'price', ax=axes[2, 0],
+    plot_catstratpd(X, y, 'bathrooms', 'price', cats=np.unique(X['bedrooms']), ax=axes[1, 1],
                  min_samples_leaf=min_samples_leaf,
-                 alpha=.2, yrange=(0, 3000), nlines=1000, supervised=supervised)
-    plot_stratpd(X, y, 'longitude', 'price', ax=axes[3, 0],
-                 min_samples_leaf=min_samples_leaf,
-                 alpha=.2, nlines=1000, supervised=supervised)
+                 alpha=1, yrange=(0, 3000), sort=None)
 
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
-    rf.fit(X, y)
+    # plot_stratpd(X, y, 'latitude', 'price', ax=axes[2, 0],
+    #              min_samples_leaf=min_samples_leaf,
+    #              alpha=.2, yrange=(0, 3000), nlines=1000, supervised=supervised)
+    # plot_stratpd(X, y, 'longitude', 'price', ax=axes[3, 0],
+    #              min_samples_leaf=min_samples_leaf,
+    #              alpha=.2, nlines=1000, supervised=supervised)
+
+    # rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
+    # rf.fit(X, y)
 
     # rf = Lasso()
     # rf.fit(X, y)

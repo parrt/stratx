@@ -90,7 +90,7 @@ def hires_slopes_from_one_leaf(x:np.ndarray, y:np.ndarray, hires_min_samples_lea
         r = (np.min(leaf_x), np.max(leaf_x))
         if np.isclose(r[0], r[1]):
             # print(f"ignoring xleft=xright @ {r[0]}")
-            print(f"Ignoring range {r} from {leaf_x.T} -> {leaf_y}")
+            # print(f"Ignoring range {r} from {leaf_x.T} -> {leaf_y}")
             continue
         lm = LinearRegression()
         lm.fit(leaf_x.reshape(-1, 1), leaf_y)
@@ -158,7 +158,7 @@ def collect_leaf_slopes(rf, X, y, colname,
         # print(f"{len(leaf_x)} obs, R^2 y ~ X[{colname}] = {r2:.2f}, in range {r} is {rpercent:.2f}%")
 
         if r2 < min_r2_hires and len(leaf_x) > min_samples_hires: # if linear model for y ~ X[colname] is too crappy, go hires
-            print(f"BIG {len(leaf_x)}, R^2 of y ~ X[{colname}] = {r2:.2f} < {min_r2_hires}!!!")
+            # print(f"BIG {len(leaf_x)}, R^2 of y ~ X[{colname}] = {r2:.2f} < {min_r2_hires}!!!")
             leaf_xranges_, leaf_sizes_, leaf_slopes_, leaf_r2_ = \
                 hires_slopes_from_one_leaf(leaf_x, leaf_y, hires_min_samples_leaf=min_samples_leaf_hires)
 
@@ -526,6 +526,9 @@ def plot_catstratpd(X, y, colname, targetname,
 
     if yrange is not None:
         ax.set_ylim(*yrange)
+
+    return cats, avg_per_cat[sort_indexes]-min_value
+
 
 # -------------- S U P P O R T ---------------
 
