@@ -35,9 +35,8 @@ def strat_importances(X, y,
                                    oob_score=False)
         rf.fit(X.drop(colname, axis=1), y)
         leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2 = \
-            collect_leaf_slopes(rf, X, y, colname, min_r2_hires=min_r2_hires,
-                                min_samples_leaf_hires=min_samples_leaf_hires,
-                                min_samples_hires=min_samples_hires)
+            collect_leaf_slopes(rf, X, y, colname,
+                                min_samples_leaf_hires=min_samples_leaf_hires)
         uniq_x = np.array(sorted(np.unique(X[colname])))
         r2_at_x = avg_values_at_x(uniq_x, leaf_xranges, leaf_r2, leaf_sizes)
         imp = np.nanmean(r2_at_x)

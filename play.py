@@ -369,7 +369,7 @@ def weather():
 
     fig, axes = plt.subplots(4, 5, figsize=(22, 10))
 
-    min_samples_leaf_hires = 15
+    min_samples_leaf = 2
 
     j = 0
     for sz in [0.05, .10, .20, .30, .40]:
@@ -400,14 +400,13 @@ def weather():
             axes[0,j].scatter(all_x, combined_curve, c='red', s=3)
 
         plot_stratpd(X, y, 'dayofyear', 'temperature', ax=axes[0][j],
-                     min_samples_leaf=365,
-                     min_samples_leaf_hires=min_samples_leaf_hires,
-                     min_r2_hires=0.5,
+                     min_samples_leaf=min_samples_leaf,
+                     min_samples_leaf_hires=sz,
                      # hires_nbins=sz,
                      alpha=.3,
                      yrange=(-20,20))
 
-        axes[0][j].set_title(f"{2} samples/leaf\n{sz} hires samples/leaf")
+        axes[0][j].set_title(f"{min_samples_leaf} samples/leaf\n{sz} $x_c$ samples/leaf")
         j += 1
 
     plt.title(f"{nyears} years")
@@ -687,7 +686,7 @@ def additivity_data(n, sd=1.0):
     return df
 
 def meta_additivity():
-    np.random.seed(99)
+    # np.random.seed(99)
     n = 1000
     df = additivity_data(n=n, sd=1)
     X = df.drop('y', axis=1)
@@ -739,8 +738,8 @@ if __name__ == '__main__':
     # multi_joint_distr()
     # rent()
     # meta_rent()
-    weight()
+    # weight()
     # dep_weight()
     # dep_cars()
     # meta_weight()
-    # weather()
+    weather()

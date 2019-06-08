@@ -53,7 +53,7 @@ def dtree_leaf_samples(dtree, X:np.ndarray):
     return sample_idxs_in_leaf
 
 
-def hires_slopes_from_one_leaf(x:np.ndarray, y:np.ndarray, hires_min_samples_leaf:int):
+def partition_xc_space(x:np.ndarray, y:np.ndarray, hires_min_samples_leaf:int):
     start = time.time()
     X = x.reshape(-1,1)
 
@@ -106,6 +106,7 @@ def hires_slopes_from_one_leaf(x:np.ndarray, y:np.ndarray, hires_min_samples_lea
         leaf_r2.append(r2)
         leaf_xranges.append(r)
         leaf_sizes.append(len(samples))
+        # leaf_sizes.append(1 / np.var(leaf_x))
 
     # print(f"\tAvg leaf R^2 {np.mean(r2s):.4f}, avg x len {np.mean(r2xNs)}")
 
@@ -113,24 +114,37 @@ def hires_slopes_from_one_leaf(x:np.ndarray, y:np.ndarray, hires_min_samples_lea
         plt.legend(loc='upper left', borderpad=0, labelspacing=0)
         plt.show()
 
+    if len(leaf_slopes)==0:
+        # looks like samples/leaf is too small and/or values are ints;
+        # If y is evenly spread across integers, we will get single x value with lots of y,
+        # which can't tell us about change in y over x as x isn't changing.
+        # Fall back onto single line for whole leaf
+        lm = LinearRegression()
+        lm.fit(X, y)
+        leaf_slopes.append(lm.coef_[0])  # better to use univariate slope it seems
+        r2 = lm.score(X, y)
+        leaf_r2.append(r2)
+        r = (np.min(x), np.max(x))
+        leaf_xranges.append(r)
+        leaf_sizes.append(len(x))
+        # leaf_sizes.append(1 / np.var(leaf_x))
+
     stop = time.time()
     # print(f"hires_slopes_from_one_leaf {stop - start:.3f}s")
     return leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2
 
 
-def collect_leaf_slopes(rf, X, y, colname,
-                        min_r2_hires,
-                        min_samples_hires,
-                        min_samples_leaf_hires):
+def collect_leaf_slopes(rf, X, y, colname, min_samples_leaf_hires):
     """
     For each leaf of each tree of the random forest rf (trained on all features
     except colname), get the samples then isolate the column of interest X values
-    and the target y values. Perform a regression to get the slope of X[colname] vs y.
+    and the target y values. Perform another partition of X[colname] vs y and do
+    piecewise linear regression to get the slopes in various regions of X[colname].
     We don't need to subtract the minimum y value before regressing because
     the slope won't be different. (We are ignoring the intercept of the regression line).
 
-    Return for each leaf, the range of X[colname], num obs, associated slope for
-    that range, r^2 of line through points.
+    Return for each leaf, the ranges of X[colname] partitions, num obs per leaf,
+    associated slope for each range, r^2 of line through points.
     """
     start = time.time()
     leaf_slopes = []
@@ -150,39 +164,16 @@ def collect_leaf_slopes(rf, X, y, colname,
             # print(f"ignoring xleft=xright @ {r[0]}")
             continue
 
-        lm = LinearRegression()
-        lm.fit(leaf_x.reshape(-1, 1), leaf_y)
-        r2 = lm.score(leaf_x.reshape(-1, 1), leaf_y)
-
         # rpercent = (r[1] - r[0]) * 100.0 / (allr[1] - allr[0])
         # print(f"{len(leaf_x)} obs, R^2 y ~ X[{colname}] = {r2:.2f}, in range {r} is {rpercent:.2f}%")
 
-        if r2 < min_r2_hires and len(leaf_x) > min_samples_hires: # if linear model for y ~ X[colname] is too crappy, go hires
-            print(f"BIG {len(leaf_x)}, R^2 of y ~ X[{colname}] = {r2:.2f} < {min_r2_hires}!!!")
-            leaf_xranges_, leaf_sizes_, leaf_slopes_, leaf_r2_ = \
-                hires_slopes_from_one_leaf(leaf_x, leaf_y, hires_min_samples_leaf=min_samples_leaf_hires)
+        leaf_xranges_, leaf_sizes_, leaf_slopes_, leaf_r2_ = \
+            partition_xc_space(leaf_x, leaf_y, hires_min_samples_leaf=min_samples_leaf_hires)
+        leaf_slopes.extend(leaf_slopes_)
+        leaf_r2.extend(leaf_r2_)
+        leaf_xranges.extend(leaf_xranges_)
+        leaf_sizes.extend(leaf_sizes_)
 
-            if len(leaf_slopes_)>0:
-                leaf_slopes.extend(leaf_slopes_)
-                leaf_r2.extend(leaf_r2_)
-                leaf_xranges.extend(leaf_xranges_)
-                leaf_sizes.extend(leaf_sizes_)
-                continue
-            else:
-                # looks like hires_min_samples_leaf is too small and values are ints;
-                # e.g., hires_min_samples_leaf=.05 and x range of 1..10. If even spread,
-                # hires_min_samples_leaf will get single x value, which can't tell us about
-                # change in y over x as x isn't changing. Fall back onto non-hires
-                pass # keep going as if this hadn't happened
-
-        #print(f"All R^2 {LM_r2:.3f} for {len(leaf_x)} samples with {LM.coef_[ci]:.2f} beta vs Lx,Ly beta {lm.coef_[0]:.2f}")
-
-        leaf_slopes.append(lm.coef_[0]) # better to use univariate slope it seems
-        r2 = lm.score(leaf_x.reshape(-1, 1), leaf_y)
-        leaf_r2.append(r2)
-        leaf_xranges.append(r)
-        leaf_sizes.append(len(samples))
-        # leaf_sizes.append(1 / np.var(leaf_x))
     leaf_xranges = np.array(leaf_xranges)
     leaf_sizes = np.array(leaf_sizes)
     leaf_slopes = np.array(leaf_slopes)
@@ -232,8 +223,6 @@ def plot_stratpd(X, y, colname, targetname=None,
                  ax=None,
                  ntrees=1,
                  min_samples_leaf=10,
-                 min_r2_hires=1.0,
-                 min_samples_hires=15,
                  min_samples_leaf_hires=.20,
                  xrange=None,
                  yrange=None,
@@ -251,13 +240,6 @@ def plot_stratpd(X, y, colname, targetname=None,
                  max_features = 1.0,
                  alpha=.4
                  ):
-    if ntrees==1:
-        max_features = 1.0
-        bootstrap = False
-
-    if min_r2_hires>1.0:
-        min_r2_hires = 1.0
-
     # print(f"Unique {colname} = {len(np.unique(X[colname]))}/{len(X)}")
     if supervised:
         rf = RandomForestRegressor(n_estimators=ntrees,
@@ -282,8 +264,7 @@ def plot_stratpd(X, y, colname, targetname=None,
     uniq_x = np.array(sorted(np.unique(X[colname])))
     # print(f"\nModel wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2 = \
-        collect_leaf_slopes(rf, X, y, colname, min_r2_hires=min_r2_hires,
-                            min_samples_hires=min_samples_hires,
+        collect_leaf_slopes(rf, X, y, colname,
                             min_samples_leaf_hires=min_samples_leaf_hires)
     slope_at_x = avg_values_at_x(uniq_x, leaf_xranges, leaf_slopes, leaf_sizes)
     r2_at_x = avg_values_at_x(uniq_x, leaf_xranges, leaf_r2, leaf_sizes)
