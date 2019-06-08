@@ -53,7 +53,7 @@ def dtree_leaf_samples(dtree, X:np.ndarray):
     return sample_idxs_in_leaf
 
 
-def partition_xc_space(x:np.ndarray, y:np.ndarray, hires_min_samples_leaf:int):
+def piecewise_xc_space(x:np.ndarray, y:np.ndarray, hires_min_samples_leaf:int):
     start = time.time()
     X = x.reshape(-1,1)
 
@@ -168,7 +168,7 @@ def collect_leaf_slopes(rf, X, y, colname, min_samples_leaf_hires):
         # print(f"{len(leaf_x)} obs, R^2 y ~ X[{colname}] = {r2:.2f}, in range {r} is {rpercent:.2f}%")
 
         leaf_xranges_, leaf_sizes_, leaf_slopes_, leaf_r2_ = \
-            partition_xc_space(leaf_x, leaf_y, hires_min_samples_leaf=min_samples_leaf_hires)
+            piecewise_xc_space(leaf_x, leaf_y, hires_min_samples_leaf=min_samples_leaf_hires)
         leaf_slopes.extend(leaf_slopes_)
         leaf_r2.extend(leaf_r2_)
         leaf_xranges.extend(leaf_xranges_)
