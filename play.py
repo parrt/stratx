@@ -687,7 +687,7 @@ def additivity_data(n, sd=1.0):
     return df
 
 def meta_additivity():
-    # np.random.seed(99)
+    np.random.seed(99)
     n = 1000
     df = additivity_data(n=n, sd=1)
     X = df.drop('y', axis=1)
@@ -734,12 +734,12 @@ def meta_additivity():
     plt.close()
 
 if __name__ == '__main__':
-    meta_additivity()
+    # meta_additivity()
     # imp_cars()
     # multi_joint_distr()
     # rent()
     # meta_rent()
-    # weight()
+    weight()
     # dep_weight()
     # dep_cars()
     # meta_weight()

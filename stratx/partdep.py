@@ -413,13 +413,14 @@ def catwise_leaves(rf, X, y, colname):
     start = time.time()
     catcol = X[colname].astype('category').cat.as_ordered()
     cats = catcol.cat.categories
+    leaf_sizes = []
     leaf_histos = pd.DataFrame(index=cats)
     leaf_histos.index.name = 'category'
     ci = 0
     Xy = pd.concat([X, y], axis=1)
     leaves = leaf_samples(rf, X.drop(colname, axis=1))
-    for samples in leaves:
-        combined = Xy.iloc[samples]
+    for sample in leaves:
+        combined = Xy.iloc[sample]
         # print("\n", combined)
         avg_cat_y = combined.groupby(colname).mean()
         avg_cat_y = avg_cat_y.iloc[:,-1]
@@ -429,14 +430,18 @@ def catwise_leaves(rf, X, y, colname):
         # record avg y value per cat in this leaf
         # This assignment copies cat y avgs to appropriate cat row using index
         # leaving cats w/o representation as nan
+
+        # TODO: USE REF CAT NOT SMALLEST!!!!
         min_avg = np.min(avg_cat_y)
+
         leaf_histos['leaf' + str(ci)] = avg_cat_y - min_avg
+        leaf_sizes.append(len(sample))
         ci += 1
 
     # print(leaf_histos)
     stop = time.time()
     print(f"catwise_leaves {stop - start:.3f}s")
-    return leaf_histos
+    return leaf_histos, leaf_sizes
 
 
 # only works for ints, not floats
@@ -483,9 +488,13 @@ def plot_catstratpd(X, y, colname, targetname,
     # rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X.drop(colname, axis=1), y)
     # print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
-    leaf_histos = catwise_leaves(rf, X, y, colname)
+    leaf_histos, leaf_sizes = catwise_leaves(rf, X, y, colname)
 
-    # TODO: weighted mean!!!
+    # weighted_histos = leaf_histos.mul(leaf_sizes)
+    # weighted_sum_per_cat = np.nansum(weighted_histos, axis=1)
+    # total_obs_in_leaves = np.sum(leaf_sizes)
+    # avg_per_cat = weighted_sum_per_cat / total_obs_in_leaves
+
     avg_per_cat = np.nanmean(leaf_histos, axis=1)
 
     if len(cats)>50:
@@ -505,10 +514,8 @@ def plot_catstratpd(X, y, colname, targetname,
         sort_indexes = avg_per_cat.argsort()[::-1]  # reversed
         cats = cats[sort_indexes]
 
-    if zero_center:
-        min_avg_value = np.min(avg_per_cat)
-    else:
-        min_avg_value = 0
+    # TODO: shouldn't have to do this using ref cat
+    min_avg_value = np.min(avg_per_cat)
 
     # if too many categories, can't do strip plot
     if style=='strip':
