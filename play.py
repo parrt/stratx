@@ -91,8 +91,8 @@ def dep_weight():
     print(feature_dependence_matrix(X))
 
 def weight():
-    np.random.seed(42)
-    df_raw = toy_weight_data(1000)
+    # np.random.seed(42)
+    df_raw = toy_weight_data(3000)
     df = df_raw.copy()
     catencoders = df_string_to_cat(df)
     df_cat_to_catcode(df)
@@ -107,26 +107,27 @@ def weight():
     axes[0,0].axis('off')
     axes[0,1].axis('off')
 
-    plot_stratpd(X, y, 'education', 'weight', ax=axes[1][0],
-                 yrange=(-12,0),
-                 nlines = 500,
-                 alpha=.1
-                 )
-    plot_stratpd(X, y, 'height', 'weight', ax=axes[2][0],
-                 yrange=(0,160),
-                 nlines = 1000,
-                 )
+    # plot_stratpd(X, y, 'education', 'weight', ax=axes[1][0],
+    #              yrange=(-12,0),
+    #              nlines = 500,
+    #              alpha=.1
+    #              )
+    # plot_stratpd(X, y, 'height', 'weight', ax=axes[2][0],
+    #              yrange=(0,160),
+    #              nlines = 1000,
+    #              )
     plot_catstratpd(X, y, 'sex', 'weight', ax=axes[3][0],
                     alpha=1,
-                    min_samples_leaf=2,
+                    min_samples_leaf=5,
                     cats=df_raw['sex'].unique(),
-                    zero_center=True,
+                    # zero_center=True
                     yrange=(0,5)
                     )
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[4][0],
+                    min_samples_leaf=5,
                     alpha=1,
                     cats=df_raw['pregnant'].unique(),
-                    zero_center=True,
+                    # zero_center=True
                     yrange=(0,35)
                     )
 

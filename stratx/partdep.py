@@ -429,7 +429,8 @@ def catwise_leaves(rf, X, y, colname):
         # record avg y value per cat in this leaf
         # This assignment copies cat y avgs to appropriate cat row using index
         # leaving cats w/o representation as nan
-        leaf_histos['leaf' + str(ci)] = avg_cat_y
+        min_avg = np.min(avg_cat_y)
+        leaf_histos['leaf' + str(ci)] = avg_cat_y - min_avg
         ci += 1
 
     # print(leaf_histos)
@@ -483,6 +484,8 @@ def plot_catstratpd(X, y, colname, targetname,
     rf.fit(X.drop(colname, axis=1), y)
     # print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     leaf_histos = catwise_leaves(rf, X, y, colname)
+
+    # TODO: weighted mean!!!
     avg_per_cat = np.nanmean(leaf_histos, axis=1)
 
     if len(cats)>50:
