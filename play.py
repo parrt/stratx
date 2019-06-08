@@ -107,15 +107,15 @@ def weight():
     axes[0,0].axis('off')
     axes[0,1].axis('off')
 
-    # plot_stratpd(X, y, 'education', 'weight', ax=axes[1][0],
-    #              yrange=(-12,0),
-    #              nlines = 500,
-    #              alpha=.1
-    #              )
-    # plot_stratpd(X, y, 'height', 'weight', ax=axes[2][0],
-    #              yrange=(0,160),
-    #              nlines = 1000,
-    #              )
+    plot_stratpd(X, y, 'education', 'weight', ax=axes[1][0],
+                 yrange=(-12,0),
+                 nlines = 500,
+                 alpha=.1
+                 )
+    plot_stratpd(X, y, 'height', 'weight', ax=axes[2][0],
+                 yrange=(0,160),
+                 nlines = 1000,
+                 )
     plot_catstratpd(X, y, 'sex', 'weight', ax=axes[3][0],
                     alpha=1,
                     min_samples_leaf=5,
@@ -236,26 +236,26 @@ def rent():
     supervised = True
 
     fig, axes = plt.subplots(4, 2, figsize=(8,16))
-    min_samples_leaf = 3#0.0001
+    min_samples_leaf = 10#0.0001
     plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 0],
                  min_samples_leaf=min_samples_leaf,
                  alpha=.2, yrange=(0, 3000), nlines=1000, supervised=supervised)
-    plot_catstratpd(X, y, 'bedrooms', 'price', cats=np.unique(X['bedrooms']),
-                    ax=axes[0, 1],
-                    min_samples_leaf=min_samples_leaf,
-                    alpha=1,
-                    # yrange=(0, 3000),
-                    sort=None)
+    # plot_catstratpd(X, y, 'bedrooms', 'price', cats=np.unique(X['bedrooms']),
+    #                 ax=axes[0, 1],
+    #                 min_samples_leaf=min_samples_leaf,
+    #                 alpha=1,
+    #                 # yrange=(0, 3000),
+    #                 sort=None)
 
     plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 0],
                  min_samples_leaf=min_samples_leaf,
                  alpha=.2, yrange=(-500, 3000), nlines=1000, supervised=supervised)
-    plot_catstratpd(X, y, 'bathrooms', 'price', cats=np.unique(X['bedrooms']),
-                    ax=axes[1, 1],
-                    min_samples_leaf=min_samples_leaf,
-                    alpha=1,
-                    # yrange=(0, 3000),
-                    sort=None)
+    # plot_catstratpd(X, y, 'bathrooms', 'price', cats=np.unique(X['bedrooms']),
+    #                 ax=axes[1, 1],
+    #                 min_samples_leaf=min_samples_leaf,
+    #                 alpha=1,
+    #                 # yrange=(0, 3000),
+    #                 sort=None)
 
     # plot_stratpd(X, y, 'latitude', 'price', ax=axes[2, 0],
     #              min_samples_leaf=min_samples_leaf,
@@ -689,7 +689,7 @@ def additivity_data(n, sd=1.0):
 def meta_additivity():
     # np.random.seed(99)
     n = 1000
-    df = additivity_data(n=n, sd=.7)
+    df = additivity_data(n=n, sd=1)
     X = df.drop('y', axis=1)
     y = df['y']
 
@@ -702,18 +702,11 @@ def meta_additivity():
     axes[1,0].set_xlabel("x2")
     axes[1,0].set_ylabel("y")
 
-    min_r2_hires = .3
     # min_samples_leaf_hires = 50//3
-    min_samples_leaf = 50
-    hires_window_width = .4
+    min_samples_leaf = 20
     plot_stratpd(X, y, 'x1', 'y', ax=axes[0, 1],
-                 ntrees=1,
-                 bootstrap=False,
                  min_samples_leaf=min_samples_leaf,
-                 # min_samples_leaf_hires=min_samples_leaf_hires,
-                 hires_window_width=hires_window_width,
-                 min_r2_hires=min_r2_hires,
-                 show_importance=True,
+                 min_samples_leaf_hires=.4,
                  yrange=(-1, 1),
                  pdp_dot_size=2, alpha=.4)
 
@@ -727,7 +720,7 @@ def meta_additivity():
     axes[1,1].set_ylabel("y")
 
     axes[0,0].set_title("$y = x_1^2 + x_2 + \epsilon$")
-    axes[0,1].set_title(f"leaf sz {min_samples_leaf}, hires {min_r2_hires}\nhires h {hires_window_width}")
+    # axes[0,1].set_title(f"leaf sz {min_samples_leaf}, hires {min_r2_hires}\nhires h {hires_window_width}")
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
@@ -741,12 +734,12 @@ def meta_additivity():
     plt.close()
 
 if __name__ == '__main__':
-    # meta_additivity()
+    meta_additivity()
     # imp_cars()
     # multi_joint_distr()
     # rent()
     # meta_rent()
-    weight()
+    # weight()
     # dep_weight()
     # dep_cars()
     # meta_weight()

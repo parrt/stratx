@@ -440,7 +440,9 @@ def weather():
     """
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'dayofyear', 'temperature', ax=ax,
-                 min_samples_leaf=30,
+                 min_samples_leaf=5,#30,
+                 min_r2_hires=1.0, # always do hires
+                 min_samples_leaf_hires=.15,
                  yrange=(-15,15),
                  pdp_dot_size=2, alpha=.5)
 
@@ -1149,17 +1151,17 @@ if __name__ == '__main__':
     # cars()
     # meta_cars()
     # unsup_boston()
-    # rent()
+    rent()
     # rent_ntrees()
     # meta_boston()
     # meta_weight()
     # meta_rent()
     # unsup_rent()
     # weight()
-    unsup_weight()
-    meta_weather()
-    weight_ntrees()
-    weather()
-    meta_additivity()
-    additivity()
-    bigX()
+    # unsup_weight()
+    # meta_weather()
+    # weight_ntrees()
+    # weather()
+    # meta_additivity()
+    # additivity()
+    # bigX()
