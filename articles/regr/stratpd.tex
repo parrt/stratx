@@ -207,24 +207,6 @@ The stratification approach can also capture how a categorical variable $x_c$ af
 \end{center}
 \end{figure}
 
-\subsection{Approximating partial derivatives for large regions}\label{sec:patho}
-
-There is a pathological case to consider where training yields a decision tree with very large leaves, with perhaps hundreds or thousands of observations.  This can happen when \xnc{} contains a single categorical variable or when the only strongly-predictive variable in \xnc{} is categorical.  Training a single linear model through hundreds of $(Lx, Ly)$ observations is unlikely to capture the relationship.  The weather data set is a case in point. Choosing $x_c$=$x_{dayofyear}$, leaves \xnc{}=\{$x_{state}$,$x_{year}$\} and $x_{state}$ accounts for most of the variation in target variable temperature.  \figref{fig:dayofyear_vs_temp}(a) shows the marginal plot of $x_{state}$ versus temperature. A decision tree, $T$, splitting on just state, would group all 365 daily temperature observations for a single state into just one leaf. (The marginal plot is showing the complete sine waves but from the side, edge on.)  The \spd{} algorithm described so far would likely create just four linear models, one per state, and would fail to capture the sine waves. PD and ICE plots, on the other hand, identify the noisy sine waves, as shown in \figref{fig:dayofyear_vs_temp}(b). \todo{uses random forest with how many trees for pd/ice?}
-
-To handle the special case where partitioning feature space \xnc{} yields a leaf, $L \in T$, with too many $x_c$ observations, \spd{} trains another decision tree, $T'$, to partition $L$'s $x_c$ space in more detail. In the worst case, every region of \xnc{} identified by $T$ is too large and \spd{} must create a new decision tree per $L \in T$. \algref{alg:StratPD} (lines 6-9) engages this mechanism when $|L|$ is greater than a threshold (default is 30 observations). The \spd{} plot in \figref{fig:dayofyear_vs_temp}(c) clearly shows the sinusoidal temperature fluctuations over the year. The PD/ICE plot is not smooth because it relies on predictions from a model trained on noisy data, whereas the \spd{} plot is averaging slopes that are themselves smoothing agents.
-
-Without this special case mechanism, the \spd{} plot would have to approximate an entire sine wave with a single line.  Unfortunately, we had to manually choose a suitable minimum leaf size for the nested leaf partitioning, $T'$, to reveal a proper sine wave.  We recommend trying $T'$ multiple minimum leaf sizes for \spd{} plots when \xnc{} has categorical variables and $p$ is small. (The Python implementation allows programmers to set the minimum leaf size for both the \xnc{} partitioning with $T$ and second stage partitioning with $T'$.)
-
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.7]{images/state_vs_temp.png}
-\includegraphics[scale=0.7]{images/dayofyear_vs_temp_pdp.png}
-\includegraphics[scale=0.7]{images/dayofyear_vs_temp_stratpd.png}
-\caption{{\bf  dayofyear  vs temp}}
-\label{fig:dayofyear_vs_temp}
-\end{center}
-\end{figure}
-
 \subsection{Partitioning feature space with trees and forests}
 
 Stratification of $(x_{\overline{c}}, y)$ into regions of similar observations is at the core of our approach so it's worth examining how \spd{} partitions feature space in more detail.  The goal is to examine $({\bf X}, {\bf y})$ for groups of extremely similar \xnc{} values so fluctuations in $y$ are due solely to changes in $x_c$, which yields a piece of the partial dependence of $y$ on $x_c$. \spd{} looks for similar observations because, beyond a few variables, it's not possible to stratify observations by equal \xnc{} values. 
@@ -351,6 +333,24 @@ Q: how does duplicating a column affect the ability to identify features? Does i
 Q: what are the hyper parameters and what advice do we have for setting them?
 
 Note: if integer x then sometimes all y values fall directly on that x and no deriv can be computed.  must crank up number of samples and hires leaf size? i'm seeing num bedrooms in leaf as 0,1,2 but only get one piecewise line due to partitioning (all values are for single num bed value so ignored). sometimes even no piecewise lines if min\_samples\_leaf\_hires is low like 0.1
+
+\subsection{Approximating partial derivatives for large regions}\label{sec:patho}
+
+There is a pathological case to consider where training yields a decision tree with very large leaves, with perhaps hundreds or thousands of observations.  This can happen when \xnc{} contains a single categorical variable or when the only strongly-predictive variable in \xnc{} is categorical.  Training a single linear model through hundreds of $(Lx, Ly)$ observations is unlikely to capture the relationship.  The weather data set is a case in point. Choosing $x_c$=$x_{dayofyear}$, leaves \xnc{}=\{$x_{state}$,$x_{year}$\} and $x_{state}$ accounts for most of the variation in target variable temperature.  \figref{fig:dayofyear_vs_temp}(a) shows the marginal plot of $x_{state}$ versus temperature. A decision tree, $T$, splitting on just state, would group all 365 daily temperature observations for a single state into just one leaf. (The marginal plot is showing the complete sine waves but from the side, edge on.)  The \spd{} algorithm described so far would likely create just four linear models, one per state, and would fail to capture the sine waves. PD and ICE plots, on the other hand, identify the noisy sine waves, as shown in \figref{fig:dayofyear_vs_temp}(b). \todo{uses random forest with how many trees for pd/ice?}
+
+To handle the special case where partitioning feature space \xnc{} yields a leaf, $L \in T$, with too many $x_c$ observations, \spd{} trains another decision tree, $T'$, to partition $L$'s $x_c$ space in more detail. In the worst case, every region of \xnc{} identified by $T$ is too large and \spd{} must create a new decision tree per $L \in T$. \algref{alg:StratPD} (lines 6-9) engages this mechanism when $|L|$ is greater than a threshold (default is 30 observations). The \spd{} plot in \figref{fig:dayofyear_vs_temp}(c) clearly shows the sinusoidal temperature fluctuations over the year. The PD/ICE plot is not smooth because it relies on predictions from a model trained on noisy data, whereas the \spd{} plot is averaging slopes that are themselves smoothing agents.
+
+Without this special case mechanism, the \spd{} plot would have to approximate an entire sine wave with a single line.  Unfortunately, we had to manually choose a suitable minimum leaf size for the nested leaf partitioning, $T'$, to reveal a proper sine wave.  We recommend trying $T'$ multiple minimum leaf sizes for \spd{} plots when \xnc{} has categorical variables and $p$ is small. (The Python implementation allows programmers to set the minimum leaf size for both the \xnc{} partitioning with $T$ and second stage partitioning with $T'$.)
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.7]{images/state_vs_temp.png}
+\includegraphics[scale=0.7]{images/dayofyear_vs_temp_pdp.png}
+\includegraphics[scale=0.7]{images/dayofyear_vs_temp_stratpd.png}
+\caption{{\bf  dayofyear  vs temp}}
+\label{fig:dayofyear_vs_temp}
+\end{center}
+\end{figure}
 
 As another example, compare the PD/ICE (c) and \spd{} (d) plots in \figref{fig:education_vs_weight} showing number of years of education versus weight using the same data set. Weight is related to education by slope -1.2 so a perfect partial dependence graph would show a drop of 12 pounds over 10 years of education.   The PD/ICE plot captures only about half of that relationship, whereas, the \spd{} plot gets much closer to the true education-weight relationship. Female observations have at least 12 years of education, versus 10 for males, so $x_{education}$ and $x_{sex}$ are codependent, though, there is no interaction term. The fact that women are shorter on average biases the education-weight PD/ICE plot because the baseline weight is lower from which the education contribution is  subtracted.
 
