@@ -137,86 +137,122 @@ def rent():
     plt.close()
 
 
+def rent_int():
+    print(f"----------- {inspect.stack()[0][3]} -----------")
+    df_rent = load_rent()
+    df_rent = df_rent.sample(n=10_000)  # get a small subsample since SVM is slowwww
+    X = df_rent.drop('price', axis=1)
+    y = df_rent['price']
+    figsize = (5,4)
+
+    fig, axes = plt.subplots(2,2, figsize=(4,4))
+
+    plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 0], alpha=.2, show_ylabel=False)
+    axes[0,0].set_ylim(-1000,5000)
+
+    plot_catstratpd(X, y, 'bedrooms', 'price', cats=np.unique(X['bedrooms']),
+                    ax=axes[0, 1], alpha=.2, show_ylabel=False)
+    axes[0,1].set_ylim(-1000,5000)
+
+    plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 0], alpha=.2, show_ylabel=False)
+    axes[1,0].set_ylim(-1000,5000)
+
+    X['bathrooms'] = X['bathrooms'].astype(str)
+    baths = np.unique(X['bathrooms'])
+    plot_catstratpd(X, y, 'bathrooms', 'price', cats=baths,
+                    ax=axes[1, 1], alpha=.2, show_ylabel=False)
+    axes[1,1].set_ylim(-1000,5000)
+
+    #axes[1,1].get_yaxis().set_visible(False)
+
+    savefig(f"rent_intcat")
+    plt.close()
+
+def plot_with_extracol(colname, type:('noise','dup')='dup'):
+    features = ['bedrooms', 'bathrooms', 'latitude', 'longitude']
+
+    fig, axes = plt.subplots(2,3, figsize=(7.5,5), sharey=True)
+
+    df_rent = load_rent()
+    df_rent = df_rent.sample(n=9000)  # get a small subsample
+    if type=='noise':
+        addnoise(df_rent, n=1, c=50, prefix=colname+'_')
+    else:
+        df_rent[colname+'_dup'] = df_rent[colname]
+    # df_rent[colname+'_dupdup'] = df_rent[colname]
+
+    X = df_rent[features]
+    y = df_rent['price']
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
+    rf.fit(X, y)
+
+    # ICE ON ROW 1
+    # do it w/o dup'd column
+    ice = predict_ice(rf, X, colname, 'price', nlines=1000)
+    uniq_x, pdp_curve = \
+        plot_ice(ice, colname, 'price', alpha=.05, ax=axes[0, 0], show_xlabel=False)
+    axes[0,0].set_ylim(-1000,5000)
+
+    # with dup'd column
+    X = df_rent[features+[colname+'_'+type]]
+    y = df_rent['price']
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
+    rf.fit(X, y)
+    ice = predict_ice(rf, X, colname, 'price', nlines=1000)
+    uniq_x_, pdp_curve_ = \
+        plot_ice(ice, colname, 'price', alpha=.05, ax=axes[0,1], show_xlabel=True, show_ylabel=False)
+    axes[0,1].set_ylim(-1000,5000)
+    print(f"max ICE curve {np.max(pdp_curve):.0f}, max curve with dup {np.max(pdp_curve_):.0f}")
+
+    # STRATPD ON ROW 2
+    X = df_rent[features]
+    y = df_rent['price']
+    uniq_x, curve, r2_at_x = \
+        plot_stratpd(X, y, colname, 'price', ax=axes[1, 0], alpha=.2, show_xlabel=True, show_ylabel=False)
+    axes[1, 0].set_ylim(-1000,5000)
+
+    X = df_rent[features+[colname+'_'+type]]
+    y = df_rent['price']
+    plot_stratpd(X, y, colname, 'price', ax=axes[1, 1], alpha=.2, show_ylabel=False)
+    axes[1, 1].set_ylim(-1000,5000)
+    uniq_x_, curve_, r2_at_x_ = \
+        plot_stratpd(X, y, colname, 'price', ax=axes[1, 2], alpha=.2, show_xlabel=True, show_ylabel=False,
+                 ntrees=10,
+                 max_features=2,
+                 bootstrap=False
+                 )
+    axes[1, 2].set_ylim(-1000,5000)
+
+    print(f"max curve {np.max(curve):.0f}, max curve with dup {np.max(curve_):.0f}")
+
+    axes[0,2].get_xaxis().set_visible(False)
+    axes[0,2].get_yaxis().set_visible(False)
+
+    axes[0,0].get_xaxis().set_visible(False)
+    axes[0,1].get_xaxis().set_visible(False)
+
+
 def rent_extra_cols():
-    def plot_with_extracol(colname, type:('noise','dup')='dup'):
-        features = ['bedrooms', 'bathrooms', 'latitude', 'longitude']
-
-        fig, axes = plt.subplots(2,3, figsize=(7.5,5), sharey=True)
-
-        df_rent = load_rent()
-        df_rent = df_rent.sample(n=9000)  # get a small subsample
-        if type=='noise':
-            addnoise(df_rent, n=1, c=50, prefix=colname+'_')
-        else:
-            df_rent[colname+'_dup'] = df_rent[colname]
-        # df_rent[colname+'_dupdup'] = df_rent[colname]
-
-        X = df_rent[features]
-        y = df_rent['price']
-        rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
-        rf.fit(X, y)
-
-        # ICE ON ROW 1
-        # do it w/o dup'd column
-        ice = predict_ice(rf, X, colname, 'price', nlines=1000)
-        uniq_x, pdp_curve = \
-            plot_ice(ice, colname, 'price', alpha=.05, ax=axes[0, 0], show_xlabel=False)
-        axes[0,0].set_ylim(-1000,5000)
-
-        # with dup'd column
-        X = df_rent[features+[colname+'_'+type]]
-        y = df_rent['price']
-        rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
-        rf.fit(X, y)
-        ice = predict_ice(rf, X, colname, 'price', nlines=1000)
-        uniq_x_, pdp_curve_ = \
-            plot_ice(ice, colname, 'price', alpha=.05, ax=axes[0,1], show_xlabel=True, show_ylabel=False)
-        axes[0,1].set_ylim(-1000,5000)
-        print(f"max ICE curve {np.max(pdp_curve):.0f}, max curve with dup {np.max(pdp_curve_):.0f}")
-
-        # STRATPD ON ROW 2
-        X = df_rent[features]
-        y = df_rent['price']
-        uniq_x, curve, r2_at_x = \
-            plot_stratpd(X, y, colname, 'price', ax=axes[1, 0], alpha=.2, show_xlabel=True, show_ylabel=False)
-        axes[1, 0].set_ylim(-1000,5000)
-
-        X = df_rent[features+[colname+'_'+type]]
-        y = df_rent['price']
-        plot_stratpd(X, y, colname, 'price', ax=axes[1, 1], alpha=.2, show_ylabel=False)
-        axes[1, 1].set_ylim(-1000,5000)
-        uniq_x_, curve_, r2_at_x_ = \
-            plot_stratpd(X, y, colname, 'price', ax=axes[1, 2], alpha=.2, show_xlabel=True, show_ylabel=False,
-                     ntrees=10,
-                     max_features=2,
-                     bootstrap=False
-                     )
-        axes[1, 2].set_ylim(-1000,5000)
-
-        print(f"max curve {np.max(curve):.0f}, max curve with dup {np.max(curve_):.0f}")
-
-        axes[0,2].get_xaxis().set_visible(False)
-        axes[0,2].get_yaxis().set_visible(False)
-
-        axes[0,0].get_xaxis().set_visible(False)
-        axes[0,1].get_xaxis().set_visible(False)
-
-    np.random.seed(42)
     print(f"----------- {inspect.stack()[0][3]} -----------")
 
     type = 'dup'
     colname = 'bedrooms'
     plot_with_extracol(colname, type=type)
     savefig(f"{colname}_vs_price_dup_{colname}_{type}")
-    plt.tight_layout()
+
+    type = 'noise'
+    colname = 'bedrooms'
+    plot_with_extracol(colname, type=type)
+    savefig(f"{colname}_vs_price_dup_{colname}_{type}")
+    # plt.tight_layout()
     # plt.show()
-    plt.close()
+    # plt.close()
 
 
 def rent_ntrees():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     df_rent = load_rent()
-    df_rent = df_rent.sample(n=9000, random_state=111)  # get a small subsample
+    df_rent = df_rent.sample(n=10_000)  # get a small subsample
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
 
@@ -226,11 +262,10 @@ def rent_ntrees():
     supervised = True
 
     def onevar(colname, row, yrange=None):
-        alpha = 0.08
+        alpha = 0.05
         for i, t in enumerate([1, 5, 10, 30]):
             plot_stratpd(X, y, colname, 'price', ax=axes[row, i], alpha=alpha,
                          yrange=yrange,
-                         min_r2_hires=0.5,
                          supervised=supervised,
                          show_ylabel = t==1,
                          ntrees=t)
@@ -249,64 +284,8 @@ def rent_ntrees():
     plt.close()
 
 
-def meta_rent():
-    df_rent = load_rent()
-
-    # df_rent = df_rent.sample(n=8000, random_state=111)  # get a small subsample
-
-    X = df_rent.drop('price', axis=1)
-    y = df_rent['price']
-
-    yranges = None
-
-    min_r2_hires = 0.0
-    min_samples_leaf_hires = .1
-    plot_meta(X, y, colnames=['bedrooms','bathrooms','latitude','longitude'], targetname='rent',
-              min_r2_hires=min_r2_hires,
-              min_samples_leaf_hires=min_samples_leaf_hires)
-    savefig(f"meta_rent_r2_{min_r2_hires:.2f}_hires_{min_samples_leaf_hires:.2f}")
-    # plt.show()
-
-    min_r2_hires = 0.0
-    min_samples_leaf_hires = .2
-    plot_meta(X, y, colnames=['bedrooms','bathrooms','latitude','longitude'], targetname='rent',
-              min_r2_hires=min_r2_hires,
-              min_samples_leaf_hires=min_samples_leaf_hires)
-    savefig(f"meta_rent_r2_{min_r2_hires:.2f}_hires_{min_samples_leaf_hires:.2f}")
-    # plt.show()
-
-    min_r2_hires = .1
-    min_samples_leaf_hires = .1
-    plot_meta(X, y, colnames=['bedrooms','bathrooms','latitude','longitude'], targetname='rent',
-              min_r2_hires=min_r2_hires,
-              min_samples_leaf_hires=min_samples_leaf_hires, yranges=yranges)
-    savefig(f"meta_rent_r2_{min_r2_hires:.2f}_hires_{min_samples_leaf_hires:.2f}")
-
-    min_r2_hires = .1
-    min_samples_leaf_hires = .2
-    plot_meta(X, y, colnames=['bedrooms','bathrooms','latitude','longitude'], targetname='rent',
-              min_r2_hires=min_r2_hires,
-              min_samples_leaf_hires=min_samples_leaf_hires, yranges=yranges)
-    savefig(f"meta_rent_r2_{min_r2_hires:.2f}_hires_{min_samples_leaf_hires:.2f}")
-
-    min_r2_hires = .1
-    min_samples_leaf_hires = .3
-    plot_meta(X, y, colnames=['bedrooms','bathrooms','latitude','longitude'], targetname='rent',
-              min_r2_hires=min_r2_hires,
-              min_samples_leaf_hires=min_samples_leaf_hires, yranges=yranges)
-    savefig(f"meta_rent_r2_{min_r2_hires:.2f}_hires_{min_samples_leaf_hires:.2f}")
-
-    min_r2_hires = .5
-    min_samples_leaf_hires = .1
-    plot_meta(X, y, colnames=['bedrooms','bathrooms','latitude','longitude'], targetname='rent',
-              min_r2_hires=min_r2_hires,
-              min_samples_leaf_hires=min_samples_leaf_hires, yranges=yranges)
-    savefig(f"meta_rent_r2_{min_r2_hires:.2f}_hires_{min_samples_leaf_hires:.2f}")
-
-    # plt.show()
-
-
 def meta_boston():
+    print(f"----------- {inspect.stack()[0][3]} -----------")
     boston = load_boston()
     print(len(boston.data))
     df = pd.DataFrame(boston.data, columns=boston.feature_names)
@@ -318,12 +297,11 @@ def meta_boston():
     yranges = [(-30,0), (0,30), (-8,8), (-11, 0)]
 
     for min_r2_hires in [.01,.1,.2,.5, 1.0]:
-        for min_samples_leaf_hires in [.01, .1, .2, .3]:
+        for min_samples_leaf_piecewise in [.01, .1, .2, .3]:
             plot_meta(X, y, colnames=['LSTAT', 'RM', 'CRIM', 'DIS'], targetname='MEDV',
-                      min_r2_hires=min_r2_hires,
-                      min_samples_leaf_hires=min_samples_leaf_hires,
+                      min_samples_leaf_piecewise=min_samples_leaf_piecewise,
                       yranges=yranges)
-            savefig(f"meta_boston_r2_{min_r2_hires:.2f}_hires_{min_samples_leaf_hires:.2f}")
+            savefig(f"meta_boston_r2_{min_r2_hires:.2f}_hires_{min_samples_leaf_piecewise:.2f}")
 
 
 def marginal_plot(X, y, colname, targetname, ax=None):
@@ -340,7 +318,7 @@ def marginal_plot(X, y, colname, targetname, ax=None):
     ax.text(min(xcol)*1.02, max(y)*.95, f"$\\beta_{{{colname}}}$={r.coef_[0]:.3f}")
 
 
-def plot_meta(X, y, colnames, targetname, min_r2_hires, min_samples_leaf_hires, yranges=None):
+def plot_meta(X, y, colnames, targetname, min_samples_leaf_piecewise, yranges=None):
     min_samples_leaf_values = [2, 5, 10, 30, 50, 100, 200]
 
     nrows = len(colnames)
@@ -355,14 +333,13 @@ def plot_meta(X, y, colnames, targetname, min_r2_hires, min_samples_leaf_hires, 
         marginal_plot(X, y, colname, targetname, ax=axes[row, 0])
         col = 2
         for meta in min_samples_leaf_values:
-            print(f"---------- min_samples_leaf={meta}, min R^2={min_r2_hires:.2f}, hires leafsz={min_samples_leaf_hires:.2f} ----------- ")
+            print(f"---------- min_samples_leaf={meta}, hires leafsz={min_samples_leaf_piecewise:.2f} ----------- ")
             plot_stratpd(X, y, colname, targetname, ax=axes[row, col],
-                         min_r2_hires=min_r2_hires,
-                         min_samples_leaf_hires=min_samples_leaf_hires,
-                         min_samples_leaf=meta,
+                         min_samples_leaf_piecewise=min_samples_leaf_piecewise,
+                         min_samples_leaf_partition=meta,
                          yrange=yranges[i],
                          ntrees=1)
-            axes[row, col].set_title(f"leafsz={meta}, min R^2={min_r2_hires:.2f}\nhires leafsz={min_samples_leaf_hires:.2f}",
+            axes[row, col].set_title(f"leafsz={meta}, hires leafsz={min_samples_leaf_piecewise:.2f}",
                                      fontsize=9)
             col += 1
         row += 1
@@ -519,10 +496,11 @@ def weather():
 
 
 def meta_weather():
+    print(f"----------- {inspect.stack()[0][3]} -----------")
     # np.random.seed(66)
 
     min_r2_hires = 1.0
-    # min_samples_leaf_hires = .2
+    # min_samples_leaf_piecewise = .2
 
     nyears = 5
     years = []
@@ -544,34 +522,32 @@ def meta_weather():
 
     fig, axes = plt.subplots(4+1, 7, figsize=(22, (4+1)*2.8), sharey=False)
     row = 0
-    for min_samples_leaf_hires in [.01, .1, .2, .3, .5]:
+    for min_samples_leaf_piecewise in [.01, .1, .2, .3, .5]:
         col = 0
         for s in [2, 5, 10, 30, 50, 60, 100]:
             print(f"------------------- SIZE {s} --------------------")
             # if col>1: axes[row, col].get_yaxis().set_visible(False)
             plot_stratpd(X, y, 'dayofyear', 'temp', ax=axes[row, col],
-                         min_samples_leaf=s,
-                         min_samples_leaf_hires=min_samples_leaf_hires,
-                         min_r2_hires=min_r2_hires,
-                         min_samples_hires=10,
+                         min_samples_leaf_partition=s,
+                         min_samples_leaf_piecewise=min_samples_leaf_piecewise,
                          # show_importance=True,
                          yrange=(-10, 10),
                          pdp_dot_size=2, alpha=.4,
                          show_ylabel=False)
 
-            axes[row,col].set_title(f"leaf sz {s}, hires {min_r2_hires}\nhires leaf sz {min_samples_leaf_hires}",
+            axes[row,col].set_title(f"leaf sz {s}, hires leaf sz {min_samples_leaf_piecewise}",
                                     fontsize=9)
             col += 1
         row += 1
 
-    savefig(f"meta_weather_r2_{min_r2_hires}_hires_{min_samples_leaf_hires}")
+    savefig(f"meta_weather_r2_hires_{min_samples_leaf_piecewise}")
     plt.tight_layout()
     # plt.show()
     plt.close()
 
 def weight():
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_raw = toy_weight_data(1000)
+    df_raw = toy_weight_data(2000)
     df = df_raw.copy()
     catencoders = df_string_to_cat(df)
     df_cat_to_catcode(df)
@@ -581,13 +557,17 @@ def weight():
     figsize=(2.5,2.5)
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    plot_stratpd(X, y, 'education', 'weight', ax=ax, yrange=(-12, 0), alpha=.1, nlines=700, show_ylabel=False)
+    plot_stratpd(X, y, 'education', 'weight', ax=ax,
+                 min_samples_leaf_piecewise=.1,
+                 yrange=(-12, 0), alpha=.1, nlines=700, show_ylabel=False)
 #    ax.get_yaxis().set_visible(False)
     savefig(f"education_vs_weight_stratpd")
     plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    plot_stratpd(X, y, 'height', 'weight', ax=ax, yrange=(0, 160), alpha=.1, nlines=700, show_ylabel=False)
+    plot_stratpd(X, y, 'height', 'weight', ax=ax,
+                 min_samples_leaf_piecewise=.1,
+                 yrange=(0, 160), alpha=.1, nlines=700, show_ylabel=False)
 #    ax.get_yaxis().set_visible(False)
     savefig(f"height_vs_weight_stratpd")
     plt.close()
@@ -595,10 +575,9 @@ def weight():
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_catstratpd(X, y, 'sex', 'weight', ax=ax,
                     alpha=.2,
-                    min_samples_leaf=2,
+                    # min_samples_leaf_partition=2,
                     cats=df_raw['sex'].unique(),
                     yrange=(0, 5),
-                    zero_center=True
                     )
     savefig(f"sex_vs_weight_stratpd")
     plt.close()
@@ -608,7 +587,6 @@ def weight():
                     alpha=.2,
                     cats=df_raw['pregnant'].unique(),
                     yrange=(-5,35),
-                    zero_center=True
                     )
     savefig(f"pregnant_vs_weight_stratpd")
     plt.close()
@@ -643,7 +621,7 @@ def weight():
 
 def unsup_weight():
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_raw = toy_weight_data(1000)
+    df_raw = toy_weight_data(2000)
     df = df_raw.copy()
     catencoders = df_string_to_cat(df)
     df_cat_to_catcode(df)
@@ -652,8 +630,12 @@ def unsup_weight():
     y = df['weight']
 
     fig, axes = plt.subplots(2, 2, figsize=(4, 4))
-    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 0], yrange=(-12, 0), alpha=.1, nlines=700, supervised=False)
-    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 1], yrange=(-12, 0), alpha=.1, nlines=700, supervised=True)
+    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 0],
+                 min_samples_leaf_piecewise=.1,
+                 yrange=(-12, 0), alpha=.1, nlines=700, supervised=False)
+    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 1],
+                 min_samples_leaf_piecewise=.1,
+                 yrange=(-12, 0), alpha=.1, nlines=700, supervised=True)
 
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 0],
                     alpha=.2,
@@ -674,7 +656,7 @@ def unsup_weight():
 
 def weight_ntrees():
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_raw = toy_weight_data(1000)
+    df_raw = toy_weight_data(2000)
     df = df_raw.copy()
     catencoders = df_string_to_cat(df)
     df_cat_to_catcode(df)
@@ -686,13 +668,21 @@ def weight_ntrees():
     for i in range(1,4):
         axes[0,i].get_yaxis().set_visible(False)
         axes[1, i].get_yaxis().set_visible(False)
-    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 0], yrange=(-12, 0), alpha=.1, pdp_dot_size=10, show_ylabel=True,
+    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 0],
+                 min_samples_leaf_piecewise=.1,
+                 yrange=(-12, 0), alpha=.1, pdp_dot_size=10, show_ylabel=True,
                  ntrees=1, max_features=1.0, bootstrap=False)
-    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 1], yrange=(-12, 0), alpha=.1, pdp_dot_size=10, show_ylabel=False,
+    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 1],
+                 min_samples_leaf_piecewise=.1,
+                 yrange=(-12, 0), alpha=.1, pdp_dot_size=10, show_ylabel=False,
                  ntrees=5, max_features='auto', bootstrap=True)
-    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 2], yrange=(-12, 0), alpha=.08, pdp_dot_size=10, show_ylabel=False,
+    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 2],
+                 min_samples_leaf_piecewise=.1,
+                 yrange=(-12, 0), alpha=.08, pdp_dot_size=10, show_ylabel=False,
                  ntrees=10, max_features = 'auto', bootstrap = True)
-    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 3], yrange=(-12, 0), alpha=.05, pdp_dot_size=10, show_ylabel=False,
+    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 3],
+                 min_samples_leaf_piecewise=.1,
+                 yrange=(-12, 0), alpha=.05, pdp_dot_size=10, show_ylabel=False,
                  ntrees=30, max_features='auto', bootstrap=True)
 
     # stratpd_plot(X, y, 'height', 'weight', ax=axes[1,0], yrange=(0,160), alpha=.05, pdp_dot_size=10, show_ylabel=True,
@@ -767,13 +757,11 @@ def meta_weight():
 
     yranges=[(0,150), (-10,0)]
 
-    for min_r2_hires in [.1]:#[.01, .1, .2, .5]:
-        for min_samples_leaf_hires in [.01, .1, .2, .3]:
-            plot_meta(X, y, colnames=['height', 'education'], targetname='weight',
-                      min_r2_hires=min_r2_hires,
-                      min_samples_leaf_hires=min_samples_leaf_hires, yranges=yranges)
-            savefig(f"meta_weight_r2_{min_r2_hires:.2f}_hires_{min_samples_leaf_hires:.2f}")
-            # plt.show()
+    for min_samples_leaf_piecewise in [.01, .1, .2, .3]:
+        plot_meta(X, y, colnames=['height', 'education'], targetname='weight',
+                  min_samples_leaf_piecewise=min_samples_leaf_piecewise, yranges=yranges)
+        savefig(f"meta_weight_hires_{min_samples_leaf_piecewise:.2f}")
+        # plt.show()
 
 def additivity_data(n, sd=1.0):
     x1 = np.random.uniform(-1, 1, size=n)
@@ -788,7 +776,7 @@ def additivity_data(n, sd=1.0):
 
 def additivity():
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    n = 4000
+    n = 1000
     df = additivity_data(n=n, sd=1) # quite noisy
     X = df.drop('y', axis=1)
     y = df['y']
@@ -796,12 +784,13 @@ def additivity():
     fig, axes = plt.subplots(2, 2, figsize=(4,4), sharey=True)
     plot_stratpd(X, y, 'x1', 'y', ax=axes[0, 0],
                  yrange=(-1, 1),
-                 min_samples_leaf=30,
-                 min_samples_leaf_hires=.4,
+                 min_samples_leaf_partition=30,
+                 min_samples_leaf_piecewise=.4,
                  pdp_dot_size=3, alpha=.1)
     
     plot_stratpd(X, y, 'x2', 'y', ax=axes[1, 0],
-                 # min_r2_hires=.1,
+                 min_samples_leaf_partition=30,
+                 min_samples_leaf_piecewise=.4,
                  pdp_dot_size=3, alpha=.1, nlines=700)
     
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
@@ -825,49 +814,50 @@ def additivity():
 def meta_additivity():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     n = 1000
-    noises = [0, .2, .5, .8, 1.0]
-    min_r2_hires = 1.0
-    min_samples_leaf_hires = .2
+    noises = [0, .2, .8, 1.0]
+    sizes = [2, 5, 10, 40]
+    min_samples_leaf_piecewise = .3
 
-    fig, axes = plt.subplots(len(noises)+1, 7, figsize=(22, (len(noises)+1)*2.8), sharey=False)
+    fig, axes = plt.subplots(len(noises)+1, len(sizes), figsize=(8, 10), sharey=True, sharex=True)
 
     row = 0
     for sd in noises:
         df = additivity_data(n=n, sd=sd)
         X = df.drop('y', axis=1)
         y = df['y']
-        col = 1
-        for s in [2, 5, 10, 30, 50, 60]:
+        col = 0
+        for s in sizes:
             print(f"------------------- noise {sd}, SIZE {s} --------------------")
             if col>1: axes[row, col].get_yaxis().set_visible(False)
             plot_stratpd(X, y, 'x1', 'y', ax=axes[row, col],
-                         min_samples_leaf=s,
-                         min_samples_leaf_hires=min_samples_leaf_hires,
-                         min_r2_hires=min_r2_hires,
-                         min_samples_hires=10,
+                         min_samples_leaf_partition=s,
                          # show_importance=True,
+                         min_samples_leaf_piecewise=min_samples_leaf_piecewise,
                          yrange=(-1, 1),
                          pdp_dot_size=2, alpha=.4,
-                         show_ylabel=False)
+                         show_ylabel=False,
+                         show_xlabel=False)
+            if col==0:
+                axes[row,col].set_ylabel(f'y,  the$\epsilon \sim N(0,{sd:.1f})$')
 
-            axes[row,col].set_title(f"leaf sz {s}, hires {min_r2_hires}\nhires leaf sz {min_samples_leaf_hires}",
+            axes[row,col].set_title("Leaf sizes: $x_{\\overline{c}}$="+f"{s}, $x_c$={min_samples_leaf_piecewise}",
                                   fontsize=9)
             col += 1
         row += 1
 
     lastrow = len(noises)
 
-    row = 0
-    for sd in noises:
-        axes[row, 0].scatter(X['x1'], y, alpha=.12, label=None)
-        axes[row, 0].set_xlabel("x1")
-        axes[row, 0].set_ylabel("y")
-        axes[row, 0].set_ylim(-5, 5)
-        axes[row, 0].set_title(f"$y = x_1^2 + x_2 + \epsilon$, $\epsilon \sim N(0,{sd:.2f})$")
-        row += 1
+    # row = 0
+    # for sd in noises:
+    #     axes[row, 0].scatter(X['x1'], y, alpha=.12, label=None)
+    #     axes[row, 0].set_xlabel("x1")
+    #     axes[row, 0].set_ylabel("y")
+    #     axes[row, 0].set_ylim(-5, 5)
+    #     axes[row, 0].set_title(f"$y = x_1^2 + x_2 + \epsilon$, $\epsilon \sim N(0,{sd:.2f})$")
+    #     row += 1
 
-    col = 1
-    for s in [2, 5, 10, 30, 50, 60]:
+    col = 0
+    for s in sizes:
         rtreeviz_univar(axes[lastrow, col],
                         X['x2'], y,
                         min_samples_leaf=s,
@@ -877,7 +867,7 @@ def meta_additivity():
         axes[lastrow, col].set_xlabel("x1")
         col += 1
 
-    savefig(f"meta_additivity_r2_{min_r2_hires}_hires_{min_samples_leaf_hires}")
+    savefig(f"meta_additivity_noise")
     plt.tight_layout()
     # plt.show()
     plt.close()
@@ -906,8 +896,11 @@ def bigX():
     
     # Partial deriv is just 0.2 so this is correct. flat deriv curve, net effect line at slope .2
     # ICE is way too shallow and not line at n=1000 even
-    fig, axes = plt.subplots(3, 2, figsize=(4, 6), sharey=True)
-    plot_stratpd(X, y, 'x1', 'y', ax=axes[0, 0], yrange=(-4, 4), alpha=.1, nlines=700, pdp_dot_size=2)
+    fig, axes = plt.subplots(2, 2, figsize=(4, 4), sharey=True)
+    # plot_stratpd(X, y, 'x1', 'y', ax=axes[0, 0], yrange=(-4, 4),
+    #              # min_samples_leaf=30,
+    #              min_samples_leaf_hires=.4,
+    #              alpha=.1, nlines=700, pdp_dot_size=2)
     
     # Partial deriv wrt x2 is -5 plus 10 about half the time so about 0
     # Should not expect a criss-cross like ICE since deriv of 1_x3>=0 is 0 everywhere
@@ -917,33 +910,36 @@ def bigX():
     # strip away x1/x3's effect upon y. When we do, x2 has no effect on y.
     # Key is asking right question. Don't look at marginal plot and say obvious.
     # Ask what is net effect at every x2? 0.
-    plot_stratpd(X, y, 'x2', 'y', ax=axes[1, 0], yrange=(-4, 4), alpha=.1, nlines=700, pdp_dot_size=2)
+    plot_stratpd(X, y, 'x2', 'y', ax=axes[0, 0], yrange=(-4, 4),
+                 # min_samples_leaf=30,
+                 min_samples_leaf_piecewise=.4,
+                 alpha=.1, nlines=700, pdp_dot_size=2)
     
     # Partial deriv wrt x3 of 1_x3>=0 is 0 everywhere so result must be 0
-    plot_stratpd(X, y, 'x3', 'y', ax=axes[2, 0], yrange=(-4, 4), alpha=.1, nlines=700, pdp_dot_size=2)
+    plot_stratpd(X, y, 'x3', 'y', ax=axes[1, 0], yrange=(-4, 4), alpha=.1, nlines=700, pdp_dot_size=2)
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
     print(f"RF OOB {rf.oob_score_}")
     
-    ice = predict_ice(rf, X, 'x1', 'y', numx=10)
-    plot_ice(ice, 'x1', 'y', ax=axes[0, 1], yrange=(-4, 4))
+    # ice = predict_ice(rf, X, 'x1', 'y', numx=10)
+    # plot_ice(ice, 'x1', 'y', ax=axes[0, 1], yrange=(-4, 4))
     
-    ice = predict_ice(rf, X, 'x2', 'y', numx=10)
-    plot_ice(ice, 'x2', 'y', ax=axes[1, 1], yrange=(-4, 4))
+    ice = predict_ice(rf, X, 'x2', 'y', numx=200)
+    plot_ice(ice, 'x2', 'y', ax=axes[0, 1], yrange=(-4, 4))
 
-    ice = predict_ice(rf, X, 'x3', 'y', numx=10)
-    plot_ice(ice, 'x3', 'y', ax=axes[2, 1], yrange=(-4, 4))
+    ice = predict_ice(rf, X, 'x3', 'y', numx=200)
+    plot_ice(ice, 'x3', 'y', ax=axes[1, 1], yrange=(-4, 4))
 
     axes[0,1].get_yaxis().set_visible(False)
     axes[1,1].get_yaxis().set_visible(False)
-    axes[2,1].get_yaxis().set_visible(False)
 
     savefig(f"bigx")
     plt.close()
 
 
 def unsup_boston():
+    print(f"----------- {inspect.stack()[0][3]} -----------")
     boston = load_boston()
     print(len(boston.data))
     df = pd.DataFrame(boston.data, columns=boston.feature_names)
@@ -997,8 +993,8 @@ def lm_plot(X, y, colname, targetname,ax=None):
     xcol = np.linspace(np.min(col), np.max(col), num=100)
     ci = 0 if colname=='horsepower' else 1
     # use beta from y ~ hp + weight
-    ax.plot(xcol, xcol * r.coef_[ci] + r.intercept_, linewidth=1, c='orange')
-    ax.text(min(xcol)*1.02, max(y)*.95, f"$\\beta_{{{colname}}}$={r.coef_[ci]:.3f}")
+    # ax.plot(xcol, xcol * r.coef_[ci] + r.intercept_, linewidth=1, c='orange')
+    # ax.text(min(xcol)*1.02, max(y)*.95, f"$\\beta_{{{colname}}}$={r.coef_[ci]:.3f}")
 
 
     # r = LinearRegression()
@@ -1012,6 +1008,7 @@ def lm_plot(X, y, colname, targetname,ax=None):
     # # ax.text(left40, left40*r.coef_[ci] + r_col.intercept_, f"$\\beta_{i}$={r.coef_[ci]:.3f}")
 
 def cars():
+    print(f"----------- {inspect.stack()[0][3]} -----------")
     df_cars = pd.read_csv("../../notebooks/data/auto-mpg.csv")
     df_cars = df_cars[df_cars['horsepower'] != '?']  # drop the few missing values
     df_cars['horsepower'] = df_cars['horsepower'].astype(float)
@@ -1024,15 +1021,17 @@ def cars():
 
     lm_plot(X, y, 'weight', 'mpg', ax=axes[1,0])
 
-    plot_stratpd(X, y, 'horsepower', 'mpg', ax=axes[0, 2], xrange=(45, 235), yrange=(-20, 20), show_ylabel=False)
-    plot_stratpd(X, y, 'weight', 'mpg', ax=axes[1, 2], xrange=(1600, 5200), yrange=(-20, 20), show_ylabel=False)
+    plot_stratpd(X, y, 'horsepower', 'mpg', ax=axes[0, 1],
+                 xrange=(45, 235), yrange=(-20, 20), show_ylabel=False)
+    plot_stratpd(X, y, 'weight', 'mpg', ax=axes[1, 1],
+                 xrange=(1600, 5200), yrange=(-20, 20), show_ylabel=False)
 
     rf = RandomForestRegressor(n_estimators=50, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
     ice = predict_ice(rf, X, 'horsepower', 'mpg', numx=100)
-    plot_ice(ice, 'horsepower', 'mpg', ax=axes[0, 1], yrange=(-20, 20), show_ylabel=False)
+    plot_ice(ice, 'horsepower', 'mpg', ax=axes[0, 2], yrange=(-20, 20), show_ylabel=False)
     ice = predict_ice(rf, X, 'weight', 'mpg', numx=100)
-    plot_ice(ice, 'weight', 'mpg', ax=axes[1, 1], yrange=(-20, 20), show_ylabel=False)
+    plot_ice(ice, 'weight', 'mpg', ax=axes[1, 2], yrange=(-20, 20), show_ylabel=False)
 
     # draw regr line for horsepower
     r = LinearRegression()
@@ -1042,8 +1041,8 @@ def cars():
     xcol = np.linspace(np.min(col), np.max(col), num=100)
     ci = X.columns.get_loc(colname)
     beta0 = -r.coef_[ci]*min(col) # solved for beta0 to get y-intercept
-    axes[0,1].plot(xcol, xcol * r.coef_[ci], linewidth=1, c='orange', label=f"$\\beta_{{{colname}}}$")
-    axes[0,2].plot(xcol, xcol * r.coef_[ci], linewidth=1, c='orange', label=f"$\\beta_{{{colname}}}$")
+    # axes[0,1].plot(xcol, xcol * r.coef_[ci], linewidth=1, c='orange', label=f"$\\beta_{{{colname}}}$")
+    # axes[0,2].plot(xcol, xcol * r.coef_[ci], linewidth=1, c='orange', label=f"$\\beta_{{{colname}}}$")
 
     # draw regr line for weight
     colname = 'weight'
@@ -1051,12 +1050,13 @@ def cars():
     xcol = np.linspace(np.min(col), np.max(col), num=100)
     ci = X.columns.get_loc(colname)
     beta0 = -r.coef_[ci]*min(col) # solved for beta0 to get y-intercept
-    axes[1,1].plot(xcol, xcol * r.coef_[ci]+11, linewidth=1, c='orange', label=f"$\\beta_{{{colname}}}$")
-    axes[1,2].plot(xcol, xcol * r.coef_[ci]+13, linewidth=1, c='orange', label=f"$\\beta_{{{colname}}}$")
-    axes[1, 1].set_xlim(1600,5200)
+    # axes[1,1].plot(xcol, xcol * r.coef_[ci]+11, linewidth=1, c='orange', label=f"$\\beta_{{{colname}}}$")
+    # axes[1,2].plot(xcol, xcol * r.coef_[ci]+13, linewidth=1, c='orange', label=f"$\\beta_{{{colname}}}$")
+    axes[1, 2].set_xlim(1600,5200)
     savefig("cars")
 
 def meta_cars():
+    print(f"----------- {inspect.stack()[0][3]} -----------")
     df_cars = pd.read_csv("../../notebooks/data/auto-mpg.csv")
     df_cars = df_cars[df_cars['horsepower'] != '?']  # drop the few missing values
     df_cars['horsepower'] = df_cars['horsepower'].astype(float)
@@ -1066,17 +1066,16 @@ def meta_cars():
 
     yranges = None
 
-    for min_r2_hires in [.01,.1,.2,.5,1.0]:
-        for min_samples_leaf_hires in [.01, .1, .2, .3]:
-            plot_meta(X, y, colnames=['horsepower','weight'], targetname='mpg',
-                      min_r2_hires=min_r2_hires,
-                      min_samples_leaf_hires=min_samples_leaf_hires,
-                      yranges=yranges)
-            savefig(f"meta_cars_r2_{min_r2_hires:.2f}_hires_{min_samples_leaf_hires:.2f}")
+    for min_samples_leaf_piecewise in [.01, .1, .2, .3]:
+        plot_meta(X, y, colnames=['horsepower','weight'], targetname='mpg',
+                  min_samples_leaf_piecewise=min_samples_leaf_piecewise,
+                  yranges=yranges)
+        savefig(f"meta_cars_hires_{min_samples_leaf_piecewise:.2f}")
             # plt.show()
 
 
 def bulldozer():
+    print(f"----------- {inspect.stack()[0][3]} -----------")
     # np.random.seed(42)
 
     def onecol(_, X, y, colname, axes, row, yrange):
@@ -1087,7 +1086,7 @@ def bulldozer():
         plot_stratpd(X, y, colname, 'SalePrice', ax=axes[row,2], nlines=500, yrange=yrange, show_ylabel=False)
         rf = RandomForestRegressor(n_estimators=10, min_samples_leaf=1, oob_score=True)
         rf.fit(X, y)
-        ice = predict_ice(rf, X, colname, 'SalePrice')
+        ice = predict_ice(rf, X, colname, 'SalePrice', nlines=500)
         plot_ice(ice, colname, 'SalePrice', alpha=.05, ax=axes[row, 1], show_ylabel=False)
         axes[row, 1].set_xlabel(colname)  # , fontsize=12)
         axes[row,1].set_ylim(*yrange)
@@ -1099,7 +1098,7 @@ def bulldozer():
     # The raw csv is superslow to load, but feather is fast so load then save as feather
 
     df = pd.read_feather("../../notebooks/data/bulldozer-train.feather")
-    basefeatures = ['ModelID', 'datasource', 'YearMade', 'MachineHoursCurrentMeter']
+    basefeatures = ['ModelID', 'YearMade', 'MachineHoursCurrentMeter']
 
     # Get subsample; it's a (sorted) timeseries so get last records not random
     df = df.iloc[-10_000:]  # take only last 10,000 records
@@ -1112,7 +1111,7 @@ def bulldozer():
 
     X, y = df[basefeatures], df['SalePrice']
 
-    fig, axes = plt.subplots(3,3, figsize=(9,9))
+    fig, axes = plt.subplots(3,3, figsize=(7,6))
 
     onecol(df, X, y, 'YearMade', axes, 0, yrange=(-1000,40000))
     onecol(df, X, y, 'MachineHoursCurrentMeter', axes, 1, yrange=(-1500,20000))
@@ -1146,13 +1145,13 @@ def bulldozer():
                 show_xticks=False)
 
     plot_catstratpd(X, y, 'ModelID', 'SalePrice', cats=np.unique(df['ModelID']), ax=axes[2,2], sort='ascending',
-                    min_samples_leaf=5,
+                    min_samples_leaf_partition=5,
                     yrange=(0,130000), show_ylabel=False,
-                    alpha=1.0,
+                    alpha=0.1,
                     style='scatter',
                     show_xticks=False)
 
-    # savefig("bulldozer")
+    savefig("bulldozer")
     plt.tight_layout()
     # plt.show()
 
@@ -1164,16 +1163,17 @@ if __name__ == '__main__':
     # meta_cars()
     # unsup_boston()
     # rent()
+    rent_int()
     # rent_ntrees()
     # meta_boston()
     # meta_weight()
-    # meta_rent()
     # unsup_rent()
     # weight()
     # unsup_weight()
     # meta_weather()
     # weight_ntrees()
-    weather()
+    # weather()
     # meta_additivity()
     # additivity()
     # bigX()
+    # rent_extra_cols()

@@ -222,11 +222,12 @@ def avg_values_at_x(uniq_x, leaf_ranges, leaf_values, leaf_weights):
 def plot_stratpd(X, y, colname, targetname=None,
                  ax=None,
                  ntrees=1,
-                 min_samples_leaf=10,
-                 min_samples_leaf_hires=.20,
+                 min_samples_leaf_partition=10,
+                 min_samples_leaf_piecewise=.20,
                  xrange=None,
                  yrange=None,
                  pdp_dot_size=5,
+                 linecolor='#2c7fb8',
                  title=None,
                  nlines=None,
                  show_dx_line=False,
@@ -234,7 +235,7 @@ def plot_stratpd(X, y, colname, targetname=None,
                  show_ylabel=True,
                  connect_pdp_dots=False,
                  show_importance=False,
-                 imp_color='#fdae61',
+                 impcolor='#fdae61',
                  supervised=True,
                  bootstrap=False,
                  max_features = 1.0,
@@ -243,7 +244,7 @@ def plot_stratpd(X, y, colname, targetname=None,
     # print(f"Unique {colname} = {len(np.unique(X[colname]))}/{len(X)}")
     if supervised:
         rf = RandomForestRegressor(n_estimators=ntrees,
-                                   min_samples_leaf=min_samples_leaf,
+                                   min_samples_leaf=min_samples_leaf_partition,
                                    bootstrap = bootstrap,
                                    max_features = max_features,
                                    oob_score=False)
@@ -255,7 +256,7 @@ def plot_stratpd(X, y, colname, targetname=None,
         print("USING UNSUPERVISED MODE")
         X_synth, y_synth = conjure_twoclass(X)
         rf = RandomForestRegressor(n_estimators=ntrees,
-                                   min_samples_leaf=min_samples_leaf,
+                                   min_samples_leaf=min_samples_leaf_partition,
                                    bootstrap = False,
                                    max_features = 1.0,
                                    oob_score=False)
@@ -265,7 +266,7 @@ def plot_stratpd(X, y, colname, targetname=None,
     # print(f"\nModel wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2 = \
         collect_leaf_slopes(rf, X, y, colname,
-                            min_samples_leaf_hires=min_samples_leaf_hires)
+                            min_samples_leaf_hires=min_samples_leaf_piecewise)
     slope_at_x = avg_values_at_x(uniq_x, leaf_xranges, leaf_slopes, leaf_sizes)
     r2_at_x = avg_values_at_x(uniq_x, leaf_xranges, leaf_r2, leaf_sizes)
     # Drop any nan slopes; implies we have no reliable data for that range
@@ -316,7 +317,7 @@ def plot_stratpd(X, y, colname, targetname=None,
         idxs = np.random.randint(low=0, high=len(segments), size=nlines)
         segments = np.array(segments)[idxs]
 
-    lines = LineCollection(segments, alpha=alpha, color='#9CD1E3', linewidth=.5)
+    lines = LineCollection(segments, alpha=alpha, color=linecolor, linewidth=.5)
     if xrange is not None:
         ax.set_xlim(*xrange)
     else:
@@ -342,11 +343,11 @@ def plot_stratpd(X, y, colname, targetname=None,
     if show_importance:
         other = ax.twinx()
         other.set_ylim(0,1.0)
-        other.tick_params(axis='y', colors=imp_color)
-        other.set_ylabel("Feature importance", fontdict={"color":imp_color})
-        other.plot(uniq_x, r2_at_x, lw=1, c=imp_color)
+        other.tick_params(axis='y', colors=impcolor)
+        other.set_ylabel("Feature importance", fontdict={"color":impcolor})
+        other.plot(uniq_x, r2_at_x, lw=1, c=impcolor)
         a,b = ax.get_xlim()
-        other.plot(b - (b-a)*.03, np.mean(r2_at_x), marker='>', c=imp_color)
+        other.plot(b - (b-a) * .03, np.mean(r2_at_x), marker='>', c=impcolor)
         # other.plot(mx - (mx-mnx)*.02, np.mean(r2_at_x), marker='>', c=imp_color)
 
     return uniq_x, curve, r2_at_x
@@ -431,13 +432,14 @@ def plot_catstratpd(X, y, colname, targetname,
                     ax=None,
                     sort='ascending',
                     ntrees=1,
-                    min_samples_leaf=10,
+                    min_samples_leaf_partition=10,
                     max_features=1.0,
                     bootstrap=False,
-                    alpha=.15,
                     yrange=None,
                     title=None,
                     supervised=True,
+                    alpha=.15,
+                    color='#2c7fb8',
                     pdp_marker_width=.5,
                     pdp_color='black',
                     style:('strip','scatter')='strip',
@@ -450,7 +452,7 @@ def plot_catstratpd(X, y, colname, targetname,
 
     if supervised:
         rf = RandomForestRegressor(n_estimators=ntrees,
-                                   min_samples_leaf=min_samples_leaf,
+                                   min_samples_leaf=min_samples_leaf_partition,
                                    bootstrap = bootstrap,
                                    max_features = max_features,
                                    oob_score=False)
@@ -459,7 +461,7 @@ def plot_catstratpd(X, y, colname, targetname,
         print("USING UNSUPERVISED MODE")
         X_synth, y_synth = conjure_twoclass(X)
         rf = RandomForestRegressor(n_estimators=ntrees,
-                                   min_samples_leaf=min_samples_leaf,
+                                   min_samples_leaf=min_samples_leaf_partition,
                                    bootstrap = False,
                                    max_features = 1.0,
                                    oob_score=False)
@@ -504,9 +506,9 @@ def plot_catstratpd(X, y, colname, targetname,
         mu = 0
         x_noise = np.random.normal(mu, sigma, size=nleaves) # to make strip plot
         for i in sort_indexes:
-            ax.scatter(x_noise + xloc, leaf_histos.iloc[i]-min_avg_value,
+            ax.scatter(x_noise + xloc, leaf_histos.iloc[i] - min_avg_value,
                        alpha=alpha, marker='o', s=10,
-                       c='#9CD1E3')
+                       c=color)
             ax.plot([xloc - .1, xloc + .1], [avg_per_cat[i]-min_avg_value] * 2,
                     c='black', linewidth=2)
             xloc += 1
@@ -524,7 +526,7 @@ def plot_catstratpd(X, y, colname, targetname,
         for i in range(nleaves):
             ax.scatter(xlocs, sorted_histos.iloc[:,i] - min_avg_value,
                        alpha=alpha, marker='o', s=5,
-                       c='#9CD1E3')
+                       c=color)
             xloc += 1
         ax.scatter(xlocs, avg_per_cat[sort_indexes]-min_avg_value, c=pdp_color, s=pdp_marker_width)
 

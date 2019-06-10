@@ -80,8 +80,7 @@ def ice2lines(ice:np.ndarray) -> np.ndarray:
     # print(f"ICE_lines {stop - start:.3f}s")
     return np.array(lines)
 
-
-def plot_ice(ice, colname, targetname="target", ax=None, linewidth=.5, color='#9CD1E3',
+def plot_ice(ice, colname, targetname="target", ax=None, linewidth=.5, linecolor='#9CD1E3',
              alpha=.1, title=None, xrange=None, yrange=None, pdp=True, pdp_linewidth=.5, pdp_alpha=1,
              pdp_color='black', show_xlabel=True, show_ylabel=True):
     start = time.time()
@@ -114,7 +113,7 @@ def plot_ice(ice, colname, targetname="target", ax=None, linewidth=.5, color='#9
         ax.set_ylabel(targetname)
     if title is not None:
         ax.set_title(title)
-    lines = LineCollection(lines, linewidth=linewidth, alpha=alpha, color=color)
+    lines = LineCollection(lines, linewidth=linewidth, alpha=alpha, color=linecolor)
     ax.add_collection(lines)
 
     if xrange is not None:

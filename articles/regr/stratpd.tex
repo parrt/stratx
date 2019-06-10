@@ -221,7 +221,7 @@ For the data sets we examined during the preparation of this paper, moving from 
 
 The blue lines representing piecewise partial derivative estimates increase in number as the number of partitions (leaves) increases.  Note that the variance of the partial derivative estimates is wider for RFs than for a single decision tree. This is expected because the decision tree leaves contain all observations in a feature space hypervolume and so the estimate will be less biased; RF leaves have at most 2/3, the bootstrapping population size estimate, of the observations for the same hypervolume. The education versus weight plots in \figref{fig:weight_ntrees} illustrate this most clearly. The blue ``cone'' around the partial dependence dots widens as the number of trees increases.  
 
-Increasing the number of trees does not improve accuracy and increases the time complexity linearly in the number of trees, which is roughly what we see in practice.  For example, using a single decision tree to partition a 9000-observation rent data set sample and generate a plot takes 1.5s on our 4.0Ghz processor but about 50s for 30 trees (first row, far right of \figref{fig:rent_ntrees}).
+Increasing the number of trees does not improve accuracy and increases the time complexity linearly in the number of trees, which is roughly what we see in practice.  For example, using a single decision tree to partition a 9000-observation rent data set sample and generate a plot takes 1.5s on our 4.0Ghz processor but about 50s for 30 trees (first row, far right of \figref{fig:rent_ntrees}). \todo{seems less accuarate with bootstrap}
 
 \begin{figure}[htbp]
 \begin{center}
@@ -324,6 +324,26 @@ The Shapley strategy, introduced in \cite{lundberg2016unexpected}, is a permutat
 
 \section{Experimental Results}\label{sec:applications}
 
+We begin by reproducing graphs from \cite{ICE} big X from ICE, additivity from PD/ICE
+
+bulldozer  just features 'ModelID', 'YearMade', 'MachineHoursCurrentMeter'; speculate that there is codependents between model and year made and machine hours. one would expect a log law for the model ID as some are much more expensive than the others. we would also expect a log law for the year made. not sure why ice is getting such a high value for machine hours.  note that machine hours of zero is probably missing or don't want to say so we deleted; less than 1950 deleted also.  sample of 10,000.
+
+
+effect of noise columns (more data? change hyper parameters?), effect of hyper parameter changes
+                 {\tt min\_samples\_leaf\_partition}=10,
+                 {\tt min\_samples\_leaf\_piecewise}=.20,
+
+effect of duplicated columns (need trees with less than max features)
+	ntrees, max features, bootstrap
+
+pathological case; sinewave
+
+integer variables; currently the category stuff is messed up so the bathrooms don't look right; it should start at zero not one.
+
+cars: show smoother and fits better
+
+--------------------
+
 Q: how does noisy columns affect ability to identify data features? does adding more data help?
 
 Q: how does adding a noise column affect...?
@@ -333,6 +353,40 @@ Q: how does duplicating a column affect the ability to identify features? Does i
 Q: what are the hyper parameters and what advice do we have for setting them?
 
 Note: if integer x then sometimes all y values fall directly on that x and no deriv can be computed.  must crank up number of samples and hires leaf size? i'm seeing num bedrooms in leaf as 0,1,2 but only get one piecewise line due to partitioning (all values are for single num bed value so ignored). sometimes even no piecewise lines if min\_samples\_leaf\_hires is low like 0.1
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.7]{images/bigx.png}
+\includegraphics[scale=0.7]{images/additivity.png}
+\caption{{\bf big X from ICE, additivity from PD/ICE}}
+\label{fig:bigx_y_stratpd}
+\end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.7]{images/meta_additivity_noise.png}
+\caption{effect of noise}
+\label{fig:meta_noise}
+\end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.7]{images/bulldozer.png}
+\caption{effect of noise}
+\label{fig:bulldozer}
+\end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.7]{images/rent_intcat.png}
+\caption{int cat not usual stratpd}
+\label{fig:rent_intcat}
+\end{center}
+\end{figure}
+
 
 \subsection{Approximating partial derivatives for large regions}\label{sec:patho}
 
@@ -397,26 +451,14 @@ max curve 2640, max curve with dup 2178 (20 trees, 1 features, yes bootstrap)
 
 Try rent again with noise instead of a duplication column. A single column of noise scaled by 50 dollars does not affect the ice plot (using RF) or the \spd{} plot, as expected.
 
-effect of sup/unsup: more accurate grouping. ignore noise. unsup fails if p=2 since \xnc{} has p=1 and unsup can't distinguish X from synth X.
-
-\todo{add car data}
-
 The data set has an equal number of males and females with $x_{pregnant} \sim U(0,1)$ if female, 65 + $U(-4.5,5)$ if female, and $x_{height} = 68 + U(-7,8)$ if male. 
 
 \[
 weight = 120 + 10(x_{height} - min(x_{height})) + 30x_{pregnant} - 1.2x_{education}
 \]
 
-$y = 0.2x_1 - 5x_2 + 10x_2\mathbf{1}_{x_3 \geq 0} + \epsilon$, $x_1, x_2, x_3$ are U(-1,1), Sample size 1000
+$y = 0.2x_1 - 5x_2 + 10x_2\mathbf{1}_{x_3 \geq 0} + \epsilon$, $x_1, x_2, x_3 \in U(-1,1)$, Sample size 1000
 
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.8]{images/bigx.png}
-\includegraphics[scale=0.7]{images/additivity.png}
-\caption{{\bf big X from ICE, additivity from PD/ICE}}
-\label{fig:bigx_y_stratpd}
-\end{center}
-\end{figure}
 
 \section{Discussion and Future Work}
 

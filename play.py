@@ -118,13 +118,13 @@ def weight():
                  )
     plot_catstratpd(X, y, 'sex', 'weight', ax=axes[3][0],
                     alpha=1,
-                    min_samples_leaf=5,
+                    min_samples_leaf_partition=5,
                     cats=df_raw['sex'].unique(),
                     # zero_center=True
                     yrange=(0,5)
                     )
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[4][0],
-                    min_samples_leaf=5,
+                    min_samples_leaf_partition=5,
                     alpha=1,
                     cats=df_raw['pregnant'].unique(),
                     # zero_center=True
@@ -238,7 +238,7 @@ def rent():
     fig, axes = plt.subplots(4, 2, figsize=(8,16))
     min_samples_leaf = 10#0.0001
     plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 0],
-                 min_samples_leaf=min_samples_leaf,
+                 min_samples_leaf_partition=min_samples_leaf,
                  alpha=.2, yrange=(0, 3000), nlines=1000, supervised=supervised)
     # plot_catstratpd(X, y, 'bedrooms', 'price', cats=np.unique(X['bedrooms']),
     #                 ax=axes[0, 1],
@@ -248,7 +248,7 @@ def rent():
     #                 sort=None)
 
     plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 0],
-                 min_samples_leaf=min_samples_leaf,
+                 min_samples_leaf_partition=min_samples_leaf,
                  alpha=.2, yrange=(-500, 3000), nlines=1000, supervised=supervised)
     # plot_catstratpd(X, y, 'bathrooms', 'price', cats=np.unique(X['bedrooms']),
     #                 ax=axes[1, 1],
@@ -319,7 +319,7 @@ def plot_meta(X, y, colnames, yrange=None):
             print(f"---------- min_samples_leaf={meta} ----------- ")
             plot_stratpd(X, y, colname, 'price', ax=axes[row, col],
                          min_r2_hires=min_r2_hires,
-                         min_samples_leaf=meta,
+                         min_samples_leaf_partition=meta,
                          yrange=yrange,
                          ntrees=1)
             axes[row, col].set_title(f"samples/leaf={meta}, min R^2={min_r2_hires}")
@@ -385,8 +385,8 @@ def weather():
                 y_ = df_['temperature']
                 uniq_x, curve, r2_at_x = \
                     plot_stratpd(X_, y_, 'dayofyear', 'temperature', ax=axes[0][j],
-                                 min_samples_leaf=2,
-                                 min_samples_leaf_hires=sz,
+                                 min_samples_leaf_partition=2,
+                                 min_samples_leaf_piecewise=sz,
                                  min_r2_hires=0.35,
                                  alpha=.5,
                                  pdp_dot_size=0,
@@ -400,8 +400,8 @@ def weather():
             axes[0,j].scatter(all_x, combined_curve, c='red', s=3)
 
         plot_stratpd(X, y, 'dayofyear', 'temperature', ax=axes[0][j],
-                     min_samples_leaf=min_samples_leaf,
-                     min_samples_leaf_hires=sz,
+                     min_samples_leaf_partition=min_samples_leaf,
+                     min_samples_leaf_piecewise=sz,
                      # hires_nbins=sz,
                      alpha=.3,
                      yrange=(-20,20))
@@ -534,7 +534,7 @@ def multi_joint_distr():
     uniqx, pdp, r2_at_x = \
         plot_stratpd(X, y, 'x1', 'y', ax=axes[1,0], xrange=(0,12),
                      # show_dx_line=True,
-                     min_samples_leaf=min_samples_leaf,
+                     min_samples_leaf_partition=min_samples_leaf,
                      yrange=yrange, show_xlabel=False, show_ylabel=True)
     r = LinearRegression()
     r.fit(uniqx.reshape(-1, 1), pdp)
@@ -543,7 +543,7 @@ def multi_joint_distr():
     uniqx, pdp, r2_at_x = \
         plot_stratpd(X, y, 'x2', 'y', ax=axes[1,1], xrange=(0,12),
                      # show_dx_line=True,
-                     min_samples_leaf=min_samples_leaf,
+                     min_samples_leaf_partition=min_samples_leaf,
                      yrange=yrange, show_xlabel=False, show_ylabel=False)
     r = LinearRegression()
     r.fit(uniqx.reshape(-1, 1), pdp)
@@ -552,7 +552,7 @@ def multi_joint_distr():
     uniqx, pdp, r2_at_x = \
         plot_stratpd(X, y, 'x3', 'y', ax=axes[1,2], xrange=(0,12),
                      # show_dx_line=True,
-                     min_samples_leaf=min_samples_leaf,
+                     min_samples_leaf_partition=min_samples_leaf,
                      yrange=yrange, show_xlabel=False, show_ylabel=False)
     r = LinearRegression()
     r.fit(uniqx.reshape(-1, 1), pdp)
@@ -561,7 +561,7 @@ def multi_joint_distr():
     uniqx, pdp, r2_at_x = \
         plot_stratpd(X, y, 'x4', 'y', ax=axes[1,3], xrange=(0,12),
                      # show_dx_line=True,
-                     min_samples_leaf=min_samples_leaf,
+                     min_samples_leaf_partition=min_samples_leaf,
                      yrange=yrange, show_xlabel=False, show_ylabel=False)
     r = LinearRegression()
     r.fit(uniqx.reshape(-1, 1), pdp)
@@ -704,8 +704,8 @@ def meta_additivity():
     # min_samples_leaf_hires = 50//3
     min_samples_leaf = 20
     plot_stratpd(X, y, 'x1', 'y', ax=axes[0, 1],
-                 min_samples_leaf=min_samples_leaf,
-                 min_samples_leaf_hires=.4,
+                 min_samples_leaf_partition=min_samples_leaf,
+                 min_samples_leaf_piecewise=.4,
                  yrange=(-1, 1),
                  pdp_dot_size=2, alpha=.4)
 
