@@ -13,6 +13,8 @@ from  matplotlib.collections import LineCollection
 import time
 from pandas.api.types import is_string_dtype, is_object_dtype, is_categorical_dtype, is_bool_dtype
 from sklearn.ensemble.partial_dependence import partial_dependence, plot_partial_dependence
+from sklearn import svm
+from sklearn.neighbors import KNeighborsRegressor
 from pdpbox import pdp
 from rfpimp import *
 from scipy.integrate import cumtrapz
@@ -95,11 +97,11 @@ def load_rent():
 def rent():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     df_rent = load_rent()
-    df_rent = df_rent.sample(n=9000)  # get a small subsample
+    df_rent = df_rent.sample(n=10_000)  # get a small subsample since SVM is slowwww
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
-    figsize = (5,5)
-    colname='bathrooms'
+    figsize = (5,4)
+    colname='bedrooms'
 
     fig, axes = plt.subplots(2,2, figsize=figsize)
     avg_per_baths = df_rent.groupby(colname).mean()['price']
@@ -113,17 +115,20 @@ def rent():
     rf.fit(X, y)
 
     ice = predict_ice(rf, X, colname, 'price', nlines=1000)
-    plot_ice(ice, colname, 'price', alpha=.05, ax=axes[0, 1], show_xlabel=False)
+    plot_ice(ice, colname, 'price', alpha=.05, ax=axes[0, 1], show_xlabel=False, show_ylabel=False)
     axes[0,1].set_ylim(-1000,5000)
 
-    lm = Lasso()
-    lm.fit(X, y)
+    nfeatures = 4
+    m = svm.SVR(gamma=1 / nfeatures)
+    # m = KNeighborsRegressor()
+    # m = Lasso()
+    m.fit(X, y)
 
-    ice = predict_ice(lm, X, colname, 'price', nlines=1000)
-    plot_ice(ice, colname, 'price', alpha=.05, ax=axes[1, 0], show_ylabel=False)
+    ice = predict_ice(m, X, colname, 'price', nlines=1000)
+    plot_ice(ice, colname, 'price', alpha=.05, ax=axes[1, 0], show_ylabel=True)
     axes[1,0].set_ylim(-1000,5000)
 
-    plot_stratpd(X, y, colname, 'price', ax=axes[1, 1], alpha=.2)
+    plot_stratpd(X, y, colname, 'price', ax=axes[1, 1], alpha=.2, show_ylabel=False)
     axes[1,1].set_ylim(-1000,5000)
 
     #axes[1,1].get_yaxis().set_visible(False)
@@ -440,9 +445,6 @@ def weather():
     """
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'dayofyear', 'temperature', ax=ax,
-                 min_samples_leaf=5,#30,
-                 min_r2_hires=1.0, # always do hires
-                 min_samples_leaf_hires=.15,
                  yrange=(-15,15),
                  pdp_dot_size=2, alpha=.5)
 
@@ -455,6 +457,7 @@ def weather():
                     style='strip',
                     ax=ax)  # , yrange=(0,160))
 
+    ax.set_title("StratPD")
     savefig(f"state_vs_temp_stratpd")
     plt.close()
 
@@ -471,6 +474,7 @@ def weather():
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = predict_catice(rf, X, 'state', 'temperature')
     plot_catice(ice, 'state', 'temperature', cats=catencoders['state'], ax=ax, pdp_marker_width=10)
+    ax.set_title("PD/ICE")
 
     savefig(f"state_vs_temp_pdp")
     plt.close()
@@ -508,6 +512,7 @@ def weather():
     ax.legend(loc='lower left', borderpad=0, labelspacing=0)
     ax.set_xlabel("dayofyear")
     ax.set_ylabel("temperature")
+    ax.set_title("State/day vs temp")
 
     savefig(f"dayofyear_vs_temp")
     plt.close()
@@ -947,24 +952,31 @@ def unsup_boston():
     X = df.drop('MEDV', axis=1)
     y = df['MEDV']
 
-    fig, axes = plt.subplots(2, 2, figsize=(4, 4))
+    fig, axes = plt.subplots(1, 4, figsize=(8, 2))
 
-    plot_stratpd(X, y, 'AGE', 'MEDV', ax=axes[0, 0], yrange=(-20, 20), supervised=False, show_xlabel=False)
-    plot_stratpd(X, y, 'AGE', 'MEDV', ax=axes[0, 1], yrange=(-20, 20), supervised=True, show_xlabel=False)
+    axes[0].scatter(df['AGE'], y, s=5, alpha=.7)
+    axes[0].set_ylabel('MEDV')
+    axes[0].set_xlabel('AGE')
+
+    axes[0].set_title("Scatter")
+    axes[1].set_title("Unsupervised")
+    axes[2].set_title("Supervised")
+    axes[3].set_title("PD/ICE")
+
+    plot_stratpd(X, y, 'AGE', 'MEDV', ax=axes[1], yrange=(-20, 20),
+                 supervised=False, show_ylabel=False)
+    plot_stratpd(X, y, 'AGE', 'MEDV', ax=axes[2], yrange=(-20, 20),
+                 supervised=True, show_ylabel=False)
 
     rf = RandomForestRegressor(n_estimators=100, oob_score=True)
     rf.fit(X, y)
     print(f"RF OOB {rf.oob_score_}")
 
-    axes[1,0].scatter(df['AGE'], y, s=5, alpha=.7)
-    axes[1,0].set_ylabel('MEDV')
-    axes[1,0].set_xlabel('AGE')
-
     ice = predict_ice(rf, X, 'AGE', 'MEDV', numx=10)
-    plot_ice(ice, 'AGE', 'MEDV', ax=axes[1, 1], yrange=(-20, 20))
+    plot_ice(ice, 'AGE', 'MEDV', ax=axes[3], yrange=(-20, 20), show_ylabel=False)
 
-    axes[0,1].get_yaxis().set_visible(False)
-    axes[1,1].get_yaxis().set_visible(False)
+    # axes[0,1].get_yaxis().set_visible(False)
+    # axes[1,1].get_yaxis().set_visible(False)
 
     
     savefig(f"boston_unsup")
@@ -1151,7 +1163,7 @@ if __name__ == '__main__':
     # cars()
     # meta_cars()
     # unsup_boston()
-    rent()
+    # rent()
     # rent_ntrees()
     # meta_boston()
     # meta_weight()
@@ -1161,7 +1173,7 @@ if __name__ == '__main__':
     # unsup_weight()
     # meta_weather()
     # weight_ntrees()
-    # weather()
+    weather()
     # meta_additivity()
     # additivity()
     # bigX()

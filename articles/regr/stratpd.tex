@@ -119,72 +119,36 @@ Arguably the most popular technique to analyze partial dependence is through the
 We explore these hazards in more detail in Sections \ref{sec:motivation} and \ref{sec:applications}. The focus of this work is to develop an accurate mechanism that does not rely on, nor make predictions from, a user's model, and a mechanism that does not presume mutually-independent features. We introduce a strategy, called stratified partial dependence (\spd{}), that directly estimates the partial dependence of each feature without the need of a fitted model.  \spd{} is a local method that first stratifies the \xnC{} feature space into disjoint regions where all \xnC{} variables are approximately matched across observations in each region. The relationship between $y$ and $x_C$ in each \xnC{} region is then characterized by partitioning $x_C$ itself into disjoint regions and fitting a local linear approximation to each $x_C$ region. We generalize this approach to categorical and integer-valued variables. {\color{red} brief sentence or two of what we find - the main mmph of why we need this. maybe we should limited to categorical here and then I can put something into experimental results about the integer problem?}
 
 \section{Motivation}\label{sec:motivation}
-\cut{\cite{PDP} introduced partial dependence (PD) plots as a way to extract and visualize the dependence of the target on one or two features of interest.} {\color{red} I think we can shorten this or move around some of the text to the experimental section. I do think that this section should still be here, but perhaps we can specifically consider the issues we talked about in the introduction? Not sure yet} Consider a New York City apartment rent data set from Kaggle \cite{rent-dataset} and the marginal plot in \figref{fig:baths_price}(a) showing the number of bathrooms versus price.  \figref{fig:baths_price}(b) shows the (zero-centered) PD of rent price on the number of bathrooms as a black line. The partial dependence line is the average of the blue lines, which represent the individual conditional expectation (ICE) plots of \cite{ICE}.  In this case, the ICE lines depict the model prediction contributions for a single observation as the bathroom feature shifts through all possible number of bathrooms. Because PD plots represent an average across observations, they can hide a great deal of variability, so it is helpful to combine PD and ICE plots.
+\cut{\cite{PDP} introduced partial dependence (PD) plots as a way to extract and visualize the dependence of the target on one or two features of interest.} {\color{red} I think we can shorten this or move around some of the text to the experimental section. I do think that this section should still be here, but perhaps we can specifically consider the issues we talked about in the introduction? Not sure yet} Consider a New York City apartment rent data set from Kaggle \cite{rent-dataset} and the marginal plot in \figref{fig:baths_price}(a) showing the number of bedrooms versus price.  \figref{fig:baths_price}(b) shows the (zero-centered) PD of rent price on the number of bedrooms as a black line. The partial dependence line is the average of the blue lines, which represent the individual conditional expectation (ICE) plots of \cite{ICE}.  In this case, the ICE lines depict the model prediction contributions for a single observation as the bedrooms feature shifts through all possible number of bedrooms. Because PD plots represent an average across observations, they can hide a great deal of variability, so it is helpful to combine PD and ICE plots.
 
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[scale=0.7]{images/bathrooms_vs_price.png}
-\caption{{\bf  Marginal plot, PDP/ICE plot, and \spd{} plot of bathrooms versus rent price; sample size 9000 of 400k...}}
+\includegraphics[scale=0.7]{images/bedrooms_vs_price.png}
+\caption{{\bf  Marginal plot, PDP/ICE plot, and \spd{} plot of bedrooms versus rent price; sample size 9000 of 400k...}}
 \label{fig:baths_price}
 \end{center}
 \end{figure}
 
-\cut{The partial dependence plot broadly follows the marginal plot except for the prices of two and three bathroom apartments, where it levels off. This is counterintuitive and exposes an issue with PD and ICE plots.} While PD and ICE plots are {\em model-agnostic}, they are not {\em model-independent} and are subject to the strengths and weaknesses of the model making predictions.  For example, Random Forests(tm) (RF) cannot extrapolate beyond their support range and this data set subset of 9000 observations has very few apartments with 0 or more than two bathrooms.  (Note the lack of blue dots in those ranges of the marginal plot.) PD and ICE plots shift the bathroom feature of all observations from 0 to 4, accepting less trustworthy predictions from the model in extreme ranges.   
+\cut{The partial dependence plot broadly follows the marginal plot except for the prices of two and three bedrooms apartments, where it levels off. This is counterintuitive and exposes an issue with PD and ICE plots.} While PD and ICE plots are {\em model-agnostic}, they are not {\em model-independent} and are subject to the strengths and weaknesses of the model making predictions.  For example, Random Forests(tm) (RF) cannot extrapolate beyond their support range and this data set subset of 10,000 observations has very few apartments with more than 5 bedrooms.  (Note the lack of blue dots in that range of the marginal plot.) PD and ICE plots shift the bedrooms feature of all observations from 0 to 6, accepting less trustworthy predictions from the model in extreme ranges.   
 
-Obtaining radically different PD and ICE plots for different underlying models is undesirable because users cannot distinguish between interesting target fluctuations and artifacts of their model choice. Consider \figref{fig:baths_price}(c) that shows the PD/ICE plot for the exact same data set but using a linear model (with Lasso regularization). A single-line cannot adequately describe the nonlinearity evident from the marginal plot. At the very least, users should compare plots derived from multiple models. Moreover, PD and ICE plots are only as accurate as the underlying model, meaning PD and ICE plots from derived high-bias models should not be trusted.
+Obtaining radically different PD and ICE plots for different underlying models is undesirable because users cannot distinguish between interesting target fluctuations and artifacts of their model choice. Consider \figref{fig:baths_price}(c) that shows the PD/ICE plot for the exact same data set but using a Support Vector Machine (SVM with $\gamma=1/p$). The SVM appears to have difficulty capturing the relationship between bedrooms and price evident from the marginal plot, which means PD and ICE plots derived from an SVM for this variable are not accurate; plots derived from high-bias models should not be trusted. At the very least, users of PD and ICE should compare plots derived from multiple models. 
 
-\figref{fig:baths_price}(d) shows the partial dependence of rent on the number of bathrooms (as black dots) using the \spd{} approach described in this paper. The plot also depicts the density of data in the bathroom/rent space by the number and location of lines, identifies the unique $x$ (bathroom) values, and characterizes the variability of the slopes across $x$.
+\figref{fig:baths_price}(d) shows the partial dependence of rent on the number of bedrooms (as black dots) using the \spd{} approach described in this paper. The plot also depicts the density of data in the bedrooms/rent space by the number and location of lines, identifies the unique $x$ (bedrooms) values, and characterizes the variability of the slopes across $x$ by the spread of the line angles.
 
 There are two remaining issues with PD plots associated with the relationship between features. First, as Friedman pointed out, PD plots are most accurate ``{\em when {\em [the model]} is dominated by low order interactions.}''  Feature interactions such as $x_1x_2$ are difficult to tease apart to obtain partial codependencies on just $x_1$ or $x_2$. (Feature $x_j^T = (x_{1j}, .., x_{Nj})$ is a column vector of the  $n \times p$ explanatory matrix ${\bf X}$). ICE plots address this issue by showing separate prediction curves for each observation as the feature of interest is moved through all possible values.  This not only shows the variation hidden by the PD average curve, but it depicts interaction relationships between the feature of interest and other features.
 
 The second issue stems from a lack of independence between features.  In a nutshell, not every combination of codependent features is valid. Consider a five bedroom apartment with just one or even zero bathrooms or a four bathroom studio was no bedroom or an observation identified as male but also pregnant.  Because PD and ICE alter observations by shifting the feature of interest through all possible feature values, they run the risk of conjuring up nonsensical observations, and in our experience, features in real data sets are very often codependent to some degree. This problem can be mitigated by computing PD and ICE plots on groups of mutually-dependent or interacting features of interest. \todo{but could involve identifying subsets and computing lots of combinations and we still might want to know about a single contribution.}
 
-\cut{
-def toy_weight_data(n):
-    df = pd.DataFrame()
-    nmen = n//2
-    nwomen = n//2
-    df['ID'] = range(100,100+n)
-    df['sex'] = ['M']*nmen + ['F']*nwomen
-    df.loc[df['sex']=='F','pregnant'] = np.random.randint(0,2,size=(nwomen,))
-    df.loc[df['sex']=='M','pregnant'] = 0
-    df.loc[df['sex']=='M','height'] = 5*12+8 + np.random.uniform(-7, +8, size=(nmen,))
-    df.loc[df['sex']=='F','height'] = 5*12+5 + np.random.uniform(-4.5, +5, size=(nwomen,))
-    df.loc[df['sex']=='M','education'] = 10 + np.random.randint(0,8,size=nmen)
-    df.loc[df['sex']=='F','education'] = 12 + np.random.randint(0,8,size=nwomen)
-    df['weight'] = 120 \
-                   + (df['height']-df['height'].min()) * 10 \
-                   + df['pregnant']*30 \
-                   - df['education']*1.2
-    df['pregnant'] = df['pregnant'].astype(bool)
-    df['education'] = df['education'].astype(int)
-    return df
-}
-
-To illustrate how variable codependencies result in misleading PD and ICE plots, consider a body weight data set with observations matching a person's characteristics to a weight in pounds. We discuss the data set details in \secref{sec:exp}, but for the moment, assume that women are slightly shorter on average and are 30 pounds heavier if pregnant. The PD/ICE plot in \figref{fig:height_education_vs_weight}(a) shows an inaccurate partial dependence where shorter people are slightly heavier per inch of height than those over about 72 inches. The blue ICE lines jump up significantly for shorter heights due to the codependence of $x_{sex}$ and $x_{pregnant}$ because PD and ICE conjure up pregnant males and ask the model to estimate their weight.  To be clear, the weight equation has no interaction term with $x_{height}$ and $x_{pregnant}$, but $x_{height}$ is codependent indirectly with $x_{pregnant}$ (via $x_{sex}$).  The \spd{} plot in \figref{fig:height_education_vs_weight}(b), on the other hand, is not confused by codependence and gives the true partial dependence of weight on height. 
-
-As another example, compare the PD/ICE (c) and \spd{} (d) plots in \figref{fig:height_education_vs_weight} showing number of years of education versus weight using the same data set. Weight is related to education by slope -1.2 so a perfect partial dependence graph would show a drop of 12 pounds over 10 years of education.   The PD/ICE plot captures only about half of that relationship, whereas, the \spd{} plot gets much closer to the true education-weight relationship. Female observations have at least 12 years of education, versus 10 for males, so $x_{education}$ and $x_{sex}$ are codependent, though, there is no interaction term. The fact that women are shorter on average biases the education-weight PD/ICE plot because the baseline weight is lower from which the education contribution is  subtracted.
-
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.7]{images/height_vs_weight_pdp.png}
-\includegraphics[scale=0.7]{images/height_vs_weight_stratpd.png}\\
-\includegraphics[scale=0.7]{images/education_vs_weight_pdp.png}
-\includegraphics[scale=0.7]{images/education_vs_weight_stratpd.png}
+\includegraphics[scale=0.7]{images/height_vs_weight_stratpd.png}
 \caption{{\bf  height and educ vs weight}}
-\label{fig:height_education_vs_weight}
+\label{fig:height_vs_weight}
 \end{center}
 \end{figure}
 
-When there is little codependence between features, the PD and ICE plots represent the partial dependencies well, as is the case with the well-known mtcars data set from \cite{mtcars}, shown in the second column of \figref{fig:cars}.  The first column represents the traditional marginal plots of horsepower and weight to mpg (miles per gallon). The third column represents the \spd{} plots. The orange line in each row represents the regression coefficient of the associated feature (with $y$-intercept adjusted so the line coincides well with the ICE and \spd{} plot slopes).  While both approaches yield useful graphs, the \spd{} plots are smoother and visually appear to be more linear, giving a better fits to the slope lines.
-
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.7]{images/cars.png}
-\caption{{\bf  cars}}
-\label{fig:cars}
-\end{center}
-\end{figure}
+To illustrate how variable codependencies result in misleading PD and ICE plots, consider a body weight data set with observations matching a person's characteristics to a weight in pounds. We discuss the data set details in \secref{sec:applications}, but for the moment, assume that women are slightly shorter on average and are 30 pounds heavier if pregnant. The PD/ICE plot in \figref{fig:height_vs_weight}(a) shows an inaccurate partial dependence where shorter people are slightly heavier per inch of height than those over about 72 inches. The blue ICE lines jump up significantly for shorter heights due to the codependence of $x_{sex}$ and $x_{pregnant}$ because PD and ICE conjure up pregnant males and ask the model to estimate their weight.  To be clear, the weight equation has no interaction term with $x_{height}$ and $x_{pregnant}$, but $x_{height}$ is codependent indirectly with $x_{pregnant}$ (via $x_{sex}$).  The \spd{} plot in \figref{fig:height_education_vs_weight}(b), on the other hand, is not confused by codependence and gives the true partial dependence of weight on height. 
 
 \todo{needs a transition sentence here}
 
@@ -223,20 +187,20 @@ Slope $\beta_R$ is an estimate of the partial derivative across the region $R$, 
 \spd{} trains a decision tree in the usual way but on $(x_{\overline{c}}, {\bf y})$ rather than $({\bf X}, {\bf y})$. Observations $(X_i, y_i)$ that end up in a tree leaf are, by definition, in the same region of \xnc{} feature space. Training greedily partitions feature space in order to minimize variance of $y_i$ within regions, which partitions feature space into tighter and tighter regions.  (The collection of variable inequality decision nodes along the path from from root to a leaf demarcates the region of feature space.) Tighter regions imply more similar \xnc{} values, which means $x_c$ is likely responsible for any variation in $y$; this likelihood decreases as the size of $L$ increases.  The training process must leave at least two samples per leaf in order to fit a localized linear model.  
 }
 
-Revisiting the \spd{} plot in \figref{fig:height_education_vs_weight}(d), derived from the apartment rent data set, each blue line represents a local slope $\beta_L'$ through the observations in $L'$ (which is a partition of $x_c$ space whose \xnc{} features are similar). Lines extend from the minimum to maximum $x_c$ value in $L'$.  Because we are interested in the relative contribution of $x_c$ to $y$, \spd{} plots use zero as a $y$-axis baseline. The black dots represent the integration of the partial derivative estimates up to and including each unique $x_c$ value (except the first $x_c$, whose integral value is 0). The partial derivative estimate at an $x_c$ value is the (weighted) average slope of the blue lines emanating from that value.  
+Revisiting the \spd{} plot in \figref{fig:height_vs_weight}(d), derived from the apartment rent data set, each blue line represents a local slope $\beta_L'$ through the observations in $L'$ (which is a partition of $x_c$ space whose \xnc{} features are similar). Lines extend from the minimum to maximum $x_c$ value in $L'$.  Because we are interested in the relative contribution of $x_c$ to $y$, \spd{} plots use zero as a $y$-axis baseline. The black dots represent the integration of the partial derivative estimates up to and including each unique $x_c$ value (except the first $x_c$, whose integral value is 0). The partial derivative estimate at an $x_c$ value is the (weighted) average slope of the blue lines emanating from that value. \spd{} does not interpolate between $x_c$ points and so the plot shows dots not lines. 
 
 Partial dependence through stratification also works for data sets with categorical variables in \xnc{}, given a suitable similarity measure between observations that supports categorical variables, but identifying an appropriate categorical similarity measure is a well-known issue.  Decision trees, however, support categorical variables easily and effectively by treating categories as unique integers. Observations with categorical variables that end up in the same leaf lie are likely to be similar. (\todo{cite breiman proximity matrix and p595 of ESL book}). Algorithm \ref{alg:StratPD}, therefore, works without modification for \xnc{} containing categorical variables. When the column of interest, $x_c$, is categorical, however, a new algorithm is required.
 
 \subsection{CatStratPD for categorical variables}
 
-The stratification approach can also capture how a categorical variable $x_c$ affects $y$, instead of just a single category at a time (if one were forced to dummy-encode $x_c$). But, because categorical variables can be unordered nominal variables, the notion of $y$ slope is not meaningful between two categories. Instead, the \cspd{} algorithm groups leaf observations $(L_x, L_y)$ by the categories in $L_x$, computes the average $L_y$ value per category, and subtracts the mean of $L_y$ for a reference category from all category averages to erase the $y$-contributions of \xnc{}. To get the overall contribution, then, of $x_c$ on $y$ for category $cat$, \cspd{} averages the leaf contributions for $cat$ from all $L'$ weighted by $|L|$. See Algorithm \ref{alg:CatStratPD}.
+The stratification approach can also capture how a categorical variable $x_c$ affects $y$, instead of just a single category at a time (if one were forced to dummy-encode $x_c$). As with \spd{}, the \cspd{} algorithm stratifies $\bf X$ into groups of similar \xnc{} features by training a decision tree regressor on $({\bf X}, {\bf y})$, yielding a collection of leaves. But, because categorical variables can be unordered nominal variables, the notion of $y$ slope is not meaningful between two categories. Instead of partitioning the $x_c$ space in each leaf $L$, \cspd{} groups leaf observations $(L_x, L_y)$ by the categories in $L_x$ and computes the average $L_y$ value per category.  Subtracting the mean of $L_y$ for a reference category from all category averages erases the $y$-contributions of \xnc{}, leaving a relative increase or decrease in $y$  for each category. Then, to get the overall contribution of $x_c$ to $y$ for category $cat$, \cspd{} averages the leaf contributions for $cat$ from all $L$ weighted by $|L|$. See Algorithm \ref{alg:CatStratPD}.
 
-\figref{fig:state_vs_temp}(a) illustrates \cspd{} operating on a categorical variable, $x_{state}$, in a synthetic weather data set with data from four states over three years. Temperature data varies in sinusoidal fashion over the year with $N(-5,5)$ noise and different baseline temperatures per state, as the marginal plot in \figref{fig:state_vs_temp}(b) shows. To get the partial dependence of temperature on $x_{state}$, \spd{} stratifies by $x_{dayofyear}$ and $x_{year}$ then groups these similar time buckets by $x_{state}$ and computes the average temperature; each blue dot represents a leaf average. The overall temperature estimate per state is the average of those leaf averages, represented by a solid black dash. We use a strip plot to exhibit the variation and density of $y$ values per category. The \cspd{} plot accurately identifies the baseline temperature per state, as does the PD/ICE plot in \figref{fig:state_vs_temp}(c).
+\figref{fig:state_vs_temp}(b) illustrates \cspd{} operating on a categorical variable, $x_{state}$, in a synthetic weather data set with data from four states over three years. Temperature data varies in sinusoidal fashion over the year with $N(-5,5)$ noise and different baseline temperatures per state, as the marginal plot in \figref{fig:state_vs_temp}(a) shows. To get the partial dependence of temperature on $x_{state}$, \spd{} stratifies by $x_{dayofyear}$ and $x_{year}$ then groups these similar time buckets by $x_{state}$ and computes the average temperature; each blue dot represents a leaf average. The overall temperature estimate per state is the average of those leaf averages, represented by a solid black dash. We use a strip plot to exhibit the variation and density of $y$ values per category. The \cspd{} plot accurately identifies the baseline temperature per state, as does the PD/ICE plot in \figref{fig:state_vs_temp}(c).
 
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[scale=0.7]{images/state_vs_temp_stratpd.png}
 \includegraphics[scale=0.7]{images/dayofyear_vs_temp.png}
+\includegraphics[scale=0.7]{images/state_vs_temp_stratpd.png}
 \includegraphics[scale=0.7]{images/state_vs_temp_pdp.png}
 \caption{{\bf  state  vs temp}}
 \label{fig:state_vs_temp}
@@ -262,8 +226,6 @@ Without this special case mechanism, the \spd{} plot would have to approximate a
 \end{figure}
 
 \subsection{Partitioning feature space with trees and forests}
-
-foo? \spd{} degenerates to a simple marginal plot if training yields a tree with a single leaf node containing all of \xnc{}.  
 
 Stratification of $(x_{\overline{c}}, y)$ into regions of similar observations is at the core of our approach so it's worth examining how \spd{} partitions feature space in more detail.  The goal is to examine $({\bf X}, {\bf y})$ for groups of extremely similar \xnc{} values so fluctuations in $y$ are due solely to changes in $x_c$, which yields a piece of the partial dependence of $y$ on $x_c$. \spd{} looks for similar observations because, beyond a few variables, it's not possible to stratify observations by equal \xnc{} values. 
 
@@ -297,7 +259,7 @@ Increasing the number of trees does not improve accuracy and increases the time 
 
 Decision trees choose feature space hypervolumes that minimize the variance in $y$, but $y$ is technically not needed to partition \xnc{} into similar regions. \cite{RFunsup} described how to use random forests in an unsupervised fashion by considering the original $\bf X$ matrix as class 1 and a synthesized $\bf X'$ as class 2, which works equally well for decision trees. $\bf X'$ is just $\bf X$ with each $x_j$ column permuted, effectively sampling from the $x_j$'s marginal distributions. \figref{fig:rent_weight_unsup} shows typical results from three variables from the rent data set and two variables from the synthesized weight data set.  The left column shows unsupervised partitioning of $\bf X$ and the right column shows the usual supervised partitioning with $(\bf X, y)$. The results are very similar but the variance of the partial derivative estimates for the unsupervised case appears to be a bit wider. The \cspd{} unsupervised and supervised plots for categorical variable $x_{pregnant}$ in \figref{fig:rent_weight_unsup}(b) are virtually indistinguishable to the eye. 
 
-\figref{fig:boston_unsup} illustrates a case where unsupervised partitioning fails: AGE versus MEDV (median house value) from the well-known Boston housing data set \todo{ref ICE's use in their paper}. The top row shows the unsupervised then supervised \spd{} plots, while the bottom left is the traditional AGE versus MEDV marginal plot and the bottom right is the PD/ICE plot. We tried simulations using a random forest with 10 trees, but the Boston unsupervised \spd{} plot was still erratic. The failure could be from the small size (506 observations), but in the end, there's no reason to perform unsupervised partitioning when $y$ is always available. (Partial dependence makes no sense without $y$.) 
+\figref{fig:boston_unsup} illustrates a case where unsupervised partitioning is less stable, sometimes giving obviously incorrect results: AGE versus MEDV (median house value) from the well-known Boston housing data set \todo{ref ICE's use in their paper}. The top row shows the unsupervised then supervised \spd{} plots, while the bottom left is the traditional AGE versus MEDV marginal plot and the bottom right is the PD/ICE plot. We tried simulations using a random forest with 10 trees, but the Boston unsupervised \spd{} plot was still erratic. The failure could be from the small size (506 observations), but in the end, there's no reason to perform unsupervised partitioning when $y$ is always available. (Partial dependence makes no sense without $y$.) 
 
 The point is that partitioning \xnc{}  with a decision tree is more about $\bf X$ than $\bf y$, which strengthens our claim of model-independence. \spd{} does not rely on a user's model, never makes predictions from internal models, and can even get away with partitioning feature space without $\bf y$.
 
@@ -317,6 +279,8 @@ The point is that partitioning \xnc{}  with a decision tree is more about $\bf X
 \label{fig:boston_unsup}
 \end{center}
 \end{figure}
+
+\todo{\spd{} degenerates to a simple marginal plot if training yields a tree with a single leaf node containing all of \xnc{}. where does this go?}
 
 \todo{is this where we put edge cases of hyper parameters, num cols, etc? ref future experiment section. what are degenerate cases? approximation error.}
 
@@ -387,6 +351,27 @@ Q: how does duplicating a column affect the ability to identify features? Does i
 Q: what are the hyper parameters and what advice do we have for setting them?
 
 Note: if integer x then sometimes all y values fall directly on that x and no deriv can be computed.  must crank up number of samples and hires leaf size? i'm seeing num bedrooms in leaf as 0,1,2 but only get one piecewise line due to partitioning (all values are for single num bed value so ignored). sometimes even no piecewise lines if min\_samples\_leaf\_hires is low like 0.1
+
+As another example, compare the PD/ICE (c) and \spd{} (d) plots in \figref{fig:education_vs_weight} showing number of years of education versus weight using the same data set. Weight is related to education by slope -1.2 so a perfect partial dependence graph would show a drop of 12 pounds over 10 years of education.   The PD/ICE plot captures only about half of that relationship, whereas, the \spd{} plot gets much closer to the true education-weight relationship. Female observations have at least 12 years of education, versus 10 for males, so $x_{education}$ and $x_{sex}$ are codependent, though, there is no interaction term. The fact that women are shorter on average biases the education-weight PD/ICE plot because the baseline weight is lower from which the education contribution is  subtracted.
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.7]{images/education_vs_weight_pdp.png}
+\includegraphics[scale=0.7]{images/education_vs_weight_stratpd.png}
+\caption{{\bf  educ vs weight}}
+\label{fig:education_vs_weight}
+\end{center}
+\end{figure}
+
+When there is little codependence between features, the PD and ICE plots represent the partial dependencies well, as is the case with the well-known mtcars data set from \cite{mtcars}, shown in the second column of \figref{fig:cars}.  The first column represents the traditional marginal plots of horsepower and weight to mpg (miles per gallon). The third column represents the \spd{} plots. The orange line in each row represents the regression coefficient of the associated feature (with $y$-intercept adjusted so the line coincides well with the ICE and \spd{} plot slopes).  While both approaches yield useful graphs, the \spd{} plots are smoother and visually appear to be more linear, giving a better fits to the slope lines.
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.7]{images/cars.png}
+\caption{{\bf  cars}}
+\label{fig:cars}
+\end{center}
+\end{figure}
 
 noisy $\sigma^2 = 1.0$ additivity. adding bootstrap trees had no effect on $x_1^2$.  to defeat super noisy stuff we have to increase the number of samples per leaf for $T$ and $T'$; min\_samples\_leaf=30, min\_samples\_leaf\_hires=.4 seems pretty good.  leaving min\_r2 as .5 is fine.  The .4 seems to be a big deal.   adding trees with bootstrapping definitely does not seem to affect anything.  For $x_2$, however, reducing r2 threshold to .1 helps a lot capture slope of two because the linear model is a good approximation to the linear relationship. Leaving r2 at .5 gets a slope of one instead of two. min\_samples\_leaf\_hires doesn't seem important for $x_2$ once we reduce r2 threshold. we also don't have to increase the minimum samples per leaf of T. just the r2 thing makes it work well. the biggest thing is reduce the amount of noise. what is effect or more data but still noisy??? going from 1000 to 2 to 3 to 4000 has no effect; still can't see $x_1^2$ with  default parameters.
 
