@@ -735,7 +735,7 @@ def meta_additivity():
 if __name__ == '__main__':
     # meta_additivity()
     # imp_cars()
-    # multi_joint_distr()
+    multi_joint_distr()
     # rent()
     # meta_rent()
     # weight()

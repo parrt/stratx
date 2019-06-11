@@ -307,21 +307,12 @@ The Shapley strategy, introduced in \cite{lundberg2016unexpected}, is a permutat
 %
 %
 %
-%
-% \spd{} was designed to support codependent features, which violates an assumption of PD and ICE. While ICE exposes variable interactions, it is still susceptible to variable codependencies causing misleading plots.
-%
 % do we need to talk about LIME? http://arxiv.org/pdf/1602.04938v1.pdf ?Why Should I Trust You?? Explaining the Predictions of Any Classifier.
 %
 % there are other ways to stratify X, such as quartiles or binning of some kind but we have to choose the bins or the similarity measure.
 %
-% talk about the derivative plot being meaningless in ICE.  they are smoothing and then taking the derivative of suspicious data.
-%
-% propensity stuff James mentioned
-%
 % talk about how we do not presume independence of features
  
-% This python package seems to do PDP, LIME etc... https://github.com/oracle/Skater
-
 \section{Experimental Results}\label{sec:applications}
 
 We begin by reproducing graphs from \cite{ICE} big X from ICE, additivity from PD/ICE
@@ -365,6 +356,40 @@ Note: if integer x then sometimes all y values fall directly on that x and no de
 
 \begin{figure}[htbp]
 \begin{center}
+\includegraphics[scale=0.7]{images/state_vs_temp.png}
+\includegraphics[scale=0.7]{images/dayofyear_vs_temp_pdp.png}
+\includegraphics[scale=0.7]{images/dayofyear_vs_temp_stratpd.png}
+\caption{{\bf  dayofyear  vs temp}}
+\label{fig:dayofyear_vs_temp}
+\end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.6]{images/bedrooms_vs_price_noise.png}
+\caption{{\bf  bedrooms dup col full rent data set (maybe 48k records)}}
+\label{fig:beds_dup}
+\end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.6]{images/bedrooms_vs_price_dup.png}
+\caption{{\bf  bedrooms dup col full rent data set (maybe 48k records)}}
+\label{fig:beds_dup}
+\end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.6]{images/multivar_multimodel_normal.png}
+\caption{{\bf  multi-model, 4-var gaussian}}
+\label{fig:4var}
+\end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+\begin{center}
 \includegraphics[scale=0.7]{images/meta_additivity_noise.png}
 \caption{effect of noise}
 \label{fig:meta_noise}
@@ -396,15 +421,6 @@ To handle the special case where partitioning feature space \xnc{} yields a leaf
 
 Without this special case mechanism, the \spd{} plot would have to approximate an entire sine wave with a single line.  Unfortunately, we had to manually choose a suitable minimum leaf size for the nested leaf partitioning, $T'$, to reveal a proper sine wave.  We recommend trying $T'$ multiple minimum leaf sizes for \spd{} plots when \xnc{} has categorical variables and $p$ is small. (The Python implementation allows programmers to set the minimum leaf size for both the \xnc{} partitioning with $T$ and second stage partitioning with $T'$.)
 
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.7]{images/state_vs_temp.png}
-\includegraphics[scale=0.7]{images/dayofyear_vs_temp_pdp.png}
-\includegraphics[scale=0.7]{images/dayofyear_vs_temp_stratpd.png}
-\caption{{\bf  dayofyear  vs temp}}
-\label{fig:dayofyear_vs_temp}
-\end{center}
-\end{figure}
 
 As another example, compare the PD/ICE (c) and \spd{} (d) plots in \figref{fig:education_vs_weight} showing number of years of education versus weight using the same data set. Weight is related to education by slope -1.2 so a perfect partial dependence graph would show a drop of 12 pounds over 10 years of education.   The PD/ICE plot captures only about half of that relationship, whereas, the \spd{} plot gets much closer to the true education-weight relationship. Female observations have at least 12 years of education, versus 10 for males, so $x_{education}$ and $x_{sex}$ are codependent, though, there is no interaction term. The fact that women are shorter on average biases the education-weight PD/ICE plot because the baseline weight is lower from which the education contribution is  subtracted.
 
@@ -463,17 +479,17 @@ $y = 0.2x_1 - 5x_2 + 10x_2\mathbf{1}_{x_3 \geq 0} + \epsilon$, $x_1, x_2, x_3 \i
 
 \section{Discussion and Future Work}
 
+can only squash vars in \xnc{} so endogenous vars or vars we don't include that exist end up inflating y. if those vars are codependencies, makes it worse I'd say.
+
+we have just 2 hyper parameters. have Python implementation.
+
 talk about how, since we don't need y to partition, we can partial out the effects of \xnc{} w/o indirection through fallable model.  We examine $x_c$ relationship with $y$ w/o needing model that fits $X$ to $y$, just $x_c$ to $y$. And locally whereas models tend to optimize globally, leading to potentially high bias on average. Emphasize more that we don't go through model, we shoot for $f(\bf X)$.
 
 {\color{red} first re-iterate what we did and the main takeaways}. An important feature of \spd{} is that it directly characterizes the relationship between $\mathbf{y}$ and $x_C$ \emph{without} the need for ever training a machine learning model. In this way \spd{} is {model-independent} and will characterize marginal relationships the same way no matter the user's choice of machine learning algorithm. 
 
 This work describes regressors only, ignoring partial dependence for classifiers.  Research reveals no papers or implementation for classifiers. Friedman, however, briefly describes a partial dependence mechanism for classification whereby $k$-class logistic regression (one-versus-rest) equations indicate the probability of seeing class $k$ at $\bf{x}$.  This suffers from the same interaction-based bias as the regressor model.
 
-
-
 better handle on hyper parameters; summarize what we know now.
-
-Actually, the R version of personal dependence may actually do this. See https://christophm.github.io/interpretable-ml-book/pdp.html where he describes PDP for cancer prediction and gets probabilities out.
 
 \section{Conclusion}
 \label{sec:conc}

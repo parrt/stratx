@@ -222,6 +222,8 @@ def avg_values_at_x(uniq_x, leaf_ranges, leaf_values, leaf_weights):
 def plot_stratpd(X, y, colname, targetname=None,
                  ax=None,
                  ntrees=1,
+                 max_features = 1.0,
+                 bootstrap=False,
                  min_samples_leaf_partition=10,
                  min_samples_leaf_piecewise=.20,
                  xrange=None,
@@ -237,8 +239,6 @@ def plot_stratpd(X, y, colname, targetname=None,
                  show_importance=False,
                  impcolor='#fdae61',
                  supervised=True,
-                 bootstrap=False,
-                 max_features = 1.0,
                  alpha=.4
                  ):
     # print(f"Unique {colname} = {len(np.unique(X[colname]))}/{len(X)}")

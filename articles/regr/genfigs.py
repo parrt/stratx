@@ -22,6 +22,10 @@ from stratx.partdep import *
 from stratx.ice import *
 import inspect
 
+# This genfigs.py code is just demonstration code to generate figures for the paper.
+# There are lots of programming sins committed here; to not take this to be
+# our idea of good code. ;)
+
 def df_string_to_cat(df:pd.DataFrame) -> dict:
     catencoders = {}
     for colname in df.columns:
@@ -179,21 +183,19 @@ def rent_int():
     savefig(f"rent_intcat")
     plt.close()
 
-def plot_with_extracol(colname, type:('noise','dup')='dup'):
+def plot_with_noise_col(df, colname):
     features = ['bedrooms', 'bathrooms', 'latitude', 'longitude']
+    features_with_noise = ['bedrooms', 'bathrooms', 'latitude', 'longitude', colname + '_noise']
 
-    fig, axes = plt.subplots(2,3, figsize=(7.5,5), sharey=True)
+    type = "noise"
 
-    df_rent = load_rent()
-    df_rent = df_rent.sample(n=9000)  # get a small subsample
-    if type=='noise':
-        addnoise(df_rent, n=1, c=50, prefix=colname+'_')
-    else:
-        df_rent[colname+'_dup'] = df_rent[colname]
-    # df_rent[colname+'_dupdup'] = df_rent[colname]
+    fig, axes = plt.subplots(2,2, figsize=(5,5), sharey=True, sharex=True)
 
-    X = df_rent[features]
-    y = df_rent['price']
+    df = df.copy()
+    addnoise(df, n=1, c=50, prefix=colname + '_')
+
+    X = df[features]
+    y = df['price']
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
 
@@ -203,29 +205,101 @@ def plot_with_extracol(colname, type:('noise','dup')='dup'):
     uniq_x, pdp_curve = \
         plot_ice(ice, colname, 'price', alpha=.05, ax=axes[0, 0], show_xlabel=False)
     axes[0,0].set_ylim(-1000,5000)
+    axes[0, 0].set_title(f"PD/ICE")
 
-    # with dup'd column
-    X = df_rent[features+[colname+'_'+type]]
-    y = df_rent['price']
+    for i in range(2):
+        for j in range(2):
+            axes[i,j].set_xlim(0,6)
+
+    X = df[features_with_noise]
+    y = df['price']
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
     ice = predict_ice(rf, X, colname, 'price', nlines=1000)
     uniq_x_, pdp_curve_ = \
         plot_ice(ice, colname, 'price', alpha=.05, ax=axes[0,1], show_xlabel=True, show_ylabel=False)
     axes[0,1].set_ylim(-1000,5000)
-    print(f"max ICE curve {np.max(pdp_curve):.0f}, max curve with dup {np.max(pdp_curve_):.0f}")
+    axes[0, 1].set_title(f"PD/ICE w/{type} col")
+    # print(f"max ICE curve {np.max(pdp_curve):.0f}, max curve with dup {np.max(pdp_curve_):.0f}")
 
     # STRATPD ON ROW 2
-    X = df_rent[features]
-    y = df_rent['price']
+    X = df[features]
+    y = df['price']
     uniq_x, curve, r2_at_x = \
         plot_stratpd(X, y, colname, 'price', ax=axes[1, 0], alpha=.2, show_xlabel=True, show_ylabel=False)
     axes[1, 0].set_ylim(-1000,5000)
+    axes[1, 0].set_title(f"StratPD")
 
-    X = df_rent[features+[colname+'_'+type]]
-    y = df_rent['price']
+    X = df[features_with_noise]
+    y = df['price']
     plot_stratpd(X, y, colname, 'price', ax=axes[1, 1], alpha=.2, show_ylabel=False)
     axes[1, 1].set_ylim(-1000,5000)
+    axes[1, 1].set_title(f"StratPD w/{type} col")
+
+    axes[0,0].get_xaxis().set_visible(False)
+    axes[0,1].get_xaxis().set_visible(False)
+
+
+def plot_with_dup_col(df, colname):
+    features = ['bedrooms', 'bathrooms', 'latitude', 'longitude']
+    features_with_dup = ['bedrooms', 'bathrooms', 'latitude', 'longitude', colname + '_dup']
+
+    fig, axes = plt.subplots(2,3, figsize=(7.5,5), sharey=True, sharex=True)
+
+    type = "dup"
+
+    df = df.copy()
+    df[colname + '_dup'] = df[colname]
+    # df_rent[colname+'_dupdup'] = df_rent[colname]
+
+    X = df[features]
+    y = df['price']
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
+    rf.fit(X, y)
+
+    # ICE ON ROW 1
+    # do it w/o dup'd column
+    ice = predict_ice(rf, X, colname, 'price', nlines=1000)
+    uniq_x, pdp_curve = \
+        plot_ice(ice, colname, 'price', alpha=.05, ax=axes[0, 0], show_xlabel=False)
+    axes[0,0].set_ylim(-1000,5000)
+    axes[0, 0].set_title(f"PD/ICE")
+
+    for i in range(2):
+        for j in range(3):
+            axes[i,j].set_xlim(0,6)
+
+    # with dup'd column
+    X = df[features_with_dup]
+    y = df['price']
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
+    rf.fit(X, y)
+    ice = predict_ice(rf, X, colname, 'price', nlines=1000)
+    uniq_x_, pdp_curve_ = \
+        plot_ice(ice, colname, 'price', alpha=.05, ax=axes[0,1], show_xlabel=True, show_ylabel=False)
+    axes[0,1].set_ylim(-1000,5000)
+    axes[0, 1].set_title(f"PD/ICE w/{type} col")
+    # print(f"max ICE curve {np.max(pdp_curve):.0f}, max curve with dup {np.max(pdp_curve_):.0f}")
+
+    axes[0, 2].set_title(f"PD/ICE w/{type} col")
+    axes[0, 2].text(.2, 4000, "Cannot compensate")
+
+    # STRATPD ON ROW 2
+    X = df[features]
+    y = df['price']
+    print(f"shape is {X.shape}")
+    uniq_x, curve, r2_at_x = \
+        plot_stratpd(X, y, colname, 'price', ax=axes[1, 0], alpha=.2, show_xlabel=True, show_ylabel=False)
+    axes[1, 0].set_ylim(-1000,5000)
+    axes[1, 0].set_title(f"StratPD")
+
+    X = df[features_with_dup]
+    y = df['price']
+    print(f"shape with dup is {X.shape}")
+    plot_stratpd(X, y, colname, 'price', ax=axes[1, 1], alpha=.2, show_ylabel=False)
+    axes[1, 1].set_ylim(-1000,5000)
+    axes[1, 1].set_title(f"StratPD w/{type} col")
+
     uniq_x_, curve_, r2_at_x_ = \
         plot_stratpd(X, y, colname, 'price', ax=axes[1, 2], alpha=.2, show_xlabel=True, show_ylabel=False,
                  ntrees=10,
@@ -233,6 +307,10 @@ def plot_with_extracol(colname, type:('noise','dup')='dup'):
                  bootstrap=False
                  )
     axes[1, 2].set_ylim(-1000,5000)
+    axes[1, 2].set_title(f"StratPD w/{type} col")
+    axes[1, 2].text(.2,4000, "ntrees=10")
+    axes[1, 2].text(.2,3500, "max features per split=2")
+
 
     print(f"max curve {np.max(curve):.0f}, max curve with dup {np.max(curve_):.0f}")
 
@@ -246,18 +324,20 @@ def plot_with_extracol(colname, type:('noise','dup')='dup'):
 def rent_extra_cols():
     print(f"----------- {inspect.stack()[0][3]} -----------")
 
-    type = 'dup'
-    colname = 'bedrooms'
-    plot_with_extracol(colname, type=type)
-    savefig(f"{colname}_vs_price_dup_{colname}_{type}")
+    df_rent = load_rent()
+    # df_rent = df_rent.sample(n=10_000)  # get a small subsample
 
-    type = 'noise'
     colname = 'bedrooms'
-    plot_with_extracol(colname, type=type)
-    savefig(f"{colname}_vs_price_dup_{colname}_{type}")
+    plot_with_dup_col(df_rent, colname)
+    savefig(f"{colname}_vs_price_dup")
     # plt.tight_layout()
     # plt.show()
-    # plt.close()
+
+    colname = 'bedrooms'
+    plot_with_noise_col(df_rent, colname)
+    savefig(f"{colname}_vs_price_noise")
+    # plt.tight_layout()
+    # plt.show()
 
 
 def rent_ntrees():
@@ -829,7 +909,7 @@ def meta_additivity():
     sizes = [2, 5, 10, 40]
     min_samples_leaf_piecewise = .3
 
-    fig, axes = plt.subplots(len(noises)+1, len(sizes), figsize=(8, 10), sharey=True, sharex=True)
+    fig, axes = plt.subplots(len(noises)+1, len(sizes), figsize=(7, 8), sharey=True, sharex=True)
 
     row = 0
     for sd in noises:
@@ -874,7 +954,9 @@ def meta_additivity():
                         min_samples_leaf=s,
                         feature_name='x2',
                         target_name='y',
-                        fontsize=10, show={'splits'})
+                        fontsize=10, show={'splits'},
+                        split_linewidth=.5,
+                        markersize=10)
         axes[lastrow, col].set_xlabel("x1")
         col += 1
 
@@ -1167,9 +1249,146 @@ def bulldozer():
     # plt.show()
 
 
+def multi_joint_distr():
+    # np.random.seed(42)
+    n = 2000
+    min_samples_leaf_partition = 50
+    min_samples_leaf_piecewise = .4
+    df = pd.DataFrame(np.random.multivariate_normal([6, 6, 6, 6],
+                                                    [
+                                                        [1,  5, .7,  3],
+                                                        [5, 1, 2, .5],
+                                                        [.7, 2,  1,  1.5],
+                                                        [3, .5, 1.5, 1]
+                                                    ],
+                                                    n),
+                      columns=['x1','x2','x3','x4'])
+    df['y'] = df['x1'] + df['x2'] + df['x3'] + df['x4']
+    X = df.drop('y', axis=1)
+    y = df['y']
+
+    r = LinearRegression()
+    r.fit(X, y)
+    print(r.coef_) # should be all 1s
+
+    yrange = (-2, 15)
+
+    fig, axes = plt.subplots(6, 4, figsize=(7.5,8), sharey=False, sharex=True)
+
+    axes[0,0].scatter(X['x1'], y, s=5, alpha=.08)
+    axes[0, 0].set_xlim(0,12)
+    axes[0, 0].set_ylim(0,45)
+    axes[0,1].scatter(X['x2'], y, s=5, alpha=.08)
+    axes[0, 1].set_xlim(0,12)
+    axes[0, 1].set_ylim(3,45)
+    axes[0, 2].scatter(X['x3'], y, s=5, alpha=.08)
+    axes[0, 2].set_xlim(0,12)
+    axes[0, 2].set_ylim(3,45)
+    axes[0, 3].scatter(X['x4'], y, s=5, alpha=.08)
+    axes[0, 3].set_xlim(0,12)
+    axes[0, 3].set_ylim(3,45)
+
+    # axes[0, 0].set_xlabel("x1")
+    # axes[0, 1].set_xlabel("x2")
+    # axes[0, 2].set_xlabel("x3")
+    axes[0, 0].set_ylabel("y")
+
+    for i in range(6):
+        for j in range(1,4):
+            axes[i,j].get_yaxis().set_visible(False)
+
+    for i in range(6):
+        for j in range(4):
+            axes[i, j].set_xlim(0, 12)
+
+    uniqx, pdp, r2_at_x = \
+        plot_stratpd(X, y, 'x1', 'y', ax=axes[1,0], xrange=(0,12),
+                     # show_dx_line=True,
+                     min_samples_leaf_partition=min_samples_leaf_partition,
+                     min_samples_leaf_piecewise=min_samples_leaf_piecewise,
+                     yrange=yrange, show_xlabel=False, show_ylabel=True)
+    r = LinearRegression()
+    r.fit(uniqx.reshape(-1, 1), pdp)
+    axes[1,0].text(1,10,f"Slope={r.coef_[0]:.2f}")
+
+    uniqx, pdp, r2_at_x = \
+        plot_stratpd(X, y, 'x2', 'y', ax=axes[1,1], xrange=(0,12),
+                     # show_dx_line=True,
+                     min_samples_leaf_partition=min_samples_leaf_partition,
+                     min_samples_leaf_piecewise=min_samples_leaf_piecewise,
+                     yrange=yrange, show_xlabel=False, show_ylabel=False)
+    r = LinearRegression()
+    r.fit(uniqx.reshape(-1, 1), pdp)
+    axes[1,1].text(1,10,f"Slope={r.coef_[0]:.2f}")
+
+    uniqx, pdp, r2_at_x = \
+        plot_stratpd(X, y, 'x3', 'y', ax=axes[1,2], xrange=(0,12),
+                     # show_dx_line=True,
+                     min_samples_leaf_partition=min_samples_leaf_partition,
+                     min_samples_leaf_piecewise=min_samples_leaf_piecewise,
+                     yrange=yrange, show_xlabel=False, show_ylabel=False)
+    r = LinearRegression()
+    r.fit(uniqx.reshape(-1, 1), pdp)
+    axes[1,2].text(1,10,f"Slope={r.coef_[0]:.2f}")
+
+    uniqx, pdp, r2_at_x = \
+        plot_stratpd(X, y, 'x4', 'y', ax=axes[1,3], xrange=(0,12),
+                     # show_dx_line=True,
+                     min_samples_leaf_partition=min_samples_leaf_partition,
+                     min_samples_leaf_piecewise=min_samples_leaf_piecewise,
+                     yrange=yrange, show_xlabel=False, show_ylabel=False)
+    r = LinearRegression()
+    r.fit(uniqx.reshape(-1, 1), pdp)
+    axes[1,3].text(1,10,f"Slope={r.coef_[0]:.2f}")
+
+    axes[1,0].text(1,13,'StratPD', horizontalalignment='left')
+    axes[1,1].text(1,13,'StratPD', horizontalalignment='left')
+    axes[1,2].text(1,13,'StratPD', horizontalalignment='left')
+    axes[1,3].text(1,13,'StratPD', horizontalalignment='left')
+
+    regrs = [
+        RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True),
+        svm.SVR(gamma='scale'),
+        LinearRegression(),
+        KNeighborsRegressor()]
+    row = 2
+    for regr in regrs:
+        regr.fit(X, y)
+        rname = regr.__class__.__name__
+        if rname=='SVR':
+            rname = "SVM"
+        if rname=='RandomForestRegressor':
+            rname = "RF"
+        if rname=='LinearRegression':
+            rname = 'Linear'
+        if rname=='KNeighborsRegressor':
+            rname = 'kNN'
+
+        show_xlabel = True if row==5 else False
+
+        axes[row,0].text(3, 10, rname, horizontalalignment='left')
+        axes[row,1].text(3, 10, rname, horizontalalignment='left')
+        axes[row,2].text(3, 10, rname, horizontalalignment='left')
+        axes[row,3].text(3, 10, rname, horizontalalignment='left')
+        ice = predict_ice(regr, X, 'x1', 'y', nlines=500)
+        plot_ice(ice, 'x1', 'y', ax=axes[row, 0], xrange=(0, 12), yrange=yrange, show_xlabel=show_xlabel, show_ylabel=True)
+        ice = predict_ice(regr, X, 'x2', 'y', nlines=500)
+        plot_ice(ice, 'x2', 'y', ax=axes[row, 1], xrange=(0, 12), yrange=yrange, show_xlabel=show_xlabel, show_ylabel=False)
+        ice = predict_ice(regr, X, 'x3', 'y', nlines=500)
+        plot_ice(ice, 'x3', 'y', ax=axes[row, 2], xrange=(0, 12), yrange=yrange, show_xlabel=show_xlabel, show_ylabel=False)
+        ice = predict_ice(regr, X, 'x4', 'y', nlines=500)
+        plot_ice(ice, 'x4', 'y', ax=axes[row, 3], xrange=(0, 12), yrange=yrange, show_xlabel=show_xlabel, show_ylabel=False)
+        row += 1
+
+    savefig("multivar_multimodel_normal")
+    # plt.tight_layout()
+    # plt.show()
+
+
 if __name__ == '__main__':
-    # rent_extra_cols()
-    bulldozer()
+    # multi_joint_distr()
+    rent_extra_cols()
+    # bulldozer()
     # cars()
     # meta_cars()
     # unsup_boston()
@@ -1187,4 +1406,3 @@ if __name__ == '__main__':
     # meta_additivity()
     # additivity()
     # bigX()
-    # rent_extra_cols()
