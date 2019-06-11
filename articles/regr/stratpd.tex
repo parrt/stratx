@@ -419,7 +419,7 @@ As another example, compare the PD/ICE (c) and \spd{} (d) plots in \figref{fig:e
 
 When there is little codependence between features, the PD and ICE plots represent the partial dependencies well, as is the case with the well-known mtcars data set from \cite{mtcars}, shown in the second column of \figref{fig:cars}.  The first column represents the traditional marginal plots of horsepower and weight to mpg (miles per gallon). The third column represents the \spd{} plots. The orange line in each row represents the regression coefficient of the associated feature (with $y$-intercept adjusted so the line coincides well with the ICE and \spd{} plot slopes).  While both approaches yield useful graphs, the \spd{} plots are smoother and visually appear to be more linear, giving a better fits to the slope lines.
 
-\todo{CARS: edges/outliers of weight and hp not valid as nonsensical values; smoother. clearly nonlinear physics.
+\todo{CARS: edges/outliers of weight and hp not valid as nonsensical values; smoother. clearly nonlinear physics.}
 
 \begin{figure}[htbp]
 \begin{center}
@@ -461,10 +461,9 @@ weight = 120 + 10(x_{height} - min(x_{height})) + 30x_{pregnant} - 1.2x_{educati
 
 $y = 0.2x_1 - 5x_2 + 10x_2\mathbf{1}_{x_3 \geq 0} + \epsilon$, $x_1, x_2, x_3 \in U(-1,1)$, Sample size 1000
 
-
 \section{Discussion and Future Work}
 
-talk about how, since we don't need y to partition, we can partial out the effects of \xnc{} w/o indirection through fallable model.  We examine $x_c$ relationship with $y$ w/o needing model that fits $X$ to $y$, just $x_c$ to $y$. And locally whereas models tend to optimize globally, leading to potentially high bias on average.
+talk about how, since we don't need y to partition, we can partial out the effects of \xnc{} w/o indirection through fallable model.  We examine $x_c$ relationship with $y$ w/o needing model that fits $X$ to $y$, just $x_c$ to $y$. And locally whereas models tend to optimize globally, leading to potentially high bias on average. Emphasize more that we don't go through model, we shoot for $f(\bf X)$.
 
 {\color{red} first re-iterate what we did and the main takeaways}. An important feature of \spd{} is that it directly characterizes the relationship between $\mathbf{y}$ and $x_C$ \emph{without} the need for ever training a machine learning model. In this way \spd{} is {model-independent} and will characterize marginal relationships the same way no matter the user's choice of machine learning algorithm. 
 
