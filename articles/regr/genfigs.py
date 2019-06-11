@@ -145,23 +145,34 @@ def rent_int():
     y = df_rent['price']
     figsize = (5,4)
 
-    fig, axes = plt.subplots(2,2, figsize=(4,4))
+    fig, axes = plt.subplots(2,3, figsize=(6,4))
 
-    plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 0], alpha=.2, show_ylabel=False)
-    axes[0,0].set_ylim(-1000,5000)
+    avg_per_baths = df_rent.groupby('bedrooms').mean()['price']
+    axes[0,0].scatter(df_rent['bedrooms'], df_rent['price'], alpha=0.07, s=5)#, label="observation")
+    axes[0,0].scatter(np.unique(df_rent['bedrooms']), avg_per_baths, s=6, c='black', label="average price/bedrooms")
+    axes[0,0].set_ylabel("price")#, fontsize=12)
+    axes[0,0].set_ylim(0,10_000)
+    avg_per_baths = df_rent.groupby('bathrooms').mean()['price']
+    axes[1,0].scatter(df_rent['bathrooms'], df_rent['price'], alpha=0.07, s=5)#, label="observation")
+    axes[1,0].scatter(np.unique(df_rent['bathrooms']), avg_per_baths, s=6, c='black', label="average price/bathrooms")
+    axes[1,0].set_ylabel("price")#, fontsize=12)
+    axes[1,0].set_ylim(0,10_000)
+
+    plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 1], alpha=.2, show_ylabel=False)
+    axes[0,1].set_ylim(-500,5000)
 
     plot_catstratpd(X, y, 'bedrooms', 'price', cats=np.unique(X['bedrooms']),
-                    ax=axes[0, 1], alpha=.2, show_ylabel=False)
-    axes[0,1].set_ylim(-1000,5000)
+                    ax=axes[0, 2], alpha=.2, show_ylabel=False)
+    axes[0,2].set_ylim(-500,5000)
 
-    plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 0], alpha=.2, show_ylabel=False)
-    axes[1,0].set_ylim(-1000,5000)
+    plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 1], alpha=.2, show_ylabel=False)
+    axes[1,1].set_ylim(-500,5000)
 
     X['bathrooms'] = X['bathrooms'].astype(str)
     baths = np.unique(X['bathrooms'])
     plot_catstratpd(X, y, 'bathrooms', 'price', cats=baths,
-                    ax=axes[1, 1], alpha=.2, show_ylabel=False)
-    axes[1,1].set_ylim(-1000,5000)
+                    ax=axes[1, 2], alpha=.2, show_ylabel=False)
+    axes[1,2].set_ylim(-500,5000)
 
     #axes[1,1].get_yaxis().set_visible(False)
 
@@ -1158,12 +1169,12 @@ def bulldozer():
 
 if __name__ == '__main__':
     # rent_extra_cols()
-    # bulldozer()
+    bulldozer()
     # cars()
     # meta_cars()
     # unsup_boston()
     # rent()
-    rent_int()
+    # rent_int()
     # rent_ntrees()
     # meta_boston()
     # meta_weight()
@@ -1173,7 +1184,7 @@ if __name__ == '__main__':
     # meta_weather()
     # weight_ntrees()
     # weather()
-    meta_additivity()
+    # meta_additivity()
     # additivity()
     # bigX()
     # rent_extra_cols()

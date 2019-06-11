@@ -326,7 +326,7 @@ The Shapley strategy, introduced in \cite{lundberg2016unexpected}, is a permutat
 
 We begin by reproducing graphs from \cite{ICE} big X from ICE, additivity from PD/ICE
 
-bulldozer  just features 'ModelID', 'YearMade', 'MachineHoursCurrentMeter'; speculate that there is codependents between model and year made and machine hours. one would expect a log law for the model ID as some are much more expensive than the others. we would also expect a log law for the year made. not sure why ice is getting such a high value for machine hours.  note that machine hours of zero is probably missing or don't want to say so we deleted; less than 1950 deleted also.  sample of 10,000.
+bulldozer  just features 'ModelID', 'YearMade', 'MachineHoursCurrentMeter'; speculate that there is codependents between model and year made and machine hours. one would expect a log law for the model ID as some are much more expensive than the others. we would also expect a log law for the year made. not sure why ice is getting such a high value for machine hours.  note that machine hours of zero is probably missing or don't want to say so we deleted; less than 1950 deleted also.  sample of 10,000. endogeneity makes look more like marginal plot? training on 3, partitioning on 2 vars only.
 
 
 effect of noise columns (more data? change hyper parameters?), effect of hyper parameter changes
