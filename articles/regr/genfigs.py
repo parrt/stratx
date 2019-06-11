@@ -1173,7 +1173,7 @@ if __name__ == '__main__':
     # meta_weather()
     # weight_ntrees()
     # weather()
-    # meta_additivity()
+    meta_additivity()
     # additivity()
     # bigX()
     # rent_extra_cols()
