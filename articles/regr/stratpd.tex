@@ -170,7 +170,7 @@ The key idea is to relax stratification so that it organizes observations into g
 The regions of $x_c$ spanned by the various $\beta_{L'}$ generally overlap and the slope in any  region, $R$, is the weighted average of all $\beta_{L'}$ that overlap $R$:
 
 \[
-\beta_R = \frac{1}{\Sigma_{L' \in R} |L'|}\Sigma_{L' \in R}|L'|\beta_L'
+\beta_R = \frac{1}{\Sigma_{L' \in R} |L'|}\Sigma_{L' \in R}|L'|\beta_{L'}
 \]
 
 Slope $\beta_R$ is an estimate of the partial derivative across the region $R$, and so numerically integrating the partial derivatives across $x_c$ space gives a curve representing the contribution of $x_c$ to $y$.  Algorithm \ref{alg:StratPD} encodes the \spd{} process and the full Python 3 source code is available at {\small \url{https://github.com/parrt/stratx}}. \figref{fig:leaves} depicts the averaging and integration process.  
@@ -356,35 +356,26 @@ Note: if integer x then sometimes all y values fall directly on that x and no de
 
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[scale=0.7]{images/state_vs_temp.png}
-\includegraphics[scale=0.7]{images/dayofyear_vs_temp_pdp.png}
-\includegraphics[scale=0.7]{images/dayofyear_vs_temp_stratpd.png}
-\caption{{\bf  dayofyear  vs temp}}
-\label{fig:dayofyear_vs_temp}
-\end{center}
-\end{figure}
-
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.6]{images/bedrooms_vs_price_noise.png}
-\caption{{\bf  bedrooms dup col full rent data set (full is 49,353 records. maybe 48k records)}}
-\label{fig:beds_dup}
-\end{center}
-\end{figure}
-
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.6]{images/bedrooms_vs_price_dup.png}
-\caption{{\bf  bedrooms dup col full rent data set (full is 49,353 records. maybe 48k records)}}
-\label{fig:beds_dup}
-\end{center}
-\end{figure}
-
-\begin{figure}[htbp]
-\begin{center}
 \includegraphics[scale=0.6]{images/multivar_multimodel_normal.png}
 \caption{{\bf  multi-model, 4-var gaussian}}
 \label{fig:4var}
+\end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.7]{images/education_vs_weight_pdp.png}
+\includegraphics[scale=0.7]{images/education_vs_weight_stratpd.png}
+\caption{{\bf  educ vs weight}}
+\label{fig:education_vs_weight}
+\end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.6]{images/bathrooms_vs_price_dup.png}
+\caption{{\bf  bathrooms dup col full rent data set (full is 49,353 records. maybe 48k records)}}
+\label{fig:bathss_dup}
 \end{center}
 \end{figure}
 
@@ -398,11 +389,38 @@ Note: if integer x then sometimes all y values fall directly on that x and no de
 
 \begin{figure}[htbp]
 \begin{center}
+\includegraphics[scale=0.6]{images/bedrooms_vs_price_noise.png}
+\caption{{\bf  bedrooms dup col full rent data set (full is 49,353 records. maybe 48k records)}}
+\label{fig:beds_noise}
+\end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.7]{images/cars.png}
+\caption{{\bf  cars} CARS: edges/outliers of weight and hp not valid as nonsensical values; smoother. clearly nonlinear physics.}
+\label{fig:cars}
+\end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+\begin{center}
 \includegraphics[scale=0.7]{images/bulldozer.png}
-\caption{bulldozer; endogeneity}
+\caption{bulldozer; endogeneity, CatStrat Partition RF: missing ModelID training $R^2$ 0.59, Strat Partition RF: missing YearMade training $R^2$ 0.7186, Strat Partition RF: missing MachineHoursCurrentMeter training $R^2$ 0.7714}
 \label{fig:bulldozer}
 \end{center}
 \end{figure}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.7]{images/state_vs_temp.png}
+\includegraphics[scale=0.7]{images/dayofyear_vs_temp_pdp.png}
+\includegraphics[scale=0.7]{images/dayofyear_vs_temp_stratpd.png}
+\caption{{\bf  dayofyear  vs temp}}
+\label{fig:dayofyear_vs_temp}
+\end{center}
+\end{figure}
+
 
 \begin{figure}[htbp]
 \begin{center}
@@ -424,26 +442,8 @@ Without this special case mechanism, the \spd{} plot would have to approximate a
 
 As another example, compare the PD/ICE (c) and \spd{} (d) plots in \figref{fig:education_vs_weight} showing number of years of education versus weight using the same data set. Weight is related to education by slope -1.2 so a perfect partial dependence graph would show a drop of 12 pounds over 10 years of education.   The PD/ICE plot captures only about half of that relationship, whereas, the \spd{} plot gets much closer to the true education-weight relationship. Female observations have at least 12 years of education, versus 10 for males, so $x_{education}$ and $x_{sex}$ are codependent, though, there is no interaction term. The fact that women are shorter on average biases the education-weight PD/ICE plot because the baseline weight is lower from which the education contribution is  subtracted.
 
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.7]{images/education_vs_weight_pdp.png}
-\includegraphics[scale=0.7]{images/education_vs_weight_stratpd.png}
-\caption{{\bf  educ vs weight}}
-\label{fig:education_vs_weight}
-\end{center}
-\end{figure}
 
 When there is little codependence between features, the PD and ICE plots represent the partial dependencies well, as is the case with the well-known mtcars data set from \cite{mtcars}, shown in the second column of \figref{fig:cars}.  The first column represents the traditional marginal plots of horsepower and weight to mpg (miles per gallon). The third column represents the \spd{} plots. The orange line in each row represents the regression coefficient of the associated feature (with $y$-intercept adjusted so the line coincides well with the ICE and \spd{} plot slopes).  While both approaches yield useful graphs, the \spd{} plots are smoother and visually appear to be more linear, giving a better fits to the slope lines.
-
-\todo{CARS: edges/outliers of weight and hp not valid as nonsensical values; smoother. clearly nonlinear physics.}
-
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.7]{images/cars.png}
-\caption{{\bf  cars}}
-\label{fig:cars}
-\end{center}
-\end{figure}
 
 noisy $\sigma^2 = 1.0$ additivity. adding bootstrap trees had no effect on $x_1^2$.  to defeat super noisy stuff we have to increase the number of samples per leaf for $T$ and $T'$; min\_samples\_leaf=30, min\_samples\_leaf\_hires=.4 seems pretty good.  leaving min\_r2 as .5 is fine.  The .4 seems to be a big deal.   adding trees with bootstrapping definitely does not seem to affect anything.  For $x_2$, however, reducing r2 threshold to .1 helps a lot capture slope of two because the linear model is a good approximation to the linear relationship. Leaving r2 at .5 gets a slope of one instead of two. min\_samples\_leaf\_hires doesn't seem important for $x_2$ once we reduce r2 threshold. we also don't have to increase the minimum samples per leaf of T. just the r2 thing makes it work well. the biggest thing is reduce the amount of noise. what is effect or more data but still noisy??? going from 1000 to 2 to 3 to 4000 has no effect; still can't see $x_1^2$ with  default parameters.
 
@@ -503,28 +503,30 @@ better handle on hyper parameters; summarize what we know now.
 \SetAlgorithmName{Algorithm}{List of Algorithms}
 \SetAlgoSkip{}
 \SetInd{.5em}{.5em}
-\TitleOfAlgo{{\em StratPD}($X$, $\bf y$, $c$, $hires$=30) {\bf returns} collection of $\beta$ coefficients, $\hat{y}$}
+\TitleOfAlgo{{\em StratPD}($X$, $\bf y$, $c$, $hires$=30) {\bf returns} collection of $\beta$ coefficients, $pd$}
 Train decision tree regressor $T$ on (\xnc{}, $\bf y$)\\
-$leaves$ = leaves($T$)\\
-\ForEach{leaf $L \in leaves$}{
-	$(Lx, Ly)$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
-	\If{$|L| > hires$}{
-		Train decision tree regressor $T'$ on $(Lx, Ly)$\\
-		Add leaves($T'$) to $leaves$\\
+%$leaves$ = leaves($T$)\\
+%piecewise = [] \tcp*[r]{List tracking piecewise leaves from $T'$}
+\ForEach{leaf $L \in$ leaves$(T)$}{
+	$(L_x, L_y)$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
+	Train decision tree regressor $T'$ on $(L_x, L_y)$\\
+	\ForEach{leaf $L' \in$ leaves$(T')$}{
+%		Add $L'$ to piecewise list\\
+		$(L'_x, L'_y)$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
+		$R_{L'}$ = $[min(L'_x), max(L'_x)]$\\
+		\lIf{left$(R_{L'})$ = right$(R_{L'})$}{{\bf continue}}\\
+		Fit linear model to $(L'_x, L'_y)$ giving $\beta_{L'}$\\
 	}
-	$R_L$ = $[min(Lx), max(Lx)]$\\
-	\lIf{left$(R_L)$ = right$(R_r)$}{{\bf continue}}\\
-	Fit linear model to $(Lx, Ly)$ giving $\beta_L$\\
 }
 $uniqx$ = sorted(unique($x_c$))\\
 \For{$i=1$ {\bf to} $|uniqx|-1$}{
 	$R$ = $(uniqx_i, uniqx_{i+1})$\\
-	\ForEach{leaf $L \in leaves$}{
-		$\beta_{R} = \frac{1}{|R_L \in R|}\Sigma_{R_L \in R}\beta_L$\\
+	\ForEach{leaf $L'$ found above}{
+		$\beta_R = \frac{1}{\Sigma_{L' \in R} |L'|}\Sigma_{L' \in R}|L'|\beta_{L'}$
 	}
 }
-$\hat{y}$ = numerically integrate $\beta_R$'s at $uniqx$\\
-\Return{collection of all $\beta_R$ and $\hat{y}$}
+$pd$ = numerically integrate $\beta_R$'s across $uniqx$\\
+\Return{collection of all $\beta_R$, $pd$}
 \end{algorithm}
 
 \setlength{\algomargin}{5pt}
@@ -534,22 +536,26 @@ $\hat{y}$ = numerically integrate $\beta_R$'s at $uniqx$\\
 \SetAlgorithmName{Algorithm}{List of Algorithms}
 \SetAlgoSkip{}
 \SetInd{.5em}{.5em}
-\TitleOfAlgo{{\em CatStratPD}($X$, $\bf y$, $c$) {\bf returns} dictionary mapping category to effect on $y$}
-Train decision tree regressor $T$ on (\xnc{}, $\bf y$)\\
+\TitleOfAlgo{{\em CatStratPD}($X$, $\bf y$, $c$, $refcat$) {\bf returns} dictionary mapping category to effect on $y$}
 Let $D$ be dictionary mapping category to $y$ value\\
+Train decision tree regressor $T$ on (\xnc{}, $\bf y$)\\
 \ForEach{leaf $L \in T$}{
-	$(Lx, Ly)$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
-	\ForEach{$cat \in Lx$}{
-		$cat_y$ = $Ly[Lx=cat]$\\
-		\lIf{$|cat_y| < 2$}{{\bf continue}}\\
-		$cat_{avg}$ = $\frac{1}{|cat_y|} \Sigma cat_y$\\
-		$cat_{avg}$ = $cat_{avg} - min(Ly)$\tcp*[r]{\it Strip y contribution from \xnc{}}
-		$D_{cat}$ = $D_{cat} + cat_{avg}$\\
+	$(L_x, L_y)$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
+	Let $avg$ be dictionary mapping category to average leaf $y$ value\\
+	cats = unique cats  $\in L_x$\\
+	\ForEach{$cat \in cats$}{
+		$cat_y$ = $L_y[L_x=cat]$\tcp*[r]{\it Group leaf $L_x$ by $cat$, get $y$'s}
+		\lIf{$|cats| < 2$}{{\bf continue}}\\
+		$avg[cat]$ = $mean(cat_y)$\\
+	}
+	\ForEach{unique $cat \in L_x$}{
+%		$avg[cat]$ = $avg[cat] - mean(L_y[refcat])$\tcp*[r]{\it Strip y contribution from \xnc{}}
+		$D_{cat}$ = $D_{cat} + (avg[cat] - avg[refcat])$\tcp*[]{\it Strip y contribution from \xnc{}}
 	}
 }
-Let $n_{cat}$ be number of $cat_{avg}$ added to $D_{cat}$\\
+Let $n_{cat}$ be number of $avg[cat]$ values added to $D_{cat}$\\
 $D_{cat}$ = $D_{cat} / n_{cat}$\tcp*[r]{\it Take weighted average of leaf averages for $cat$}
-\Return{$D_{cat}$}
+\Return{$D$}
 \end{algorithm}
 
 \bibliographystyle{apalike}

@@ -261,9 +261,11 @@ def plot_stratpd(X, y, colname, targetname=None,
         rf = RandomForestRegressor(n_estimators=ntrees,
                                    min_samples_leaf=min_samples_leaf_partition,
                                    bootstrap = bootstrap,
-                                   max_features = max_features,
-                                   oob_score=False)
+                                   max_features = max_features)
         rf.fit(X.drop(colname, axis=1), y)
+        if verbose:
+            print(f"Strat Partition RF: missing {colname} training R^2 {rf.score(X.drop(colname, axis=1), y)}")
+
     else:
         """
         Wow. Breiman's trick works in most cases. Falls apart on Boston housing MEDV target vs AGE
@@ -328,7 +330,9 @@ def plot_stratpd(X, y, colname, targetname=None,
 
     # print(f"Avg width is {np.mean(widths):.2f} in {len(leaf_sizes)} leaves")
 
-    print(f"Found {len(segments)} lines")
+    if verbose:
+        print(f"Found {len(segments)} lines")
+
     if nlines is not None:
         idxs = np.random.randint(low=0, high=len(segments), size=nlines)
         segments = np.array(segments)[idxs]
@@ -474,6 +478,8 @@ def plot_catstratpd(X, y, colname, targetname,
                                    max_features = max_features,
                                    oob_score=False)
         rf.fit(X.drop(colname, axis=1), y)
+        if verbose:
+            print(f"CatStrat Partition RF: missing {colname} training R^2 {rf.score(X.drop(colname, axis=1), y)}")
     else:
         print("USING UNSUPERVISED MODE")
         X_synth, y_synth = conjure_twoclass(X)

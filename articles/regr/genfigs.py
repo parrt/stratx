@@ -55,6 +55,7 @@ def savefig(filename):
     plt.tight_layout(pad=0, w_pad=0, h_pad=0)
     plt.savefig(f"images/{filename}.pdf")
     plt.savefig(f"images/{filename}.png", dpi=300)
+    plt.close()
 
 
 def toy_weight_data(n):
@@ -71,7 +72,7 @@ def toy_weight_data(n):
     df['weight'] = 120 \
                    + (df['height']-df['height'].min()) * 10 \
                    + df['pregnant']*30 \
-                   - df['education']*1.2
+                   - df['education']*1.5
     df['pregnant'] = df['pregnant'].astype(bool)
     df['education'] = df['education'].astype(int)
     return df
@@ -247,6 +248,7 @@ def plot_with_dup_col(df, colname):
     fig, axes = plt.subplots(2,3, figsize=(7.5,5), sharey=True, sharex=True)
 
     type = "dup"
+    verbose=False
 
     df = df.copy()
     df[colname + '_dup'] = df[colname]
@@ -290,7 +292,7 @@ def plot_with_dup_col(df, colname):
     print(f"shape is {X.shape}")
     uniq_x, curve, r2_at_x = \
         plot_stratpd(X, y, colname, 'price', ax=axes[1, 0], alpha=.2, show_xlabel=True, show_ylabel=True,
-                     verbose=True)
+                     verbose=verbose)
     axes[1, 0].set_ylim(-1000,5000)
     axes[1, 0].set_title(f"StratPD")
 
@@ -298,7 +300,7 @@ def plot_with_dup_col(df, colname):
     y = df['price']
     print(f"shape with dup is {X.shape}")
     plot_stratpd(X, y, colname, 'price', ax=axes[1, 1], alpha=.2, show_ylabel=False,
-                 verbose=True)
+                 verbose=verbose)
     axes[1, 1].set_ylim(-1000,5000)
     axes[1, 1].set_title(f"StratPD w/{type} col")
 
@@ -307,7 +309,7 @@ def plot_with_dup_col(df, colname):
                  ntrees=10,
                  max_features=2,
                  bootstrap=False,
-                 verbose=True
+                 verbose=verbose
                  )
     axes[1, 2].set_ylim(-1000,5000)
     axes[1, 2].set_title(f"StratPD w/{type} col")
@@ -333,20 +335,20 @@ def rent_extra_cols():
     colname = 'bedrooms'
     plot_with_dup_col(df_rent, colname)
     savefig(f"{colname}_vs_price_dup")
-    plt.tight_layout()
-    plt.show()
+    # plt.tight_layout()
+    # plt.show()
 
-    # colname = 'bedrooms'
-    # plot_with_noise_col(df_rent, colname)
-    # savefig(f"{colname}_vs_price_noise")
+    colname = 'bedrooms'
+    plot_with_noise_col(df_rent, colname)
+    savefig(f"{colname}_vs_price_noise")
 
-    # colname = 'bathrooms'
-    # plot_with_dup_col(df_rent, colname)
-    # savefig(f"{colname}_vs_price_dup")
-    #
-    # colname = 'bathrooms'
-    # plot_with_noise_col(df_rent, colname)
-    # savefig(f"{colname}_vs_price_noise")
+    colname = 'bathrooms'
+    plot_with_dup_col(df_rent, colname)
+    savefig(f"{colname}_vs_price_dup")
+
+    colname = 'bathrooms'
+    plot_with_noise_col(df_rent, colname)
+    savefig(f"{colname}_vs_price_noise")
 
 
 def rent_ntrees():
@@ -647,7 +649,7 @@ def meta_weather():
 
 def weight():
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_raw = toy_weight_data(2000)
+    df_raw = toy_weight_data(1000)
     df = df_raw.copy()
     catencoders = df_string_to_cat(df)
     df_cat_to_catcode(df)
@@ -658,7 +660,7 @@ def weight():
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'education', 'weight', ax=ax,
-                 min_samples_leaf_piecewise=.1,
+                 min_samples_leaf_partition=2,
                  yrange=(-12, 0), alpha=.1, nlines=700, show_ylabel=False)
 #    ax.get_yaxis().set_visible(False)
     savefig(f"education_vs_weight_stratpd")
@@ -666,7 +668,6 @@ def weight():
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'height', 'weight', ax=ax,
-                 min_samples_leaf_piecewise=.1,
                  yrange=(0, 160), alpha=.1, nlines=700, show_ylabel=False)
 #    ax.get_yaxis().set_visible(False)
     savefig(f"height_vs_weight_stratpd")
@@ -675,7 +676,6 @@ def weight():
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_catstratpd(X, y, 'sex', 'weight', ax=ax,
                     alpha=.2,
-                    # min_samples_leaf_partition=2,
                     cats=df_raw['sex'].unique(),
                     yrange=(0, 5),
                     )
@@ -698,25 +698,21 @@ def weight():
     ice = predict_ice(rf, X, 'education', 'weight')
     plot_ice(ice, 'education', 'weight', ax=ax, yrange=(-12, 0))
     savefig(f"education_vs_weight_pdp")
-    plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = predict_ice(rf, X, 'height', 'weight')
     plot_ice(ice, 'height', 'weight', ax=ax, yrange=(0, 160))
     savefig(f"height_vs_weight_pdp")
-    plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = predict_catice(rf, X, 'sex', 'weight')
     plot_catice(ice, 'sex', 'weight', cats=df_raw['sex'].unique(), ax=ax, yrange=(0, 5), pdp_marker_width=15)
     savefig(f"sex_vs_weight_pdp")
-    plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = predict_catice(rf, X, 'pregnant', 'weight', cats=df_raw['pregnant'].unique())
     plot_catice(ice, 'pregnant', 'weight', cats=df_raw['pregnant'].unique(), ax=ax, yrange=(-5, 35), pdp_marker_width=15)
     savefig(f"pregnant_vs_weight_pdp")
-    plt.close()
 
 
 def unsup_weight():
@@ -1185,7 +1181,8 @@ def bulldozer():
         axes[row, 0].scatter(X[colname], y, alpha=0.07, s=4)  # , label="observation")
         axes[row, 0].set_ylabel("SalePrice")  # , fontsize=12)
         axes[row, 0].set_xlabel(colname)  # , fontsize=12)
-        plot_stratpd(X, y, colname, 'SalePrice', ax=axes[row,2], nlines=500, yrange=yrange, show_ylabel=False)
+        plot_stratpd(X, y, colname, 'SalePrice', ax=axes[row,2], nlines=500, yrange=yrange, show_ylabel=False,
+                     verbose=True, alpha=.3)
         rf = RandomForestRegressor(n_estimators=10, min_samples_leaf=1, oob_score=True)
         rf.fit(X, y)
         ice = predict_ice(rf, X, colname, 'SalePrice', nlines=500)
@@ -1237,8 +1234,9 @@ def bulldozer():
     axes[2, 0].set_xlabel('ModelID')  # , fontsize=12)
     axes[2, 0].tick_params(axis='x', which='both', bottom=False)
 
-    rf = RandomForestRegressor(n_estimators=10, min_samples_leaf=1)
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
+    print(f"PD/ICE: RF OOB R^2 {rf.oob_score_:.3f}, training R^2 {rf.score(X,y)}")
 
     ice = predict_catice(rf, X, 'ModelID', 'SalePrice', nlines=1000, cats=np.unique(X['ModelID']))
     plot_catice(ice, 'ModelID', targetname='SalePrice', cats=np.unique(df['ModelID']),
@@ -1251,7 +1249,8 @@ def bulldozer():
                     yrange=(0,130000), show_ylabel=False,
                     alpha=0.1,
                     style='scatter',
-                    show_xticks=False)
+                    show_xticks=False,
+                    verbose=True)
 
     savefig("bulldozer")
     plt.tight_layout()
@@ -1396,8 +1395,8 @@ def multi_joint_distr():
 
 if __name__ == '__main__':
     # multi_joint_distr()
-    rent_extra_cols()
-    # bulldozer()
+    # rent_extra_cols()
+    bulldozer()
     # cars()
     # meta_cars()
     # unsup_boston()
