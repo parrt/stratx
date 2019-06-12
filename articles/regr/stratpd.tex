@@ -514,14 +514,14 @@ Train decision tree regressor $T$ on (\xnc{}, $\bf y$)\\
 %		Add $L'$ to piecewise list\\
 		$(L'_x, L'_y)$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
 		$R_{L'}$ = $[min(L'_x), max(L'_x)]$\\
-		\lIf{left$(R_{L'})$ = right$(R_{L'})$}{{\bf continue}}\\
+		\lIf{left$(R_{L'})$ = right$(R_{L'})$}{{\bf continue}}\tcp*[r]{\it Ignore leaves w/o change in $x_c$}
 		Fit linear model to $(L'_x, L'_y)$ giving $\beta_{L'}$\\
 	}
 }
 $uniqx$ = sorted(unique($x_c$))\\
 \For{$i=1$ {\bf to} $|uniqx|-1$}{
 	$R$ = $(uniqx_i, uniqx_{i+1})$\\
-	\ForEach{leaf $L'$ found above}{
+	\ForEach{leaf $L'$ not ignored from above}{
 		$\beta_R = \frac{1}{\Sigma_{L' \in R} |L'|}\Sigma_{L' \in R}|L'|\beta_{L'}$
 	}
 }
@@ -536,25 +536,22 @@ $pd$ = numerically integrate $\beta_R$'s across $uniqx$\\
 \SetAlgorithmName{Algorithm}{List of Algorithms}
 \SetAlgoSkip{}
 \SetInd{.5em}{.5em}
-\TitleOfAlgo{{\em CatStratPD}($X$, $\bf y$, $c$, $refcat$) {\bf returns} dictionary mapping category to effect on $y$}
-Let $D$ be dictionary mapping category to $y$ value\\
+\TitleOfAlgo{{\em CatStratPD}($X$, $\bf y$, $c$, {\it refcat}) {\bf returns} mapping from cat to effect on $y$}
+Let $D$ be dictionary mapping leaf, category to $y$ value\\
+Let $S$ be dictionary mapping leaf to leaf size\\
 Train decision tree regressor $T$ on (\xnc{}, $\bf y$)\\
 \ForEach{leaf $L \in T$}{
 	$(L_x, L_y)$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
-	Let $avg$ be dictionary mapping category to average leaf $y$ value\\
-	cats = unique cats  $\in L_x$\\
-	\ForEach{$cat \in cats$}{
-		$cat_y$ = $L_y[L_x=cat]$\tcp*[r]{\it Group leaf $L_x$ by $cat$, get $y$'s}
-		\lIf{$|cats| < 2$}{{\bf continue}}\\
-		$avg[cat]$ = $mean(cat_y)$\\
-	}
-	\ForEach{unique $cat \in L_x$}{
-%		$avg[cat]$ = $avg[cat] - mean(L_y[refcat])$\tcp*[r]{\it Strip y contribution from \xnc{}}
-		$D_{cat}$ = $D_{cat} + (avg[cat] - avg[refcat])$\tcp*[]{\it Strip y contribution from \xnc{}}
-	}
+	$y_{cat}$ = $L_y[L_x=cat]$\tcp*[r]{\it Group leaf $L_x$ by $cat$, get $y$'s}
+	$\Delta_y[cat] = mean(y_{cat}) - mean(y_{\it refcat})$\tcp*[r]{\it Strip \xnc{}'s y contribution}
+	$S[L]$ = $\begin{cases} |L| &\mbox{if } |{\it unique~cats \in L_x}| > 1 \\ 
+0 & otherwise\end{cases}$\\
+	$D[L,cat] = D[L,cat] + \Delta_y[cat] \times S[L]$\tcp*[r]{\it Weight leaf average for $cat$ by leaf size}
 }
-Let $n_{cat}$ be number of $avg[cat]$ values added to $D_{cat}$\\
-$D_{cat}$ = $D_{cat} / n_{cat}$\tcp*[r]{\it Take weighted average of leaf averages for $cat$}
+%Let $n_{cat}$ be number of $avg[cat]$ values added to $D_{cat}$\\
+$n = \Sigma_{L \in T}S[L]$\tcp*[r]{\it Num observations used to compute averages}
+$D[L,cat] = D[L,cat] / n$\tcp*[r]{\it Get average of leaf averages for $cat$}
+%$ = $\frac{1}{\Sigma_{L \in T}|S[L]|} \Sigma_{i=1}^{|S_{cat}|} D_{cat}$\tcp*[r]{\it Weighted average of leaf averages for $cat$}
 \Return{$D$}
 \end{algorithm}
 
