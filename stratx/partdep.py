@@ -53,7 +53,7 @@ def dtree_leaf_samples(dtree, X:np.ndarray):
     return sample_idxs_in_leaf
 
 
-def piecewise_xc_space(x:np.ndarray, y:np.ndarray, hires_min_samples_leaf:int):
+def piecewise_xc_space(x:np.ndarray, y:np.ndarray, hires_min_samples_leaf:int, colname, verbose):
     start = time.time()
     X = x.reshape(-1,1)
 
@@ -79,7 +79,11 @@ def piecewise_xc_space(x:np.ndarray, y:np.ndarray, hires_min_samples_leaf:int):
                                bootstrap=False)
     rf.fit(X, y)
     leaves = leaf_samples(rf, X)
-    # print(f"{len(leaves)} leaves")
+
+    if verbose:
+        print(f"Piecewise {colname}: {len(leaves)} leaves")
+
+    ignored = 0
     leaf_slopes = []
     leaf_r2 = []
     leaf_xranges = []
@@ -89,8 +93,8 @@ def piecewise_xc_space(x:np.ndarray, y:np.ndarray, hires_min_samples_leaf:int):
         leaf_y = y[samples]
         r = (np.min(leaf_x), np.max(leaf_x))
         if np.isclose(r[0], r[1]):
-            # print(f"ignoring xleft=xright @ {r[0]}")
-            # print(f"Ignoring range {r} from {leaf_x.T} -> {leaf_y}")
+            ignored += 1
+            if verbose: print(f"\tIgnoring range {r} from {leaf_x.T[0:3]}... -> {leaf_y[0:3]}...")
             continue
         lm = LinearRegression()
         lm.fit(leaf_x.reshape(-1, 1), leaf_y)
@@ -98,7 +102,8 @@ def piecewise_xc_space(x:np.ndarray, y:np.ndarray, hires_min_samples_leaf:int):
         r2 = lm.score(leaf_x.reshape(-1, 1), leaf_y)
 
         r2s.append(r2)
-        # print(f"\tHIRES {len(leaf_x)} obs, leaf R^2 {r2:.2f}, R^2*n {r2*len(leaf_x):.2f}, range {allr}")
+        if verbose:
+            print(f"\tPiece {len(leaf_x)} obs, piecewise R^2 {r2:.2f}, R^2*n {r2*len(leaf_x):.2f}")
         if dbg:
             px = np.linspace(r[0], r[1], 20)
             plt.plot(px, lm.predict(px.reshape(-1,1)), lw=.5, c='blue', label=f"R^2 {r2:.2f}")
@@ -109,6 +114,9 @@ def piecewise_xc_space(x:np.ndarray, y:np.ndarray, hires_min_samples_leaf:int):
         # leaf_sizes.append(1 / np.var(leaf_x))
 
     # print(f"\tAvg leaf R^2 {np.mean(r2s):.4f}, avg x len {np.mean(r2xNs)}")
+
+    if verbose:
+        print(f"\tIgnored {ignored} piecewise leaves")
 
     if dbg:
         plt.legend(loc='upper left', borderpad=0, labelspacing=0)
@@ -134,7 +142,7 @@ def piecewise_xc_space(x:np.ndarray, y:np.ndarray, hires_min_samples_leaf:int):
     return leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2
 
 
-def collect_leaf_slopes(rf, X, y, colname, min_samples_leaf_hires):
+def collect_leaf_slopes(rf, X, y, colname, min_samples_leaf_hires, verbose):
     """
     For each leaf of each tree of the random forest rf (trained on all features
     except colname), get the samples then isolate the column of interest X values
@@ -153,7 +161,12 @@ def collect_leaf_slopes(rf, X, y, colname, min_samples_leaf_hires):
     leaf_sizes = []
 
     leaves = leaf_samples(rf, X.drop(colname, axis=1))
-    # print(f"{len(leaves)} leaves in T")
+
+    if verbose:
+        nnodes = rf.estimators_[0].tree_.node_count
+        print(f"Partitioning 'x not {colname}': {nnodes} nodes in (first) tree, "
+              f"{len(rf.estimators_)} trees, {len(leaves)} total leaves")
+
     for samples in leaves:
         one_leaf_samples = X.iloc[samples]
         leaf_x = one_leaf_samples[colname].values
@@ -168,7 +181,8 @@ def collect_leaf_slopes(rf, X, y, colname, min_samples_leaf_hires):
         # print(f"{len(leaf_x)} obs, R^2 y ~ X[{colname}] = {r2:.2f}, in range {r} is {rpercent:.2f}%")
 
         leaf_xranges_, leaf_sizes_, leaf_slopes_, leaf_r2_ = \
-            piecewise_xc_space(leaf_x, leaf_y, hires_min_samples_leaf=min_samples_leaf_hires)
+            piecewise_xc_space(leaf_x, leaf_y, hires_min_samples_leaf=min_samples_leaf_hires,
+                               colname=colname, verbose=verbose)
         leaf_slopes.extend(leaf_slopes_)
         leaf_r2.extend(leaf_r2_)
         leaf_xranges.extend(leaf_xranges_)
@@ -178,7 +192,7 @@ def collect_leaf_slopes(rf, X, y, colname, min_samples_leaf_hires):
     leaf_sizes = np.array(leaf_sizes)
     leaf_slopes = np.array(leaf_slopes)
     stop = time.time()
-    print(f"collect_leaf_slopes {stop - start:.3f}s")
+    if verbose: print(f"collect_leaf_slopes {stop - start:.3f}s")
     return leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2
 
 
@@ -239,7 +253,8 @@ def plot_stratpd(X, y, colname, targetname=None,
                  show_importance=False,
                  impcolor='#fdae61',
                  supervised=True,
-                 alpha=.4
+                 alpha=.4,
+                 verbose=False
                  ):
     # print(f"Unique {colname} = {len(np.unique(X[colname]))}/{len(X)}")
     if supervised:
@@ -253,7 +268,7 @@ def plot_stratpd(X, y, colname, targetname=None,
         """
         Wow. Breiman's trick works in most cases. Falls apart on Boston housing MEDV target vs AGE
         """
-        print("USING UNSUPERVISED MODE")
+        if verbose: print("USING UNSUPERVISED MODE")
         X_synth, y_synth = conjure_twoclass(X)
         rf = RandomForestRegressor(n_estimators=ntrees,
                                    min_samples_leaf=min_samples_leaf_partition,
@@ -266,7 +281,7 @@ def plot_stratpd(X, y, colname, targetname=None,
     # print(f"\nModel wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2 = \
         collect_leaf_slopes(rf, X, y, colname,
-                            min_samples_leaf_hires=min_samples_leaf_piecewise)
+                            min_samples_leaf_hires=min_samples_leaf_piecewise, verbose=verbose)
     slope_at_x = avg_values_at_x(uniq_x, leaf_xranges, leaf_slopes, leaf_sizes)
     r2_at_x = avg_values_at_x(uniq_x, leaf_xranges, leaf_r2, leaf_sizes)
     # Drop any nan slopes; implies we have no reliable data for that range
@@ -313,6 +328,7 @@ def plot_stratpd(X, y, colname, targetname=None,
 
     # print(f"Avg width is {np.mean(widths):.2f} in {len(leaf_sizes)} leaves")
 
+    print(f"Found {len(segments)} lines")
     if nlines is not None:
         idxs = np.random.randint(low=0, high=len(segments), size=nlines)
         segments = np.array(segments)[idxs]
@@ -380,7 +396,7 @@ def do_my_binning(x:np.ndarray, y:np.ndarray, h:float):
 
 
 
-def catwise_leaves(rf, X, y, colname):
+def catwise_leaves(rf, X, y, colname, verbose):
     """
     Return a dataframe with the average y value for each category in each leaf
     normalized by subtracting min avg y value from all categories.
@@ -422,7 +438,7 @@ def catwise_leaves(rf, X, y, colname):
 
     # print(leaf_histos)
     stop = time.time()
-    print(f"catwise_leaves {stop - start:.3f}s")
+    if verbose: print(f"catwise_leaves {stop - start:.3f}s")
     return leaf_histos, leaf_sizes
 
 
@@ -445,7 +461,8 @@ def plot_catstratpd(X, y, colname, targetname,
                     style:('strip','scatter')='strip',
                     show_xlabel=True,
                     show_ylabel=True,
-                    show_xticks=True):
+                    show_xticks=True,
+                    verbose=False):
     if ntrees==1:
         max_features = 1.0
         bootstrap = False
@@ -470,7 +487,7 @@ def plot_catstratpd(X, y, colname, targetname,
     # rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X.drop(colname, axis=1), y)
     # print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
-    leaf_histos, leaf_sizes = catwise_leaves(rf, X, y, colname)
+    leaf_histos, leaf_sizes = catwise_leaves(rf, X, y, colname, verbose=verbose)
 
     # weighted_histos = leaf_histos.mul(leaf_sizes)
     # weighted_sum_per_cat = np.nansum(weighted_histos, axis=1)

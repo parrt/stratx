@@ -289,14 +289,16 @@ def plot_with_dup_col(df, colname):
     y = df['price']
     print(f"shape is {X.shape}")
     uniq_x, curve, r2_at_x = \
-        plot_stratpd(X, y, colname, 'price', ax=axes[1, 0], alpha=.2, show_xlabel=True, show_ylabel=False)
+        plot_stratpd(X, y, colname, 'price', ax=axes[1, 0], alpha=.2, show_xlabel=True, show_ylabel=True,
+                     verbose=True)
     axes[1, 0].set_ylim(-1000,5000)
     axes[1, 0].set_title(f"StratPD")
 
     X = df[features_with_dup]
     y = df['price']
     print(f"shape with dup is {X.shape}")
-    plot_stratpd(X, y, colname, 'price', ax=axes[1, 1], alpha=.2, show_ylabel=False)
+    plot_stratpd(X, y, colname, 'price', ax=axes[1, 1], alpha=.2, show_ylabel=False,
+                 verbose=True)
     axes[1, 1].set_ylim(-1000,5000)
     axes[1, 1].set_title(f"StratPD w/{type} col")
 
@@ -304,7 +306,8 @@ def plot_with_dup_col(df, colname):
         plot_stratpd(X, y, colname, 'price', ax=axes[1, 2], alpha=.2, show_xlabel=True, show_ylabel=False,
                  ntrees=10,
                  max_features=2,
-                 bootstrap=False
+                 bootstrap=False,
+                 verbose=True
                  )
     axes[1, 2].set_ylim(-1000,5000)
     axes[1, 2].set_title(f"StratPD w/{type} col")
@@ -330,14 +333,20 @@ def rent_extra_cols():
     colname = 'bedrooms'
     plot_with_dup_col(df_rent, colname)
     savefig(f"{colname}_vs_price_dup")
-    # plt.tight_layout()
-    # plt.show()
+    plt.tight_layout()
+    plt.show()
 
-    colname = 'bedrooms'
-    plot_with_noise_col(df_rent, colname)
-    savefig(f"{colname}_vs_price_noise")
-    # plt.tight_layout()
-    # plt.show()
+    # colname = 'bedrooms'
+    # plot_with_noise_col(df_rent, colname)
+    # savefig(f"{colname}_vs_price_noise")
+
+    # colname = 'bathrooms'
+    # plot_with_dup_col(df_rent, colname)
+    # savefig(f"{colname}_vs_price_dup")
+    #
+    # colname = 'bathrooms'
+    # plot_with_noise_col(df_rent, colname)
+    # savefig(f"{colname}_vs_price_noise")
 
 
 def rent_ntrees():
