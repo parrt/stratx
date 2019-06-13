@@ -500,25 +500,26 @@ better handle on hyper parameters; summarize what we know now.
 
 \setlength{\algomargin}{5pt}
 \begin{algorithm}[]
+\DontPrintSemicolon
 \label{alg:StratPD}
 \LinesNumbered
 \SetAlgorithmName{Algorithm}{List of Algorithms}
 \SetAlgoSkip{}
 \SetInd{.5em}{.5em}
-\TitleOfAlgo{{\em StratPD}($X$, $\bf y$, $c$, $hires$=30) {\bf returns} collection of $\beta$ coefficients, $pd$}
-Train decision tree regressor $T$ on (\xnc{}, $\bf y$)\\
-%$leaves$ = leaves($T$)\\
-%piecewise = [] \tcp*[r]{List tracking piecewise leaves from $T'$}
-\ForEach{leaf $L \in$ leaves$(T)$}{
-	$(L_x, L_y)$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
-	Train decision tree regressor $T'$ on $(L_x, L_y)$\\
-	\ForEach{leaf $L' \in$ leaves$(T')$}{
-%		Add $L'$ to piecewise list\\
-		$(L'_x, L'_y)$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
-		$R_{L'}$ = $[min(L'_x), max(L'_x)]$\\
-		\lIf{left$(R_{L'})$ = right$(R_{L'})$}{{\bf continue}}\tcp*[r]{\it Ignore leaves w/o change in $x_c$}
-		Fit linear model to $(L'_x, L'_y)$ giving $\beta_{L'}$\\
-	}
+\TitleOfAlgo{{\em StratPD}($X$, $\bf y$, $c$, $\it ntrees=1$, $\it bootstrap=false$, $\it split\_features=all$)}
+\KwOut{collection of $\beta$ coefficients, partial dependence curve}
+Train random forest regressor $\it rf$ on (\xnc{}, $\bf y$) with $\it ntrees$, $\it bootstrap$, $\it split\_features$ \\
+\ForEach{tree $T \in \it rf$}{
+    \ForEach{leaf $L \in T$}{
+    	$(L_x, L_y)$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
+    	Train decision tree regressor $T'$ on $(L_x, L_y)$\\
+    	\ForEach{leaf $L' \in T'$}{
+    		$(L'_x, L'_y)$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
+    		$R_{L'}$ = $[min(L'_x), max(L'_x)]$\\
+    		\lIf{left$(R_{L'})$ = right$(R_{L'})$}{{\bf continue}}\tcp*[r]{\it Ignore leaves w/o change in $x_c$}
+    		Fit linear model to $(L'_x, L'_y)$ giving $\beta_{L'}$\\
+    	}
+    }
 }
 $uniqx$ = sorted(unique($x_c$))\\
 \For{$i=1$ {\bf to} $|uniqx|-1$}{
@@ -533,19 +534,22 @@ $pd$ = numerically integrate $\beta_R$'s across $uniqx$\\
 
 \setlength{\algomargin}{5pt}
 \begin{algorithm}[]
+\DontPrintSemicolon
 \label{alg:CatStratPD}
 \LinesNumbered
 \SetAlgorithmName{Algorithm}{List of Algorithms}
 \SetAlgoSkip{}
 \SetInd{.5em}{.5em}
-\TitleOfAlgo{{\em CatStratPD}($X$, $\bf y$, $c$, {\it refcat}) {\bf returns} mapping from cat to effect on $y$}
+\TitleOfAlgo{{\em CatStratPD}($X$, $\bf y$, $c$, $\it ntrees=1$, $\it bootstrap=false$, $\it split\_features=all$)}
+\KwOut{Mapping from cat to effect on $y$}
 Let $D$ be dictionary mapping category to weighted $\Delta_y$ value\\
 Let $S$ be dictionary mapping leaf to leaf size\\
-Train decision tree regressor $T$ on (\xnc{}, $\bf y$)\\
-\ForEach{leaf $L \in T$}{
+Train random forest regressor $\it rf$ on (\xnc{}, $\bf y$) with $\it ntrees$, $\it bootstrap$, $\it split\_features$ \\
+\ForEach{tree $T \in \it rf$}{
+    \ForEach{leaf $L \in T$}{
 	$(L_x, L_y)$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
 	$S[L]$ = $\begin{cases} |L| &\mbox{if } |{\it unique~cats \in L_x}| > 1 \\ 
-0 & otherwise\end{cases}$\\
+0 & otherwise\end{cases}$\tcp*[r]{\it Assume $L$ is unique id across trees}
 	\ForEach{unique $cat \in L_x$}{
 		$y_{cat}$ = $L_y[L_x=cat]$\tcp*[r]{\it Group leaf $L_x$ by $cat$, get $y$'s}
 		$\overline{y}_{cat}$ = $mean(y_{cat})$\tcp*[]{\it $\overline{\bf y}$ is list of cat means}
@@ -554,6 +558,7 @@ Train decision tree regressor $T$ on (\xnc{}, $\bf y$)\\
 		$\Delta y_{cat} = \overline{y}_{cat} - {min}(\overline{\bf y})$\tcp*[r]{\it Strip \xnc{}'s y contribution}
 		$D[cat] = D[cat] + \Delta y_{cat} \times S[L]$\tcp*[r]{\it Accumulate weighted $\Delta_y$'s for each $cat$}
 	}
+   }
 }
 $n = \Sigma_{L \in T}S[L]$\tcp*[r]{\it Num observations used to compute averages}
 $D[cat] = \frac{1}{n} D[cat]$\tcp*[r]{\it Get average of leaf averages for $cat$}

@@ -485,8 +485,8 @@ def plot_catstratpd(X, y, colname, targetname,
         X_synth, y_synth = conjure_twoclass(X)
         rf = RandomForestRegressor(n_estimators=ntrees,
                                    min_samples_leaf=min_samples_leaf_partition,
-                                   bootstrap = False,
-                                   max_features = 1.0,
+                                   bootstrap = bootstrap,
+                                   max_features = max_features,
                                    oob_score=False)
         rf.fit(X_synth.drop(colname,axis=1), y_synth)
 
