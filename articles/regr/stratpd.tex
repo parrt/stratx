@@ -553,7 +553,7 @@ $pd$ = numerically integrate $\beta_R$'s across $uniqx$\\
 {\it ntrees=1}, {\it bootstrap=false}, {\it split\_features=all}, {\it min\_samples\_leaf\_partition}\\
 \end{array}$
 }
-\KwOut{Mapping from cat to effect on $y$}
+\KwOut{Mapping from category to effect on $y$}
 Let $D$ be dictionary mapping category to weighted $\Delta_y$ value\\
 Let $S$ be dictionary mapping leaf to leaf size\\
 Train random forest regressor $\it rf$ on (\xnc{}, $\bf y$) with hyper-parameters:\\
@@ -573,9 +573,9 @@ Train random forest regressor $\it rf$ on (\xnc{}, $\bf y$) with hyper-parameter
 	}
    }
 }
-$n = \Sigma_{L \in T}S[L]$\tcp*[r]{\it Num observations used to compute averages}
+$n = \Sigma_{T \in {\it rf}} \Sigma_{L \in T}S[L]$\tcp*[r]{\it Num observations used to compute averages}
 $D[cat] = \frac{1}{n} D[cat]$\tcp*[r]{\it Get average of leaf averages for $cat$}
-$D[cat] = D[cat] - \underset{cat}{min}(D[cat])$\tcp*[r]{\it Cat with lowest $\overline{y}_{cat}$ is now 0}
+$D[cat] = D[cat] - min(D)$\tcp*[r]{\it Normalize lowest $D[cat]$ to 0}
 \Return{$D$}
 \end{algorithm}
 
