@@ -1037,6 +1037,8 @@ def bigX():
 
 
 def unsup_boston():
+    # np.random.seed(42)
+
     print(f"----------- {inspect.stack()[0][3]} -----------")
     boston = load_boston()
     print(len(boston.data))
@@ -1046,7 +1048,7 @@ def unsup_boston():
     X = df.drop('MEDV', axis=1)
     y = df['MEDV']
 
-    fig, axes = plt.subplots(1, 4, figsize=(8, 2))
+    fig, axes = plt.subplots(1, 4, figsize=(8.4, 2))
 
     axes[0].scatter(df['AGE'], y, s=5, alpha=.7)
     axes[0].set_ylabel('MEDV')
@@ -1058,9 +1060,16 @@ def unsup_boston():
     axes[3].set_title("PD/ICE")
 
     plot_stratpd(X, y, 'AGE', 'MEDV', ax=axes[1], yrange=(-20, 20),
-                 supervised=False, show_ylabel=False)
+                 ntrees=20,
+                 bootstrap=True,
+                 supervised=False, show_ylabel=False,
+                 verbose=True)
     plot_stratpd(X, y, 'AGE', 'MEDV', ax=axes[2], yrange=(-20, 20),
+                 ntrees=1,
                  supervised=True, show_ylabel=False)
+
+    axes[1].text(5, 15, f"20 trees, bootstrap")
+    axes[2].text(5, 15, f"1 tree, no bootstrap")
 
     rf = RandomForestRegressor(n_estimators=100, oob_score=True)
     rf.fit(X, y)
@@ -1071,10 +1080,10 @@ def unsup_boston():
 
     # axes[0,1].get_yaxis().set_visible(False)
     # axes[1,1].get_yaxis().set_visible(False)
-
     
     savefig(f"boston_unsup")
-    plt.close()
+    # plt.tight_layout()
+    # plt.show()
 
 
 def lm_plot(X, y, colname, targetname,ax=None):
@@ -1396,10 +1405,10 @@ def multi_joint_distr():
 if __name__ == '__main__':
     # multi_joint_distr()
     # rent_extra_cols()
-    bulldozer()
+    # bulldozer()
     # cars()
     # meta_cars()
-    # unsup_boston()
+    unsup_boston()
     # rent()
     # rent_int()
     # rent_ntrees()
