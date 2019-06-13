@@ -506,13 +506,20 @@ better handle on hyper parameters; summarize what we know now.
 \SetAlgorithmName{Algorithm}{List of Algorithms}
 \SetAlgoSkip{}
 \SetInd{.5em}{.5em}
-\TitleOfAlgo{{\em StratPD}($X$, $\bf y$, $c$, $\it ntrees=1$, $\it bootstrap=false$, $\it split\_features=all$)}
+\TitleOfAlgo{{\em StratPD}}
+\KwIn{$\begin{array}[t]{l}
+{\bf X}, {\bf y}, c,\\
+{\it ntrees=1}, {\it bootstrap=false}, {\it split\_features=all},\\
+{\it min\_samples\_leaf\_partition}, {\it min\_samples\_leaf\_piecewise}\\
+\end{array}$
+}
 \KwOut{collection of $\beta$ coefficients, partial dependence curve}
-Train random forest regressor $\it rf$ on (\xnc{}, $\bf y$) with $\it ntrees$, $\it bootstrap$, $\it split\_features$ \\
+Train random forest regressor $\it rf$ on (\xnc{}, $\bf y$) with hyper-parameters:\\
+~~~~~$\it ntrees$, $\it bootstrap$, $\it split\_features$, ${\it min\_samples\_leaf\_partition}$ \\
 \ForEach{tree $T \in \it rf$}{
     \ForEach{leaf $L \in T$}{
     	$(L_x, L_y)$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
-    	Train decision tree regressor $T'$ on $(L_x, L_y)$\\
+    	Train decision tree regressor $T'$ on $(L_x, L_y)$ with ${\it min\_samples\_leaf\_piecewise}$ \\
     	\ForEach{leaf $L' \in T'$}{
     		$(L'_x, L'_y)$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
     		$R_{L'}$ = $[min(L'_x), max(L'_x)]$\\
@@ -540,11 +547,17 @@ $pd$ = numerically integrate $\beta_R$'s across $uniqx$\\
 \SetAlgorithmName{Algorithm}{List of Algorithms}
 \SetAlgoSkip{}
 \SetInd{.5em}{.5em}
-\TitleOfAlgo{{\em CatStratPD}($X$, $\bf y$, $c$, $\it ntrees=1$, $\it bootstrap=false$, $\it split\_features=all$)}
+\TitleOfAlgo{{\em CatStratPD}}
+\KwIn{$\begin{array}[t]{l}
+{\bf X}, {\bf y}, c,\\
+{\it ntrees=1}, {\it bootstrap=false}, {\it split\_features=all}, {\it min\_samples\_leaf\_partition}\\
+\end{array}$
+}
 \KwOut{Mapping from cat to effect on $y$}
 Let $D$ be dictionary mapping category to weighted $\Delta_y$ value\\
 Let $S$ be dictionary mapping leaf to leaf size\\
-Train random forest regressor $\it rf$ on (\xnc{}, $\bf y$) with $\it ntrees$, $\it bootstrap$, $\it split\_features$ \\
+Train random forest regressor $\it rf$ on (\xnc{}, $\bf y$) with hyper-parameters:\\
+~~~~~$\it ntrees$, $\it bootstrap$, $\it split\_features$, ${\it min\_samples\_leaf\_partition}$ \\
 \ForEach{tree $T \in \it rf$}{
     \ForEach{leaf $L \in T$}{
 	$(L_x, L_y)$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
