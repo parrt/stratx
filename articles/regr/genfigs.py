@@ -51,8 +51,8 @@ def fix_missing_num(df, colname):
     df[colname+'_na'] = pd.isnull(df[colname])
     df[colname].fillna(df[colname].median(), inplace=True)
 
-def savefig(filename):
-    plt.tight_layout(pad=0, w_pad=0, h_pad=0)
+def savefig(filename, pad=0):
+    plt.tight_layout(pad=pad, w_pad=0, h_pad=0)
     plt.savefig(f"images/{filename}.pdf")
     plt.savefig(f"images/{filename}.png", dpi=300)
     plt.close()
@@ -934,14 +934,17 @@ def meta_additivity():
                          show_ylabel=False,
                          show_xlabel=False)
             if col==0:
-                axes[row,col].set_ylabel(f'y,  the$\epsilon \sim N(0,{sd:.1f})$')
+                axes[row,col].set_ylabel(f'$y, \epsilon \sim N(0,{sd:.2f})$')
 
-            axes[row,col].set_title("Leaf sizes: $x_{\\overline{c}}$="+f"{s}, $x_c$={min_samples_leaf_piecewise}",
-                                  fontsize=9)
+            if row==0:
+                axes[row,col].set_title("Min $x_{\\overline{c}}$ leaf "+f"{s}",
+                                      fontsize=12)
             col += 1
         row += 1
 
     lastrow = len(noises)
+
+    axes[lastrow, 0].set_ylabel(f'$y$ vs $x_c$ partition')
 
     # row = 0
     # for sd in noises:
@@ -961,14 +964,11 @@ def meta_additivity():
                         target_name='y',
                         fontsize=10, show={'splits'},
                         split_linewidth=.5,
-                        markersize=10)
+                        markersize=5)
         axes[lastrow, col].set_xlabel("x1")
         col += 1
 
-    savefig(f"meta_additivity_noise")
-    plt.tight_layout()
-    # plt.show()
-    plt.close()
+    savefig(f"meta_additivity_noise", pad=.85)
 
 
 def bigX_data(n):
@@ -1408,7 +1408,7 @@ if __name__ == '__main__':
     # bulldozer()
     # cars()
     # meta_cars()
-    unsup_boston()
+    # unsup_boston()
     # rent()
     # rent_int()
     # rent_ntrees()
@@ -1420,6 +1420,6 @@ if __name__ == '__main__':
     # meta_weather()
     # weight_ntrees()
     # weather()
-    # meta_additivity()
+    meta_additivity()
     # additivity()
     # bigX()

@@ -732,14 +732,40 @@ def meta_additivity():
     plt.show()
     plt.close()
 
+def foo():
+    df_yr1 = toy_weather_data()
+    df_yr1['year']=1980
+    df_yr2 = toy_weather_data()
+    df_yr2['year']=1981
+    df_yr3 = toy_weather_data()
+    df_yr3['year']=1982
+    df_raw = pd.concat([df_yr1, df_yr2, df_yr3], axis=0)
+    df = df_raw.copy()
+    catencoders = df_string_to_cat(df)
+    print(catencoders)
+    df_cat_to_catcode(df)
+    X = df.drop('temperature', axis=1)
+    y = df['temperature']
+    cats = np.unique(df['state'])
+
+    fig, ax = plt.subplots(1, 1)
+    rtreeviz_univar(ax,
+                    X['state'], y,
+                    feature_name='state',
+                    target_name='y',
+                    fontsize=10, show={'splits'})
+
+    plt.show()
+
 if __name__ == '__main__':
-    # meta_additivity()
+    # foo()
+    meta_additivity()
     # imp_cars()
-    multi_joint_distr()
+    # multi_joint_distr()
     # rent()
     # meta_rent()
     # weight()
     # dep_weight()
     # dep_cars()
     # meta_weight()
-    weather()
+    # weather()

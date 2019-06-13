@@ -315,35 +315,53 @@ The Shapley strategy, introduced in \cite{lundberg2016unexpected}, is a permutat
  
 \section{Experimental Results}\label{sec:applications}
 
-We begin by reproducing graphs from \cite{ICE} big X from ICE, additivity from PD/ICE
+all plots are done using {\tt stratx} library, including the PD/ICE plots.  PD/ICE use random forests with 100 trees and minimum samples per leaf of 1. \todo{James: can you check the ICE paper when they describe that the interactions of $x_3$ are just around 0?  From the equation they are clearly $\ge 0$.}
 
-bulldozer  just features 'ModelID', 'YearMade', 'MachineHoursCurrentMeter'; speculate that there is codependents between model and year made and machine hours. one would expect a log law for the model ID as some are much more expensive than the others. we would also expect a log law for the year made. not sure why ice is getting such a high value for machine hours.  note that machine hours of zero is probably missing or don't want to say so we deleted; less than 1950 deleted also.  sample of 10,000. endogeneity makes look more like marginal plot? training on 3, partitioning on 2 vars only.
+We begin by reproducing graphs from \cite{ICE} big X from ICE, additivity from PD/ICE. $y = 0.2x_1 - 5x_2 + 10x_2\mathbf{1}_{x_3 \geq 0} + \epsilon$, $x_1, x_2, x_3 \in U(-1,1)$, Sample size 1000.  they used stochastic gradient boosting model (SGB)   for additivity, they used a general additive model with $y = x_1^2 + x_2 + \epsilon$ with $x_1, x_2 \sim U(-1,1)$, $\epsilon \sim N(0,1)$.
 
+everyone was okay but codependent features cause problems as we saw in \figref{fig:height_vs_weight}; here's another; show education versus weight \figref{fig:education_vs_weight} The data set has an equal number of males and females with $x_{pregnant} \sim U(0,1)$ if female, 65 + $U(-4.5,5)$ if female, and $x_{height} = 68 + U(-7,8)$ if male. 
+
+\[
+weight = 120 + 10(x_{height} - min(x_{height})) + 30x_{pregnant} - 1.2x_{education}
+\]
+
+ As another example, compare the PD/ICE (c) and \spd{} (d) plots in \figref{fig:education_vs_weight} showing number of years of education versus weight using the same data set. Weight is related to education by slope -1.5 so a perfect partial dependence graph would show a drop of 12 pounds over 10 years of education.   The PD/ICE plot captures only about half of that relationship, whereas, the \spd{} plot gets much closer to the true education-weight relationship. Female observations have at least 12 years of education, versus 10 for males, so $x_{education}$ and $x_{sex}$ are codependent, though, there is no interaction term. The fact that women are shorter on average biases the education-weight PD/ICE plot because the baseline weight is lower from which the education contribution is  subtracted.
+
+let's look at a toy data set: cars. When there is little codependence between features, the PD and ICE plots represent the partial dependencies well, as is the case with the well-known mtcars data set from \cite{mtcars}, shown in the second column of \figref{fig:cars}.  The first column represents the traditional marginal plots of horsepower and weight to mpg (miles per gallon). The third column represents the \spd{} plots. The orange line in each row represents the regression coefficient of the associated feature (with $y$-intercept adjusted so the line coincides well with the ICE and \spd{} plot slopes).  While both approaches yield useful graphs, the \spd{} plots are smoother and visually appear to be more linear, giving a better fits to the slope lines.
+
+\subsection{The effect of model choice on PD/ICE plots}
+
+then show more codependent features with four variable Gaussian. then show the education versus weight codependence.  mostly showing different models give vastly different answers here.
+
+\subsection{Duplicated columns require random forests}\label{sec:dup}
+
+when codependence breaches pathological proportions: duplicate column. need multiple trees; the reason that the ice plot is lowered is due to the data, which has very few data points in the high range of bedrooms. The average is maybe 1.2, so for roughly half the trees, the prediction will be for 1.2 bedrooms no matter what the duplicated bedroom column says.  This problem occurs for strongly predictive features in RF. Linear model couldn't handle duplicate column. \spd{} must use randomness to overcome duplicated columns, but bootstrapping is not important and in fact a negative as we discussed.
+
+the reason that the ice plot is lowered is due to the data, which has very few data points in the high range of bedrooms. The average is maybe 1.2, so for roughly half the trees, the prediction will be for 1.2 bedrooms no matter what the duplicated bedroom column says.  This problem occurs for strongly predictive features in RF. Linear model couldn't handle duplicate column. \spd{} must use randomness to overcome duplicated columns, but bootstrapping is not important and in fact a negative as we discussed. 
+
+\subsection{Compensating for noisy features}
+
+Changing hyper parameters
+show how noise /  hyper parameters affect results.
 
 effect of noise columns (more data? change hyper parameters?), effect of hyper parameter changes
                  {\tt min\_samples\_leaf\_partition}=10,
                  {\tt min\_samples\_leaf\_piecewise}=.20,
 
-effect of duplicated columns (need trees with less than max features)
-	ntrees, max features, bootstrap
+adding a noise column doesn't affect anything because of random forests partitioning; Try rent again with noise instead of a duplication column. A single column of noise scaled by 50 dollars does not affect the ice plot (using RF) or the \spd{} plot, as expected.
 
-pathological case; sinewave
+\subsection{\spd{} and \cspd{} applied to real data}
 
-integer variables; currently the category stuff is messed up so the bathrooms don't look right; it should start at zero not one.
+aside from the New York City apartment rent data, let's look at another real data set. now on to a real data set with over 400,000 records: bulldozer
 
-cars: show smoother and fits better
+bulldozer  just features 'ModelID', 'YearMade', 'MachineHoursCurrentMeter'; speculate that there is codependents between model and year made and machine hours. one would expect a log law for the model ID as some are much more expensive than the others. we would also expect a log law for the year made. not sure why ice is getting such a high value for machine hours.  note that machine hours of zero is probably missing or don't want to say so we deleted; less than 1950 deleted also.  sample of 10,000. endogeneity makes look more like marginal plot? training on 3, partitioning on 2 vars only.
 
---------------------
+\subsection{Pathological \xnc{} and $x_c$ partitioning issues}
 
-Q: how does noisy columns affect ability to identify data features? does adding more data help?
+there are some pathological cases: sinusoidal day of year; There is a pathological case to consider where training yields a decision tree with very large leaves, with perhaps hundreds or thousands of observations.  This can happen when \xnc{} contains a single categorical variable or when the only strongly-predictive variable in \xnc{} is categorical.  The weather data set is a case in point. Choosing $x_c$=$x_{dayofyear}$, leaves \xnc{}=\{$x_{state}$,$x_{year}$\} and $x_{state}$ accounts for most of the variation in target variable temperature.  \figref{fig:dayofyear_vs_temp}(a) shows the marginal plot of $x_{state}$ versus temperature. A decision tree, $T$, splitting on just state, would group all 365 daily temperature observations for a single state into just one leaf. (The marginal plot is showing the complete sine waves but from the side, edge on.)   PD and ICE plots also identify the noisy sine waves, as shown in \figref{fig:dayofyear_vs_temp}(b). \todo{uses random forest with how many trees for pd/ice?} The \spd{} plot in \figref{fig:dayofyear_vs_temp}(c) clearly shows the sinusoidal temperature fluctuations over the year. The PD/ICE plot is not smooth because it relies on predictions from a model trained on noisy data, whereas the \spd{} plot is averaging slopes that are themselves smoothing agents.
 
-Q: how does adding a noise column affect...?
 
-Q: how does duplicating a column affect the ability to identify features? Does it depend on the data set and which feature?
-
-Q: what are the hyper parameters and what advice do we have for setting them?
-
-Note: if integer x then sometimes all y values fall directly on that x and no deriv can be computed.  must crank up number of samples and hires leaf size? i'm seeing num bedrooms in leaf as 0,1,2 but only get one piecewise line due to partitioning (all values are for single num bed value so ignored). sometimes even no piecewise lines if min\_samples\_leaf\_hires is low like 0.1
+int values being ignored during piecewise due to partitioning granularity. Note: if integer x then sometimes all y values fall directly on that x and no deriv can be computed.  must crank up number of samples and hires leaf size? i'm seeing num bedrooms in leaf as 0,1,2 but only get one piecewise line due to partitioning (all values are for single num bed value so ignored). sometimes even no piecewise lines if min\_samples\_leaf\_hires is low like 0.1
 
 \begin{figure}[htbp]
 \begin{center}
@@ -371,7 +389,6 @@ Note: if integer x then sometimes all y values fall directly on that x and no de
 \end{center}
 \end{figure}
 
-\subsection{Correlated, dup'd}\label{sec:dup}
 
 \begin{figure}[htbp]
 \begin{center}
@@ -384,7 +401,7 @@ Note: if integer x then sometimes all y values fall directly on that x and no de
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.7]{images/meta_additivity_noise.png}
-\caption{effect of noise}
+\caption{effect of noise $y = x_1^2 + x_2 + \epsilon$, min leaf size for $x_c=0.3$}
 \label{fig:meta_noise}
 \end{center}
 \end{figure}
@@ -423,7 +440,6 @@ Note: if integer x then sometimes all y values fall directly on that x and no de
 \end{center}
 \end{figure}
 
-
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.7]{images/rent_intcat.png}
@@ -432,52 +448,6 @@ Note: if integer x then sometimes all y values fall directly on that x and no de
 \end{center}
 \end{figure}
 
-
-\subsection{Approximating partial derivatives for large regions}\label{sec:patho}
-
-There is a pathological case to consider where training yields a decision tree with very large leaves, with perhaps hundreds or thousands of observations.  This can happen when \xnc{} contains a single categorical variable or when the only strongly-predictive variable in \xnc{} is categorical.  Training a single linear model through hundreds of $(Lx, Ly)$ observations is unlikely to capture the relationship.  The weather data set is a case in point. Choosing $x_c$=$x_{dayofyear}$, leaves \xnc{}=\{$x_{state}$,$x_{year}$\} and $x_{state}$ accounts for most of the variation in target variable temperature.  \figref{fig:dayofyear_vs_temp}(a) shows the marginal plot of $x_{state}$ versus temperature. A decision tree, $T$, splitting on just state, would group all 365 daily temperature observations for a single state into just one leaf. (The marginal plot is showing the complete sine waves but from the side, edge on.)  The \spd{} algorithm described so far would likely create just four linear models, one per state, and would fail to capture the sine waves. PD and ICE plots, on the other hand, identify the noisy sine waves, as shown in \figref{fig:dayofyear_vs_temp}(b). \todo{uses random forest with how many trees for pd/ice?}
-
-To handle the special case where partitioning feature space \xnc{} yields a leaf, $L \in T$, with too many $x_c$ observations, \spd{} trains another decision tree, $T'$, to partition $L$'s $x_c$ space in more detail. In the worst case, every region of \xnc{} identified by $T$ is too large and \spd{} must create a new decision tree per $L \in T$. \algref{alg:StratPD} (lines 6-9) engages this mechanism when $|L|$ is greater than a threshold (default is 30 observations). The \spd{} plot in \figref{fig:dayofyear_vs_temp}(c) clearly shows the sinusoidal temperature fluctuations over the year. The PD/ICE plot is not smooth because it relies on predictions from a model trained on noisy data, whereas the \spd{} plot is averaging slopes that are themselves smoothing agents.
-
-Without this special case mechanism, the \spd{} plot would have to approximate an entire sine wave with a single line.  Unfortunately, we had to manually choose a suitable minimum leaf size for the nested leaf partitioning, $T'$, to reveal a proper sine wave.  We recommend trying $T'$ multiple minimum leaf sizes for \spd{} plots when \xnc{} has categorical variables and $p$ is small. (The Python implementation allows programmers to set the minimum leaf size for both the \xnc{} partitioning with $T$ and second stage partitioning with $T'$.)
-
-
-As another example, compare the PD/ICE (c) and \spd{} (d) plots in \figref{fig:education_vs_weight} showing number of years of education versus weight using the same data set. Weight is related to education by slope -1.2 so a perfect partial dependence graph would show a drop of 12 pounds over 10 years of education.   The PD/ICE plot captures only about half of that relationship, whereas, the \spd{} plot gets much closer to the true education-weight relationship. Female observations have at least 12 years of education, versus 10 for males, so $x_{education}$ and $x_{sex}$ are codependent, though, there is no interaction term. The fact that women are shorter on average biases the education-weight PD/ICE plot because the baseline weight is lower from which the education contribution is  subtracted.
-
-
-When there is little codependence between features, the PD and ICE plots represent the partial dependencies well, as is the case with the well-known mtcars data set from \cite{mtcars}, shown in the second column of \figref{fig:cars}.  The first column represents the traditional marginal plots of horsepower and weight to mpg (miles per gallon). The third column represents the \spd{} plots. The orange line in each row represents the regression coefficient of the associated feature (with $y$-intercept adjusted so the line coincides well with the ICE and \spd{} plot slopes).  While both approaches yield useful graphs, the \spd{} plots are smoother and visually appear to be more linear, giving a better fits to the slope lines.
-
-noisy $\sigma^2 = 1.0$ additivity. adding bootstrap trees had no effect on $x_1^2$.  to defeat super noisy stuff we have to increase the number of samples per leaf for $T$ and $T'$; min\_samples\_leaf=30, min\_samples\_leaf\_hires=.4 seems pretty good.  leaving min\_r2 as .5 is fine.  The .4 seems to be a big deal.   adding trees with bootstrapping definitely does not seem to affect anything.  For $x_2$, however, reducing r2 threshold to .1 helps a lot capture slope of two because the linear model is a good approximation to the linear relationship. Leaving r2 at .5 gets a slope of one instead of two. min\_samples\_leaf\_hires doesn't seem important for $x_2$ once we reduce r2 threshold. we also don't have to increase the minimum samples per leaf of T. just the r2 thing makes it work well. the biggest thing is reduce the amount of noise. what is effect or more data but still noisy??? going from 1000 to 2 to 3 to 4000 has no effect; still can't see $x_1^2$ with  default parameters.
-
-similarly, dayofyear vs temperature sine wave does a little better with min\_samples\_leaf=30 due to noise
-
-dup'd column. max curve 2657, max curve with dup 1791 with dup'd bedrooms col.  If i do 20 trees, auto max features, bootstrapping, i get: max curve 2657, max curve with dup 2161. 100 trees: max curve 2657, max curve with dup 2245. ICE for comparison: max ICE curve 2600, max curve with dup 1136. it seems to get hit more! Wow. max\_features=2 and we return to normal with 10 trees: max curve 2657, max curve with dup 2910. Wow. even 2 trees works: max curve 2657, max curve with dup 3039. Turn off bootstrap (2 trees, max feat 2): max curve 2657, max curve with dup 2595. 10 trees, 2 features: max curve 2657, max curve with dup 2623. hooray!  the reason that the ice plot is lowered is due to the data, which has very few data points in the high range of bedrooms. The average is maybe 1.2, so for roughly half the trees, the prediction will be for 1.2 bedrooms no matter what the duplicated bedroom column says.  This problem occurs for strongly predictive features in RF. Linear model couldn't handle duplicate column. \spd{} must use randomness to overcome duplicated columns, but bootstrapping is not important and in fact a negative as we discussed.   tried again with a single max feature and it seems overestimate now:
-
-features = ['bedrooms', 'bathrooms', 'latitude', 'longitude']
-max curve 2657, max curve with dup 3509 (10 trees, 1 features, yes bootstrap)
-max curve 2657, max curve with dup 3277 (10 trees, 1 features, no bootstrap)
-max curve 2657, max curve with dup 2910 (10 trees, 2 features, yes bootstrap)
-
-do the same thing again for bathrooms.
-max ICE curve 3257, max curve with dup 1291
-max curve 2640, max curve with dup 242 (1 tree)
-max curve 2640, max curve with dup 775 (10 trees, 2 features, no bootstrap) more trees doesn't help
-max curve 2640, max curve with dup 2220 (10 trees, 1 features, no bootstrap)
-max curve 2640, max curve with dup 462 (10 trees, 3 features, no bootstrap)
-max curve 2640, max curve with dup 1020 (10 trees, 3 features, yes bootstrap)
-max curve 2640, max curve with dup 1142 (10 trees, 2 features, yes bootstrap)
-max curve 2640, max curve with dup 2412 (10 trees, 1 features, yes bootstrap)
-max curve 2640, max curve with dup 2178 (20 trees, 1 features, yes bootstrap)
-
-Try rent again with noise instead of a duplication column. A single column of noise scaled by 50 dollars does not affect the ice plot (using RF) or the \spd{} plot, as expected.
-
-The data set has an equal number of males and females with $x_{pregnant} \sim U(0,1)$ if female, 65 + $U(-4.5,5)$ if female, and $x_{height} = 68 + U(-7,8)$ if male. 
-
-\[
-weight = 120 + 10(x_{height} - min(x_{height})) + 30x_{pregnant} - 1.2x_{education}
-\]
-
-$y = 0.2x_1 - 5x_2 + 10x_2\mathbf{1}_{x_3 \geq 0} + \epsilon$, $x_1, x_2, x_3 \in U(-1,1)$, Sample size 1000
 
 \section{Discussion and Future Work}
 
@@ -509,13 +479,13 @@ better handle on hyper parameters; summarize what we know now.
 \TitleOfAlgo{{\em StratPD}}
 \KwIn{$\begin{array}[t]{l}
 {\bf X}, {\bf y}, c,\\
-{\it ntrees=1}, {\it bootstrap=false}, {\it split\_features=all},\\
+{\it ntrees=1}, {\it bootstrap=false}, {\it num\_split\_features=all},\\
 {\it min\_samples\_leaf\_partition}, {\it min\_samples\_leaf\_piecewise}\\
 \end{array}$
 }
 \KwOut{collection of $\beta$ coefficients, partial dependence curve}
 Train random forest regressor $\it rf$ on (\xnc{}, $\bf y$) with hyper-parameters:\\
-~~~~~$\it ntrees$, $\it bootstrap$, $\it split\_features$, ${\it min\_samples\_leaf\_partition}$ \\
+~~~~~$\it ntrees$, $\it bootstrap$, $\it num\_split\_features$, ${\it min\_samples\_leaf\_partition}$ \\
 \ForEach{tree $T \in \it rf$}{
     \ForEach{leaf $L \in T$}{
     	$(L_x, L_y)$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
