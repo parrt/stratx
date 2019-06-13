@@ -193,7 +193,7 @@ Partial dependence through stratification also works for data sets with categori
 
 \subsection{CatStratPD for categorical variables}
 
-The stratification approach can also capture how a categorical variable $x_c$ affects $y$, instead of just a single category at a time (if one were forced to dummy-encode $x_c$). As with \spd{}, the \cspd{} algorithm stratifies $\bf X$ into groups of similar \xnc{} features by training a decision tree regressor on $({\bf X}, {\bf y})$, yielding a collection of leaves. But, because categorical variables can be unordered nominal variables, the notion of $y$ slope is not meaningful between two categories. Instead of partitioning the $x_c$ space in each leaf $L$, \cspd{} groups leaf observations $(L_x, L_y)$ by the categories in $L_x$ and computes the average $L_y$ value per category.  Subtracting the mean of $L_y$ for a reference category from all category averages erases the $y$-contributions of \xnc{}, leaving a relative increase or decrease in $y$  for each category. Then, to get the overall contribution of $x_c$ to $y$ for category $cat$, \cspd{} averages the leaf contributions for $cat$ from all $L$ weighted by $|L|$. See Algorithm \ref{alg:CatStratPD}.
+The stratification approach can also capture how a categorical variable $x_c$ affects $y$, instead of just a single category at a time (if one were forced to dummy-encode $x_c$). As with \spd{}, the \cspd{} algorithm stratifies $\bf X$ into groups of similar \xnc{} features by training a decision tree regressor on $({\bf X}, {\bf y})$, yielding a collection of leaves. But, because categorical variables can be unordered nominal variables, the notion of $y$ slope is not meaningful between two categories. Instead of partitioning the $x_c$ space in each leaf $L$, \cspd{} groups leaf observations $(L_x, L_y)$ by the categories in $L_x$ and computes the average $L_y$ value per category.  To erase the $y$-contributions of \xnc{}, \cspd{} subtracts the minimum of the $L_y$ means from all category averages, leaving a relative increase or decrease in $y$  for each category. Then, to get the overall contribution of $x_c$ to $y$ for category $cat$, \cspd{} averages the leaf contributions for $cat$ from all $L$ weighted by $|L|$. See Algorithm \ref{alg:CatStratPD}.
 
 \figref{fig:state_vs_temp}(b) illustrates \cspd{} operating on a categorical variable, $x_{state}$, in a synthetic weather data set with data from four states over three years. Temperature data varies in sinusoidal fashion over the year with $N(-5,5)$ noise and different baseline temperatures per state, as the marginal plot in \figref{fig:state_vs_temp}(a) shows. To get the partial dependence of temperature on $x_{state}$, \spd{} stratifies by $x_{dayofyear}$ and $x_{year}$ then groups these similar time buckets by $x_{state}$ and computes the average temperature; each blue dot represents a leaf average. The overall temperature estimate per state is the average of those leaf averages, represented by a solid black dash. We use a strip plot to exhibit the variation and density of $y$ values per category. The \cspd{} plot accurately identifies the baseline temperature per state, as does the PD/ICE plot in \figref{fig:state_vs_temp}(c).
 
@@ -497,7 +497,7 @@ better handle on hyper parameters; summarize what we know now.
 \section{Algorithms}
 
 \setlength{\algomargin}{5pt}
-\begin{algorithm}[H]
+\begin{algorithm}[]
 \label{alg:StratPD}
 \LinesNumbered
 \SetAlgorithmName{Algorithm}{List of Algorithms}
@@ -530,31 +530,36 @@ $pd$ = numerically integrate $\beta_R$'s across $uniqx$\\
 \end{algorithm}
 
 \setlength{\algomargin}{5pt}
-\begin{algorithm}[H]
+\begin{algorithm}[]
 \label{alg:CatStratPD}
 \LinesNumbered
 \SetAlgorithmName{Algorithm}{List of Algorithms}
 \SetAlgoSkip{}
 \SetInd{.5em}{.5em}
 \TitleOfAlgo{{\em CatStratPD}($X$, $\bf y$, $c$, {\it refcat}) {\bf returns} mapping from cat to effect on $y$}
-Let $D$ be dictionary mapping leaf, category to $y$ value\\
+Let $D$ be dictionary mapping category to weighted $\Delta_y$ value\\
 Let $S$ be dictionary mapping leaf to leaf size\\
 Train decision tree regressor $T$ on (\xnc{}, $\bf y$)\\
 \ForEach{leaf $L \in T$}{
 	$(L_x, L_y)$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
-	$y_{cat}$ = $L_y[L_x=cat]$\tcp*[r]{\it Group leaf $L_x$ by $cat$, get $y$'s}
-	$\Delta_y[cat] = mean(y_{cat}) - mean(y_{\it refcat})$\tcp*[r]{\it Strip \xnc{}'s y contribution}
 	$S[L]$ = $\begin{cases} |L| &\mbox{if } |{\it unique~cats \in L_x}| > 1 \\ 
 0 & otherwise\end{cases}$\\
-	$D[L,cat] = D[L,cat] + \Delta_y[cat] \times S[L]$\tcp*[r]{\it Weight leaf average for $cat$ by leaf size}
+	\ForEach{unique $cat \in L_x$}{
+		$y_{cat}$ = $L_y[L_x=cat]$\tcp*[r]{\it Group leaf $L_x$ by $cat$, get $y$'s}
+		$\overline{y}_{cat}$ = $mean(y_{cat})$\tcp*[]{\it $\overline{\bf y}$ is list of cat means}
+	}
+	\ForEach{unique $cat \in L_x$}{
+		$\Delta y_{cat} = \overline{y}_{cat} - {min}(\overline{\bf y})$\tcp*[r]{\it Strip \xnc{}'s y contribution}
+		$D[cat] = D[cat] + \Delta y_{cat} \times S[L]$\tcp*[r]{\it Accumulate weighted $\Delta_y$'s for each $cat$}
+	}
 }
-%Let $n_{cat}$ be number of $avg[cat]$ values added to $D_{cat}$\\
 $n = \Sigma_{L \in T}S[L]$\tcp*[r]{\it Num observations used to compute averages}
-$D[L,cat] = D[L,cat] / n$\tcp*[r]{\it Get average of leaf averages for $cat$}
-%$ = $\frac{1}{\Sigma_{L \in T}|S[L]|} \Sigma_{i=1}^{|S_{cat}|} D_{cat}$\tcp*[r]{\it Weighted average of leaf averages for $cat$}
+$D[cat] = \frac{1}{n} D[cat]$\tcp*[r]{\it Get average of leaf averages for $cat$}
+$D[cat] = D[cat] - \underset{cat}{min}(D[cat])$\tcp*[r]{\it Cat with lowest $\overline{y}_{cat}$ is now 0}
 \Return{$D$}
 \end{algorithm}
 
+\newpage
 \bibliographystyle{apalike}
 
 \bibliography{stratpd}
