@@ -242,7 +242,7 @@ def plot_stratpd(X, y, colname, targetname=None,
                  min_samples_leaf_piecewise=.20,
                  xrange=None,
                  yrange=None,
-                 pdp_dot_size=5,
+                 pdp_dot_size=2,
                  linecolor='#2c7fb8',
                  title=None,
                  nlines=None,
@@ -334,6 +334,7 @@ def plot_stratpd(X, y, colname, targetname=None,
         print(f"Found {len(segments)} lines")
 
     if nlines is not None:
+        nlines = min(nlines, len(segments))
         idxs = np.random.randint(low=0, high=len(segments), size=nlines)
         segments = np.array(segments)[idxs]
 

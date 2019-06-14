@@ -20,6 +20,8 @@
 %\usepackage[firstpage]{draftwatermark}
 \usepackage[margin=1in]{geometry}  %%jcgs has own margins
 \usepackage{lmodern}
+\usepackage{caption}
+\usepackage{subcaption}
 
 %\pdfminorversion=4
 % NOTE: To produce blinded version, replace "0" with "1" below.
@@ -148,7 +150,7 @@ The second issue stems from a lack of independence between features.  In a nutsh
 \end{center}
 \end{figure}
 
-To illustrate how variable codependencies result in misleading PD and ICE plots, consider a body weight data set with observations matching a person's characteristics to a weight in pounds. We discuss the data set details in \secref{sec:applications}, but for the moment, assume that women are slightly shorter on average and are 30 pounds heavier if pregnant. The PD/ICE plot in \figref{fig:height_vs_weight}(a) shows an inaccurate partial dependence where shorter people are slightly heavier per inch of height than those over about 72 inches. The blue ICE lines jump up significantly for shorter heights due to the codependence of $x_{sex}$ and $x_{pregnant}$ because PD and ICE conjure up pregnant males and ask the model to estimate their weight.  To be clear, the weight equation has no interaction term with $x_{height}$ and $x_{pregnant}$, but $x_{height}$ is codependent indirectly with $x_{pregnant}$ (via $x_{sex}$).  The \spd{} plot in \figref{fig:height_education_vs_weight}(b), on the other hand, is not confused by codependence and gives the true partial dependence of weight on height. 
+To illustrate how variable codependencies result in misleading PD and ICE plots, consider a body weight data set with observations matching a person's characteristics to a weight in pounds. We discuss the data set details in \secref{sec:codep} (Equation \eqref{eq:weight}), but for the moment, assume that women are slightly shorter on average and are 30 pounds heavier if pregnant. The PD/ICE plot in \figref{fig:height_vs_weight}(a) shows an inaccurate partial dependence where shorter people are slightly heavier per inch of height than those over about 72 inches. The blue ICE lines jump up significantly for shorter heights due to the codependence of $x_{sex}$ and $x_{pregnant}$ because PD and ICE conjure up pregnant males and ask the model to estimate their weight.  To be clear, the weight equation has no interaction term with $x_{height}$ and $x_{pregnant}$, but $x_{height}$ is codependent indirectly with $x_{pregnant}$ (via $x_{sex}$).  The \spd{} plot in \figref{fig:height_vs_weight}(b), on the other hand, is not confused by codependence and gives the true partial dependence of weight on height. 
 
 \todo{needs a transition sentence here}
 
@@ -315,17 +317,72 @@ The Shapley strategy, introduced in \cite{lundberg2016unexpected}, is a permutat
  
 \section{Experimental Results}\label{sec:applications}
 
-all plots are done using {\tt stratx} library, including the PD/ICE plots.  PD/ICE use random forests with 100 trees and minimum samples per leaf of 1. \todo{James: can you check the ICE paper when they describe that the interactions of $x_3$ are just around 0?  From the equation they are clearly $\ge 0$.}
+This paper proposes a stratification approach to isolating the effect of $x_c$ on target $y$ and has shown a few \spd{} and \cspd{} plots to highlight their advantages over PD and ICE plots. In this section, we provide more examples on synthetic and real data sets, investigate the effect of noisy data, and examine how \spd{} deals with edge cases arising from unusual \xnc{} partitioning.  All plots, including the PD/ICE plots, were generated using the Python {\tt stratx} library. (PD/ICE plots were derived from random forest models with 100 trees and minimum samples per leaf of 1). 
 
-We begin by reproducing graphs from \cite{ICE} big X from ICE, additivity from PD/ICE. $y = 0.2x_1 - 5x_2 + 10x_2\mathbf{1}_{x_3 \geq 0} + \epsilon$, $x_1, x_2, x_3 \in U(-1,1)$, Sample size 1000.  they used stochastic gradient boosting model (SGB)   for additivity, they used a general additive model with $y = x_1^2 + x_2 + \epsilon$ with $x_1, x_2 \sim U(-1,1)$, $\epsilon \sim N(0,1)$.
+We begin by reproducing graphs from \cite{ICE}, starting with their equation in which $x_2$ and $x_3$ interact:
 
-everyone was okay but codependent features cause problems as we saw in \figref{fig:height_vs_weight}; here's another; show education versus weight \figref{fig:education_vs_weight} The data set has an equal number of males and females with $x_{pregnant} \sim U(0,1)$ if female, 65 + $U(-4.5,5)$ if female, and $x_{height} = 68 + U(-7,8)$ if male. 
+\begin{equation}\label{eq:bigX}
+y = 0.2x_1 - 5x_2 + 10x_2\mathbf{1}_{x_3 \geq 0} + \epsilon~~~~~x_1, x_2, x_3 \sim U(-1,1), \epsilon \sim N(0,1)
+\end{equation}
 
-\[
-weight = 120 + 10(x_{height} - min(x_{height})) + 30x_{pregnant} - 1.2x_{education}
-\]
+\noindent \figref{fig:bigx_stratpd} shows the \spd{} plots in the left column for $x_2$ and $x_3$ and the PD/ICE plots in the right column. (1000 observations were drawn.) As \cite{ICE} points out, the PD plot (top row, right side) for $x_2$ shows no effect of $x_2$ on $y$ predictions, but the ICE plot makes it clear that the apparent lack of PD effect is due to an interaction or interactions with other variables. In this case, we know from Equation \eqref{eq:bigX} that $x_3$ ``turns off'' $10 x_2$ roughly half the time ($x_3 \sim U(-1,1)$), yielding an $x_2$ contribution to $y$ of $5 x_2$ not $-5 x_2$. The \spd{} plot also shows a flat partial dependence line, although it is much smoother than the PD/ICE line. Because \spd{} draws the approximate partial derivatives of $y$ along $x_2$, there is a regular pattern of alternating lines of roughly slope 4 or 5, which is what we would expect since $\frac{\partial y}{\partial x_2}$ is either 5 or -5. The data are extremely noisy and there is considerable variation from simulation to simulation, particularly with only 1000 observations.
 
- As another example, compare the PD/ICE (c) and \spd{} (d) plots in \figref{fig:education_vs_weight} showing number of years of education versus weight using the same data set. Weight is related to education by slope -1.5 so a perfect partial dependence graph would show a drop of 12 pounds over 10 years of education.   The PD/ICE plot captures only about half of that relationship, whereas, the \spd{} plot gets much closer to the true education-weight relationship. Female observations have at least 12 years of education, versus 10 for males, so $x_{education}$ and $x_{sex}$ are codependent, though, there is no interaction term. The fact that women are shorter on average biases the education-weight PD/ICE plot because the baseline weight is lower from which the education contribution is  subtracted.
+The partial dependence curves in the \spd{} and PD/ICE plots for $x_3$ in \figref{fig:bigx_stratpd} are also flat lines because $\frac{\partial y}{\partial x_3}=0$ when $x_3 < 0$ and $10 x_2$ when $x_3 \ge 0$. Since $x_2 \sim U(-1,1)$, $10 x_2$ contributes positive and negative noise to $y$, which the \spd{} plot exhibits with partial derivative lines at random angles.   \todo{James: can you check the ICE paper when they describe that the interactions of $x_3$ are just around 0?  From the equation they are clearly $\ge 0$.}
+
+\cite{ICE} also demonstrate the use of ICE plots for additivity assessment using a second-order equation:
+
+\begin{equation}\label{eq:parabola}
+y = x_1^2 + x_2 + \epsilon~~~~~x_1, x_2 \sim U(-1,1), \epsilon \sim N(0,1)
+\end{equation}
+
+\noindent We will use this equation to demonstrate that the local, nonparametric method of \spd{} can identify quadratic relationships, as shown in the left column of \figref{fig:additivity_stratpd}; the right column shows the equivalent PD/ICE plots. The \spd{} plots are smoother, but the PD/ICE plot for $x_1$ shows a more accurate parabola with height 1 versus about 0.3 for \spd{}. The amplitude of the $\epsilon$ noise is the same height as the parabola in Equation \eqref{eq:parabola}, which makes it tricky to pick out the quadratic signal.  To smooth out the noise, we set \spd{} hyper parameter ${\it min\_samples\_leaf\_piecewise}$ to 0.5, which means $T'$ partitions $x_c$ space into two $L'$ leaf subregions with roughly half the data. (The default ${\it min\_samples\_leaf\_piecewise}$ is 0.2, meaning look for $L'$ subregions of $x_c$ with 20\% of each $L$'s data.) We examine noise more closely in \secref{sec:noise}.
+
+The effect of $x_2$ on $y$ should be a line with slope 1, as shown in the second row of \figref{fig:additivity_stratpd}. Both PD/ICE and \spd{} plots give accurate depictions of the linear relationship, but \spd{} makes it more clear that the partial dependence of $y$ on $x_2$ is exactly linear.
+
+\subsection{Isolating the effect of codependent features on $y$}\label{sec:codep}
+
+None of the variables used in Equations \eqref{eq:bigX} and \eqref{eq:parabola} are codependent and ICE plots have no problem exposing interactions and generating accurate PD curves.  PD/ICE make the assumption that variables are independent, however, and become less accurate as codependence grows.  To compare \spd{} to PD/ICE for codependent variables, we synthesized a body weight data set with 1000 observations drawn from the following equation with codependence between features.
+
+\begin{equation}\label{eq:weight}
+\begin{array}{lll}
+weight & = &120 + 10(x_{height} - min(x_{height})) + 30x_{pregnant} - 1.5x_{education}\\
+\text{where} & & x_{sex} \sim Bernoulli(\{M,F\}, p=0.5)\\
+                    & & x_{pregnant} = \begin{cases}
+                                               Bernoulli(\{0,1\},p=0.5) & \text{ if } x_{sex} = F\\
+                                               0 & \text{ if } x_{sex}=M\\
+                                               \end{cases}\\
+                    & & x_{height} = \begin{cases}
+                                               5*12+5+ \epsilon & \text{ if } x_{sex}=F,~ \epsilon \sim U(-4.5,5)\\	
+                                               5*12+8 + \epsilon & \text{ if } x_{sex}=M,~ \epsilon \sim U(-7,8)\\
+                                               \end{cases}\\
+                    & & x_{education} = \begin{cases}
+                                               12 + \epsilon & \text{ if } x_{sex}=F,~ \epsilon \sim U(0,8)\\	
+                                               10 + \epsilon & \text{ if } x_{sex}=M,~ \epsilon \sim U(0,8)\\
+                                               \end{cases}
+\end{array}
+\end{equation}
+
+\cut{
+def toy_weight_data(n):
+    df = pd.DataFrame()
+    nmen = n//2
+    nwomen = n//2
+    df['sex'] = ['M']*nmen + ['F']*nwomen
+    df.loc[df['sex']=='F','pregnant'] = np.random.randint(0,2,size=(nwomen,))
+    df.loc[df['sex']=='M','pregnant'] = 0
+    df.loc[df['sex']=='M','height'] = 5*12+8 + np.random.uniform(-7, +8, size=(nmen,))
+    df.loc[df['sex']=='F','height'] = 5*12+5 + np.random.uniform(-4.5, +5, size=(nwomen,))
+    df.loc[df['sex']=='M','education'] = 10 + np.random.randint(0,8,size=nmen)
+    df.loc[df['sex']=='F','education'] = 12 + np.random.randint(0,8,size=nwomen)
+}
+
+Because of the codependence between $x_{pregnant}$ and $x_{height}$ via $x_{sex}$, \figref{fig:height_vs_weight} demonstrated that PD/ICE plot incorrectly showed shorter people as heavier on average. PD/ICE conjures up unlikely observation such as pregnant males, resulting in biased ICE lines.
+
+Another example of isolating codependent variable effects, compare the PD/ICE and \spd{} plots in \figref{fig:education_vs_weight} showing number of years of education versus weight. Weight is related to education by slope -1.5, so a perfect partial dependence graph would show a drop of 12 pounds over 8 years of education. The PD/ICE plot captures only about two thirds of that relationship, whereas, the \spd{} plot gets the true education-weight relationship.  Female observations have at least 12 years of education, versus 10 for males, so $x_{education}$ and $x_{sex}$ are codependent, though, there is no interaction term. The fact that women are shorter on average biases the education-weight PD/ICE plot because the baseline weight is lower from which the education contribution is  subtracted.  
+
+Because the ``signal-to-noise ratio'' is low in the bodyweight data set, we set the other primary hyper parameter ${\it min\_samples\_leaf\_partition}=2$. That means to partition \xnc{} into very tight regions, leaving at least two observations from which estimate the change in $y$ over $x_c$ space.
+
+Turning to the real but toy {\tt mtcars} data set \cite{mtcars} now, \figref{fig:cars}
 
 let's look at a toy data set: cars. When there is little codependence between features, the PD and ICE plots represent the partial dependencies well, as is the case with the well-known mtcars data set from \cite{mtcars}, shown in the second column of \figref{fig:cars}.  The first column represents the traditional marginal plots of horsepower and weight to mpg (miles per gallon). The third column represents the \spd{} plots. The orange line in each row represents the regression coefficient of the associated feature (with $y$-intercept adjusted so the line coincides well with the ICE and \spd{} plot slopes).  While both approaches yield useful graphs, the \spd{} plots are smoother and visually appear to be more linear, giving a better fits to the slope lines.
 
@@ -339,7 +396,7 @@ when codependence breaches pathological proportions: duplicate column. need mult
 
 the reason that the ice plot is lowered is due to the data, which has very few data points in the high range of bedrooms. The average is maybe 1.2, so for roughly half the trees, the prediction will be for 1.2 bedrooms no matter what the duplicated bedroom column says.  This problem occurs for strongly predictive features in RF. Linear model couldn't handle duplicate column. \spd{} must use randomness to overcome duplicated columns, but bootstrapping is not important and in fact a negative as we discussed. 
 
-\subsection{Compensating for noisy features}
+\subsection{Compensating for noisy features}\label{sec:noise}
 
 Changing hyper parameters
 show how noise /  hyper parameters affect results.
@@ -350,13 +407,13 @@ effect of noise columns (more data? change hyper parameters?), effect of hyper p
 
 adding a noise column doesn't affect anything because of random forests partitioning; Try rent again with noise instead of a duplication column. A single column of noise scaled by 50 dollars does not affect the ice plot (using RF) or the \spd{} plot, as expected.
 
-\subsection{\spd{} and \cspd{} applied to real data}
+\subsection{\spd{} and \cspd{} applied to real data} 
 
 aside from the New York City apartment rent data, let's look at another real data set. now on to a real data set with over 400,000 records: bulldozer
 
 bulldozer  just features 'ModelID', 'YearMade', 'MachineHoursCurrentMeter'; speculate that there is codependents between model and year made and machine hours. one would expect a log law for the model ID as some are much more expensive than the others. we would also expect a log law for the year made. not sure why ice is getting such a high value for machine hours.  note that machine hours of zero is probably missing or don't want to say so we deleted; less than 1950 deleted also.  sample of 10,000. endogeneity makes look more like marginal plot? training on 3, partitioning on 2 vars only.
 
-\subsection{Pathological \xnc{} and $x_c$ partitioning issues}
+\subsection{Pathological \xnc{} partitioning issues}
 
 there are some pathological cases: sinusoidal day of year; There is a pathological case to consider where training yields a decision tree with very large leaves, with perhaps hundreds or thousands of observations.  This can happen when \xnc{} contains a single categorical variable or when the only strongly-predictive variable in \xnc{} is categorical.  The weather data set is a case in point. Choosing $x_c$=$x_{dayofyear}$, leaves \xnc{}=\{$x_{state}$,$x_{year}$\} and $x_{state}$ accounts for most of the variation in target variable temperature.  \figref{fig:dayofyear_vs_temp}(a) shows the marginal plot of $x_{state}$ versus temperature. A decision tree, $T$, splitting on just state, would group all 365 daily temperature observations for a single state into just one leaf. (The marginal plot is showing the complete sine waves but from the side, edge on.)   PD and ICE plots also identify the noisy sine waves, as shown in \figref{fig:dayofyear_vs_temp}(b). \todo{uses random forest with how many trees for pd/ice?} The \spd{} plot in \figref{fig:dayofyear_vs_temp}(c) clearly shows the sinusoidal temperature fluctuations over the year. The PD/ICE plot is not smooth because it relies on predictions from a model trained on noisy data, whereas the \spd{} plot is averaging slopes that are themselves smoothing agents.
 
@@ -364,12 +421,16 @@ there are some pathological cases: sinusoidal day of year; There is a pathologic
 int values being ignored during piecewise due to partitioning granularity. Note: if integer x then sometimes all y values fall directly on that x and no deriv can be computed.  must crank up number of samples and hires leaf size? i'm seeing num bedrooms in leaf as 0,1,2 but only get one piecewise line due to partitioning (all values are for single num bed value so ignored). sometimes even no piecewise lines if min\_samples\_leaf\_hires is low like 0.1
 
 \begin{figure}[htbp]
-\begin{center}
+\begin{subfigure}[h]{0.495\textwidth}
 \includegraphics[scale=0.7]{images/bigx.png}
+\caption{{\bf big X from ICE}1000 observations}
+\label{fig:bigx_stratpd}
+\end{subfigure}
+\begin{subfigure}[h]{0.495\textwidth}
 \includegraphics[scale=0.7]{images/additivity.png}
-\caption{{\bf big X from ICE, additivity from PD/ICE}}
-\label{fig:bigx_y_stratpd}
-\end{center}
+\caption{{\bf additivity from PD/ICE} 1000 observations}
+\label{fig:additivity_stratpd}
+\end{subfigure}
 \end{figure}
 
 \begin{figure}[htbp]

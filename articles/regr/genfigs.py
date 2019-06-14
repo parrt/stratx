@@ -661,6 +661,7 @@ def weight():
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'education', 'weight', ax=ax,
                  min_samples_leaf_partition=2,
+                 # min_samples_leaf_piecewise=.02,
                  yrange=(-12, 0), alpha=.1, nlines=700, show_ylabel=False)
 #    ax.get_yaxis().set_visible(False)
     savefig(f"education_vs_weight_stratpd")
@@ -877,18 +878,17 @@ def additivity():
     X = df.drop('y', axis=1)
     y = df['y']
 
-    fig, axes = plt.subplots(2, 2, figsize=(4,4), sharey=True)
+    fig, axes = plt.subplots(2, 2, figsize=(4,4))#, sharey=True)
     plot_stratpd(X, y, 'x1', 'y', ax=axes[0, 0],
                  yrange=(-1, 1),
-                 min_samples_leaf_partition=30,
-                 min_samples_leaf_piecewise=.4,
-                 pdp_dot_size=3, alpha=.1)
-    
+                 min_samples_leaf_piecewise=.5)
+
     plot_stratpd(X, y, 'x2', 'y', ax=axes[1, 0],
-                 min_samples_leaf_partition=30,
-                 min_samples_leaf_piecewise=.4,
-                 pdp_dot_size=3, alpha=.1, nlines=700)
-    
+                 min_samples_leaf_piecewise=.5)
+
+    axes[0, 0].set_ylim(-1,1)
+    axes[1, 0].set_ylim(-2,2)
+
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
     print(f"RF OOB {rf.oob_score_}")
@@ -899,8 +899,8 @@ def additivity():
     ice = predict_ice(rf, X, 'x2', 'y', numx=20, nlines=700)
     plot_ice(ice, 'x2', 'y', ax=axes[1, 1], yrange=(-2, 2), show_ylabel=False)
 
-    axes[0,1].get_yaxis().set_visible(False)
-    axes[1,1].get_yaxis().set_visible(False)
+    # axes[0,1].get_yaxis().set_visible(False)
+    # axes[1,1].get_yaxis().set_visible(False)
 
     savefig(f"additivity")
     # plt.show()
@@ -995,38 +995,31 @@ def bigX():
     # Partial deriv is just 0.2 so this is correct. flat deriv curve, net effect line at slope .2
     # ICE is way too shallow and not line at n=1000 even
     fig, axes = plt.subplots(2, 2, figsize=(4, 4), sharey=True)
-    # plot_stratpd(X, y, 'x1', 'y', ax=axes[0, 0], yrange=(-4, 4),
-    #              # min_samples_leaf=30,
-    #              min_samples_leaf_hires=.4,
-    #              alpha=.1, nlines=700, pdp_dot_size=2)
-    
+
     # Partial deriv wrt x2 is -5 plus 10 about half the time so about 0
     # Should not expect a criss-cross like ICE since deriv of 1_x3>=0 is 0 everywhere
     # wrt to any x, even x3. x2 *is* affecting y BUT the net effect at any spot
     # is what we care about and that's 0. Just because marginal x2 vs y shows non-
     # random plot doesn't mean that x2's net effect is nonzero. We are trying to
     # strip away x1/x3's effect upon y. When we do, x2 has no effect on y.
-    # Key is asking right question. Don't look at marginal plot and say obvious.
     # Ask what is net effect at every x2? 0.
     plot_stratpd(X, y, 'x2', 'y', ax=axes[0, 0], yrange=(-4, 4),
-                 # min_samples_leaf=30,
-                 min_samples_leaf_piecewise=.4,
-                 alpha=.1, nlines=700, pdp_dot_size=2)
+                 min_samples_leaf_piecewise=.3,
+                 pdp_dot_size=2)
     
     # Partial deriv wrt x3 of 1_x3>=0 is 0 everywhere so result must be 0
-    plot_stratpd(X, y, 'x3', 'y', ax=axes[1, 0], yrange=(-4, 4), alpha=.1, nlines=700, pdp_dot_size=2)
+    plot_stratpd(X, y, 'x3', 'y', ax=axes[1, 0], yrange=(-4, 4),
+                 min_samples_leaf_piecewise=.3,
+                 pdp_dot_size=2)
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
     print(f"RF OOB {rf.oob_score_}")
     
-    # ice = predict_ice(rf, X, 'x1', 'y', numx=10)
-    # plot_ice(ice, 'x1', 'y', ax=axes[0, 1], yrange=(-4, 4))
-    
-    ice = predict_ice(rf, X, 'x2', 'y', numx=200)
+    ice = predict_ice(rf, X, 'x2', 'y', numx=100)
     plot_ice(ice, 'x2', 'y', ax=axes[0, 1], yrange=(-4, 4))
 
-    ice = predict_ice(rf, X, 'x3', 'y', numx=200)
+    ice = predict_ice(rf, X, 'x3', 'y', numx=100)
     plot_ice(ice, 'x3', 'y', ax=axes[1, 1], yrange=(-4, 4))
 
     axes[0,1].get_yaxis().set_visible(False)
@@ -1406,7 +1399,7 @@ if __name__ == '__main__':
     # multi_joint_distr()
     # rent_extra_cols()
     # bulldozer()
-    # cars()
+    cars()
     # meta_cars()
     # unsup_boston()
     # rent()
@@ -1420,6 +1413,6 @@ if __name__ == '__main__':
     # meta_weather()
     # weight_ntrees()
     # weather()
-    meta_additivity()
+    # meta_additivity()
     # additivity()
     # bigX()
