@@ -534,7 +534,7 @@ def weather():
     plot_catstratpd(X, y, 'state', 'temperature', cats=cats,
                     alpha=.3,
                     style='strip',
-                    ax=ax)  # , yrange=(0,160))
+                    ax=ax,yrange=(-2,60))
 
     ax.set_title("StratPD")
     savefig(f"state_vs_temp_stratpd")
@@ -552,7 +552,8 @@ def weather():
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = predict_catice(rf, X, 'state', 'temperature')
-    plot_catice(ice, 'state', 'temperature', cats=catencoders['state'], ax=ax, pdp_marker_width=10)
+    plot_catice(ice, 'state', 'temperature', cats=catencoders['state'], ax=ax, pdp_marker_width=10,
+                yrange=(-2,60))
     ax.set_title("PD/ICE")
 
     savefig(f"state_vs_temp_pdp")
@@ -1399,7 +1400,7 @@ if __name__ == '__main__':
     # multi_joint_distr()
     # rent_extra_cols()
     # bulldozer()
-    cars()
+    # cars()
     # meta_cars()
     # unsup_boston()
     # rent()
@@ -1412,7 +1413,7 @@ if __name__ == '__main__':
     # unsup_weight()
     # meta_weather()
     # weight_ntrees()
-    # weather()
+    weather()
     # meta_additivity()
     # additivity()
     # bigX()

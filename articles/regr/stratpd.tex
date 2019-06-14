@@ -177,7 +177,7 @@ The regions of $x_c$ spanned by the various $\beta_{L'}$ generally overlap and t
 \beta_R = \frac{1}{\Sigma_{L' \in R} |L'|}\Sigma_{L' \in R}|L'|\beta_{L'}
 \]
 
-Slope $\beta_R$ is an estimate of the partial derivative across the region $R$, and so numerically integrating the partial derivatives across $x_c$ space gives a curve representing the contribution of $x_c$ to $y$.  Algorithm \ref{alg:StratPD} encodes the \spd{} process and the full Python 3 source code is available at {\small \url{https://github.com/parrt/stratx}}. \figref{fig:leaves} depicts the averaging and integration process.  
+Slope $\beta_R$ is an estimate of the partial derivative across the region $R$, and so numerically integrating the partial derivatives across $x_c$ space gives a curve representing the contribution of $x_c$ to $y$.  Algorithm 1 encodes the \spd{} process and the full Python 3 source code is available at {\small \url{https://github.com/parrt/stratx}}. \figref{fig:leaves} depicts the averaging and integration process.  
 
 \begin{figure}[htbp]
 \begin{center}
@@ -193,11 +193,11 @@ Slope $\beta_R$ is an estimate of the partial derivative across the region $R$, 
 
 Revisiting the \spd{} plot in \figref{fig:height_vs_weight}(d), derived from the apartment rent data set, each blue line represents a local slope $\beta_L'$ through the observations in $L'$ (which is a partition of $x_c$ space whose \xnc{} features are similar). Lines extend from the minimum to maximum $x_c$ value in $L'$.  Because we are interested in the relative contribution of $x_c$ to $y$, \spd{} plots use zero as a $y$-axis baseline. The black dots represent the integration of the partial derivative estimates up to and including each unique $x_c$ value (except the first $x_c$, whose integral value is 0). The partial derivative estimate at an $x_c$ value is the (weighted) average slope of the blue lines emanating from that value. \spd{} does not interpolate between $x_c$ points and so the plot shows dots not lines. 
 
-Partial dependence through stratification also works for data sets with categorical variables in \xnc{}, given a suitable similarity measure between observations that supports categorical variables, but identifying an appropriate categorical similarity measure is a well-known issue.  Decision trees, however, support categorical variables easily and effectively by treating categories as unique integers. Observations with categorical variables that end up in the same leaf lie are likely to be similar. (\todo{cite breiman proximity matrix and p595 of ESL book}). Algorithm \ref{alg:StratPD}, therefore, works without modification for \xnc{} containing categorical variables. When the column of interest, $x_c$, is categorical, however, a new algorithm is required.
+Partial dependence through stratification also works for data sets with categorical variables in \xnc{}, given a suitable similarity measure between observations that supports categorical variables, but identifying an appropriate categorical similarity measure is a well-known issue.  Decision trees, however, support categorical variables easily and effectively by treating categories as unique integers. Observations with categorical variables that end up in the same leaf lie are likely to be similar. (\todo{cite breiman proximity matrix and p595 of ESL book}). Algorithm 1, therefore, works without modification for \xnc{} containing categorical variables. When the column of interest, $x_c$, is categorical, however, a new algorithm is required.
 
 \subsection{CatStratPD for categorical variables}
 
-The stratification approach can also capture how a categorical variable $x_c$ affects $y$, instead of just a single category at a time (if one were forced to dummy-encode $x_c$). As with \spd{}, the \cspd{} algorithm stratifies $\bf X$ into groups of similar \xnc{} features by training a decision tree regressor on $({\bf X}, {\bf y})$, yielding a collection of leaves. But, because categorical variables can be unordered nominal variables, the notion of $y$ slope is not meaningful between two categories. Instead of partitioning the $x_c$ space in each leaf $L$, \cspd{} groups leaf observations $(L_x, L_y)$ by the categories in $L_x$ and computes the average $L_y$ value per category.  To erase the $y$-contributions of \xnc{}, \cspd{} subtracts the minimum of the $L_y$ means from all category averages, leaving a relative increase or decrease in $y$  for each category. Then, to get the overall contribution of $x_c$ to $y$ for category $cat$, \cspd{} averages the leaf contributions for $cat$ from all $L$ weighted by $|L|$. See Algorithm \ref{alg:CatStratPD}.
+The stratification approach can also capture how a categorical variable $x_c$ affects $y$, instead of just a single category at a time (if one were forced to dummy-encode $x_c$). As with \spd{}, the \cspd{} algorithm stratifies $\bf X$ into groups of similar \xnc{} features by training a decision tree regressor on $({\bf X}, {\bf y})$, yielding a collection of leaves. But, because categorical variables can be unordered nominal variables, the notion of $y$ slope is not meaningful between two categories. Instead of partitioning the $x_c$ space in each leaf $L$, \cspd{} groups leaf observations $(L_x, L_y)$ by the categories in $L_x$ and computes the average $L_y$ value per category.  To erase the $y$-contributions of \xnc{}, \cspd{} subtracts the minimum of the $L_y$ means from all category averages, leaving a relative increase or decrease in $y$  for each category. Then, to get the overall contribution of $x_c$ to $y$ for category $cat$, \cspd{} averages the leaf contributions for $cat$ from all $L$ weighted by $|L|$. See Algorithm 2.
 
 \figref{fig:state_vs_temp}(b) illustrates \cspd{} operating on a categorical variable, $x_{\it state}$, in a synthetic weather data set with data from four states over three years. Temperature data varies in sinusoidal fashion over the year with $N(-5,5)$ noise and different baseline temperatures per state, as the marginal plot in \figref{fig:state_vs_temp}(a) shows. To get the partial dependence of temperature on $x_{\it state}$, \spd{} stratifies by $x_{\it dayofyear}$ and $x_{\it year}$ then groups these similar time buckets by $x_{\it state}$ and computes the average temperature; each blue dot represents a leaf average. The overall temperature estimate per state is the average of those leaf averages, represented by a solid black dash. We use a strip plot to exhibit the variation and density of $y$ values per category. The \cspd{} plot accurately identifies the baseline temperature per state, as does the PD/ICE plot in \figref{fig:state_vs_temp}(c).
 
@@ -213,11 +213,11 @@ The stratification approach can also capture how a categorical variable $x_c$ af
 
 \subsection{Partitioning feature space with trees and forests}
 
-Stratification of $(x_{\overline{c}}, y)$ into regions of similar observations is at the core of our approach so it's worth examining how \spd{} partitions feature space in more detail.  The goal is to examine $({\bf X}, {\bf y})$ for groups of extremely similar \xnc{} values so fluctuations in $y$ are due solely to changes in $x_c$, which yields a piece of the partial dependence of $y$ on $x_c$. \spd{} looks for similar observations because, beyond a few variables, it's not possible to stratify observations by equal \xnc{} values. 
+Stratification of $(x_{\overline{c}}, y)$ into regions of similar observations is at the core of our approach so it's worth examining how \spd{} partitions feature space in more detail.  The goal is to find groups of extremely similar \xnc{} values in $({\bf X}, {\bf y})$ so fluctuations in $y$ are due solely to changes in $x_c$. Such groups yield pieces of the partial dependence of $y$ on $x_c$. \spd{} looks for similar observations because, beyond a few variables, it's not possible to stratify observations by equal \xnc{} values. 
 
 Inventing a new partitioning strategy is unnecessary because decision trees already exist that can tesselate \xnc{} feature space into small hypervolumes of similar observations. If a hypervolume is tight enough, then \xnc{} values are very similar and the slope of a regression line through $(L_x, L_y)$ is a good estimate of the partial derivative of $\frac{\partial y}{\partial x_{c}}$ in that region.  If the volume for leaf $L$ is too large, then \xnc{} observations in $L$ are not similar enough to conclude that changes in $y$ are due to $x_c$ alone. By default, our Python implementation of \spd{} creates decision trees with at least 10 observations per leaf, but depending on $y$, post-training leaf size is unbounded. The $x_c$ space within each leaf is then partitioned using another decision tree in preparation for piecewise linear approximation.
 
-Decision trees are known to overfit, which was the impetus for the invention of Random Forests(tm) (RF) \cite{RF}.  \spd's use of decision trees rather than RFs, therefore, seems an odd choice. Indeed, using RFs was our initial approach and the \spd{} source code still supports them. \todo{Now we need RFs} (The only change to the algorithm described in this paper is to iterate over all leaves from all trees, rather than the leaves of a single tree, to collect $\beta_L$ slopes.)  Decision trees are sufficient for partial dependence, however, because the goal is to understand the population described by the training set, not to make predictions; that is what models are for. The one exception is that multiple trees are needed to handle features in \xnc{} that are identical or highly-correlated with $x_c$ (see \secref{sec:dup}).
+Decision trees are known to overfit, which was the impetus for the invention of Random Forests(tm) (RF) \cite{RF}.  The use of decision trees rather than RFs in \spd, therefore, seems an odd choice. Using RFs was our initial approach and the \spd{} algorithm and source code still supports them. (The only change required to support RFs is to iterate over all leaves from all trees, rather than the leaves of a single tree, to collect $\beta_L$ slopes.)  Decision trees are sufficient for partial dependence, however, because the goal is to understand the population described by the training set, not to make predictions; that is what models are for. The one exception is that multiple trees are needed to handle features in \xnc{} that are identical or highly-correlated with $x_c$ (see \secref{sec:dup}).
 
 To reduce overfitting, RFs bootstrap and select split variables from a subset of all variables in order to create uncorrelated trees. But, that means increasing bias to some degree because each tree is trained on roughly 2/3 of the training data and without considering some of the variables. Because our goal is to group together {\em all} observations that are similar in {\em all} \xnc{} variables, it is counterproductive to bootstrap and select variables from a subset. Because partial dependence is meant to explore existing $(\bf X, y)$ data rather than future data, there's no point in sacrificing accuracy for the sake of generality. 
 
@@ -225,7 +225,7 @@ For the data sets we examined during the preparation of this paper, moving from 
 
 The blue lines representing piecewise partial derivative estimates increase in number as the number of partitions (leaves) increases.  Note that the variance of the partial derivative estimates is wider for RFs than for a single decision tree. This is expected because the decision tree leaves contain all observations in a feature space hypervolume and so the estimate will be less biased; RF leaves have at most 2/3 of the observations for the same hypervolume, the bootstrapping population size estimate. The education versus weight plots in \figref{fig:weight_ntrees} illustrate this most clearly. The blue ``cone'' around the partial dependence dots widens as the number of trees increases.  
 
-Increasing the number of trees does not improve accuracy and increases the time complexity linearly in the number of trees, which is roughly what we see in practice.  For example, using a single decision tree to partition a 9000-observation rent data set sample and generate a plot takes 1.5s on our 4.0Ghz processor but about 50s for 30 trees (first row, far right of \figref{fig:rent_ntrees}). \todo{seems less accuarate with bootstrap}
+Increasing the number of trees does not improve accuracy and increases the time complexity linearly in the number of trees, which is roughly what we see in practice.  For example, using a single decision tree to partition a 9,000-observation rent data set sample and generate a plot takes 1.5s on our 4.0Ghz processor but about 50s for 30 trees (first row, far right of \figref{fig:rent_ntrees}). \todo{seems less accuarate with bootstrap}
 
 \begin{figure}[htbp]
 \begin{center}
@@ -245,7 +245,7 @@ Increasing the number of trees does not improve accuracy and increases the time 
 
 Decision trees choose feature space hypervolumes that minimize the variance in $y$, but $y$ is technically not needed to partition \xnc{} into similar regions. \cite{RFunsup} described how to use random forests in an unsupervised fashion by considering the original $\bf X$ matrix as class 1 and a synthesized $\bf X'$ as class 2, which works equally well for individual decision trees, at least for this stratification application. $\bf X'$ is just $\bf X$ with each $x_j$ column permuted, effectively sampling from the $x_j$'s marginal distributions. \figref{fig:rent_weight_unsup} shows typical results from three variables from the rent data set and two variables from the synthesized weight data set.  The left column shows unsupervised partitioning of $\bf X$ and the right column shows the usual supervised partitioning with $(\bf X, y)$. The results are very similar but the variance of the partial derivative estimates for the unsupervised case appears to be a bit wider. The \cspd{} unsupervised and supervised plots for categorical variable $x_{\it pregnant}$ in \figref{fig:rent_weight_unsup}(b) are virtually indistinguishable to the eye. 
 
-\figref{fig:boston_unsup} illustrates a case where unsupervised partitioning is less stable: $x_{\it AGE}$ versus $x_{\it MEDV}$ (median house value) from the well-known Boston housing data set \todo{ref ICE's use in their paper}. The figure shows a marginal plot then the unsupervised and supervised \spd{} plots (and finally the PD/ICE plot). To stabilize the unsupervised version, we used 20 trees with bootstrapping. But, in the end, there's no reason to perform unsupervised partitioning when $y$ is always available. (Partial dependence makes no sense without $y$.) 
+\figref{fig:boston_unsup} illustrates a case where unsupervised partitioning is less stable: $x_{\it AGE}$ versus $x_{\it MEDV}$ (median house value) from the well-known Boston housing data set. The figure shows a marginal plot then the unsupervised and supervised \spd{} plots (and finally the PD/ICE plot). To stabilize the unsupervised version, we used 20 trees with bootstrapping. But, in the end, there's no reason to perform unsupervised partitioning when $y$ is always available. (Partial dependence makes no sense without $y$.) 
 
 The point is that partitioning \xnc{}  with a decision tree is more about $\bf X$ than $\bf y$, which strengthens our claim of model-independence. \spd{} does not rely on a user's model, never makes predictions from internal models, and can even get away with partitioning feature space without $\bf y$.
 
@@ -266,9 +266,7 @@ The point is that partitioning \xnc{}  with a decision tree is more about $\bf X
 \end{center}
 \end{figure}
 
-\todo{\spd{} degenerates to a simple marginal plot if training yields a tree with a single leaf node containing all of \xnc{}. where does this go?}
-
-\todo{is this where we put edge cases of hyper parameters, num cols, etc? ref future experiment section. what are degenerate cases? approximation error.}
+\todo{where does this go? \spd{} degenerates to a simple marginal plot if training yields a tree with a single leaf node containing all of \xnc{}. what are degenerate cases? approximation error.}
 
 \section{Related Work}\label{sec:related}
 
@@ -317,15 +315,15 @@ The Shapley strategy, introduced in \cite{lundberg2016unexpected}, is a permutat
  
 \section{Experimental Results}\label{sec:applications}
 
-This paper proposes a stratification approach to isolating the effect of $x_c$ on target $y$ and has shown a few \spd{} and \cspd{} plots to highlight their advantages over PD and ICE plots. In this section, we provide more examples on synthetic and real data sets, investigate the effect of noisy data, and examine how \spd{} deals with edge cases arising from unusual \xnc{} partitioning.  All plots, including the PD/ICE plots, were generated using the Python {\tt stratx} library. (PD/ICE plots were derived from random forest models with 100 trees and minimum samples per leaf of 1). 
+This paper proposes a stratification approach to isolating the effect of $x_c$ on target $y$ and has shown a few \spd{} and \cspd{} plots to highlight their advantages over PD and ICE plots. In this section, we provide more examples on synthetic and real data sets, investigate the effect of noisy data, and examine how \spd{} deals with edge cases arising from unusual \xnc{} partitioning.  All plots, including the PD/ICE plots, were generated using the Python {\tt stratx} library and script {\tt genfigs.py} in the github repository generated all figures in this paper. (PD/ICE plots were derived from random forest models with 100 trees and minimum samples per leaf of 1). 
 
-We begin by reproducing graphs from \cite{ICE}, starting with their equation in which $x_2$ and $x_3$ interact:
+We begin by reproducing graphs from \cite{ICE}, starting with their equation in which independent variables $x_2$ and $x_3$ interact:
 
 \begin{equation}\label{eq:bigX}
 y = 0.2x_1 - 5x_2 + 10x_2\mathbf{1}_{x_3 \geq 0} + \epsilon~~~~~x_1, x_2, x_3 \sim U(-1,1), \epsilon \sim N(0,1)
 \end{equation}
 
-\noindent \figref{fig:bigx_stratpd} shows the \spd{} plots in the left column for $x_2$ and $x_3$ and the PD/ICE plots in the right column. (1000 observations were drawn.) As \cite{ICE} points out, the PD plot (top row, right side) for $x_2$ shows no effect of $x_2$ on $y$ predictions, but the ICE plot makes it clear that the apparent lack of PD effect is due to an interaction or interactions with other variables. In this case, we know from Equation \eqref{eq:bigX} that $x_3$ ``turns off'' $10 x_2$ roughly half the time ($x_3 \sim U(-1,1)$), yielding an $x_2$ contribution to $y$ of $5 x_2$ not $-5 x_2$. The \spd{} plot also shows a flat partial dependence line, although it is much smoother than the PD/ICE line. Because \spd{} draws the approximate partial derivatives of $y$ along $x_2$, there is a regular pattern of alternating lines of roughly slope 4 or 5, which is what we would expect since $\frac{\partial y}{\partial x_2}$ is either 5 or -5. The data are extremely noisy and there is considerable variation from simulation to simulation, particularly with only 1000 observations.
+\noindent \figref{fig:bigx_stratpd} shows the \spd{} plots in the left column for $x_2$ and $x_3$ and the PD/ICE plots in the right column. (1000 observations were drawn.) As \cite{ICE} points out, the PD plot (top row, right side) for $x_2$ shows no effect of $x_2$ on $y$ predictions, but the ICE plot makes it clear that the apparent lack of PD effect is due to an interaction or interactions with other variables that cancel out. In this case, we know from Equation \eqref{eq:bigX} that $x_3$ ``turns off'' $10 x_2$ roughly half the time ($x_3 \sim U(-1,1)$), yielding an $x_2$ contribution to $y$ of $5 x_2$ not $-5 x_2$. The \spd{} plot also shows a flat partial dependence line, although it is much smoother than the PD/ICE line. Because \spd{} draws the approximate partial derivatives of $y$ along $x_2$, there is a regular pattern of alternating lines of roughly slope 4 or 5, which is what we would expect since $\frac{\partial y}{\partial x_2}$ is either 5 or -5. The data are extremely noisy and there is considerable variation from simulation to simulation, particularly with only 1000 observations.
 
 The partial dependence curves in the \spd{} and PD/ICE plots for $x_3$ in \figref{fig:bigx_stratpd} are also flat lines because $\frac{\partial y}{\partial x_3}=0$ when $x_3 < 0$ and $10 x_2$ when $x_3 \ge 0$. Since $x_2 \sim U(-1,1)$, $10 x_2$ contributes positive and negative noise to $y$, which the \spd{} plot exhibits with partial derivative lines at random angles.   \todo{James: can you check the ICE paper when they describe that the interactions of $x_3$ are just around 0?  From the equation they are clearly $\ge 0$.}
 
@@ -341,12 +339,13 @@ The effect of $x_2$ on $y$ should be a line with slope 1, as shown in the second
 
 \subsection{Isolating the effect of codependent features on $y$}\label{sec:codep}
 
-None of the variables used in Equations \eqref{eq:bigX} and \eqref{eq:parabola} are codependent and ICE plots have no problem exposing interactions and generating accurate PD curves.  PD/ICE make the assumption that variables are independent, however, and become less accurate as codependence grows.  To compare \spd{} to PD/ICE for codependent variables, we synthesized a body weight data set with 1000 observations drawn from the following equation with codependence between features.
+None of the variables used in Equations \eqref{eq:bigX} and \eqref{eq:parabola} are codependent and ICE plots have no problem exposing interactions and generating accurate PD curves.  PD/ICE make the assumption that variables are independent, however, and the plots become less accurate as codependence grows.  To compare \spd{} to PD/ICE for codependent variables, we synthesized a body weight data set with 1000 observations drawn from the following equation with codependence between features.
 
 \begin{equation}\label{eq:weight}
-\begin{array}{lll}
-weight & = &120 + 10(x_{height} - min(x_{height})) + 30x_{pregnant} - 1.5x_{education}\\
-\text{where} & & x_{sex} \sim Bernoulli(\{M,F\}, p=0.5)\\
+\begin{array}{rll}
+y & = &120 + 10(x_{height} - min(x_{height})) + 30x_{pregnant} - 1.5x_{education}\\
+\vspace{-10pt}\\
+\multicolumn{2}{r}{\text{where}} & x_{sex} \sim Bernoulli(\{M,F\}, p=0.5)\\
                     & & x_{pregnant} = \begin{cases}
                                                Bernoulli(\{0,1\},p=0.5) & \text{ if } x_{sex} = F\\
                                                0 & \text{ if } x_{sex}=M\\
@@ -378,9 +377,9 @@ def toy_weight_data(n):
 
 Because of the codependence between $x_{pregnant}$ and $x_{height}$ via $x_{sex}$, \figref{fig:height_vs_weight} demonstrated that PD/ICE plot incorrectly showed shorter people as heavier on average. PD/ICE conjures up unlikely observation such as pregnant males, resulting in biased ICE lines.
 
-Another example of isolating codependent variable effects, compare the PD/ICE and \spd{} plots in \figref{fig:education_vs_weight} showing number of years of education versus weight. Weight is related to education by slope -1.5, so a perfect partial dependence graph would show a drop of 12 pounds over 8 years of education. The PD/ICE plot captures only about two thirds of that relationship, whereas, the \spd{} plot gets the true education-weight relationship.  Female observations have at least 12 years of education, versus 10 for males, so $x_{education}$ and $x_{sex}$ are codependent, though, there is no interaction term. The fact that women are shorter on average biases the education-weight PD/ICE plot because the baseline weight is lower from which the education contribution is  subtracted.  
+As another example of isolating codependent variable effects, compare the PD/ICE and \spd{} plots in \figref{fig:education_vs_weight} showing number of years of education versus weight. Weight is related to education by slope -1.5, so a perfect partial dependence graph would show a drop of 12 pounds over 8 years of education. The PD/ICE plot captures only about two thirds of that relationship, whereas, the \spd{} plot gets the true education-weight relationship.  Female observations have at least 12 years of education, versus 10 for males, so $x_{education}$ and $x_{sex}$ are codependent, though, there is no interaction term. The fact that women are shorter on average biases the education-weight PD/ICE plot because the baseline weight is lower from which the education contribution is  subtracted.  
 
-Because the ``signal-to-noise ratio'' is low in the bodyweight data set, we set the other primary hyper parameter ${\it min\_samples\_leaf\_partition}=2$. That means to partition \xnc{} into very tight regions, leaving at least two observations from which estimate the change in $y$ over $x_c$ space.
+Because the ``signal-to-noise ratio'' is low in the bodyweight data set, we set hyper parameter ${\it min\_samples\_leaf\_partition}=2$. That means to partition \xnc{} into very tight regions, leaving at least two observations from which estimate the change in $y$ over $x_c$ space.
 
 Turning to the real but toy {\tt mtcars} data set \cite{mtcars} now, \figref{fig:cars}
 
@@ -509,6 +508,7 @@ int values being ignored during piecewise due to partitioning granularity. Note:
 \end{center}
 \end{figure}
 
+\subsection{Hyper parameters}
 
 \section{Discussion and Future Work}
 
@@ -532,7 +532,6 @@ better handle on hyper parameters; summarize what we know now.
 \setlength{\algomargin}{5pt}
 \begin{algorithm}[]
 \DontPrintSemicolon
-\label{alg:StratPD}
 \LinesNumbered
 \SetAlgorithmName{Algorithm}{List of Algorithms}
 \SetAlgoSkip{}
@@ -568,12 +567,12 @@ $uniqx$ = sorted(unique($x_c$))\\
 }
 $pd$ = numerically integrate $\beta_R$'s across $uniqx$\\
 \Return{collection of all $\beta_R$, $pd$}
+\label{alg:StratPD}
 \end{algorithm}
 
 \setlength{\algomargin}{5pt}
 \begin{algorithm}[]
 \DontPrintSemicolon
-\label{alg:CatStratPD}
 \LinesNumbered
 \SetAlgorithmName{Algorithm}{List of Algorithms}
 \SetAlgoSkip{}
@@ -608,6 +607,7 @@ $n = \Sigma_{T \in {\it rf}} \Sigma_{L \in T}S[L]$\tcp*[r]{\it Num observations 
 $D[cat] = \frac{1}{n} D[cat]$\tcp*[r]{\it Get average of leaf averages for $cat$}
 $D[cat] = D[cat] - min(D)$\tcp*[r]{\it Normalize lowest $D[cat]$ to 0}
 \Return{$D$}
+\label{alg:CatStratPD}
 \end{algorithm}
 
 \newpage
