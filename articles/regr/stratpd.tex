@@ -381,10 +381,6 @@ As another example of isolating codependent variable effects, compare the PD/ICE
 
 Because the ``signal-to-noise ratio'' is low in the bodyweight data set, we set hyper parameter ${\it min\_samples\_leaf\_partition}=2$. That means to partition \xnc{} into very tight regions, leaving at least two observations from which estimate the change in $y$ over $x_c$ space.
 
-Turning to the real but toy {\tt mtcars} data set \cite{mtcars} now, \figref{fig:cars}
-
-let's look at a toy data set: cars. When there is little codependence between features, the PD and ICE plots represent the partial dependencies well, as is the case with the well-known mtcars data set from \cite{mtcars}, shown in the second column of \figref{fig:cars}.  The first column represents the traditional marginal plots of horsepower and weight to mpg (miles per gallon). The third column represents the \spd{} plots. The orange line in each row represents the regression coefficient of the associated feature (with $y$-intercept adjusted so the line coincides well with the ICE and \spd{} plot slopes).  While both approaches yield useful graphs, the \spd{} plots are smoother and visually appear to be more linear, giving a better fits to the slope lines.
-
 \subsection{The effect of model choice on PD/ICE plots}
 
 then show more codependent features with four variable Gaussian. then show the education versus weight codependence.  mostly showing different models give vastly different answers here.
@@ -471,14 +467,6 @@ int values being ignored during piecewise due to partitioning granularity. Note:
 \includegraphics[scale=0.6]{images/bedrooms_vs_price_noise.png}
 \caption{{\bf  bedrooms dup col full rent data set (full is 49,353 records. maybe 48k records)}}
 \label{fig:beds_noise}
-\end{center}
-\end{figure}
-
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.7]{images/cars.png}
-\caption{{\bf  cars} CARS: edges/outliers of weight and hp not valid as nonsensical values; smoother. clearly nonlinear physics.}
-\label{fig:cars}
 \end{center}
 \end{figure}
 
