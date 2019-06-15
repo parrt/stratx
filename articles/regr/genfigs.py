@@ -197,16 +197,32 @@ def plot_with_noise_col(df, colname):
 
     X = df[features]
     y = df['price']
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
-    rf.fit(X, y)
 
-    # ICE ON ROW 1
+    # STRATPD ON ROW 1
+    X = df[features]
+    y = df['price']
+    uniq_x, curve, r2_at_x = \
+        plot_stratpd(X, y, colname, 'price', ax=axes[0, 0], alpha=.15, show_xlabel=True, show_ylabel=False)
+    axes[0, 0].set_ylim(-1000,5000)
+    axes[0, 0].set_title(f"StratPD")
+
+    X = df[features_with_noise]
+    y = df['price']
+    plot_stratpd(X, y, colname, 'price', ax=axes[0, 1], alpha=.15, show_ylabel=False)
+    axes[0, 1].set_ylim(-1000,5000)
+    axes[0, 1].set_title(f"StratPD w/{type} col")
+
+    # ICE ON ROW 2
+    X = df[features]
+    y = df['price']
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True, n_jobs=-1)
+    rf.fit(X, y)
     # do it w/o dup'd column
     ice = predict_ice(rf, X, colname, 'price', nlines=1000)
     uniq_x, pdp_curve = \
-        plot_ice(ice, colname, 'price', alpha=.05, ax=axes[0, 0], show_xlabel=False)
-    axes[0,0].set_ylim(-1000,5000)
-    axes[0, 0].set_title(f"PD/ICE")
+        plot_ice(ice, colname, 'price', alpha=.05, ax=axes[1, 0], show_xlabel=True)
+    axes[1,0].set_ylim(-1000,5000)
+    axes[1, 0].set_title(f"PD/ICE")
 
     for i in range(2):
         for j in range(2):
@@ -214,28 +230,14 @@ def plot_with_noise_col(df, colname):
 
     X = df[features_with_noise]
     y = df['price']
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True, n_jobs=-1)
     rf.fit(X, y)
     ice = predict_ice(rf, X, colname, 'price', nlines=1000)
     uniq_x_, pdp_curve_ = \
-        plot_ice(ice, colname, 'price', alpha=.05, ax=axes[0,1], show_xlabel=True, show_ylabel=False)
-    axes[0,1].set_ylim(-1000,5000)
-    axes[0, 1].set_title(f"PD/ICE w/{type} col")
+        plot_ice(ice, colname, 'price', alpha=.05, ax=axes[1,1], show_xlabel=True, show_ylabel=False)
+    axes[1,1].set_ylim(-1000,5000)
+    axes[1, 1].set_title(f"PD/ICE w/{type} col")
     # print(f"max ICE curve {np.max(pdp_curve):.0f}, max curve with dup {np.max(pdp_curve_):.0f}")
-
-    # STRATPD ON ROW 2
-    X = df[features]
-    y = df['price']
-    uniq_x, curve, r2_at_x = \
-        plot_stratpd(X, y, colname, 'price', ax=axes[1, 0], alpha=.2, show_xlabel=True, show_ylabel=False)
-    axes[1, 0].set_ylim(-1000,5000)
-    axes[1, 0].set_title(f"StratPD")
-
-    X = df[features_with_noise]
-    y = df['price']
-    plot_stratpd(X, y, colname, 'price', ax=axes[1, 1], alpha=.2, show_ylabel=False)
-    axes[1, 1].set_ylim(-1000,5000)
-    axes[1, 1].set_title(f"StratPD w/{type} col")
 
     axes[0,0].get_xaxis().set_visible(False)
     axes[0,1].get_xaxis().set_visible(False)
@@ -254,18 +256,48 @@ def plot_with_dup_col(df, colname):
     df[colname + '_dup'] = df[colname]
     # df_rent[colname+'_dupdup'] = df_rent[colname]
 
+    # STRATPD ON ROW 1
     X = df[features]
     y = df['price']
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
+    print(f"shape is {X.shape}")
+    uniq_x, curve, r2_at_x = \
+        plot_stratpd(X, y, colname, 'price', ax=axes[0, 0], alpha=.15, show_xlabel=True, show_ylabel=True,
+                     verbose=verbose)
+    axes[0, 0].set_ylim(-1000,5000)
+    axes[0, 0].set_title(f"StratPD")
+
+    X = df[features_with_dup]
+    y = df['price']
+    print(f"shape with dup is {X.shape}")
+    plot_stratpd(X, y, colname, 'price', ax=axes[0, 1], alpha=.15, show_ylabel=False,
+                 verbose=verbose)
+    axes[0, 1].set_ylim(-1000,5000)
+    axes[0, 1].set_title(f"StratPD w/{type} col")
+
+    uniq_x_, curve_, r2_at_x_ = \
+        plot_stratpd(X, y, colname, 'price', ax=axes[0, 2], alpha=.15, show_xlabel=True, show_ylabel=False,
+                 ntrees=15,
+                 max_features=2,
+                 bootstrap=False,
+                 verbose=verbose
+                 )
+    axes[0, 2].set_ylim(-1000,5000)
+    axes[0, 2].set_title(f"StratPD w/{type} col")
+    axes[0, 2].text(.2,4000, "ntrees=15")
+    axes[0, 2].text(.2,3500, "max features per split=2")
+
+    # ICE ON ROW 2
+    X = df[features]
+    y = df['price']
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True, n_jobs=-1)
     rf.fit(X, y)
 
-    # ICE ON ROW 1
     # do it w/o dup'd column
     ice = predict_ice(rf, X, colname, 'price', nlines=1000)
     uniq_x, pdp_curve = \
-        plot_ice(ice, colname, 'price', alpha=.05, ax=axes[0, 0], show_xlabel=False)
-    axes[0,0].set_ylim(-1000,5000)
-    axes[0, 0].set_title(f"PD/ICE")
+        plot_ice(ice, colname, 'price', alpha=.05, ax=axes[1, 0], show_xlabel=False)
+    axes[1,0].set_ylim(-1000,5000)
+    axes[1, 0].set_title(f"PD/ICE")
 
     for i in range(2):
         for j in range(3):
@@ -274,53 +306,22 @@ def plot_with_dup_col(df, colname):
     # with dup'd column
     X = df[features_with_dup]
     y = df['price']
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True, n_jobs=-1)
     rf.fit(X, y)
     ice = predict_ice(rf, X, colname, 'price', nlines=1000)
     uniq_x_, pdp_curve_ = \
-        plot_ice(ice, colname, 'price', alpha=.05, ax=axes[0,1], show_xlabel=True, show_ylabel=False)
-    axes[0,1].set_ylim(-1000,5000)
-    axes[0, 1].set_title(f"PD/ICE w/{type} col")
+        plot_ice(ice, colname, 'price', alpha=.05, ax=axes[1,1], show_xlabel=True, show_ylabel=False)
+    axes[1,1].set_ylim(-1000,5000)
+    axes[1, 1].set_title(f"PD/ICE w/{type} col")
     # print(f"max ICE curve {np.max(pdp_curve):.0f}, max curve with dup {np.max(pdp_curve_):.0f}")
 
-    axes[0, 2].set_title(f"PD/ICE w/{type} col")
-    axes[0, 2].text(.2, 4000, "Cannot compensate")
-
-    # STRATPD ON ROW 2
-    X = df[features]
-    y = df['price']
-    print(f"shape is {X.shape}")
-    uniq_x, curve, r2_at_x = \
-        plot_stratpd(X, y, colname, 'price', ax=axes[1, 0], alpha=.2, show_xlabel=True, show_ylabel=True,
-                     verbose=verbose)
-    axes[1, 0].set_ylim(-1000,5000)
-    axes[1, 0].set_title(f"StratPD")
-
-    X = df[features_with_dup]
-    y = df['price']
-    print(f"shape with dup is {X.shape}")
-    plot_stratpd(X, y, colname, 'price', ax=axes[1, 1], alpha=.2, show_ylabel=False,
-                 verbose=verbose)
-    axes[1, 1].set_ylim(-1000,5000)
-    axes[1, 1].set_title(f"StratPD w/{type} col")
-
-    uniq_x_, curve_, r2_at_x_ = \
-        plot_stratpd(X, y, colname, 'price', ax=axes[1, 2], alpha=.2, show_xlabel=True, show_ylabel=False,
-                 ntrees=10,
-                 max_features=2,
-                 bootstrap=False,
-                 verbose=verbose
-                 )
-    axes[1, 2].set_ylim(-1000,5000)
-    axes[1, 2].set_title(f"StratPD w/{type} col")
-    axes[1, 2].text(.2,4000, "ntrees=10")
-    axes[1, 2].text(.2,3500, "max features per split=2")
-
+    axes[1, 2].set_title(f"PD/ICE w/{type} col")
+    axes[1, 2].text(.2, 4000, "Cannot compensate")
 
     print(f"max curve {np.max(curve):.0f}, max curve with dup {np.max(curve_):.0f}")
 
-    axes[0,2].get_xaxis().set_visible(False)
-    axes[0,2].get_yaxis().set_visible(False)
+    axes[1,2].get_xaxis().set_visible(False)
+    axes[1,2].get_yaxis().set_visible(False)
 
     axes[0,0].get_xaxis().set_visible(False)
     axes[0,1].get_xaxis().set_visible(False)
@@ -924,6 +925,10 @@ def meta_additivity():
         y = df['y']
         col = 0
         for s in sizes:
+            if row==3:
+                show_xlabel = True
+            else:
+                show_xlabel = False
             print(f"------------------- noise {sd}, SIZE {s} --------------------")
             if col>1: axes[row, col].get_yaxis().set_visible(False)
             plot_stratpd(X, y, 'x1', 'y', ax=axes[row, col],
@@ -933,7 +938,7 @@ def meta_additivity():
                          yrange=(-1, 1),
                          pdp_dot_size=2, alpha=.4,
                          show_ylabel=False,
-                         show_xlabel=False)
+                         show_xlabel=show_xlabel)
             if col==0:
                 axes[row,col].set_ylabel(f'$y, \epsilon \sim N(0,{sd:.2f})$')
 
@@ -966,7 +971,7 @@ def meta_additivity():
                         fontsize=10, show={'splits'},
                         split_linewidth=.5,
                         markersize=5)
-        axes[lastrow, col].set_xlabel("x1")
+        axes[lastrow, col].set_xlabel("x2")
         col += 1
 
     savefig(f"meta_additivity_noise", pad=.85)
@@ -1406,7 +1411,7 @@ def multi_joint_distr():
 
 
 if __name__ == '__main__':
-    multi_joint_distr()
+    # multi_joint_distr()
     # rent_extra_cols()
     # bulldozer()
     # cars()
@@ -1423,6 +1428,6 @@ if __name__ == '__main__':
     # meta_weather()
     # weight_ntrees()
     # weather()
-    # meta_additivity()
+    meta_additivity()
     # additivity()
     # bigX()

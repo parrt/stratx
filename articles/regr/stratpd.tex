@@ -377,7 +377,7 @@ def toy_weight_data(n):
 
 Because of the codependence between $x_{pregnant}$ and $x_{height}$ via $x_{sex}$, \figref{fig:height_vs_weight} demonstrated that PD/ICE plot incorrectly showed shorter people as heavier on average. PD/ICE conjures up unlikely observation such as pregnant males, resulting in biased ICE lines.
 
-As another example of isolating codependent variable effects, compare the PD/ICE and \spd{} plots in \figref{fig:education_vs_weight} showing number of years of education versus weight. Weight is related to education by slope -1.5, so a perfect partial dependence graph would show a drop of 12 pounds over 8 years of education. The PD/ICE plot captures only about two thirds of that relationship, whereas, the \spd{} plot gets the true education-weight relationship.  Female observations have at least 12 years of education, versus 10 for males, so $x_{education}$ and $x_{sex}$ are codependent, though, there is no interaction term. The fact that women are shorter on average biases the education-weight PD/ICE plot because the baseline weight is lower from which the education contribution is  subtracted.  
+As another example of isolating codependent variable effects, compare the PD/ICE and \spd{} plots in \figref{fig:education_vs_weight} showing number of years of education versus weight. Weight is related to education by slope -1.5, so a perfect partial dependence graph would show a drop of 12 pounds over 8 years of education. The PD/ICE plot captures only about two thirds of that relationship, whereas, the \spd{} plot gets the true education-weight relationship.  Female observations have at least 12 years of education, versus 10 for males, so $x_{education}$ and $x_{sex}$ are codependent, though, there is no interaction term. The fact that women are shorter on average biases the education-weight PD/ICE plot because the baseline weight is lower from which the education contribution is  subtracted.
 
 Because the ``signal-to-noise ratio'' is low in the bodyweight data set, we set hyper parameter ${\it min\_samples\_leaf\_partition}=2$. That means to partition \xnc{} into very tight regions, leaving at least two observations from which estimate the change in $y$ over $x_c$ space.
 
@@ -396,30 +396,26 @@ Perhaps the biggest issue with PD and ICE plots is that they rely on predictions
 \right)
 \]
 
-\noindent where $y = x_1 + x_2 + x_3 + x_4$.  There are PD/ICE plots from four different models, random forests (100 trees), support vector machines ($\gamma=1/4$), ordinary least squares linear models, and $k$-nearest neighbor ($k=5$).  Because the data is essentially skewed noise, we increased the number of data points per leaf during $T$ partitioning of \xnc{} and increased $T'$ piecewise partitioning so each leaf contains almost half the $x_c$ data: ${\it min\_samples\_leaf\_partition = 50}$, ${\it min\_samples\_leaf\_piecewise = .4}$.
+\noindent where $y = x_1 + x_2 + x_3 + x_4$.  There are PD/ICE plots from four different models, random forests (100 trees), support vector machines ($\gamma=1/4$), ordinary least squares linear models, and $k$-nearest neighbor ($k=5$).  Because this data set is essentially skewed noise, we increased the number of data points per leaf during $T$ partitioning of \xnc{} and increased $T'$ piecewise partitioning so each leaf contains almost half the $x_c$ data: ${\it min\_samples\_leaf\_partition = 50}$, ${\it min\_samples\_leaf\_piecewise = .4}$.
 
-Because $\frac{\partial y}{\partial x_{c}} = 1$ for all $x_c$, the partial dependence curves should be lines with slope 1.  The second row of \figref{fig:4var} has \spd{} plots that show linear relationships and the slopes are almost correct.  The PD/ICE plots derived from RF and SVM models show distinct flattening or curving behavior at the edges because the variables are codependent. Models are presented with highly unlikely combinations of $x_i$ variables that are outside of the training data and are forced to extrapolate outside of their support range.  The linear model does very well because it assumes the relationship is linear and, therefore, extrapolates linearly without issue. The nearest neighbor model also does well for this data set
+Because $\frac{\partial y}{\partial x_{c}} = 1$ for all $x_c$, the partial dependence curves should be lines with slope 1.  The second row of \figref{fig:4var} has \spd{} plots that show linear relationships and the slopes are almost correct.  The PD/ICE plots derived from RF and SVM models show distinct flattening or curving behavior at the edges because the variables are codependent. Models are presented with highly unlikely combinations of $x_i$ variables that are outside of the training data and are forced to extrapolate outside of their support range.  The linear model does very well because it assumes the relationship is linear and, therefore, extrapolates linearly without issue. The nearest neighbor model also captures the linear relationship well but underestimates the partial dependence slope for $x_3$ and $x_4$.
  
-these variables are codependent which causes edge regions of $x_c$ to flatten out or curve because extrapolating outside of support range with extremely unlikely combinations of the four variables. 
+\subsection{Duplicated columns require multiple decision trees}\label{sec:dup}
 
- then show the education versus weight codependence.  mostly showing different models give vastly different answers here.
+Isolating $x_c$ from codependent variables in \xnc{} through decision tree stratification works well in our experiments unless $x_c$ is a linear function of a variable in \xnc{}. In that case, stratification hammers out variation in $x_c$, as if the decision tree were trained on $(\bf X, y)$ not (\xnc, $\bf y$). To simulate this pathological situation, we duplicated $x_{\it bathrooms}$ from the rent data set and generated the \spd{} and PD/ICE plots in \figref{fig:baths_dup}. The first column shows plots without a duplicated column and the second column shows the result of duplicating $x_{\it bathrooms}$. Both plots show much reduced partial dependence of $y$ on the highly-predictive variable $x_{\it bathrooms}$. In the case of \spd{}, the stratification process groups the data by apartments with similar bathrooms and so it shows no partial dependence for the duplicated variable.  
 
-\subsection{Duplicated columns require random forests}\label{sec:dup}
+The problem with the PD/ICE plot is not because of codependence between $x_{\it bathrooms}$ and its duplicate. Instead, that PD/ICE is lower because of the nature of this data set and the way random forests train. With two identical variables, decision nodes that split on one of those variables will choose between them with 50\% probability.  To create ICE trendlines, only one of the duplicate variables changes through $x_{\it bathrooms}$ space, which means that roughly half the tree decision nodes will lead to predictions that ignore the shifted $x_c$ variable.  This has the effect that the model underestimates rent prices.  For example, given an observation with $x_{\it bathrooms}=1$, (simplifying slightly) half the trees in the forest would predict rent appropriate for one bathroom even when the trend line shifts the $x_c$ bathrooms to 4. \todo{James: is this clear enough?}  It would be possible to change the model in an effort to overcome this issue, but many models do not support duplicated or highly-correlated variables.
 
-when codependence breaches pathological proportions: duplicate column. need multiple trees; the reason that the ice plot is lowered is due to the data, which has very few data points in the high range of bedrooms. The average is maybe 1.2, so for roughly half the trees, the prediction will be for 1.2 bedrooms no matter what the duplicated bedroom column says.  This problem occurs for strongly predictive features in RF. Linear model couldn't handle duplicate column. \spd{} must use randomness to overcome duplicated columns, but bootstrapping is not important and in fact a negative as we discussed.
+\cut{
+the reason that the ice plot is lowered is due to the data, which has very few data points in the high range of bedrooms. The average is maybe 1.2, so for roughly half the trees, the prediction will be for 1.2 bedrooms no matter what the duplicated bedroom column says.  This problem occurs for strongly predictive features in RF. Linear model couldn't handle duplicate column.}
 
-the reason that the ice plot is lowered is due to the data, which has very few data points in the high range of bedrooms. The average is maybe 1.2, so for roughly half the trees, the prediction will be for 1.2 bedrooms no matter what the duplicated bedroom column says.  This problem occurs for strongly predictive features in RF. Linear model couldn't handle duplicate column. \spd{} must use randomness to overcome duplicated columns, but bootstrapping is not important and in fact a negative as we discussed. 
+To compensate for duplicate columns, \spd{} supports the use of random forests rather than a single decision tree to stratify \xnc{} space. The difference from conventional random forest training is that bootstrapping is not important and, in fact, increases bias because the individual trees are working on 2/3 of the data set. The third column, top row in \figref{fig:baths_dup} shows the \spd{} plot resulting from the use of 15 trees ($ntrees=15$) and limiting decision node variable choice to one of two randomly-selected variables at each split (${\it max\_features}=2$).  Restricting the number of variables available during node splitting prevents partitioning from relying too heavily on the duplicate of $x_c$, leading to number of leaves that show some variation in $x_c$.
 
-\subsection{Compensating for noisy features}\label{sec:noise}
+\subsection{Compensating for noise}\label{sec:noise}
 
-Changing hyper parameters
-show how noise /  hyper parameters affect results.
+To explore the effect of irrelevant variables on \spd{} plots, we introduced a noise column ($x_{\it noise} \sim U(0,50)$) to the rent data set. Because decision trees ignore variables with low predictive power, stratification automatically ignores irrelevant or noise columns.  \figref{fig:beds_noise} shows \spd{} and PD/ICE plots for the original data set and the data set with a noise column. Both approaches are unaffected by the introduction of the noise column, but that is true for PD/ICE because it is derived from a random forest. PD/ICE plots derived from models that are confused by noise columns would not be accurate.
 
-effect of noise columns (more data? change hyper parameters?), effect of hyper parameter changes
-                 {\tt min\_samples\_leaf\_partition}=10,
-                 {\tt min\_samples\_leaf\_piecewise}=.20,
-
-adding a noise column doesn't affect anything because of random forests partitioning; Try rent again with noise instead of a duplication column. A single column of noise scaled by 50 dollars does not affect the ice plot (using RF) or the \spd{} plot, as expected.
+Overcoming noise within predictive columns sometimes requires hyper parameter tuning. \figref{fig:meta_noise} shows the effect of changing hyper parameter ${\it min\_samples\_leaf\_partition}$ on \spd{} plots at different noise levels for the Equation \eqref{eq:parabola} quadratic data set. The bottom row shows decision tree partitioning of \xnc{}=$x_2$ space. For all plots, hyper parameter ${\it min\_samples\_leaf\_piecewise}$ = .3 (default is .2) to smooth $x_1$. The first row represents the baseline where $y$ omits Gaussian noise.  Increasing the partitioning leaf size for \xnc{}=$x_2$ improves the shape and depth of the parabola, which should be 1.  As more and more Gaussian noise is added to $y$, the \spd{} plots become more erratic, but larger partitioning leaf size tends to compensate.
 
 \subsection{\spd{} and \cspd{} applied to real data} 
 
@@ -457,27 +453,18 @@ int values being ignored during piecewise due to partitioning granularity. Note:
 
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[scale=0.7]{images/education_vs_weight_pdp.png}
 \includegraphics[scale=0.7]{images/education_vs_weight_stratpd.png}
+\includegraphics[scale=0.7]{images/education_vs_weight_pdp.png}
 \caption{{\bf  educ vs weight}}
 \label{fig:education_vs_weight}
 \end{center}
 \end{figure}
 
-
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.6]{images/bathrooms_vs_price_dup.png}
 \caption{{\bf  bathrooms dup col full rent data set (full is 49,353 records. maybe 48k records)}}
-\label{fig:bathss_dup}
-\end{center}
-\end{figure}
-
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.7]{images/meta_additivity_noise.png}
-\caption{effect of noise $y = x_1^2 + x_2 + \epsilon$, min leaf size for $x_c=0.3$}
-\label{fig:meta_noise}
+\label{fig:baths_dup}
 \end{center}
 \end{figure}
 
@@ -486,6 +473,14 @@ int values being ignored during piecewise due to partitioning granularity. Note:
 \includegraphics[scale=0.6]{images/bedrooms_vs_price_noise.png}
 \caption{{\bf  bedrooms dup col full rent data set (full is 49,353 records. maybe 48k records)}}
 \label{fig:beds_noise}
+\end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.7]{images/meta_additivity_noise.png}
+\caption{effect of noise $y = x_1^2 + x_2 + \epsilon$, min leaf size for $x_c=0.3$}
+\label{fig:meta_noise}
 \end{center}
 \end{figure}
 
