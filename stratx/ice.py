@@ -38,7 +38,7 @@ def predict_ice(model, X:pd.DataFrame, colname:str, targetname="target", cats=No
         linex = np.unique(cats)
         numx = None
     elif numx is not None:
-        linex = np.linspace(np.min(X[colname]), np.max(X[colname]), numx)
+        linex = np.linspace(np.min(X[colname]), np.max(X[colname]), numx, endpoint=True)
     else:
         linex = sorted(X[colname].unique())
 

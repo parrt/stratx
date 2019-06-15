@@ -383,7 +383,26 @@ Because the ``signal-to-noise ratio'' is low in the bodyweight data set, we set 
 
 \subsection{The effect of model choice on PD/ICE plots}
 
-then show more codependent features with four variable Gaussian. then show the education versus weight codependence.  mostly showing different models give vastly different answers here.
+Perhaps the biggest issue with PD and ICE plots is that they rely on predictions from a user-provided model $\hat{f}(\bf X)$, and different models make different assumptions and have different strengths and weaknesses.  Users must choose the appropriate model for the data set and properly tune the models, otherwise ICE trendlines are untrustworthy. \figref{fig:4var} shows marginal plots, \spd{} plots, and PD/ICE plots for a 4-variable normal distribution with center $(6, 6, 6, 6)$ and covariance matrix:
+
+\[
+\left(
+\begin{array}{cccc}
+1 & 5 &.7 & 3\\
+5 &1 &2 &.5\\
+.7 &2 & 1 & 1.5\\
+3 &.5 &1.5 &1\\
+\end{array}
+\right)
+\]
+
+\noindent where $y = x_1 + x_2 + x_3 + x_4$.  There are PD/ICE plots from four different models, random forests (100 trees), support vector machines ($\gamma=1/4$), ordinary least squares linear models, and $k$-nearest neighbor ($k=5$).  Because the data is essentially skewed noise, we increased the number of data points per leaf during $T$ partitioning of \xnc{} and increased $T'$ piecewise partitioning so each leaf contains almost half the $x_c$ data: ${\it min\_samples\_leaf\_partition = 50}$, ${\it min\_samples\_leaf\_piecewise = .4}$.
+
+Because $\frac{\partial y}{\partial x_{c}} = 1$ for all $x_c$, the partial dependence curves should be lines with slope 1.  The second row of \figref{fig:4var} has \spd{} plots that show linear relationships and the slopes are almost correct.  The PD/ICE plots derived from RF and SVM models show distinct flattening or curving behavior at the edges because the variables are codependent. Models are presented with highly unlikely combinations of $x_i$ variables that are outside of the training data and are forced to extrapolate outside of their support range.  The linear model does very well because it assumes the relationship is linear and, therefore, extrapolates linearly without issue. The nearest neighbor model also does well for this data set
+ 
+these variables are codependent which causes edge regions of $x_c$ to flatten out or curve because extrapolating outside of support range with extremely unlikely combinations of the four variables. 
+
+ then show the education versus weight codependence.  mostly showing different models give vastly different answers here.
 
 \subsection{Duplicated columns require random forests}\label{sec:dup}
 

@@ -1262,7 +1262,7 @@ def bulldozer():
 
 def multi_joint_distr():
     # np.random.seed(42)
-    n = 2000
+    n = 1000
     min_samples_leaf_partition = 50
     min_samples_leaf_piecewise = .4
     df = pd.DataFrame(np.random.multivariate_normal([6, 6, 6, 6],
@@ -1284,19 +1284,19 @@ def multi_joint_distr():
 
     yrange = (-2, 15)
 
-    fig, axes = plt.subplots(6, 4, figsize=(7.5,8), sharey=False, sharex=True)
+    fig, axes = plt.subplots(6, 4, figsize=(7.5,8), sharey=False)#, sharex=True)
 
     axes[0,0].scatter(X['x1'], y, s=5, alpha=.08)
-    axes[0, 0].set_xlim(0,12)
+    axes[0, 0].set_xlim(0,13)
     axes[0, 0].set_ylim(0,45)
     axes[0,1].scatter(X['x2'], y, s=5, alpha=.08)
-    axes[0, 1].set_xlim(0,12)
+    axes[0, 1].set_xlim(0,13)
     axes[0, 1].set_ylim(3,45)
     axes[0, 2].scatter(X['x3'], y, s=5, alpha=.08)
-    axes[0, 2].set_xlim(0,12)
+    axes[0, 2].set_xlim(0,13)
     axes[0, 2].set_ylim(3,45)
     axes[0, 3].scatter(X['x4'], y, s=5, alpha=.08)
-    axes[0, 3].set_xlim(0,12)
+    axes[0, 3].set_xlim(0,13)
     axes[0, 3].set_ylim(3,45)
 
     # axes[0, 0].set_xlabel("x1")
@@ -1310,10 +1310,10 @@ def multi_joint_distr():
 
     for i in range(6):
         for j in range(4):
-            axes[i, j].set_xlim(0, 12)
+            axes[i, j].set_xlim(0, 15)
 
     uniqx, pdp, r2_at_x = \
-        plot_stratpd(X, y, 'x1', 'y', ax=axes[1,0], xrange=(0,12),
+        plot_stratpd(X, y, 'x1', 'y', ax=axes[1,0], xrange=(0,13),
                      # show_dx_line=True,
                      min_samples_leaf_partition=min_samples_leaf_partition,
                      min_samples_leaf_piecewise=min_samples_leaf_piecewise,
@@ -1323,7 +1323,7 @@ def multi_joint_distr():
     axes[1,0].text(1,10,f"Slope={r.coef_[0]:.2f}")
 
     uniqx, pdp, r2_at_x = \
-        plot_stratpd(X, y, 'x2', 'y', ax=axes[1,1], xrange=(0,12),
+        plot_stratpd(X, y, 'x2', 'y', ax=axes[1,1], xrange=(0,13),
                      # show_dx_line=True,
                      min_samples_leaf_partition=min_samples_leaf_partition,
                      min_samples_leaf_piecewise=min_samples_leaf_piecewise,
@@ -1333,7 +1333,7 @@ def multi_joint_distr():
     axes[1,1].text(1,10,f"Slope={r.coef_[0]:.2f}")
 
     uniqx, pdp, r2_at_x = \
-        plot_stratpd(X, y, 'x3', 'y', ax=axes[1,2], xrange=(0,12),
+        plot_stratpd(X, y, 'x3', 'y', ax=axes[1,2], xrange=(0,13),
                      # show_dx_line=True,
                      min_samples_leaf_partition=min_samples_leaf_partition,
                      min_samples_leaf_piecewise=min_samples_leaf_piecewise,
@@ -1343,7 +1343,7 @@ def multi_joint_distr():
     axes[1,2].text(1,10,f"Slope={r.coef_[0]:.2f}")
 
     uniqx, pdp, r2_at_x = \
-        plot_stratpd(X, y, 'x4', 'y', ax=axes[1,3], xrange=(0,12),
+        plot_stratpd(X, y, 'x4', 'y', ax=axes[1,3], xrange=(0,13),
                      # show_dx_line=True,
                      min_samples_leaf_partition=min_samples_leaf_partition,
                      min_samples_leaf_piecewise=min_samples_leaf_piecewise,
@@ -1357,11 +1357,12 @@ def multi_joint_distr():
     axes[1,2].text(1,13,'StratPD', horizontalalignment='left')
     axes[1,3].text(1,13,'StratPD', horizontalalignment='left')
 
+    nfeatures = 4
     regrs = [
         RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True),
-        svm.SVR(gamma='scale'),
+        svm.SVR(gamma=1 / nfeatures),#gamma='scale'),
         LinearRegression(),
-        KNeighborsRegressor()]
+        KNeighborsRegressor(n_neighbors=5)]
     row = 2
     for regr in regrs:
         regr.fit(X, y)
@@ -1381,23 +1382,31 @@ def multi_joint_distr():
         axes[row,1].text(3, 10, rname, horizontalalignment='left')
         axes[row,2].text(3, 10, rname, horizontalalignment='left')
         axes[row,3].text(3, 10, rname, horizontalalignment='left')
-        ice = predict_ice(regr, X, 'x1', 'y', nlines=500)
-        plot_ice(ice, 'x1', 'y', ax=axes[row, 0], xrange=(0, 12), yrange=yrange, show_xlabel=show_xlabel, show_ylabel=True)
-        ice = predict_ice(regr, X, 'x2', 'y', nlines=500)
-        plot_ice(ice, 'x2', 'y', ax=axes[row, 1], xrange=(0, 12), yrange=yrange, show_xlabel=show_xlabel, show_ylabel=False)
-        ice = predict_ice(regr, X, 'x3', 'y', nlines=500)
-        plot_ice(ice, 'x3', 'y', ax=axes[row, 2], xrange=(0, 12), yrange=yrange, show_xlabel=show_xlabel, show_ylabel=False)
-        ice = predict_ice(regr, X, 'x4', 'y', nlines=500)
-        plot_ice(ice, 'x4', 'y', ax=axes[row, 3], xrange=(0, 12), yrange=yrange, show_xlabel=show_xlabel, show_ylabel=False)
+        ice = predict_ice(regr, X, 'x1', 'y')
+        plot_ice(ice, 'x1', 'y', ax=axes[row, 0], xrange=(0, 13), yrange=yrange,
+                 alpha=.08,
+                 show_xlabel=show_xlabel, show_ylabel=True)
+        ice = predict_ice(regr, X, 'x2', 'y')
+        plot_ice(ice, 'x2', 'y', ax=axes[row, 1], xrange=(0, 13), yrange=yrange,
+                 alpha=.08,
+                 show_xlabel=show_xlabel, show_ylabel=False)
+        ice = predict_ice(regr, X, 'x3', 'y')
+        plot_ice(ice, 'x3', 'y', ax=axes[row, 2], xrange=(0, 13), yrange=yrange,
+                 alpha=.08,
+                 show_xlabel=show_xlabel, show_ylabel=False)
+        ice = predict_ice(regr, X, 'x4', 'y')
+        plot_ice(ice, 'x4', 'y', ax=axes[row, 3], xrange=(0, 13), yrange=yrange,
+                 alpha=.08,
+                 show_xlabel=show_xlabel, show_ylabel=False)
         row += 1
 
-    savefig("multivar_multimodel_normal")
     # plt.tight_layout()
     # plt.show()
+    savefig("multivar_multimodel_normal")
 
 
 if __name__ == '__main__':
-    # multi_joint_distr()
+    multi_joint_distr()
     # rent_extra_cols()
     # bulldozer()
     # cars()
@@ -1413,7 +1422,7 @@ if __name__ == '__main__':
     # unsup_weight()
     # meta_weather()
     # weight_ntrees()
-    weather()
+    # weather()
     # meta_additivity()
     # additivity()
     # bigX()
