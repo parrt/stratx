@@ -143,6 +143,7 @@ def rent():
 
 
 def rent_int():
+    # np.random.seed(42)
     print(f"----------- {inspect.stack()[0][3]} -----------")
     df_rent = load_rent()
     df_rent = df_rent.sample(n=10_000)  # get a small subsample since SVM is slowwww
@@ -155,31 +156,46 @@ def rent_int():
     avg_per_baths = df_rent.groupby('bedrooms').mean()['price']
     axes[0,0].scatter(df_rent['bedrooms'], df_rent['price'], alpha=0.07, s=5)#, label="observation")
     axes[0,0].scatter(np.unique(df_rent['bedrooms']), avg_per_baths, s=6, c='black', label="average price/bedrooms")
+    axes[0,0].set_xlabel("bedrooms")#, fontsize=12)
     axes[0,0].set_ylabel("price")#, fontsize=12)
     axes[0,0].set_ylim(0,10_000)
     avg_per_baths = df_rent.groupby('bathrooms').mean()['price']
     axes[1,0].scatter(df_rent['bathrooms'], df_rent['price'], alpha=0.07, s=5)#, label="observation")
     axes[1,0].scatter(np.unique(df_rent['bathrooms']), avg_per_baths, s=6, c='black', label="average price/bathrooms")
+    axes[1,0].set_xlabel("bathrooms")#, fontsize=12)
     axes[1,0].set_ylabel("price")#, fontsize=12)
     axes[1,0].set_ylim(0,10_000)
 
-    plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 1], alpha=.2, show_ylabel=False)
+    stratpd_min_samples_leaf_partition = 10 #  the default
+    catstratpd_min_samples_leaf_partition = 10
+
+    plot_stratpd(X, y, 'bedrooms', 'price',
+                 min_samples_leaf_partition=stratpd_min_samples_leaf_partition,
+                 ax=axes[0, 1], alpha=.2, show_ylabel=False)
     axes[0,1].set_ylim(-500,5000)
 
     plot_catstratpd(X, y, 'bedrooms', 'price', cats=np.unique(X['bedrooms']),
-                    ax=axes[0, 2], alpha=.2, show_ylabel=False)
+                    min_samples_leaf_partition=catstratpd_min_samples_leaf_partition,
+                    ax=axes[0, 2], alpha=.2, show_ylabel=False,
+                    sort=None)
     axes[0,2].set_ylim(-500,5000)
 
-    plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 1], alpha=.2, show_ylabel=False)
+    plot_stratpd(X, y, 'bathrooms', 'price',
+                 min_samples_leaf_partition=stratpd_min_samples_leaf_partition,
+                 ax=axes[1, 1], alpha=.2, show_ylabel=False)
     axes[1,1].set_ylim(-500,5000)
 
     X['bathrooms'] = X['bathrooms'].astype(str)
     baths = np.unique(X['bathrooms'])
     plot_catstratpd(X, y, 'bathrooms', 'price', cats=baths,
-                    ax=axes[1, 2], alpha=.2, show_ylabel=False)
+                    min_samples_leaf_partition=catstratpd_min_samples_leaf_partition,
+                    ax=axes[1, 2], alpha=.2, show_ylabel=False,
+                    sort=None)
     axes[1,2].set_ylim(-500,5000)
 
-    #axes[1,1].get_yaxis().set_visible(False)
+    axes[0,0].set_title("Scatter")#, fontsize=12)
+    axes[0,1].set_title("StratPD")#, fontsize=12)
+    axes[0,2].set_title("CatStratPD")#, fontsize=12)
 
     savefig(f"rent_intcat")
     plt.close()
@@ -1429,12 +1445,12 @@ def multi_joint_distr():
 if __name__ == '__main__':
     # multi_joint_distr()
     # rent_extra_cols()
-    bulldozer()
+    # bulldozer()
     # cars()
     # meta_cars()
     # unsup_boston()
     # rent()
-    # rent_int()
+    rent_int()
     # rent_ntrees()
     # meta_boston()
     # meta_weight()

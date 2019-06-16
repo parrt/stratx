@@ -93,7 +93,7 @@ def piecewise_xc_space(x:np.ndarray, y:np.ndarray, hires_min_samples_leaf:int, c
         leaf_y = y[samples]
         r = (np.min(leaf_x), np.max(leaf_x))
         if np.isclose(r[0], r[1]):
-            ignored += 1
+            ignored += len(samples)
             if verbose: print(f"\tIgnoring range {r} from {leaf_x.T[0:3]}... -> {leaf_y[0:3]}...")
             continue
         lm = LinearRegression()
@@ -139,7 +139,7 @@ def piecewise_xc_space(x:np.ndarray, y:np.ndarray, hires_min_samples_leaf:int, c
 
     stop = time.time()
     # print(f"hires_slopes_from_one_leaf {stop - start:.3f}s")
-    return leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2
+    return leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2, ignored
 
 
 def collect_leaf_slopes(rf, X, y, colname, min_samples_leaf_hires, verbose):
@@ -160,6 +160,8 @@ def collect_leaf_slopes(rf, X, y, colname, min_samples_leaf_hires, verbose):
     leaf_xranges = []
     leaf_sizes = []
 
+    ignored = 0
+
     leaves = leaf_samples(rf, X.drop(colname, axis=1))
 
     if verbose:
@@ -175,25 +177,27 @@ def collect_leaf_slopes(rf, X, y, colname, min_samples_leaf_hires, verbose):
         r = (np.min(leaf_x), np.max(leaf_x))
         if np.isclose(r[0], r[1]):
             # print(f"ignoring xleft=xright @ {r[0]}")
+            ignored += len(leaf_x)
             continue
 
         # rpercent = (r[1] - r[0]) * 100.0 / (allr[1] - allr[0])
         # print(f"{len(leaf_x)} obs, R^2 y ~ X[{colname}] = {r2:.2f}, in range {r} is {rpercent:.2f}%")
 
-        leaf_xranges_, leaf_sizes_, leaf_slopes_, leaf_r2_ = \
+        leaf_xranges_, leaf_sizes_, leaf_slopes_, leaf_r2_, ignored_ = \
             piecewise_xc_space(leaf_x, leaf_y, hires_min_samples_leaf=min_samples_leaf_hires,
                                colname=colname, verbose=verbose)
         leaf_slopes.extend(leaf_slopes_)
         leaf_r2.extend(leaf_r2_)
         leaf_xranges.extend(leaf_xranges_)
         leaf_sizes.extend(leaf_sizes_)
+        ignored += ignored_
 
     leaf_xranges = np.array(leaf_xranges)
     leaf_sizes = np.array(leaf_sizes)
     leaf_slopes = np.array(leaf_slopes)
     stop = time.time()
     if verbose: print(f"collect_leaf_slopes {stop - start:.3f}s")
-    return leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2
+    return leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2, ignored
 
 
 def avg_values_at_x(uniq_x, leaf_ranges, leaf_values, leaf_weights):
@@ -281,9 +285,11 @@ def plot_stratpd(X, y, colname, targetname=None,
 
     uniq_x = np.array(sorted(np.unique(X[colname])))
     # print(f"\nModel wo {colname} OOB R^2 {rf.oob_score_:.5f}")
-    leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2 = \
+    leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2, ignored = \
         collect_leaf_slopes(rf, X, y, colname,
                             min_samples_leaf_hires=min_samples_leaf_piecewise, verbose=verbose)
+    if True:
+        print(f"StratPD Num samples ignored {ignored} for {colname}")
     slope_at_x = avg_values_at_x(uniq_x, leaf_xranges, leaf_slopes, leaf_sizes)
     r2_at_x = avg_values_at_x(uniq_x, leaf_xranges, leaf_r2, leaf_sizes)
     # Drop any nan slopes; implies we have no reliable data for that range
@@ -400,7 +406,6 @@ def do_my_binning(x:np.ndarray, y:np.ndarray, h:float):
     return leaf_bin_avgs
 
 
-
 def catwise_leaves(rf, X, y, colname, verbose):
     """
     Return a dataframe with the average y value for each category in each leaf
@@ -414,6 +419,7 @@ def catwise_leaves(rf, X, y, colname, verbose):
         2         219.590349  176.448626
     """
     start = time.time()
+    ignored = 0
     catcol = X[colname].astype('category').cat.as_ordered()
     cats = catcol.cat.categories
     leaf_sizes = []
@@ -428,7 +434,8 @@ def catwise_leaves(rf, X, y, colname, verbose):
         avg_cat_y = combined.groupby(colname).mean()
         avg_cat_y = avg_cat_y.iloc[:,-1]
         if len(avg_cat_y) < 2:
-            # print(f"ignoring len {len(avg_cat_y)} cat leaf")
+            # print(f"ignoring {len(sample)} obs for {len(avg_cat_y)} cat(s) in leaf")
+            ignored += len(sample)
             continue
         # record avg y value per cat in this leaf
         # This assignment copies cat y avgs to appropriate cat row using index
@@ -444,7 +451,7 @@ def catwise_leaves(rf, X, y, colname, verbose):
     # print(leaf_histos)
     stop = time.time()
     if verbose: print(f"catwise_leaves {stop - start:.3f}s")
-    return leaf_histos, leaf_sizes
+    return leaf_histos, leaf_sizes, ignored
 
 
 # only works for ints, not floats
@@ -495,7 +502,10 @@ def plot_catstratpd(X, y, colname, targetname,
     # rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X.drop(colname, axis=1), y)
     # print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
-    leaf_histos, leaf_sizes = catwise_leaves(rf, X, y, colname, verbose=verbose)
+    leaf_histos, leaf_sizes, ignored = catwise_leaves(rf, X, y, colname, verbose=verbose)
+
+    if True:
+        print(f"CatStratPD Num samples ignored {ignored} for {colname}")
 
     # weighted_histos = leaf_histos.mul(leaf_sizes)
     # weighted_sum_per_cat = np.nansum(weighted_histos, axis=1)
