@@ -242,7 +242,7 @@ def plot_stratpd(X, y, colname, targetname=None,
                  min_samples_leaf_piecewise=.20,
                  xrange=None,
                  yrange=None,
-                 pdp_dot_size=2,
+                 pdp_marker_size=2,
                  linecolor='#2c7fb8',
                  title=None,
                  nlines=None,
@@ -309,7 +309,7 @@ def plot_stratpd(X, y, colname, targetname=None,
     # print(uniq_x, len(uniq_x))
     # print(curve, len(curve))
 
-    ax.scatter(uniq_x, curve, s=pdp_dot_size, alpha=1, c='black')
+    ax.scatter(uniq_x, curve, s=pdp_marker_size, alpha=1, c='black')
 
     if connect_pdp_dots:
         ax.plot(uniq_x, curve, ':',
@@ -461,7 +461,8 @@ def plot_catstratpd(X, y, colname, targetname,
                     supervised=True,
                     alpha=.15,
                     color='#2c7fb8',
-                    pdp_marker_width=.5,
+                    pdp_marker_size=.5,
+                    marker_size=5,
                     pdp_color='black',
                     style:('strip','scatter')='strip',
                     show_xlabel=True,
@@ -531,7 +532,7 @@ def plot_catstratpd(X, y, colname, targetname,
         x_noise = np.random.normal(mu, sigma, size=nleaves) # to make strip plot
         for i in sort_indexes:
             ax.scatter(x_noise + xloc, leaf_histos.iloc[i] - min_avg_value,
-                       alpha=alpha, marker='o', s=10,
+                       alpha=alpha, marker='o', s=marker_size,
                        c=color)
             ax.plot([xloc - .1, xloc + .1], [avg_per_cat[i]-min_avg_value] * 2,
                     c='black', linewidth=2)
@@ -549,10 +550,10 @@ def plot_catstratpd(X, y, colname, targetname,
         xloc = 1
         for i in range(nleaves):
             ax.scatter(xlocs, sorted_histos.iloc[:,i] - min_avg_value,
-                       alpha=alpha, marker='o', s=5,
+                       alpha=alpha, marker='o', s=marker_size,
                        c=color)
             xloc += 1
-        ax.scatter(xlocs, avg_per_cat[sort_indexes]-min_avg_value, c=pdp_color, s=pdp_marker_width)
+        ax.scatter(xlocs, avg_per_cat[sort_indexes] - min_avg_value, c=pdp_color, s=pdp_marker_size)
 
     ax.set_xticks(range(1, ncats + 1))
     if show_xticks: # sometimes too many

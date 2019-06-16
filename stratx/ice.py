@@ -4,11 +4,11 @@ import matplotlib.pyplot as plt
 from  matplotlib.collections import LineCollection
 import time
 
-def predict_catice(model, X:pd.DataFrame, colname:str, targetname, cats=None, nlines=None):
+def predict_catice(model, X:pd.DataFrame, colname:str, targetname, cats=None, ncats=None):
     if cats is None:
         cats = np.unique(X[colname]) # get unique codes
     return predict_ice(model=model, X=X, colname=colname, targetname=targetname,
-                       cats=cats, nlines=nlines)
+                       cats=cats, nlines=ncats)
 
 
 def predict_ice(model, X:pd.DataFrame, colname:str, targetname="target", cats=None, numx=50, nlines=None):
@@ -31,9 +31,6 @@ def predict_ice(model, X:pd.DataFrame, colname:str, targetname="target", cats=No
     if nlines is not None and nlines > len(X):
         nlines = len(X)
 
-    if nlines is not None:
-        X = X.sample(nlines, replace=False)
-
     if cats is not None:
         linex = np.unique(cats)
         numx = None
@@ -54,6 +51,15 @@ def predict_ice(model, X:pd.DataFrame, colname:str, targetname="target", cats=No
     columns = [f"predicted {targetname}\n{colname}={str(v)}"
                for v in linex]
     df = pd.DataFrame(lines, columns=columns)
+
+    if nlines is not None:
+        # sample lines (first row is special: linex)
+        df_ = pd.DataFrame(lines)
+        df_ = df_.sample(n=nlines, axis=0, replace=False)
+        lines = df_.values
+        lines = np.concatenate([linex.reshape(1,-1),lines], axis=0)
+        df = pd.DataFrame(lines, columns=columns)
+
     stop = time.time()
     print(f"ICE_predict {stop - start:.3f}s")
     return df
@@ -79,6 +85,7 @@ def ice2lines(ice:np.ndarray) -> np.ndarray:
     stop = time.time()
     # print(f"ICE_lines {stop - start:.3f}s")
     return np.array(lines)
+
 
 def plot_ice(ice, colname, targetname="target", ax=None, linewidth=.5, linecolor='#9CD1E3',
              alpha=.1, title=None, xrange=None, yrange=None, pdp=True, pdp_linewidth=.5, pdp_alpha=1,
@@ -132,12 +139,14 @@ def plot_ice(ice, colname, targetname="target", ax=None, linewidth=.5, linecolor
     return uniq_x, pdp_curve
 
 def plot_catice(ice, colname, targetname,
-                cats, # cat names indexed by cat code
+                cats,  # cat names indexed by cat code
                 ax=None,
                 color='#9CD1E3',
                 alpha=.1, title=None, yrange=None, pdp=True,
-                pdp_marker_width=.5, pdp_alpha=1,
-                pdp_color='black', show_xlabel=True, show_ylabel=True,
+                pdp_marker_size=.5, pdp_alpha=1,
+                pdp_color='black',
+                marker_size=10,
+                show_xlabel=True, show_ylabel=True,
                 show_xticks=True,
                 sort='ascending'):
     start = time.time()
@@ -174,11 +183,11 @@ def plot_catice(ice, colname, targetname,
     # print(f"shape {lines.shape}, ncats {ncats}, nx {nx}, len(pdp) {len(pdp_curve)}")
     for i in range(nobs): # for each observation
         ax.scatter(xlocs, lines[i,sort_indexes,1], # lines[i] is ith observation
-                   alpha=alpha, marker='o', s=10,
+                   alpha=alpha, marker='o', s=marker_size,
                    c=color)
 
     if pdp:
-        ax.scatter(xlocs, pdp_curve[sort_indexes], c=pdp_color, s=pdp_marker_width, alpha=pdp_alpha)
+        ax.scatter(xlocs, pdp_curve[sort_indexes], c=pdp_color, s=pdp_marker_size, alpha=pdp_alpha)
 
     if yrange is not None:
         ax.set_ylim(*yrange)

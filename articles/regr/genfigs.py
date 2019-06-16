@@ -447,7 +447,7 @@ def plot_meta(X, y, colnames, targetname, min_samples_leaf_piecewise, yranges=No
             col += 1
         row += 1
 
-    rf = RandomForestRegressor(n_estimators=30, min_samples_leaf=1, oob_score=True)
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
     row = 0
     for i,colname in enumerate(colnames):
@@ -526,7 +526,7 @@ def weather():
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'dayofyear', 'temperature', ax=ax,
                  yrange=(-15,15),
-                 pdp_dot_size=2, alpha=.5)
+                 pdp_marker_size=2, alpha=.5)
 
     savefig(f"dayofyear_vs_temp_stratpd")
     plt.close()
@@ -541,7 +541,7 @@ def weather():
     savefig(f"state_vs_temp_stratpd")
     plt.close()
 
-    rf = RandomForestRegressor(n_estimators=30, min_samples_leaf=1, oob_score=True)
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
@@ -553,7 +553,7 @@ def weather():
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = predict_catice(rf, X, 'state', 'temperature')
-    plot_catice(ice, 'state', 'temperature', cats=catencoders['state'], ax=ax, pdp_marker_width=10,
+    plot_catice(ice, 'state', 'temperature', cats=catencoders['state'], ax=ax, pdp_marker_size=10,
                 yrange=(-2,60))
     ax.set_title("PD/ICE")
 
@@ -636,7 +636,7 @@ def meta_weather():
                          min_samples_leaf_piecewise=min_samples_leaf_piecewise,
                          # show_importance=True,
                          yrange=(-10, 10),
-                         pdp_dot_size=2, alpha=.4,
+                         pdp_marker_size=2, alpha=.4,
                          show_ylabel=False)
 
             axes[row,col].set_title(f"leaf sz {s}, hires leaf sz {min_samples_leaf_piecewise}",
@@ -694,7 +694,7 @@ def weight():
     savefig(f"pregnant_vs_weight_stratpd")
     plt.close()
 
-    rf = RandomForestRegressor(n_estimators=50, min_samples_leaf=1, oob_score=True)
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
@@ -709,12 +709,12 @@ def weight():
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = predict_catice(rf, X, 'sex', 'weight')
-    plot_catice(ice, 'sex', 'weight', cats=df_raw['sex'].unique(), ax=ax, yrange=(0, 5), pdp_marker_width=15)
+    plot_catice(ice, 'sex', 'weight', cats=df_raw['sex'].unique(), ax=ax, yrange=(0, 5), pdp_marker_size=15)
     savefig(f"sex_vs_weight_pdp")
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = predict_catice(rf, X, 'pregnant', 'weight', cats=df_raw['pregnant'].unique())
-    plot_catice(ice, 'pregnant', 'weight', cats=df_raw['pregnant'].unique(), ax=ax, yrange=(-5, 35), pdp_marker_width=15)
+    plot_catice(ice, 'pregnant', 'weight', cats=df_raw['pregnant'].unique(), ax=ax, yrange=(-5, 35), pdp_marker_size=15)
     savefig(f"pregnant_vs_weight_pdp")
 
 
@@ -769,19 +769,19 @@ def weight_ntrees():
         axes[1, i].get_yaxis().set_visible(False)
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 0],
                  min_samples_leaf_piecewise=.1,
-                 yrange=(-12, 0), alpha=.1, pdp_dot_size=10, show_ylabel=True,
+                 yrange=(-12, 0), alpha=.1, pdp_marker_size=10, show_ylabel=True,
                  ntrees=1, max_features=1.0, bootstrap=False)
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 1],
                  min_samples_leaf_piecewise=.1,
-                 yrange=(-12, 0), alpha=.1, pdp_dot_size=10, show_ylabel=False,
+                 yrange=(-12, 0), alpha=.1, pdp_marker_size=10, show_ylabel=False,
                  ntrees=5, max_features='auto', bootstrap=True)
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 2],
                  min_samples_leaf_piecewise=.1,
-                 yrange=(-12, 0), alpha=.08, pdp_dot_size=10, show_ylabel=False,
+                 yrange=(-12, 0), alpha=.08, pdp_marker_size=10, show_ylabel=False,
                  ntrees=10, max_features = 'auto', bootstrap = True)
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 3],
                  min_samples_leaf_piecewise=.1,
-                 yrange=(-12, 0), alpha=.05, pdp_dot_size=10, show_ylabel=False,
+                 yrange=(-12, 0), alpha=.05, pdp_marker_size=10, show_ylabel=False,
                  ntrees=30, max_features='auto', bootstrap=True)
 
     # stratpd_plot(X, y, 'height', 'weight', ax=axes[1,0], yrange=(0,160), alpha=.05, pdp_dot_size=10, show_ylabel=True,
@@ -936,7 +936,7 @@ def meta_additivity():
                          # show_importance=True,
                          min_samples_leaf_piecewise=min_samples_leaf_piecewise,
                          yrange=(-1, 1),
-                         pdp_dot_size=2, alpha=.4,
+                         pdp_marker_size=2, alpha=.4,
                          show_ylabel=False,
                          show_xlabel=show_xlabel)
             if col==0:
@@ -1011,12 +1011,12 @@ def bigX():
     # Ask what is net effect at every x2? 0.
     plot_stratpd(X, y, 'x2', 'y', ax=axes[0, 0], yrange=(-4, 4),
                  min_samples_leaf_piecewise=.3,
-                 pdp_dot_size=2)
+                 pdp_marker_size=2)
     
     # Partial deriv wrt x3 of 1_x3>=0 is 0 everywhere so result must be 0
     plot_stratpd(X, y, 'x3', 'y', ax=axes[1, 0], yrange=(-4, 4),
                  min_samples_leaf_piecewise=.3,
-                 pdp_dot_size=2)
+                 pdp_marker_size=2)
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
@@ -1132,7 +1132,7 @@ def cars():
     plot_stratpd(X, y, 'weight', 'mpg', ax=axes[1, 1],
                  xrange=(1600, 5200), yrange=(-20, 20), show_ylabel=False)
 
-    rf = RandomForestRegressor(n_estimators=50, min_samples_leaf=1, oob_score=True)
+    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
     ice = predict_ice(rf, X, 'horsepower', 'mpg', numx=100)
     plot_ice(ice, 'horsepower', 'mpg', ax=axes[0, 2], yrange=(-20, 20), show_ylabel=False)
@@ -1184,17 +1184,19 @@ def bulldozer():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     # np.random.seed(42)
 
-    def onecol(_, X, y, colname, axes, row, yrange):
+    def onecol(_, X, y, colname, axes, row, xrange, yrange):
         avg_per_baths = df.groupby(colname).mean()['SalePrice']
-        axes[row, 0].scatter(X[colname], y, alpha=0.07, s=4)  # , label="observation")
+        axes[row, 0].scatter(X[colname], y, alpha=0.07, s=1)  # , label="observation")
         axes[row, 0].set_ylabel("SalePrice")  # , fontsize=12)
         axes[row, 0].set_xlabel(colname)  # , fontsize=12)
-        plot_stratpd(X, y, colname, 'SalePrice', ax=axes[row,2], nlines=500, yrange=yrange, show_ylabel=False,
-                     verbose=True, alpha=.3)
-        rf = RandomForestRegressor(n_estimators=10, min_samples_leaf=1, oob_score=True)
+        plot_stratpd(X, y, colname, 'SalePrice', ax=axes[row,1], xrange=xrange, yrange=yrange, show_ylabel=False,
+                     verbose=False, alpha=.1)
+        rf = RandomForestRegressor(n_estimators=20, min_samples_leaf=1, n_jobs=-1, oob_score=True)
         rf.fit(X, y)
-        ice = predict_ice(rf, X, colname, 'SalePrice', nlines=500)
-        plot_ice(ice, colname, 'SalePrice', alpha=.05, ax=axes[row, 1], show_ylabel=False)
+        print(f"{colname} PD/ICE: RF OOB R^2 {rf.oob_score_:.3f}, training R^2 {rf.score(X,y)}")
+        ice = predict_ice(rf, X, colname, 'SalePrice', numx=130, nlines=500)
+        plot_ice(ice, colname, 'SalePrice', alpha=.05, ax=axes[row, 2], show_ylabel=False,
+                 xrange=xrange, yrange=yrange)
         axes[row, 1].set_xlabel(colname)  # , fontsize=12)
         axes[row,1].set_ylim(*yrange)
 
@@ -1205,23 +1207,29 @@ def bulldozer():
     # The raw csv is superslow to load, but feather is fast so load then save as feather
 
     df = pd.read_feather("../../notebooks/data/bulldozer-train.feather")
-    basefeatures = ['ModelID', 'YearMade', 'MachineHoursCurrentMeter']
+    df['MachineHours'] = df['MachineHoursCurrentMeter'] # shorten name
+    basefeatures = ['ModelID', 'YearMade', 'MachineHours']
 
-    # Get subsample; it's a (sorted) timeseries so get last records not random
-    df = df.iloc[-10_000:]  # take only last 10,000 records
-
-    df = df[df['YearMade'] >= 1950]
-    df = df[df['MachineHoursCurrentMeter']>0]
+    df = df[df['YearMade'] >= 1960]
+    df = df[df['MachineHours']>0]
 
     df = df[basefeatures+['SalePrice']].reindex()
     df = df.dropna(axis='rows') # drop any rows with nan
 
+
+    # Get subsample; it's a (sorted) timeseries so get last records not random
+    df = df.iloc[-10_000:]  # take only last 10,000 records
+
+
     X, y = df[basefeatures], df['SalePrice']
+
+    print(f"Avg bulldozer price is {np.mean(y):.2f}$")
+    print(f"after cleanup {len(X)} bulldozer records")
 
     fig, axes = plt.subplots(3,3, figsize=(7,6))
 
-    onecol(df, X, y, 'YearMade', axes, 0, yrange=(-1000,40000))
-    onecol(df, X, y, 'MachineHoursCurrentMeter', axes, 1, yrange=(-1500,20000))
+    onecol(df, X, y, 'YearMade', axes, 0, xrange=(1960,2012), yrange=(-1000,50000))
+    onecol(df, X, y, 'MachineHours', axes, 1, xrange=(0,35_000), yrange=(-35_000,35_000))
 
     # show marginal plot sorted by model's sale price
     sort_indexes = y.argsort()
@@ -1237,31 +1245,40 @@ def bulldozer():
     # axes[2, 0].get_xaxis().set_visible(False)
 
     xlocs = np.arange(1,ncats+1)
-    axes[2, 0].scatter(xlocs, sorted_ys, alpha=0.2, s=5)  # , label="observation")
+    axes[2, 0].scatter(xlocs, sorted_ys, alpha=0.2, s=2)  # , label="observation")
     axes[2, 0].set_ylabel("SalePrice")  # , fontsize=12)
     axes[2, 0].set_xlabel('ModelID')  # , fontsize=12)
     axes[2, 0].tick_params(axis='x', which='both', bottom=False)
 
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
-    rf.fit(X, y)
-    print(f"PD/ICE: RF OOB R^2 {rf.oob_score_:.3f}, training R^2 {rf.score(X,y)}")
-
-    ice = predict_catice(rf, X, 'ModelID', 'SalePrice', nlines=1000, cats=np.unique(X['ModelID']))
-    plot_catice(ice, 'ModelID', targetname='SalePrice', cats=np.unique(df['ModelID']),
-                alpha=.05, ax=axes[2, 1], yrange=(0, 130000), show_ylabel=False,
-                sort='ascending',
-                show_xticks=False)
-
-    plot_catstratpd(X, y, 'ModelID', 'SalePrice', cats=np.unique(df['ModelID']), ax=axes[2,2], sort='ascending',
-                    min_samples_leaf_partition=5,
+    plot_catstratpd(X, y, 'ModelID', 'SalePrice', cats=np.unique(df['ModelID']), ax=axes[2,1], sort='ascending',
+                    # min_samples_leaf_partition=5,
                     yrange=(0,130000), show_ylabel=False,
                     alpha=0.1,
                     style='scatter',
+                    marker_size=3,
                     show_xticks=False,
-                    verbose=True)
+                    verbose=False)
+
+    rf = RandomForestRegressor(n_estimators=20, min_samples_leaf=1, oob_score=True, n_jobs=-1)
+    rf.fit(X, y)
+    print(f"ModelID PD/ICE: RF OOB R^2 {rf.oob_score_:.3f}, training R^2 {rf.score(X,y)}")
+
+    # too slow to do all so get 500
+    ucats = np.unique(X['ModelID'])
+    ucats = np.random.choice(ucats, size=500, replace=False)
+    ice = predict_catice(rf, X, 'ModelID', 'SalePrice', cats=ucats)
+    plot_catice(ice, 'ModelID', targetname='SalePrice', cats=ucats,
+                alpha=.05, ax=axes[2, 2], yrange=(0, 130000), show_ylabel=False,
+                marker_size=3,
+                sort='ascending',
+                show_xticks=False)
+
+    axes[0, 0].set_title("Scatter")
+    axes[0, 1].set_title("StratPD")
+    axes[0, 2].set_title("PD/ICE")
 
     savefig("bulldozer")
-    plt.tight_layout()
+    # plt.tight_layout()
     # plt.show()
 
 
@@ -1413,7 +1430,7 @@ def multi_joint_distr():
 if __name__ == '__main__':
     # multi_joint_distr()
     # rent_extra_cols()
-    # bulldozer()
+    bulldozer()
     # cars()
     # meta_cars()
     # unsup_boston()
@@ -1428,6 +1445,6 @@ if __name__ == '__main__':
     # meta_weather()
     # weight_ntrees()
     # weather()
-    meta_additivity()
+    # meta_additivity()
     # additivity()
     # bigX()

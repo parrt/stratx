@@ -141,10 +141,10 @@ def weight():
     plot_ice(ice, 'height', 'weight', ax=axes[2,1], yrange=(0, 160))
 
     ice = predict_catice(rf, X, 'sex', 'weight')
-    plot_catice(ice, 'sex', 'weight', cats=df_raw['sex'].unique(), ax=axes[3,1], yrange=(0, 5), pdp_marker_width=15)
+    plot_catice(ice, 'sex', 'weight', cats=df_raw['sex'].unique(), ax=axes[3,1], yrange=(0, 5), pdp_marker_size=15)
 
     ice = predict_catice(rf, X, 'pregnant', 'weight', cats=df_raw['pregnant'].unique())
-    plot_catice(ice, 'pregnant', 'weight', cats=df_raw['pregnant'].unique(), ax=axes[4,1], yrange=(-5, 35), pdp_marker_width=15)
+    plot_catice(ice, 'pregnant', 'weight', cats=df_raw['pregnant'].unique(), ax=axes[4,1], yrange=(-5, 35), pdp_marker_size=15)
 
     fig.suptitle("weight = 120 + 10*(height-min(height)) + 10*pregnant - 1.2*education", size=14)
 
@@ -164,22 +164,22 @@ def meta_weight():
 
     fig, axes = plt.subplots(4, 4, figsize=(8,8))
 
-    plot_stratpd(X, y, 'education', 'weight', ax=axes[0][0], yrange=(-12, 0), alpha=.05, pdp_dot_size=10,
+    plot_stratpd(X, y, 'education', 'weight', ax=axes[0][0], yrange=(-12, 0), alpha=.05, pdp_marker_size=10,
                  ntrees=1, max_features=1.0, bootstrap=False)
-    plot_stratpd(X, y, 'education', 'weight', ax=axes[0][1], yrange=(-12, 0), alpha=.05, pdp_dot_size=10,
+    plot_stratpd(X, y, 'education', 'weight', ax=axes[0][1], yrange=(-12, 0), alpha=.05, pdp_marker_size=10,
                  ntrees=5, max_features='auto', bootstrap=True)
-    plot_stratpd(X, y, 'education', 'weight', ax=axes[0][2], yrange=(-12, 0), alpha=.05, pdp_dot_size=10,
+    plot_stratpd(X, y, 'education', 'weight', ax=axes[0][2], yrange=(-12, 0), alpha=.05, pdp_marker_size=10,
                  ntrees=20, max_features = 'auto', bootstrap = True)
-    plot_stratpd(X, y, 'education', 'weight', ax=axes[0][3], yrange=(-12, 0), alpha=.05, pdp_dot_size=10,
+    plot_stratpd(X, y, 'education', 'weight', ax=axes[0][3], yrange=(-12, 0), alpha=.05, pdp_marker_size=10,
                  ntrees=50, max_features='auto', bootstrap=True)
 
-    plot_stratpd(X, y, 'height', 'weight', ax=axes[1][0], yrange=(0, 160), alpha=.05, pdp_dot_size=10,
+    plot_stratpd(X, y, 'height', 'weight', ax=axes[1][0], yrange=(0, 160), alpha=.05, pdp_marker_size=10,
                  ntrees=1, max_features=1.0, bootstrap=False)
-    plot_stratpd(X, y, 'height', 'weight', ax=axes[1][1], yrange=(0, 160), alpha=.05, pdp_dot_size=10,
+    plot_stratpd(X, y, 'height', 'weight', ax=axes[1][1], yrange=(0, 160), alpha=.05, pdp_marker_size=10,
                  ntrees=5, max_features='auto', bootstrap=True)
-    plot_stratpd(X, y, 'height', 'weight', ax=axes[1][2], yrange=(0, 160), alpha=.05, pdp_dot_size=10,
+    plot_stratpd(X, y, 'height', 'weight', ax=axes[1][2], yrange=(0, 160), alpha=.05, pdp_marker_size=10,
                  ntrees=20, max_features = 'auto', bootstrap = True)
-    plot_stratpd(X, y, 'height', 'weight', ax=axes[1][3], yrange=(0, 160), alpha=.05, pdp_dot_size=10,
+    plot_stratpd(X, y, 'height', 'weight', ax=axes[1][3], yrange=(0, 160), alpha=.05, pdp_marker_size=10,
                  ntrees=50, max_features='auto', bootstrap=True)
 
 
@@ -389,7 +389,7 @@ def weather():
                                  min_samples_leaf_piecewise=sz,
                                  min_r2_hires=0.35,
                                  alpha=.5,
-                                 pdp_dot_size=0,
+                                 pdp_marker_size=0,
                                  yrange=(-10,10))
 
                 for x_,y_ in zip(uniq_x,curve):
@@ -707,7 +707,7 @@ def meta_additivity():
                  min_samples_leaf_partition=min_samples_leaf,
                  min_samples_leaf_piecewise=.4,
                  yrange=(-1, 1),
-                 pdp_dot_size=2, alpha=.4)
+                 pdp_marker_size=2, alpha=.4)
 
     rtreeviz_univar(axes[1, 1],
                     X['x2'], y,
