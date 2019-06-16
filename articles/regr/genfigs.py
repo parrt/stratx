@@ -1180,7 +1180,7 @@ def meta_cars():
             # plt.show()
 
 
-def bulldozer():
+def bulldozer(): # warning: takes like 5 minutes to run
     print(f"----------- {inspect.stack()[0][3]} -----------")
     # np.random.seed(42)
 
@@ -1219,7 +1219,6 @@ def bulldozer():
 
     # Get subsample; it's a (sorted) timeseries so get last records not random
     df = df.iloc[-10_000:]  # take only last 10,000 records
-
 
     X, y = df[basefeatures], df['SalePrice']
 
@@ -1263,9 +1262,9 @@ def bulldozer():
     rf.fit(X, y)
     print(f"ModelID PD/ICE: RF OOB R^2 {rf.oob_score_:.3f}, training R^2 {rf.score(X,y)}")
 
-    # too slow to do all so get 500
+    # too slow to do all so get 1000
     ucats = np.unique(X['ModelID'])
-    ucats = np.random.choice(ucats, size=500, replace=False)
+    ucats = np.random.choice(ucats, size=1000, replace=False)
     ice = predict_catice(rf, X, 'ModelID', 'SalePrice', cats=ucats)
     plot_catice(ice, 'ModelID', targetname='SalePrice', cats=ucats,
                 alpha=.05, ax=axes[2, 2], yrange=(0, 130000), show_ylabel=False,
