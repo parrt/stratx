@@ -409,13 +409,13 @@ The problem with the PD/ICE plot is not because of codependence between $x_{\it 
 \cut{
 the reason that the ice plot is lowered is due to the data, which has very few data points in the high range of bedrooms. The average is maybe 1.2, so for roughly half the trees, the prediction will be for 1.2 bedrooms no matter what the duplicated bedroom column says.  This problem occurs for strongly predictive features in RF. Linear model couldn't handle duplicate column.}
 
-To compensate for duplicate columns, \spd{} supports the use of random forests rather than a single decision tree to stratify \xnc{} space. The difference from conventional random forest training is that bootstrapping is not important and, in fact, increases bias because the individual trees are working on 2/3 of the data set. The third column, top row in \figref{fig:baths_dup} shows the \spd{} plot resulting from the use of 15 trees ($ntrees=15$) and limiting decision node variable choice to one of two randomly-selected variables at each split (${\it max\_features}=2$).  Restricting the number of variables available during node splitting prevents partitioning from relying too heavily on the duplicate of $x_c$, leading to number of leaves that show some variation in $x_c$.
+To compensate for duplicate columns, \spd{} supports the use of random forests rather than a single decision tree to stratify \xnc{} space. The difference from conventional random forest training is that bootstrapping is not important and, in fact, increases bias because the individual trees are working on 2/3 of the data set. The third column, top row in \figref{fig:baths_dup} shows the \spd{} plot resulting from the use of 15 trees ($ntrees=15$) and limiting decision node variable choice to one of two randomly-selected variables at each split (${\it max\_split\_features}=2$).  Restricting the number of variables available during node splitting prevents partitioning from relying too heavily on the duplicate of $x_c$, leading to a number of leaves that vary in $x_c$.
 
 \subsection{Compensating for noise}\label{sec:noise}
 
 To explore the effect of irrelevant variables on \spd{} plots, we introduced a noise column ($x_{\it noise} \sim U(0,50)$) to the rent data set. Because decision trees ignore variables with low predictive power, stratification automatically ignores irrelevant or noise columns.  \figref{fig:beds_noise} shows \spd{} and PD/ICE plots for the original data set and the data set with a noise column. Both approaches are unaffected by the introduction of the noise column, but that is true for PD/ICE because it is derived from a random forest. PD/ICE plots derived from models that are confused by noise columns would not be accurate.
 
-Overcoming noise within predictive columns sometimes requires hyper parameter tuning. \figref{fig:meta_noise} shows the effect of changing hyper parameter ${\it min\_samples\_leaf\_partition}$ on \spd{} plots at different noise levels for the Equation \eqref{eq:parabola} quadratic data set. The bottom row shows decision tree partitioning of \xnc{}=$x_2$ space. For all plots, hyper parameter ${\it min\_samples\_leaf\_piecewise}$ = .3 (default is .2) to smooth $x_1$. The first row represents the baseline where $y$ omits Gaussian noise.  Increasing the partitioning leaf size for \xnc{}=$x_2$ improves the shape and depth of the parabola, which should be 1.  As more and more Gaussian noise is added to $y$, the \spd{} plots become more erratic, but larger partitioning leaf size tends to compensate.
+Overcoming noisy predictive columns or noisy $y$ sometimes requires hyper parameter tuning. \figref{fig:meta_noise} shows the effect of changing hyper parameter ${\it min\_samples\_leaf\_partition}$ on \spd{} plots at different noise levels for the Equation \eqref{eq:parabola} quadratic data set. The bottom row shows decision tree partitioning of \xnc{}=$x_2$ space. For all plots, hyper parameter ${\it min\_samples\_leaf\_piecewise}$ = .3 (default is .2) to smooth $x_1$. The first row represents the baseline where $y$ omits Gaussian noise.  Increasing the partitioning leaf size for \xnc{}=$x_2$ improves the shape and depth of the parabola, which should be 1.  As more and more Gaussian noise is added to $y$, the \spd{} plots become more erratic, but larger partitioning leaf size tends to compensate.
 
 \subsection{\spd{} and \cspd{} applied to real data} 
 
@@ -541,13 +541,13 @@ better handle on hyper parameters; summarize what we know now.
 \TitleOfAlgo{{\em StratPD}}
 \KwIn{$\begin{array}[t]{l}
 {\bf X}, {\bf y}, c,\\
-{\it ntrees=1}, {\it bootstrap=false}, {\it num\_split\_features=all},\\
+{\it ntrees=1}, {\it bootstrap=false}, {\it max\_split\_features=all},\\
 {\it min\_samples\_leaf\_partition}, {\it min\_samples\_leaf\_piecewise}\\
 \end{array}$
 }
 \KwOut{collection of $\beta$ coefficients, partial dependence curve}
 Train random forest regressor $\it rf$ on (\xnc{}, $\bf y$) with hyper-parameters:\\
-~~~~~$\it ntrees$, $\it bootstrap$, $\it num\_split\_features$, ${\it min\_samples\_leaf\_partition}$ \\
+~~~~~$\it ntrees$, $\it bootstrap$, $\it max\_split\_features$, ${\it min\_samples\_leaf\_partition}$ \\
 \ForEach{tree $T \in \it rf$}{
     \ForEach{leaf $L \in T$}{
     	$(L_x, L_y)$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
