@@ -106,7 +106,7 @@ def rent():
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
     figsize = (5,4)
-    colname='bedrooms'
+    colname='bathrooms'
 
     fig, axes = plt.subplots(2,2, figsize=figsize)
     avg_per_baths = df_rent.groupby(colname).mean()['price']
@@ -124,8 +124,8 @@ def rent():
     axes[0,1].set_ylim(-1000,5000)
 
     nfeatures = 4
-    m = svm.SVR(gamma=1 / nfeatures)
-    # m = KNeighborsRegressor()
+    # m = svm.SVR(gamma=1 / nfeatures)
+    m = KNeighborsRegressor()
     # m = Lasso()
     m.fit(X, y)
 
@@ -418,12 +418,12 @@ def meta_boston():
 
     yranges = [(-30,0), (0,30), (-8,8), (-11, 0)]
 
-    for min_r2_hires in [.01,.1,.2,.5, 1.0]:
-        for min_samples_leaf_piecewise in [.01, .1, .2, .3]:
+    for msl in [2,5,10,20]:
+        for nbins in [2,3,4]:
             plot_meta(X, y, colnames=['LSTAT', 'RM', 'CRIM', 'DIS'], targetname='MEDV',
-                      min_samples_leaf_piecewise=min_samples_leaf_piecewise,
+                      min_samples_leaf_partition=msl,
                       yranges=yranges)
-            savefig(f"meta_boston_r2_{min_r2_hires:.2f}_hires_{min_samples_leaf_piecewise:.2f}")
+            savefig(f"meta_boston_nbins_{nbins}")
 
 
 def marginal_plot(X, y, colname, targetname, ax=None):
@@ -440,7 +440,7 @@ def marginal_plot(X, y, colname, targetname, ax=None):
     ax.text(min(xcol)*1.02, max(y)*.95, f"$\\beta_{{{colname}}}$={r.coef_[0]:.3f}")
 
 
-def plot_meta(X, y, colnames, targetname, min_samples_leaf_piecewise, yranges=None):
+def plot_meta(X, y, colnames, targetname, min_samples_leaf_partition, yranges=None):
     min_samples_leaf_values = [2, 5, 10, 30, 50, 100, 200]
 
     nrows = len(colnames)
@@ -457,8 +457,7 @@ def plot_meta(X, y, colnames, targetname, min_samples_leaf_piecewise, yranges=No
         for meta in min_samples_leaf_values:
             print(f"---------- min_samples_leaf={meta}, hires leafsz={min_samples_leaf_piecewise:.2f} ----------- ")
             plot_stratpd(X, y, colname, targetname, ax=axes[row, col],
-                         min_samples_leaf_piecewise=min_samples_leaf_piecewise,
-                         min_samples_leaf_partition=meta,
+                         min_samples_leaf_partition=min_samples_leaf_partition,
                          yrange=yranges[i],
                          ntrees=1)
             axes[row, col].set_title(f"leafsz={meta}, hires leafsz={min_samples_leaf_piecewise:.2f}",
@@ -544,7 +543,8 @@ def weather():
     """
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'dayofyear', 'temperature', ax=ax,
-                 yrange=(-15,15),
+                 # yrange=(-15,15),
+                 nbins=10,
                  pdp_marker_size=2, alpha=.5)
 
     savefig(f"dayofyear_vs_temp_stratpd")
@@ -860,13 +860,17 @@ def additivity():
     X = df.drop('y', axis=1)
     y = df['y']
 
+    nbins = 4
+
     fig, axes = plt.subplots(2, 2, figsize=(4,4))#, sharey=True)
     plot_stratpd(X, y, 'x1', 'y', ax=axes[0, 0],
                  yrange=(-1, 1),
-                 min_samples_leaf_piecewise=.5)
+                 # min_samples_leaf_piecewise=.5,
+                 nbins=nbins)
 
     plot_stratpd(X, y, 'x2', 'y', ax=axes[1, 0],
-                 min_samples_leaf_piecewise=.5)
+                 # min_samples_leaf_piecewise=.5,
+                 nbins=nbins)
 
     axes[0, 0].set_ylim(-1,1)
     axes[1, 0].set_ylim(-2,2)
@@ -877,7 +881,7 @@ def additivity():
 
     ice = predict_ice(rf, X, 'x1', 'y', numx=20, nlines=700)
     plot_ice(ice, 'x1', 'y', ax=axes[0, 1], yrange=(-1, 1), show_ylabel=False)
-    
+
     ice = predict_ice(rf, X, 'x2', 'y', numx=20, nlines=700)
     plot_ice(ice, 'x2', 'y', ax=axes[1, 1], yrange=(-2, 2), show_ylabel=False)
 
@@ -889,12 +893,41 @@ def additivity():
     plt.close()
 
 
+def additivity_no_ice():
+    print(f"----------- {inspect.stack()[0][3]} -----------")
+    n = 1000
+    df = additivity_data(n=n, sd=.8)  # quite noisy
+    X = df.drop('y', axis=1)
+    y = df['y']
+
+    fig, axes = plt.subplots(1, 2, figsize=(4, 2))  # , sharey=True)
+    nbins = 5
+    plot_stratpd(X, y, 'x1', 'y', ax=axes[0],
+                 yrange=(-2, 2),
+                 # min_samples_leaf_piecewise=.5,
+                 pdp_marker_size=1,
+                 nbins=nbins)
+
+    plot_stratpd(X, y, 'x2', 'y', ax=axes[1],
+                 # min_samples_leaf_piecewise=.5,
+                 pdp_marker_size=1,
+                 nbins=nbins)
+
+    axes[0].set_ylim(-2, 2)
+    axes[1].set_ylim(-3, 3)
+
+    savefig(f"additivity_{nbins}_bins")
+    # plt.show()
+    plt.close()
+
+
 def meta_additivity():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     n = 1000
     noises = [0, .2, .8, 1.0]
     sizes = [2, 5, 10, 40]
     min_samples_leaf_piecewise = .3
+    nbins=4
 
     fig, axes = plt.subplots(len(noises)+1, len(sizes), figsize=(7, 8), sharey=True, sharex=True)
 
@@ -914,7 +947,8 @@ def meta_additivity():
             plot_stratpd(X, y, 'x1', 'y', ax=axes[row, col],
                          min_samples_leaf_partition=s,
                          # show_importance=True,
-                         min_samples_leaf_piecewise=min_samples_leaf_piecewise,
+                         # min_samples_leaf_piecewise=min_samples_leaf_piecewise,
+                         nbins=nbins,
                          yrange=(-1, 1),
                          pdp_marker_size=2, alpha=.4,
                          show_ylabel=False,
@@ -1108,8 +1142,10 @@ def cars():
     lm_plot(X, y, 'weight', 'mpg', ax=axes[1,0])
 
     plot_stratpd(X, y, 'horsepower', 'mpg', ax=axes[0, 1],
+                 nbins=10,
                  xrange=(45, 235), yrange=(-20, 20), show_ylabel=False)
     plot_stratpd(X, y, 'weight', 'mpg', ax=axes[1, 1],
+                 nbins=10,
                  xrange=(1600, 5200), yrange=(-20, 20), show_ylabel=False)
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
@@ -1169,14 +1205,16 @@ def bulldozer(): # warning: takes like 5 minutes to run
         axes[row, 0].scatter(X[colname], y, alpha=0.07, s=1)  # , label="observation")
         axes[row, 0].set_ylabel("SalePrice")  # , fontsize=12)
         axes[row, 0].set_xlabel(colname)  # , fontsize=12)
-        plot_stratpd(X, y, colname, 'SalePrice', ax=axes[row,1], xrange=xrange, yrange=yrange, show_ylabel=False,
+        plot_stratpd(X, y, colname, 'SalePrice', ax=axes[row,1],
+                     xrange=xrange, yrange=yrange, show_ylabel=False,
+                     nbins=30,
                      verbose=False, alpha=.1)
-        rf = RandomForestRegressor(n_estimators=20, min_samples_leaf=1, n_jobs=-1, oob_score=True)
-        rf.fit(X, y)
-        print(f"{colname} PD/ICE: RF OOB R^2 {rf.oob_score_:.3f}, training R^2 {rf.score(X,y)}")
-        ice = predict_ice(rf, X, colname, 'SalePrice', numx=130, nlines=500)
-        plot_ice(ice, colname, 'SalePrice', alpha=.05, ax=axes[row, 2], show_ylabel=False,
-                 xrange=xrange, yrange=yrange)
+        # rf = RandomForestRegressor(n_estimators=20, min_samples_leaf=1, n_jobs=-1, oob_score=True)
+        # rf.fit(X, y)
+        # print(f"{colname} PD/ICE: RF OOB R^2 {rf.oob_score_:.3f}, training R^2 {rf.score(X,y)}")
+        # ice = predict_ice(rf, X, colname, 'SalePrice', numx=130, nlines=500)
+        # plot_ice(ice, colname, 'SalePrice', alpha=.05, ax=axes[row, 2], show_ylabel=False,
+        #          xrange=xrange, yrange=yrange)
         axes[row, 1].set_xlabel(colname)  # , fontsize=12)
         axes[row,1].set_ylim(*yrange)
 
@@ -1207,7 +1245,7 @@ def bulldozer(): # warning: takes like 5 minutes to run
 
     fig, axes = plt.subplots(3,3, figsize=(7,6))
 
-    onecol(df, X, y, 'YearMade', axes, 0, xrange=(1960,2012), yrange=(-1000,50000))
+    onecol(df, X, y, 'YearMade', axes, 0, xrange=(1960,2012), yrange=(-1000,70000))
     onecol(df, X, y, 'MachineHours', axes, 1, xrange=(0,35_000), yrange=(-35_000,35_000))
 
     # show marginal plot sorted by model's sale price
@@ -1228,6 +1266,9 @@ def bulldozer(): # warning: takes like 5 minutes to run
     axes[2, 0].set_ylabel("SalePrice")  # , fontsize=12)
     axes[2, 0].set_xlabel('ModelID')  # , fontsize=12)
     axes[2, 0].tick_params(axis='x', which='both', bottom=False)
+
+    savefig("bulldozer")
+    return
 
     plot_catstratpd(X, y, 'ModelID', 'SalePrice', cats=np.unique(df['ModelID']), ax=axes[2,1], sort='ascending',
                     # min_samples_leaf_partition=5,
@@ -1262,10 +1303,12 @@ def bulldozer(): # warning: takes like 5 minutes to run
 
 
 def multi_joint_distr():
+    print(f"----------- {inspect.stack()[0][3]} -----------")
     # np.random.seed(42)
     n = 1000
-    min_samples_leaf_partition = 50
+    min_samples_leaf_partition = 20
     min_samples_leaf_piecewise = .4
+    nbins = 3
     df = pd.DataFrame(np.random.multivariate_normal([6, 6, 6, 6],
                                                     [
                                                         [1,  5, .7,  3],
@@ -1317,7 +1360,8 @@ def multi_joint_distr():
         plot_stratpd(X, y, 'x1', 'y', ax=axes[1,0], xrange=(0,13),
                      # show_dx_line=True,
                      min_samples_leaf_partition=min_samples_leaf_partition,
-                     min_samples_leaf_piecewise=min_samples_leaf_piecewise,
+                     # min_samples_leaf_piecewise=min_samples_leaf_piecewise,
+                     nbins=nbins,
                      yrange=yrange, show_xlabel=False, show_ylabel=True)
     r = LinearRegression()
     r.fit(uniqx.reshape(-1, 1), pdp)
@@ -1327,7 +1371,8 @@ def multi_joint_distr():
         plot_stratpd(X, y, 'x2', 'y', ax=axes[1,1], xrange=(0,13),
                      # show_dx_line=True,
                      min_samples_leaf_partition=min_samples_leaf_partition,
-                     min_samples_leaf_piecewise=min_samples_leaf_piecewise,
+                     # min_samples_leaf_piecewise=min_samples_leaf_piecewise,
+                     nbins=nbins,
                      yrange=yrange, show_xlabel=False, show_ylabel=False)
     r = LinearRegression()
     r.fit(uniqx.reshape(-1, 1), pdp)
@@ -1337,7 +1382,8 @@ def multi_joint_distr():
         plot_stratpd(X, y, 'x3', 'y', ax=axes[1,2], xrange=(0,13),
                      # show_dx_line=True,
                      min_samples_leaf_partition=min_samples_leaf_partition,
-                     min_samples_leaf_piecewise=min_samples_leaf_piecewise,
+                     # min_samples_leaf_piecewise=min_samples_leaf_piecewise,
+                     nbins=nbins,
                      yrange=yrange, show_xlabel=False, show_ylabel=False)
     r = LinearRegression()
     r.fit(uniqx.reshape(-1, 1), pdp)
@@ -1347,7 +1393,8 @@ def multi_joint_distr():
         plot_stratpd(X, y, 'x4', 'y', ax=axes[1,3], xrange=(0,13),
                      # show_dx_line=True,
                      min_samples_leaf_partition=min_samples_leaf_partition,
-                     min_samples_leaf_piecewise=min_samples_leaf_piecewise,
+                     # min_samples_leaf_piecewise=min_samples_leaf_piecewise,
+                     nbins=nbins,
                      yrange=yrange, show_xlabel=False, show_ylabel=False)
     r = LinearRegression()
     r.fit(uniqx.reshape(-1, 1), pdp)
@@ -1357,6 +1404,9 @@ def multi_joint_distr():
     axes[1,1].text(1,13,'StratPD', horizontalalignment='left')
     axes[1,2].text(1,13,'StratPD', horizontalalignment='left')
     axes[1,3].text(1,13,'StratPD', horizontalalignment='left')
+
+    savefig("multivar_multimodel_normal")
+    return
 
     nfeatures = 4
     regrs = [
@@ -1408,14 +1458,14 @@ def multi_joint_distr():
 
 if __name__ == '__main__':
     # multi_joint_distr()
-    # rent_extra_cols()
+    rent_extra_cols()
     # bulldozer()
     # cars()
     # meta_cars()
     # unsup_boston()
     # rent()
     # rent_int()
-    rent_ntrees()
+    # rent_ntrees()
     # meta_boston()
     # meta_weight()
     # unsup_rent()
@@ -1426,4 +1476,5 @@ if __name__ == '__main__':
     # weather()
     # meta_additivity()
     # additivity()
+    # additivity_no_ice()
     # bigX()
