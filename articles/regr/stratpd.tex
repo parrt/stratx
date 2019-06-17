@@ -193,7 +193,7 @@ Slope $\beta_R$ is an estimate of the partial derivative across the region $R$, 
 
 Revisiting the \spd{} plot in \figref{fig:height_vs_weight}(d), derived from the apartment rent data set, each blue line represents a local slope $\beta_L'$ through the observations in $L'$ (which is a partition of $x_c$ space whose \xnc{} features are similar). Lines extend from the minimum to maximum $x_c$ value in $L'$.  Because we are interested in the relative contribution of $x_c$ to $y$, \spd{} plots use zero as a $y$-axis baseline. The black dots represent the integration of the partial derivative estimates up to and including each unique $x_c$ value (except the first $x_c$, whose integral value is 0). The partial derivative estimate at an $x_c$ value is the (weighted) average slope of the blue lines emanating from that value. \spd{} does not interpolate between $x_c$ points and so the plot shows dots not lines. 
 
-Partial dependence through stratification also works for data sets with categorical variables in \xnc{}, given a suitable similarity measure between observations that supports categorical variables, but identifying an appropriate categorical similarity measure is a well-known issue.  Decision trees, however, support categorical variables easily and effectively by treating categories as unique integers. Observations with categorical variables that end up in the same leaf lie are likely to be similar. (\todo{cite breiman proximity matrix and p595 of ESL book}). Algorithm 1, therefore, works without modification for \xnc{} containing categorical variables. When the column of interest, $x_c$, is categorical, however, a new algorithm is required.
+Partial dependence through stratification also works for data sets with categorical variables in \xnc{}, given a suitable similarity measure between observations that supports categorical variables, but identifying an appropriate categorical similarity measure is a well-known issue.  Decision trees, however, support categorical variables easily and effectively by treating categories as unique integers. Observations with categorical variables that end up in the same leaf lie are likely to be similar (\cite{RFunsup}). Algorithm 1, therefore, works without modification for \xnc{} containing categorical variables. When the column of interest, $x_c$, is categorical, however, a new algorithm is required.
 
 \subsection{CatStratPD for categorical variables}
 
@@ -229,8 +229,8 @@ Increasing the number of trees does not improve accuracy and increases the time 
 
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[scale=0.5]{images/height_pregnant_vs_weight_ntrees.png}
-\caption{{\bf  weight ntrees 1, 5, 10, 30 trees}}
+\includegraphics[scale=0.5]{images/education_pregnant_vs_weight_ntrees.png}
+\caption{{\bf  weight ntrees 1, 5, 10, 30 trees; ${\it min\_samples\_leaf\_partition}=5$}}
 \label{fig:weight_ntrees}
 \end{center}
 \end{figure}

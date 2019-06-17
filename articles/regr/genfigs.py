@@ -53,8 +53,8 @@ def fix_missing_num(df, colname):
 
 def savefig(filename, pad=0):
     plt.tight_layout(pad=pad, w_pad=0, h_pad=0)
-    plt.savefig(f"images/{filename}.pdf")
-    plt.savefig(f"images/{filename}.png", dpi=300)
+    # plt.savefig(f"images/{filename}.pdf")
+    plt.savefig(f"images/{filename}.png", dpi=400)
     plt.close()
 
 
@@ -347,7 +347,7 @@ def rent_extra_cols():
     print(f"----------- {inspect.stack()[0][3]} -----------")
 
     df_rent = load_rent()
-    # df_rent = df_rent.sample(n=10_000)  # get a small subsample
+    df_rent = df_rent.sample(n=10_000)  # get a small subsample
 
     colname = 'bedrooms'
     plot_with_dup_col(df_rent, colname)
@@ -378,6 +378,8 @@ def rent_ntrees():
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
 
+    trees = [1, 5, 10, 30]
+
     supervised = True
 
     def onevar(colname, row, yrange=None):
@@ -392,6 +394,7 @@ def rent_ntrees():
     fig, axes = plt.subplots(3, 4, figsize=(8,6), sharey=True)
     for i in range(1,4):
         axes[0, i].get_yaxis().set_visible(False)
+        axes[0,i-1].set_title(f"{trees[i-1]} trees")
         axes[1, i].get_yaxis().set_visible(False)
         axes[2, i].get_yaxis().set_visible(False)
 
@@ -475,7 +478,7 @@ def plot_meta(X, y, colnames, targetname, min_samples_leaf_piecewise, yranges=No
 def unsup_rent():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     df_rent = load_rent()
-    df_rent = df_rent.sample(n=9000, random_state=111)  # get a small subsample
+    df_rent = df_rent.sample(n=10_000)
 
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
@@ -771,7 +774,7 @@ def unsup_weight():
 
 def weight_ntrees():
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_raw = toy_weight_data(2000)
+    df_raw = toy_weight_data(1000)
     df = df_raw.copy()
     catencoders = df_string_to_cat(df)
     df_cat_to_catcode(df)
@@ -779,35 +782,30 @@ def weight_ntrees():
     X = df.drop('weight', axis=1)
     y = df['weight']
 
+    trees = [1, 5, 10, 30]
+
     fig, axes = plt.subplots(2, 4, figsize=(8,4))
     for i in range(1,4):
         axes[0,i].get_yaxis().set_visible(False)
         axes[1, i].get_yaxis().set_visible(False)
+        axes[0,i-1].set_title(f"{trees[i-1]} trees")
+
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 0],
-                 min_samples_leaf_piecewise=.1,
+                 min_samples_leaf_partition=5,
                  yrange=(-12, 0), alpha=.1, pdp_marker_size=10, show_ylabel=True,
                  ntrees=1, max_features=1.0, bootstrap=False)
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 1],
-                 min_samples_leaf_piecewise=.1,
+                 min_samples_leaf_partition=5,
                  yrange=(-12, 0), alpha=.1, pdp_marker_size=10, show_ylabel=False,
                  ntrees=5, max_features='auto', bootstrap=True)
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 2],
-                 min_samples_leaf_piecewise=.1,
+                 min_samples_leaf_partition=5,
                  yrange=(-12, 0), alpha=.08, pdp_marker_size=10, show_ylabel=False,
                  ntrees=10, max_features = 'auto', bootstrap = True)
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 3],
-                 min_samples_leaf_piecewise=.1,
+                 min_samples_leaf_partition=5,
                  yrange=(-12, 0), alpha=.05, pdp_marker_size=10, show_ylabel=False,
                  ntrees=30, max_features='auto', bootstrap=True)
-
-    # stratpd_plot(X, y, 'height', 'weight', ax=axes[1,0], yrange=(0,160), alpha=.05, pdp_dot_size=10, show_ylabel=True,
-    #              ntrees=1, max_features=1.0, bootstrap=False)
-    # stratpd_plot(X, y, 'height', 'weight', ax=axes[1,1], yrange=(0,160), alpha=.05, pdp_dot_size=10, show_ylabel=False,
-    #              ntrees=5, max_features='auto', bootstrap=True)
-    # stratpd_plot(X, y, 'height', 'weight', ax=axes[1,2], yrange=(0,160), alpha=.05, pdp_dot_size=10, show_ylabel=False,
-    #              ntrees=10, max_features = 'auto', bootstrap = True)
-    # stratpd_plot(X, y, 'height', 'weight', ax=axes[1,3], yrange=(0,160), alpha=.05, pdp_dot_size=10, show_ylabel=False,
-    #              ntrees=30, max_features='auto', bootstrap=True)
 
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 0], alpha=.2, cats=df_raw['pregnant'].unique(), show_ylabel=True,
                     yrange=(0,35),
@@ -822,42 +820,8 @@ def weight_ntrees():
                     yrange=(0,35),
                     ntrees=30, max_features='auto', bootstrap=True)
     
-    savefig(f"height_pregnant_vs_weight_ntrees")
+    savefig(f"education_pregnant_vs_weight_ntrees")
     plt.close()
-
-    # fig, axes = plt.subplots(1, 4, figsize=(8,2))
-    # catstratpd_plot(X, y, 'sex', 'weight', ax=axes[0], alpha=.2, cats=df_raw['sex'].unique(), show_ylabel=True,
-    #                  yrange=(0,5),
-    #                  ntrees=1, max_features=1.0, bootstrap=False)
-    # catstratpd_plot(X, y, 'sex', 'weight', ax=axes[1], alpha=.2, cats=df_raw['sex'].unique(), show_ylabel=False,
-    #                  yrange=(0,5),
-    #                  ntrees=5, max_features='auto', bootstrap=True)
-    # catstratpd_plot(X, y, 'sex', 'weight', ax=axes[2], alpha=.2, cats=df_raw['sex'].unique(), show_ylabel=False,
-    #                  yrange=(0,5),
-    #                  ntrees=10, max_features='auto', bootstrap=True)
-    # catstratpd_plot(X, y, 'sex', 'weight', ax=axes[3], alpha=.2, cats=df_raw['sex'].unique(), show_ylabel=False,
-    #                  yrange=(0,5),
-    #                  ntrees=30, max_features='auto', bootstrap=True)
-    # 
-    # savefig(f"sex_vs_weight_ntrees")
-    # plt.close()
-    #
-    # fig, axes = plt.subplots(1, 4, figsize=(8,2))
-    # catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[0], alpha=.2, cats=df_raw['pregnant'].unique(), show_ylabel=True,
-    #                  yrange=(0,35),
-    #                  ntrees=1, max_features=1.0, bootstrap=False)
-    # catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[1], alpha=.2, cats=df_raw['pregnant'].unique(), show_ylabel=False,
-    #                  yrange=(0,35),
-    #                  ntrees=5, max_features='auto', bootstrap=True)
-    # catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[2], alpha=.2, cats=df_raw['pregnant'].unique(), show_ylabel=False,
-    #                  yrange=(0,35),
-    #                  ntrees=10, max_features='auto', bootstrap=True)
-    # catstratpd_plot(X, y, 'pregnant', 'weight', ax=axes[3], alpha=.2, cats=df_raw['pregnant'].unique(), show_ylabel=False,
-    #                  yrange=(0,35),
-    #                  ntrees=30, max_features='auto', bootstrap=True)
-    # 
-    # savefig(f"pregnant_vs_weight_ntrees")
-    # plt.close()
 
 
 def meta_weight():
@@ -1450,8 +1414,8 @@ if __name__ == '__main__':
     # meta_cars()
     # unsup_boston()
     # rent()
-    rent_int()
-    # rent_ntrees()
+    # rent_int()
+    rent_ntrees()
     # meta_boston()
     # meta_weight()
     # unsup_rent()
