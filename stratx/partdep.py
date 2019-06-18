@@ -94,13 +94,6 @@ def piecewise_xc_space(x: np.ndarray, y: np.ndarray, colname, nbins:int, verbose
     leaf_xranges = []
     leaf_sizes = []
 
-    # I = np.interp(bins, x, y)
-    #
-    # for i in range(len(bins)):
-    #     leaf_xranges.append((bins[i],bins[i]))
-    #
-    # leaf_slopes = np.diff(I)
-
     binned_idx = np.digitize(x, bins)
 
     for i in range(1, len(bins)+1):
@@ -111,6 +104,7 @@ def piecewise_xc_space(x: np.ndarray, y: np.ndarray, colname, nbins:int, verbose
         r = (np.min(bin_x), np.max(bin_x))
         if np.isclose(r[0], r[1]):
             # print(f"ignoring xleft=xright @ {r[0]}")
+            ignored += len(bin_x)
             continue
 
         lm = LinearRegression()
@@ -124,8 +118,8 @@ def piecewise_xc_space(x: np.ndarray, y: np.ndarray, colname, nbins:int, verbose
         leaf_r2.append(r2)
 
     if len(leaf_slopes)==0:
-        # looks like samples/leaf is too small and/or values are ints;
-        # If y is evenly spread across integers, we will get single x value with lots of y,
+        # looks like binning was too fine and we didn't get any slopes
+        # If y is evenly spread across integers, we might get single x value with lots of y,
         # which can't tell us about change in y over x as x isn't changing.
         # Fall back onto single line for whole leaf
         lm = LinearRegression()
@@ -228,7 +222,7 @@ def old_piecewise_xc_space(x: np.ndarray, y: np.ndarray, colname, hires_min_samp
     return leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2, ignored
 
 
-def collect_leaf_slopes(rf, X, y, colname, min_samples_leaf_hires, nbins, verbose):
+def collect_leaf_slopes(rf, X, y, colname, nbins, verbose):
     """
     For each leaf of each tree of the random forest rf (trained on all features
     except colname), get the samples then isolate the column of interest X values
@@ -248,9 +242,6 @@ def collect_leaf_slopes(rf, X, y, colname, min_samples_leaf_hires, nbins, verbos
 
     ignored = 0
 
-    domain = (np.min(X[colname]), np.max(X[colname]))
-    bins = np.linspace(*domain, num=nbins, endpoint=True)
-
     leaves = leaf_samples(rf, X.drop(colname, axis=1))
 
     if verbose:
@@ -269,13 +260,8 @@ def collect_leaf_slopes(rf, X, y, colname, min_samples_leaf_hires, nbins, verbos
             ignored += len(leaf_x)
             continue
 
-        # rpercent = (r[1] - r[0]) * 100.0 / (allr[1] - allr[0])
-        # print(f"{len(leaf_x)} obs, R^2 y ~ X[{colname}] = {r2:.2f}, in range {r} is {rpercent:.2f}%")
-
         leaf_xranges_, leaf_sizes_, leaf_slopes_, leaf_r2_, ignored_ = \
-            piecewise_xc_space(leaf_x, leaf_y, colname=colname,
-                               nbins=nbins,
-                               verbose=verbose)
+            piecewise_xc_space(leaf_x, leaf_y, colname=colname, nbins=nbins, verbose=verbose)
         leaf_slopes.extend(leaf_slopes_)
         leaf_r2.extend(leaf_r2_)
         leaf_xranges.extend(leaf_xranges_)
@@ -333,7 +319,6 @@ def plot_stratpd(X, y, colname, targetname=None,
                  max_features = 1.0,
                  bootstrap=False,
                  min_samples_leaf_partition=10,
-                 min_samples_leaf_piecewise=.20,
                  nbins=4,
                  xrange=None,
                  yrange=None,
@@ -377,8 +362,7 @@ def plot_stratpd(X, y, colname, targetname=None,
     uniq_x = np.array(sorted(np.unique(X[colname])))
     # print(f"\nModel wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2, ignored = \
-        collect_leaf_slopes(rf, X, y, colname,
-                            min_samples_leaf_hires=min_samples_leaf_piecewise, nbins=nbins, verbose=verbose)
+        collect_leaf_slopes(rf, X, y, colname, nbins=nbins, verbose=verbose)
     if True:
         print(f"StratPD Num samples ignored {ignored} for {colname}")
     slope_at_x = avg_values_at_x(uniq_x, leaf_xranges, leaf_slopes, leaf_sizes)
@@ -468,7 +452,7 @@ def plot_stratpd(X, y, colname, targetname=None,
         other.plot(b - (b-a) * .03, np.mean(r2_at_x), marker='>', c=impcolor)
         # other.plot(mx - (mx-mnx)*.02, np.mean(r2_at_x), marker='>', c=imp_color)
 
-    return uniq_x, curve, r2_at_x
+    return uniq_x, curve, r2_at_x, ignored
 
 
 def catwise_leaves(rf, X, y, colname, verbose):
@@ -647,10 +631,12 @@ def plot_catstratpd(X, y, colname, targetname,
     if yrange is not None:
         ax.set_ylim(*yrange)
 
-    return cats, avg_per_cat[sort_indexes]-min_avg_value
+    return cats, avg_per_cat[sort_indexes]-min_avg_value, ignored
 
 
 # -------------- B I N N I N G ---------------
+
+# TODO: can we delete all this section?
 
 def hires_slopes_from_one_leaf_h(x:np.ndarray, y:np.ndarray, h:float):
     """
