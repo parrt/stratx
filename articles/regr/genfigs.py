@@ -61,7 +61,7 @@ def savefig(filename, pad=0):
     plt.tight_layout(pad=pad, w_pad=0, h_pad=0)
     # plt.savefig(f"images/{filename}.pdf")
     plt.savefig(f"images/{filename}.png", dpi=300)
-    # plt.show()
+    plt.show()
     plt.close()
 
 
@@ -392,14 +392,15 @@ def rent_extra_cols():
     nbins = 2
 
     colname = 'bedrooms'
+    print(f"Range of {colname}: {min(df_rent[colname]), max(df_rent[colname])}")
     plot_with_dup_col(df_rent, colname, nbins=nbins)
     savefig(f"{colname}_vs_price_dup")
 
-    colname = 'bedrooms'
     plot_with_noise_col(df_rent, colname, nbins=nbins)
     savefig(f"{colname}_vs_price_noise")
 
     colname = 'bathrooms'
+    print(f"Range of {colname}: {min(df_rent[colname]), max(df_rent[colname])}")
     plot_with_dup_col(df_rent, colname, nbins=nbins)
     savefig(f"{colname}_vs_price_dup")
 
@@ -1459,14 +1460,14 @@ if __name__ == '__main__':
     # rent_int()
     # rent_ntrees()
     rent_extra_cols()
-    meta_boston()
-    unsup_rent()
-    weight()
-    weight_ntrees()
-    meta_weight()
-    unsup_weight()
-    weather()
-    meta_weather()
-    additivity()
-    meta_additivity()
-    bigX()
+    # meta_boston()
+    # unsup_rent()
+    # weight()
+    # weight_ntrees()
+    # meta_weight()
+    # unsup_weight()
+    # weather()
+    # meta_weather()
+    # additivity()
+    # meta_additivity()
+    # bigX()
