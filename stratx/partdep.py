@@ -456,6 +456,48 @@ def plot_stratpd(X, y, colname, targetname=None,
     return uniq_x, curve, r2_at_x, ignored
 
 
+def plot_stratpd_gridsearch(X, y, colname, targetname,
+                            min_samples_leaf_values=(2,5,10,20,30),
+                            nbins_values=(1,2,3,4,5),
+                            yrange=None,
+                            show_regr_line=False):
+    nrows = len(nbins_values)
+    ncols = len(min_samples_leaf_values)
+    fig, axes = plt.subplots(nrows, ncols + 1, figsize=((ncols + 1) * 2.5, nrows * 2.5))
+
+    row = 0
+    for i, nbins in enumerate(nbins_values):
+        marginal_plot(X, y, colname, targetname, ax=axes[row, 0], show_regr_line=show_regr_line)
+        col = 1
+        for msl in min_samples_leaf_values:
+            print(f"---------- min_samples_leaf={msl}, nbins={nbins:.2f} ----------- ")
+            plot_stratpd(X, y, colname, targetname, ax=axes[row, col],
+                         nbins=nbins,
+                         min_samples_leaf=msl,
+                         yrange=yrange,
+                         ntrees=1)
+            axes[row, col].set_title(
+                f"leafsz={msl}, nbins={nbins}",
+                fontsize=9)
+            col += 1
+        row += 1
+
+
+def marginal_plot(X, y, colname, targetname, ax, alpha=.1, show_regr_line=True):
+    ax.scatter(X[colname], y, alpha=alpha, label=None)
+    ax.set_xlabel(colname)
+    ax.set_ylabel(targetname)
+    col = X[colname]
+
+    if show_regr_line:
+        r = LinearRegression()
+        r.fit(X[[colname]], y)
+        xcol = np.linspace(np.min(col), np.max(col), num=100)
+        yhat = r.predict(xcol.reshape(-1, 1))
+        ax.plot(xcol, yhat, linewidth=1, c='orange', label=f"$\\beta_{{{colname}}}$")
+        ax.text(min(xcol) * 1.02, max(y) * .95, f"$\\beta_{{{colname}}}$={r.coef_[0]:.3f}")
+
+
 def catwise_leaves(rf, X, y, colname, verbose):
     """
     Return a dataframe with the average y value for each category in each leaf

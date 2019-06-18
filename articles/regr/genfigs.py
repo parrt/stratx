@@ -23,7 +23,7 @@ from scipy.integrate import cumtrapz
 from stratx.partdep import *
 from stratx.ice import *
 import inspect
-
+import statsmodels.api as sm
 
 # This genfigs.py code is just demonstration code to generate figures for the paper.
 # There are lots of programming sins committed here; to not take this to be
@@ -60,7 +60,7 @@ def fix_missing_num(df, colname):
 def savefig(filename, pad=0):
     plt.tight_layout(pad=pad, w_pad=0, h_pad=0)
     # plt.savefig(f"images/{filename}.pdf")
-    plt.savefig(f"images/{filename}.png", dpi=400)
+    plt.savefig(f"images/{filename}.png", dpi=300)
     plt.show()
     plt.close()
 
@@ -126,7 +126,11 @@ def rent():
                        label="average price/{colname}")
     axes[0, 0].set_ylabel("price")  # , fontsize=12)
     axes[0, 0].set_ylim(0, 10_000)
-    # ax.legend()
+
+    # lowess = sm.nonparametric.lowess(y.values, df_rent[colname].values,
+    #                                  frac=.6, is_sorted=False, return_sorted=False)
+    # print(lowess[0:10])
+    # axes[0, 0].scatter(df_rent[colname], lowess, c='orange', lw=1)
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
@@ -455,30 +459,14 @@ def meta_boston():
 
     yranges = [(-30, 0), (0, 30), (-8, 8), (-11, 0)]
 
-    for min_r2_hires in [.01, .1, .2, .5, 1.0]:
-        for min_samples_leaf_piecewise in [.01, .1, .2, .3]:
-            plot_meta(X, y, colnames=['LSTAT', 'RM', 'CRIM', 'DIS'], targetname='MEDV',
-                      min_samples_leaf_piecewise=min_samples_leaf_piecewise,
-                      yranges=yranges)
-            savefig(
-                f"meta_boston_r2_{min_r2_hires:.2f}_hires_{min_samples_leaf_piecewise:.2f}")
+    for nbins in range(6):
+        plot_meta_multivar(X, y, colnames=['LSTAT', 'RM', 'CRIM', 'DIS'], targetname='MEDV',
+                           nbins=nbins,
+                           yranges=yranges)
+        savefig(f"meta_boston_r2_nbins_{nbins:.2f}")
 
 
-def marginal_plot(X, y, colname, targetname, ax=None):
-    ax.scatter(X[colname], y, alpha=.10, label=None)
-    ax.set_xlabel(colname)
-    ax.set_ylabel(targetname)
-    col = X[colname]
-
-    r = LinearRegression()
-    r.fit(X[[colname]], y)
-    xcol = np.linspace(np.min(col), np.max(col), num=100)
-    yhat = r.predict(xcol.reshape(-1, 1))
-    ax.plot(xcol, yhat, linewidth=1, c='orange', label=f"$\\beta_{{{colname}}}$")
-    ax.text(min(xcol) * 1.02, max(y) * .95, f"$\\beta_{{{colname}}}$={r.coef_[0]:.3f}")
-
-
-def plot_meta(X, y, colnames, targetname, min_samples_leaf_piecewise, yranges=None):
+def plot_meta_multivar(X, y, colnames, targetname, nbins, yranges=None):
     min_samples_leaf_values = [2, 5, 10, 30, 50, 100, 200]
 
     nrows = len(colnames)
@@ -492,16 +480,16 @@ def plot_meta(X, y, colnames, targetname, min_samples_leaf_piecewise, yranges=No
     for i, colname in enumerate(colnames):
         marginal_plot(X, y, colname, targetname, ax=axes[row, 0])
         col = 2
-        for meta in min_samples_leaf_values:
+        for msl in min_samples_leaf_values:
             print(
-                f"---------- min_samples_leaf={meta}, hires leafsz={min_samples_leaf_piecewise:.2f} ----------- ")
+                f"---------- min_samples_leaf={msl}, nbins={nbins:.2f} ----------- ")
             plot_stratpd(X, y, colname, targetname, ax=axes[row, col],
-                         min_samples_leaf_piecewise=min_samples_leaf_piecewise,
-                         min_samples_leaf=meta,
+                         nbins=nbins,
+                         min_samples_leaf=msl,
                          yrange=yranges[i],
                          ntrees=1)
             axes[row, col].set_title(
-                f"leafsz={meta}, hires leafsz={min_samples_leaf_piecewise:.2f}",
+                f"leafsz={msl}, nbins={nbins:.2f}",
                 fontsize=9)
             col += 1
         row += 1
@@ -690,28 +678,12 @@ def meta_weather():
     X = df.drop('temperature', axis=1)
     y = df['temperature']
 
-    fig, axes = plt.subplots(4 + 1, 7, figsize=(22, (4 + 1) * 2.8), sharey=False)
-    row = 0
-    for min_samples_leaf_piecewise in [.01, .1, .2, .3, .5]:
-        col = 0
-        for s in [2, 5, 10, 30, 50, 60, 100]:
-            print(f"------------------- SIZE {s} --------------------")
-            # if col>1: axes[row, col].get_yaxis().set_visible(False)
-            plot_stratpd(X, y, 'dayofyear', 'temp', ax=axes[row, col],
-                         min_samples_leaf=s,
-                         min_samples_leaf_piecewise=min_samples_leaf_piecewise,
-                         # show_importance=True,
-                         yrange=(-10, 10),
-                         pdp_marker_size=2, alpha=.4,
-                         show_ylabel=False)
+    plot_stratpd_gridsearch(X, y, 'dayofyear', 'temp',
+                            min_samples_leaf_values=[2,5,10,20,30],
+                            nbins_values=[1,3,5,6,10],
+                            yrange=(-10,10))
 
-            axes[row, col].set_title(
-                f"leaf sz {s}, hires leaf sz {min_samples_leaf_piecewise}",
-                fontsize=9)
-            col += 1
-        row += 1
-
-    savefig(f"meta_weather_r2_hires_{min_samples_leaf_piecewise}")
+    savefig(f"dayofyear_temp_meta")
     plt.tight_layout()
     # plt.show()
     plt.close()
@@ -891,8 +863,8 @@ def meta_weight():
     yranges = [(0, 150), (-10, 0)]
 
     for min_samples_leaf_piecewise in [.01, .1, .2, .3]:
-        plot_meta(X, y, colnames=['height', 'education'], targetname='weight',
-                  min_samples_leaf_piecewise=min_samples_leaf_piecewise, yranges=yranges)
+        plot_meta_multivar(X, y, colnames=['height', 'education'], targetname='weight',
+                           min_samples_leaf_piecewise=min_samples_leaf_piecewise, yranges=yranges)
         savefig(f"meta_weight_hires_{min_samples_leaf_piecewise:.2f}")
         # plt.show()
 
@@ -1203,14 +1175,19 @@ def meta_cars():
     X = df_cars[['horsepower', 'weight']]
     y = df_cars['mpg']
 
-    yranges = None
+    plot_stratpd_gridsearch(X, y, colname='horsepower', targetname='mpg',
+                            min_samples_leaf_values=[2,5,10,20,30],
+                            nbins_values=[1,2,3,4,5],
+                            yrange=(-20, 20))
 
-    for min_samples_leaf_piecewise in [.01, .1, .2, .3]:
-        plot_meta(X, y, colnames=['horsepower', 'weight'], targetname='mpg',
-                  min_samples_leaf_piecewise=min_samples_leaf_piecewise,
-                  yranges=yranges)
-        savefig(f"meta_cars_hires_{min_samples_leaf_piecewise:.2f}")
-        # plt.show()
+    savefig("horsepower_meta")
+
+    plot_stratpd_gridsearch(X, y, colname='weight', targetname='mpg',
+                            min_samples_leaf_values=[2,5,10,20,30],
+                            nbins_values=[1,2,3,4,5],
+                            yrange=(-20, 20))
+
+    savefig("weight_meta")
 
 
 def bulldozer():  # warning: takes like 5 minutes to run
@@ -1223,14 +1200,18 @@ def bulldozer():  # warning: takes like 5 minutes to run
         axes[row, 0].scatter(X[colname], y, alpha=0.07, s=1)  # , label="observation")
         axes[row, 0].set_ylabel("SalePrice")  # , fontsize=12)
         axes[row, 0].set_xlabel(colname)  # , fontsize=12)
+        # lowess = sm.nonparametric.lowess(y, X[colname],
+        #                                  frac=.8, is_sorted=False, return_sorted=False)
+        # print(lowess[0:10])
+        # axes[row, 0].scatter(X[colname], lowess, c='orange', s=1)
+
         plot_stratpd(X, y, colname, 'SalePrice', ax=axes[row, 1], xrange=xrange,
                      yrange=yrange, show_ylabel=False,
                      verbose=False, alpha=.1)
         rf = RandomForestRegressor(n_estimators=20, min_samples_leaf=1, n_jobs=-1,
                                    oob_score=True)
         rf.fit(X, y)
-        print(
-            f"{colname} PD/ICE: RF OOB R^2 {rf.oob_score_:.3f}, training R^2 {rf.score(X,y)}")
+        print(f"{colname} PD/ICE: RF OOB R^2 {rf.oob_score_:.3f}, training R^2 {rf.score(X,y)}")
         ice = predict_ice(rf, X, colname, 'SalePrice', numx=130, nlines=500)
         plot_ice(ice, colname, 'SalePrice', alpha=.05, ax=axes[row, 2], show_ylabel=False,
                  xrange=xrange, yrange=yrange)
@@ -1473,7 +1454,7 @@ if __name__ == '__main__':
     # meta_cars()
     # unsup_boston()
     # rent()
-    rent_int()
+    # rent_int()
     # rent_ntrees()
     # rent_extra_cols()
     # meta_boston()
@@ -1483,7 +1464,7 @@ if __name__ == '__main__':
     # weight_ntrees()
     # unsup_weight()
     # weather()
-    # meta_weather()
+    meta_weather()
     # additivity()
     # meta_additivity()
     # bigX()
