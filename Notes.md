@@ -1,5 +1,17 @@
 # Partial dependence through stratification and approximating partial derivatives
 
+## new binning stuff
+
+last 10k records from rent.
+
+not reliable on low density data regions
+
+still ignores 3k for bedrooms and 8.5k for bathrooms at nbins=2 and default 10 samples/leaf.
+
+start at nbins=2 and work up if features appear in graph. stop when unstable.
+
+are we able to compensate now with ntrees for dup col?
+
 ## Naming
 
 Model independent partial derivative; MIPD

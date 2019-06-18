@@ -86,7 +86,8 @@ def piecewise_xc_space(x: np.ndarray, y: np.ndarray, colname, nbins:int, verbose
     start = time.time()
 
     domain = (np.min(x), np.max(x))
-    bins = np.linspace(*domain, num=nbins, endpoint=True)
+    # To get n bins, we need n+1 numbers in linear space
+    bins = np.linspace(*domain, num=nbins+1, endpoint=True)
 
     ignored = 0
     leaf_slopes = []
@@ -318,8 +319,8 @@ def plot_stratpd(X, y, colname, targetname=None,
                  ntrees=1,
                  max_features = 1.0,
                  bootstrap=False,
-                 min_samples_leaf_partition=10,
-                 nbins=4,
+                 min_samples_leaf=10,
+                 nbins=3, # this is number of bins, so number of points in bins is nbins+1
                  xrange=None,
                  yrange=None,
                  pdp_marker_size=2,
@@ -339,7 +340,7 @@ def plot_stratpd(X, y, colname, targetname=None,
     # print(f"Unique {colname} = {len(np.unique(X[colname]))}/{len(X)}")
     if supervised:
         rf = RandomForestRegressor(n_estimators=ntrees,
-                                   min_samples_leaf=min_samples_leaf_partition,
+                                   min_samples_leaf=min_samples_leaf,
                                    bootstrap = bootstrap,
                                    max_features = max_features)
         rf.fit(X.drop(colname, axis=1), y)
@@ -353,7 +354,7 @@ def plot_stratpd(X, y, colname, targetname=None,
         if verbose: print("USING UNSUPERVISED MODE")
         X_synth, y_synth = conjure_twoclass(X)
         rf = RandomForestRegressor(n_estimators=ntrees,
-                                   min_samples_leaf=min_samples_leaf_partition,
+                                   min_samples_leaf=min_samples_leaf,
                                    bootstrap = bootstrap,
                                    max_features = max_features,
                                    oob_score=False)
