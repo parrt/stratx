@@ -61,7 +61,7 @@ def savefig(filename, pad=0):
     plt.tight_layout(pad=pad, w_pad=0, h_pad=0)
     # plt.savefig(f"images/{filename}.pdf")
     plt.savefig(f"images/{filename}.png", dpi=300)
-    plt.show()
+    # plt.show()
     plt.close()
 
 
@@ -147,10 +147,10 @@ def rent():
     m.fit(X, y)
 
     ice = predict_ice(m, X, colname, 'price', nlines=1000)
-    plot_ice(ice, colname, 'price', alpha=.05, ax=axes[1, 0], show_ylabel=True)
+    plot_ice(ice, colname, 'price', alpha=.2, ax=axes[1, 0], show_ylabel=True)
     axes[1, 0].set_ylim(-1000, 5000)
 
-    plot_stratpd(X, y, colname, 'price', ax=axes[1, 1], alpha=.2, show_ylabel=False)
+    plot_stratpd(X, y, colname, 'price', ax=axes[1, 1], alpha=.1, show_ylabel=False, pdp_marker_size=8)
     axes[1, 1].set_ylim(-1000, 5000)
 
     # axes[1,1].get_yaxis().set_visible(False)
@@ -224,7 +224,7 @@ def rent_int():
     plt.close()
 
 
-def plot_with_noise_col(df, colname):
+def plot_with_noise_col(df, colname, nbins):
     features = ['bedrooms', 'bathrooms', 'latitude', 'longitude']
     features_with_noise = ['bedrooms', 'bathrooms', 'latitude', 'longitude',
                            colname + '_noise']
@@ -244,13 +244,16 @@ def plot_with_noise_col(df, colname):
     y = df['price']
     uniq_x, curve, r2_at_x, ignored = \
         plot_stratpd(X, y, colname, 'price', ax=axes[0, 0], alpha=.15, show_xlabel=True,
+                     nbins=nbins,
                      show_ylabel=False)
     axes[0, 0].set_ylim(-1000, 5000)
     axes[0, 0].set_title(f"StratPD")
 
     X = df[features_with_noise]
     y = df['price']
-    plot_stratpd(X, y, colname, 'price', ax=axes[0, 1], alpha=.15, show_ylabel=False)
+    plot_stratpd(X, y, colname, 'price', ax=axes[0, 1], alpha=.15,
+                 nbins=nbins,
+                 show_ylabel=False)
     axes[0, 1].set_ylim(-1000, 5000)
     axes[0, 1].set_title(f"StratPD w/{type} col")
 
@@ -420,14 +423,15 @@ def rent_ntrees():
     supervised = True
 
     def onevar(colname, row, yrange=None):
-        alpha = 0.05
+        alphas = [.1,.08,.05,.04]
         for i, t in enumerate(trees):
-            plot_stratpd(X, y, colname, 'price', ax=axes[row, i], alpha=alpha,
+            plot_stratpd(X, y, colname, 'price', ax=axes[row, i], alpha=alphas[i],
                          min_samples_leaf=20,
                          yrange=yrange,
                          supervised=supervised,
                          show_ylabel=t == 2,
                          nbins=2,
+                         pdp_marker_size=8,
                          ntrees=t,
                          max_features='auto',
                          bootstrap=True)
@@ -435,9 +439,11 @@ def rent_ntrees():
     fig, axes = plt.subplots(3, 4, figsize=(8, 6), sharey=True)
     for i in range(1, 4):
         axes[0, i].get_yaxis().set_visible(False)
-        axes[0, i - 1].set_title(f"{trees[i - 1]} trees")
         axes[1, i].get_yaxis().set_visible(False)
         axes[2, i].get_yaxis().set_visible(False)
+
+    for i in range(0, 4):
+        axes[0, i].set_title(f"{trees[i]} trees")
 
     onevar('bedrooms', row=0, yrange=(0, 3000))
     onevar('bathrooms', row=1, yrange=(0, 3000))
@@ -657,9 +663,6 @@ def meta_weather():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     # np.random.seed(66)
 
-    min_r2_hires = 1.0
-    # min_samples_leaf_piecewise = .2
-
     nyears = 5
     years = []
     for y in range(1980, 1980 + nyears):
@@ -684,9 +687,6 @@ def meta_weather():
                             yrange=(-10,10))
 
     savefig(f"dayofyear_temp_meta")
-    plt.tight_layout()
-    # plt.show()
-    plt.close()
 
 
 def weight():
@@ -703,7 +703,6 @@ def weight():
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'education', 'weight', ax=ax,
                  min_samples_leaf=2,
-                 # min_samples_leaf_piecewise=.02,
                  yrange=(-12, 0), alpha=.1, nlines=700, show_ylabel=False)
     #    ax.get_yaxis().set_visible(False)
     savefig(f"education_vs_weight_stratpd")
@@ -862,11 +861,11 @@ def meta_weight():
 
     yranges = [(0, 150), (-10, 0)]
 
-    for min_samples_leaf_piecewise in [.01, .1, .2, .3]:
-        plot_meta_multivar(X, y, colnames=['height', 'education'], targetname='weight',
-                           min_samples_leaf_piecewise=min_samples_leaf_piecewise, yranges=yranges)
-        savefig(f"meta_weight_hires_{min_samples_leaf_piecewise:.2f}")
-        # plt.show()
+    plot_stratpd_gridsearch(X, y, colname='height', targetname='weight', yrange=(0,150))
+    savefig("height_weight_meta")
+
+    plot_stratpd_gridsearch(X, y, colname='education', targetname='weight', yrange=(-10,0))
+    savefig("education_weight_meta")
 
 
 def additivity_data(n, sd=1.0):
@@ -1011,12 +1010,12 @@ def bigX():
     # random plot doesn't mean that x2's net effect is nonzero. We are trying to
     # strip away x1/x3's effect upon y. When we do, x2 has no effect on y.
     # Ask what is net effect at every x2? 0.
-    plot_stratpd(X, y, 'x2', 'y', ax=axes[0, 0], yrange=(-4, 4), nbins=2,
+    plot_stratpd(X, y, 'x2', 'y', ax=axes[0, 0], yrange=(-4, 4), nbins=3,
                  min_samples_leaf=20,
                  pdp_marker_size=2)
 
     # Partial deriv wrt x3 of 1_x3>=0 is 0 everywhere so result must be 0
-    plot_stratpd(X, y, 'x3', 'y', ax=axes[1, 0], yrange=(-4, 4), nbins=2,
+    plot_stratpd(X, y, 'x3', 'y', ax=axes[1, 0], yrange=(-4, 4), nbins=3,
                  min_samples_leaf=20,
                  pdp_marker_size=2)
 
@@ -1062,10 +1061,12 @@ def unsup_boston():
 
     plot_stratpd(X, y, 'AGE', 'MEDV', ax=axes[1], yrange=(-20, 20),
                  ntrees=20,
+                 min_samples_leaf=30,
                  bootstrap=True,
                  supervised=False, show_ylabel=False,
                  verbose=True)
     plot_stratpd(X, y, 'AGE', 'MEDV', ax=axes[2], yrange=(-20, 20),
+                 min_samples_leaf=30,
                  ntrees=1,
                  supervised=True, show_ylabel=False)
 
@@ -1303,6 +1304,7 @@ def bulldozer():  # warning: takes like 5 minutes to run
 
 
 def multi_joint_distr():
+    print(f"----------- {inspect.stack()[0][3]} -----------")
     # np.random.seed(42)
     n = 1000
     min_samples_leaf_partition = 20
@@ -1456,15 +1458,15 @@ if __name__ == '__main__':
     # rent()
     # rent_int()
     # rent_ntrees()
-    # rent_extra_cols()
-    # meta_boston()
-    # meta_weight()
-    # unsup_rent()
-    # weight()
-    # weight_ntrees()
-    # unsup_weight()
-    # weather()
+    rent_extra_cols()
+    meta_boston()
+    unsup_rent()
+    weight()
+    weight_ntrees()
+    meta_weight()
+    unsup_weight()
+    weather()
     meta_weather()
-    # additivity()
-    # meta_additivity()
-    # bigX()
+    additivity()
+    meta_additivity()
+    bigX()

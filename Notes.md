@@ -12,6 +12,8 @@ start at nbins=2 and work up if features appear in graph. stop when unstable.
 
 are we able to compensate now with ntrees for dup col?
 
+for noise, want bigger leaf size but starts to get contrib from x not c.
+
 ## Naming
 
 Model independent partial derivative; MIPD
