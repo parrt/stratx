@@ -45,6 +45,35 @@ def leaf_samples(rf, X:np.ndarray):
     return leaf_samples
 
 
+def bin_samples(rf, X:np.ndarray):
+    """
+    Return a list of arrays where each array is the set of X sample indexes
+    residing in a single leaf of some tree in rf forest.
+    """
+    ntrees = len(rf.estimators_)
+    leaf_ids = rf.apply(X) # which leaf does each X_i go to for each tree?
+    d = pd.DataFrame(leaf_ids, columns=[f"tree{i}" for i in range(ntrees)])
+    d = d.reset_index() # get 0..n-1 as column called index so we can do groupby
+    """
+    d looks like:
+        index	tree0	tree1	tree2	tree3	tree4
+    0	0	    8	    3	    4	    4	    3
+    1	1	    8	    3	    4	    4	    3
+    """
+    leaf_samples = []
+    for i in range(ntrees):
+        """
+        Each groupby gets a list of all X indexes associated with same leaf. 4 leaves would
+        get 4 arrays of X indexes; e.g.,
+        array([array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
+               array([10, 11, 12, 13, 14, 15]), array([16, 17, 18, 19, 20]),
+               array([21, 22, 23, 24, 25, 26, 27, 28, 29]), ... )
+        """
+        sample_idxs_in_leaf = d.groupby(f'tree{i}')['index'].apply(lambda x: x.values)
+        leaf_samples.extend(sample_idxs_in_leaf) # add [...sample idxs...] for each leaf
+    return leaf_samples
+
+
 def dtree_leaf_samples(dtree, X:np.ndarray):
     leaf_ids = dtree.apply(X)
     d = pd.DataFrame(leaf_ids, columns=['leafid'])
@@ -53,14 +82,66 @@ def dtree_leaf_samples(dtree, X:np.ndarray):
     return sample_idxs_in_leaf
 
 
-def piecewise_xc_space(x:np.ndarray, y:np.ndarray, hires_min_samples_leaf:int, colname, verbose):
+def piecewise_xc_space(x: np.ndarray, y: np.ndarray, colname, nbins:int, verbose):
+    start = time.time()
+
+    domain = (np.min(x), np.max(x))
+    # To get n bins, we need n+1 numbers in linear space
+    bins = np.linspace(*domain, num=nbins+1, endpoint=True)
+
+    ignored = 0
+    leaf_slopes = []
+    leaf_r2 = []
+    leaf_xranges = []
+    leaf_sizes = []
+
+    binned_idx = np.digitize(x, bins)
+
+    for i in range(1, len(bins)+1):
+        bin_x = x[binned_idx == i]
+        bin_y = y[binned_idx == i]
+        if len(bin_x)<2: # either no or too little data
+            continue
+        r = (np.min(bin_x), np.max(bin_x))
+        if np.isclose(r[0], r[1]):
+            # print(f"ignoring xleft=xright @ {r[0]}")
+            ignored += len(bin_x)
+            continue
+
+        lm = LinearRegression()
+        bin_x = bin_x.reshape(-1, 1)
+        lm.fit(bin_x, bin_y)
+        r2 = lm.score(bin_x, bin_y)
+
+        leaf_sizes.append(len(bin_x))
+        leaf_slopes.append(lm.coef_[0])
+        leaf_xranges.append(r)
+        leaf_r2.append(r2)
+
+    if len(leaf_slopes)==0:
+        # looks like binning was too fine and we didn't get any slopes
+        # If y is evenly spread across integers, we might get single x value with lots of y,
+        # which can't tell us about change in y over x as x isn't changing.
+        # Fall back onto single line for whole leaf
+        lm = LinearRegression()
+        lm.fit(x.reshape(-1,1), y)
+        leaf_slopes.append(lm.coef_[0])  # better to use univariate slope it seems
+        r2 = lm.score(x.reshape(-1,1), y)
+        leaf_r2.append(r2)
+        r = (np.min(x), np.max(x))
+        leaf_xranges.append(r)
+        leaf_sizes.append(len(x))
+
+    stop = time.time()
+    # print(f"piecewise_xc_space {stop - start:.3f}s")
+    return leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2, ignored
+
+
+def old_piecewise_xc_space(x: np.ndarray, y: np.ndarray, colname, hires_min_samples_leaf:int, verbose):
     start = time.time()
     X = x.reshape(-1,1)
 
     r2s = []
-
-    # hires_min_samples_leaf = int( (np.max(x) - np.min(x)) * hires_window_width )
-    # print(f"setting hires_min_samples_leaf = {hires_min_samples_leaf}")
 
     # dbg = True
     dbg = False
@@ -142,7 +223,7 @@ def piecewise_xc_space(x:np.ndarray, y:np.ndarray, hires_min_samples_leaf:int, c
     return leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2, ignored
 
 
-def collect_leaf_slopes(rf, X, y, colname, min_samples_leaf_hires, verbose):
+def collect_leaf_slopes(rf, X, y, colname, nbins, verbose):
     """
     For each leaf of each tree of the random forest rf (trained on all features
     except colname), get the samples then isolate the column of interest X values
@@ -180,12 +261,8 @@ def collect_leaf_slopes(rf, X, y, colname, min_samples_leaf_hires, verbose):
             ignored += len(leaf_x)
             continue
 
-        # rpercent = (r[1] - r[0]) * 100.0 / (allr[1] - allr[0])
-        # print(f"{len(leaf_x)} obs, R^2 y ~ X[{colname}] = {r2:.2f}, in range {r} is {rpercent:.2f}%")
-
         leaf_xranges_, leaf_sizes_, leaf_slopes_, leaf_r2_, ignored_ = \
-            piecewise_xc_space(leaf_x, leaf_y, hires_min_samples_leaf=min_samples_leaf_hires,
-                               colname=colname, verbose=verbose)
+            piecewise_xc_space(leaf_x, leaf_y, colname=colname, nbins=nbins, verbose=verbose)
         leaf_slopes.extend(leaf_slopes_)
         leaf_r2.extend(leaf_r2_)
         leaf_xranges.extend(leaf_xranges_)
@@ -242,8 +319,8 @@ def plot_stratpd(X, y, colname, targetname=None,
                  ntrees=1,
                  max_features = 1.0,
                  bootstrap=False,
-                 min_samples_leaf_partition=10,
-                 min_samples_leaf_piecewise=.20,
+                 min_samples_leaf=10,
+                 nbins=3, # this is number of bins, so number of points in bins is nbins+1
                  xrange=None,
                  yrange=None,
                  pdp_marker_size=2,
@@ -263,7 +340,7 @@ def plot_stratpd(X, y, colname, targetname=None,
     # print(f"Unique {colname} = {len(np.unique(X[colname]))}/{len(X)}")
     if supervised:
         rf = RandomForestRegressor(n_estimators=ntrees,
-                                   min_samples_leaf=min_samples_leaf_partition,
+                                   min_samples_leaf=min_samples_leaf,
                                    bootstrap = bootstrap,
                                    max_features = max_features)
         rf.fit(X.drop(colname, axis=1), y)
@@ -277,7 +354,7 @@ def plot_stratpd(X, y, colname, targetname=None,
         if verbose: print("USING UNSUPERVISED MODE")
         X_synth, y_synth = conjure_twoclass(X)
         rf = RandomForestRegressor(n_estimators=ntrees,
-                                   min_samples_leaf=min_samples_leaf_partition,
+                                   min_samples_leaf=min_samples_leaf,
                                    bootstrap = bootstrap,
                                    max_features = max_features,
                                    oob_score=False)
@@ -286,8 +363,7 @@ def plot_stratpd(X, y, colname, targetname=None,
     uniq_x = np.array(sorted(np.unique(X[colname])))
     # print(f"\nModel wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2, ignored = \
-        collect_leaf_slopes(rf, X, y, colname,
-                            min_samples_leaf_hires=min_samples_leaf_piecewise, verbose=verbose)
+        collect_leaf_slopes(rf, X, y, colname, nbins=nbins, verbose=verbose)
     if True:
         print(f"StratPD Num samples ignored {ignored} for {colname}")
     slope_at_x = avg_values_at_x(uniq_x, leaf_xranges, leaf_slopes, leaf_sizes)
@@ -377,33 +453,49 @@ def plot_stratpd(X, y, colname, targetname=None,
         other.plot(b - (b-a) * .03, np.mean(r2_at_x), marker='>', c=impcolor)
         # other.plot(mx - (mx-mnx)*.02, np.mean(r2_at_x), marker='>', c=imp_color)
 
-    return uniq_x, curve, r2_at_x
+    return uniq_x, curve, r2_at_x, ignored
 
 
-def do_my_binning(x:np.ndarray, y:np.ndarray, h:float):
-    """
-    Split x range into bins of width h from X[colname] space
-    """
-    leaf_bin_avgs = []
+def plot_stratpd_gridsearch(X, y, colname, targetname,
+                            min_samples_leaf_values=(2,5,10,20,30),
+                            nbins_values=(1,2,3,4,5),
+                            yrange=None,
+                            show_regr_line=False):
+    nrows = len(nbins_values)
+    ncols = len(min_samples_leaf_values)
+    fig, axes = plt.subplots(nrows, ncols + 1, figsize=((ncols + 1) * 2.5, nrows * 2.5))
 
-    uniq_x = np.array(sorted(np.unique(x)))
-    # print(f"uniq x {uniq_x}")
-    for ix in uniq_x:
-        bin_x = x[(x >= ix) & (x < ix + h)]
-        bin_y = y[(x >= ix) & (x < ix + h)]
-        print()
-        print(bin_x)
-        print(bin_y)
-        if len(bin_x)==0:
-            continue
-        r = (np.min(bin_x), np.max(bin_y))
-        if np.isclose(r[0], r[1]):
-            # print(f"ignoring xleft=xright @ {r[0]}")
-            continue
+    row = 0
+    for i, nbins in enumerate(nbins_values):
+        marginal_plot(X, y, colname, targetname, ax=axes[row, 0], show_regr_line=show_regr_line)
+        col = 1
+        for msl in min_samples_leaf_values:
+            print(f"---------- min_samples_leaf={msl}, nbins={nbins:.2f} ----------- ")
+            plot_stratpd(X, y, colname, targetname, ax=axes[row, col],
+                         nbins=nbins,
+                         min_samples_leaf=msl,
+                         yrange=yrange,
+                         ntrees=1)
+            axes[row, col].set_title(
+                f"leafsz={msl}, nbins={nbins}",
+                fontsize=9)
+            col += 1
+        row += 1
 
-        leaf_bin_avgs.append(lm.coef_[0])
 
-    return leaf_bin_avgs
+def marginal_plot(X, y, colname, targetname, ax, alpha=.1, show_regr_line=True):
+    ax.scatter(X[colname], y, alpha=alpha, label=None)
+    ax.set_xlabel(colname)
+    ax.set_ylabel(targetname)
+    col = X[colname]
+
+    if show_regr_line:
+        r = LinearRegression()
+        r.fit(X[[colname]], y)
+        xcol = np.linspace(np.min(col), np.max(col), num=100)
+        yhat = r.predict(xcol.reshape(-1, 1))
+        ax.plot(xcol, yhat, linewidth=1, c='orange', label=f"$\\beta_{{{colname}}}$")
+        ax.text(min(xcol) * 1.02, max(y) * .95, f"$\\beta_{{{colname}}}$={r.coef_[0]:.3f}")
 
 
 def catwise_leaves(rf, X, y, colname, verbose):
@@ -582,8 +674,101 @@ def plot_catstratpd(X, y, colname, targetname,
     if yrange is not None:
         ax.set_ylim(*yrange)
 
-    return cats, avg_per_cat[sort_indexes]-min_avg_value
+    return cats, avg_per_cat[sort_indexes]-min_avg_value, ignored
 
+
+# -------------- B I N N I N G ---------------
+
+# TODO: can we delete all this section?
+
+def hires_slopes_from_one_leaf_h(x:np.ndarray, y:np.ndarray, h:float):
+    """
+    Split x range into bins of width h and return
+    """
+    leaf_slopes = []
+    leaf_r2 = []
+    leaf_xranges = []
+
+    uniq_x = np.array(sorted(np.unique(x)))
+    # print(f"uniq x {uniq_x}")
+    for ix in uniq_x:
+        bin_x = x[(x >= ix) & (x < ix + h)]
+        bin_y = y[(x >= ix) & (x < ix + h)]
+        print()
+        print(bin_x)
+        print(bin_y)
+        if len(bin_x)==0:
+            continue
+        r = (np.min(bin_x), np.max(bin_y))
+        if np.isclose(r[0], r[1]):
+            # print(f"ignoring xleft=xright @ {r[0]}")
+            continue
+
+        lm = LinearRegression()
+        lm.fit(bin_x.reshape(-1, 1), bin_y)
+        r2 = lm.score(bin_x.reshape(-1, 1), bin_y)
+
+        leaf_slopes.append(lm.coef_[0])
+        leaf_xranges.append(r)
+        leaf_r2.append(r2)
+
+    return leaf_xranges, leaf_slopes, leaf_r2
+
+def hires_slopes_from_one_leaf_nbins(x:np.ndarray, y:np.ndarray, nbins:int):
+    """
+    Split x range into bins of width h and return
+    """
+    leaf_slopes = []
+    leaf_r2 = []
+    leaf_xranges = []
+
+    bins = np.linspace(np.min(x), np.max(x), num=nbins, endpoint=True)
+    binned_idx = np.digitize(x, bins)
+
+    for i in range(1, nbins+1):
+        bin_x = x[binned_idx == i]
+        bin_y = y[binned_idx == i]
+        if len(bin_x)==0:
+            continue
+        r = (np.min(bin_x), np.max(bin_y))
+        if np.isclose(r[0], r[1]):
+            # print(f"ignoring xleft=xright @ {r[0]}")
+            continue
+
+        lm = LinearRegression()
+        lm.fit(bin_x.reshape(-1, 1), bin_y)
+        r2 = lm.score(bin_x.reshape(-1, 1), bin_y)
+
+        leaf_slopes.append(lm.coef_[0])
+        leaf_xranges.append(r)
+        leaf_r2.append(r2)
+
+    return leaf_xranges, leaf_slopes, leaf_r2
+
+def do_my_binning(x:np.ndarray, y:np.ndarray, h:float):
+    """
+    Split x range into bins of width h from X[colname] space
+    """
+    leaf_bin_avgs = []
+
+    uniq_x = np.array(sorted(np.unique(x)))
+    # print(f"uniq x {uniq_x}")
+    for ix in uniq_x:
+        bin_x = x[(x >= ix) & (x < ix + h)]
+        bin_y = y[(x >= ix) & (x < ix + h)]
+        print()
+        print(bin_x)
+        print(bin_y)
+        if len(bin_x)==0:
+            continue
+        r = (np.min(bin_x), np.max(bin_y))
+        if np.isclose(r[0], r[1]):
+            # print(f"ignoring xleft=xright @ {r[0]}")
+            continue
+
+        leaf_bin_avgs.append(lm.coef_[0])
+
+    return leaf_bin_avgs
 
 # -------------- S U P P O R T ---------------
 
