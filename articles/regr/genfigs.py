@@ -197,7 +197,7 @@ def rent_int():
     axes[0, 1].set_ylim(-500, 5000)
 
     plot_catstratpd(X, y, 'bedrooms', 'price', cats=np.unique(X['bedrooms']),
-                    min_samples_leaf_partition=catstratpd_min_samples_leaf_partition,
+                    min_samples_leaf=catstratpd_min_samples_leaf_partition,
                     ax=axes[0, 2], alpha=.2, show_ylabel=False,
                     sort=None)
     axes[0, 2].set_ylim(-500, 5000)
@@ -211,7 +211,7 @@ def rent_int():
     X['bathrooms'] = X['bathrooms'].astype(str)
     baths = np.unique(X['bathrooms'])
     plot_catstratpd(X, y, 'bathrooms', 'price', cats=baths,
-                    min_samples_leaf_partition=catstratpd_min_samples_leaf_partition,
+                    min_samples_leaf=catstratpd_min_samples_leaf_partition,
                     ax=axes[1, 2], alpha=.2, show_ylabel=False,
                     sort=None)
     axes[1, 2].set_ylim(-500, 5000)
@@ -435,7 +435,8 @@ def rent_ntrees():
                          pdp_marker_size=8,
                          ntrees=t,
                          max_features='auto',
-                         bootstrap=True)
+                         bootstrap=True,
+                         verbose=False)
 
     fig, axes = plt.subplots(3, 4, figsize=(8, 6), sharey=True)
     for i in range(1, 4):
@@ -889,9 +890,15 @@ def additivity():
     y = df['y']
 
     fig, axes = plt.subplots(2, 2, figsize=(4, 4))  # , sharey=True)
-    plot_stratpd(X, y, 'x1', 'y', ax=axes[0, 0], yrange=(-2, 2), nbins=2)
+    plot_stratpd(X, y, 'x1', 'y',
+                 min_samples_leaf=30,
+                 nbins=3,
+                 ax=axes[0, 0], yrange=(-2, 2))
 
-    plot_stratpd(X, y, 'x2', 'y', ax=axes[1, 0], nbins=2)
+    plot_stratpd(X, y, 'x2', 'y',
+                 min_samples_leaf=30,
+                 nbins=3,
+                 ax=axes[1, 0])
 
     axes[0, 0].set_ylim(-2, 2)
     axes[1, 0].set_ylim(-2, 2)
@@ -1246,9 +1253,9 @@ def bulldozer():  # warning: takes like 5 minutes to run
 
     fig, axes = plt.subplots(3, 3, figsize=(7, 6))
 
-    onecol(df, X, y, 'YearMade', axes, 0, xrange=(1960, 2012), yrange=(-1000, 50000))
+    onecol(df, X, y, 'YearMade', axes, 0, xrange=(1960, 2012), yrange=(-1000, 60000))
     onecol(df, X, y, 'MachineHours', axes, 1, xrange=(0, 35_000),
-           yrange=(-35_000, 35_000))
+           yrange=(-40_000, 40_000))
 
     # show marginal plot sorted by model's sale price
     sort_indexes = y.argsort()
@@ -1459,7 +1466,7 @@ if __name__ == '__main__':
     # rent()
     # rent_int()
     # rent_ntrees()
-    rent_extra_cols()
+    # rent_extra_cols()
     # meta_boston()
     # unsup_rent()
     # weight()
@@ -1469,5 +1476,5 @@ if __name__ == '__main__':
     # weather()
     # meta_weather()
     # additivity()
-    # meta_additivity()
+    meta_additivity()
     # bigX()

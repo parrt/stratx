@@ -552,7 +552,7 @@ def plot_catstratpd(X, y, colname, targetname,
                     ax=None,
                     sort='ascending',
                     ntrees=1,
-                    min_samples_leaf_partition=10,
+                    min_samples_leaf=10,
                     max_features=1.0,
                     bootstrap=False,
                     yrange=None,
@@ -574,7 +574,7 @@ def plot_catstratpd(X, y, colname, targetname,
 
     if supervised:
         rf = RandomForestRegressor(n_estimators=ntrees,
-                                   min_samples_leaf=min_samples_leaf_partition,
+                                   min_samples_leaf=min_samples_leaf,
                                    bootstrap = bootstrap,
                                    max_features = max_features,
                                    oob_score=False)
@@ -585,7 +585,7 @@ def plot_catstratpd(X, y, colname, targetname,
         print("USING UNSUPERVISED MODE")
         X_synth, y_synth = conjure_twoclass(X)
         rf = RandomForestRegressor(n_estimators=ntrees,
-                                   min_samples_leaf=min_samples_leaf_partition,
+                                   min_samples_leaf=min_samples_leaf,
                                    bootstrap = bootstrap,
                                    max_features = max_features,
                                    oob_score=False)

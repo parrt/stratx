@@ -118,13 +118,13 @@ def weight():
                  )
     plot_catstratpd(X, y, 'sex', 'weight', ax=axes[3][0],
                     alpha=1,
-                    min_samples_leaf_partition=5,
+                    min_samples_leaf=5,
                     cats=df_raw['sex'].unique(),
                     # zero_center=True
                     yrange=(0,5)
                     )
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[4][0],
-                    min_samples_leaf_partition=5,
+                    min_samples_leaf=5,
                     alpha=1,
                     cats=df_raw['pregnant'].unique(),
                     # zero_center=True
