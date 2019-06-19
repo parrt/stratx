@@ -13,6 +13,7 @@ from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
 import time
 from pandas.api.types import is_string_dtype, is_object_dtype, is_categorical_dtype, is_bool_dtype
 from scipy.integrate import cumtrapz
+import scipy.stats as stats
 from dtreeviz.trees import *
 
 
