@@ -4,11 +4,12 @@ from typing import Mapping, List, Tuple
 from collections import defaultdict
 import matplotlib.pyplot as plt
 from  matplotlib.collections import LineCollection
+import matplotlib.cm as cm
+from matplotlib.colors import Normalize
 from sklearn.linear_model import LinearRegression, Lasso
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
-# from scipy.stats.rv_continuous import entropy as scipy_entropy
 
 import time
 from pandas.api.types import is_string_dtype, is_object_dtype, is_categorical_dtype, is_bool_dtype
@@ -130,12 +131,13 @@ def piecewise_xc_space(x: np.ndarray, y: np.ndarray, colname, nbins:int, verbose
         bin_x = x[binned_idx == i]
         bin_y = y[binned_idx == i]
         if len(bin_x)<2: # either no or too little data
+            # print(f"ignoring xleft=xright @ {r[0]}")
+            ignored += len(bin_x)
             continue
         r = (np.min(bin_x), np.max(bin_x))
         if np.isclose(r[0], r[1]):
             # print(f"ignoring xleft=xright @ {r[0]}")
             ignored += len(bin_x)
-            continue
 
         lm = LinearRegression()
         bin_x = bin_x.reshape(-1, 1)
@@ -431,7 +433,9 @@ def plot_stratpd(X, y, colname, targetname=None,
     if len(uniq_x) != len(curve):
         raise AssertionError(f"len(uniq_x) = {len(uniq_x)}, but len(curve) = {len(curve)}; nbins={nbins}")
 
-    ax.scatter(uniq_x, curve, s=pdp_marker_size, alpha=1, c='black')
+    # plot partial dependence curve
+    # cmap = cm.afmhot(Normalize(vmin=0, vmax=ignored))
+    ax.scatter(uniq_x, curve, s=pdp_marker_size, c='k', alpha=1)
 
     if connect_pdp_dots:
         ax.plot(uniq_x, curve, ':',

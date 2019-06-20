@@ -156,6 +156,51 @@ def rent():
     plt.close()
 
 
+def rent_alone():
+    print(f"----------- {inspect.stack()[0][3]} -----------")
+    df_rent = load_rent()
+    df_rent = df_rent[-10_000:]  # get a small subsample
+    X = df_rent.drop('price', axis=1)
+    y = df_rent['price']
+
+    X = df_rent.drop('price', axis=1)
+    y = df_rent['price']
+
+    def onevar(colname, row, col, yrange=None, alpha=.2):
+        uniq_x, curve, r2_at_x, ignored = \
+            plot_stratpd(X, y, colname, 'price', ax=axes[row, col],
+                         min_samples_leaf=20,
+                         yrange=yrange,
+                         alpha=alpha,
+                         nbins=3,
+                         isdiscrete=False,
+                         pdp_marker_size=2 if row>=2 else 8,
+                         verbose=False)
+        uniq_x, curve, r2_at_x, ignored = \
+            plot_stratpd(X, y, colname, 'price', ax=axes[row, col+1],
+                         min_samples_leaf=10,
+                         yrange=yrange,
+                         alpha=alpha,
+                         nbins=3,
+                         isdiscrete=True,
+                         pdp_marker_size=2 if row>=2 else 8,
+                         verbose=False)
+
+    fig, axes = plt.subplots(4, 2, figsize=(5, 8))#, sharey=True)
+    # for i in range(1, 4):
+    #     axes[0, i].get_yaxis().set_visible(False)
+    #     axes[1, i].get_yaxis().set_visible(False)
+    #     axes[2, i].get_yaxis().set_visible(False)
+
+    onevar('bedrooms', row=0, col=0, yrange=(0, 3000))
+    onevar('bathrooms', row=1, col=0, yrange=(-500, 3000))
+    onevar('latitude', row=2, col=0, yrange=(-500, 3000))
+    onevar('longitude', row=3, col=0, alpha=.08, yrange=(-3000, 1000))
+
+    savefig(f"rent_all")
+    plt.close()
+
+
 def rent_int():
     # np.random.seed(42)
     print(f"----------- {inspect.stack()[0][3]} -----------")
@@ -1497,10 +1542,11 @@ if __name__ == '__main__':
     # cars()
     # meta_cars()
     # rent()
+    rent_alone()
     # rent_ntrees()
     # rent_extra_cols()
     # meta_boston()
-    unsup_boston()
+    # unsup_boston()
     # unsup_rent()
     # weight()
     # weight_ntrees()
