@@ -61,6 +61,7 @@ def savefig(filename, pad=0):
     plt.tight_layout(pad=pad, w_pad=0, h_pad=0)
     # plt.savefig(f"images/{filename}.pdf")
     plt.savefig(f"images/{filename}.png", dpi=300)
+    plt.tight_layout()
     plt.show()
     plt.close()
 
@@ -127,11 +128,6 @@ def rent():
     axes[0, 0].set_ylabel("price")  # , fontsize=12)
     axes[0, 0].set_ylim(0, 10_000)
 
-    # lowess = sm.nonparametric.lowess(y.values, df_rent[colname].values,
-    #                                  frac=.6, is_sorted=False, return_sorted=False)
-    # print(lowess[0:10])
-    # axes[0, 0].scatter(df_rent[colname], lowess, c='orange', lw=1)
-
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
 
@@ -150,7 +146,8 @@ def rent():
     plot_ice(ice, colname, 'price', alpha=.2, ax=axes[1, 0], show_ylabel=True)
     axes[1, 0].set_ylim(-1000, 5000)
 
-    plot_stratpd(X, y, colname, 'price', ax=axes[1, 1], alpha=.1, show_ylabel=False, pdp_marker_size=8)
+    plot_stratpd(X, y, colname, 'price', ax=axes[1, 1], alpha=.1, show_ylabel=False, pdp_marker_size=8,
+                 isdiscrete=True)
     axes[1, 1].set_ylim(-1000, 5000)
 
     # axes[1,1].get_yaxis().set_visible(False)
@@ -216,7 +213,7 @@ def rent_int():
                     sort=None)
     axes[1, 2].set_ylim(-500, 5000)
 
-    axes[0, 0].set_title("Scatter")  # , fontsize=12)
+    axes[0, 0].set_title("Marginal")  # , fontsize=12)
     axes[0, 1].set_title("StratPD")  # , fontsize=12)
     axes[0, 2].set_title("CatStratPD")  # , fontsize=12)
 
@@ -432,7 +429,8 @@ def rent_ntrees():
                          supervised=supervised,
                          show_ylabel=t == 2,
                          nbins=2,
-                         pdp_marker_size=8,
+                         isdiscrete=colname!='latitude',
+                         pdp_marker_size=2 if row==2 else 8,
                          ntrees=t,
                          max_features='auto',
                          bootstrap=True,
@@ -448,8 +446,8 @@ def rent_ntrees():
         axes[0, i].set_title(f"{trees[i]} trees")
 
     onevar('bedrooms', row=0, yrange=(0, 3000))
-    onevar('bathrooms', row=1, yrange=(0, 3000))
-    onevar('latitude', row=2, yrange=(0, 3000))
+    onevar('bathrooms', row=1, yrange=(-500, 3000))
+    onevar('latitude', row=2, yrange=(-500, 3000))
 
     savefig(f"rent_ntrees")
     plt.close()
@@ -467,11 +465,17 @@ def meta_boston():
 
     yranges = [(-30, 0), (0, 30), (-8, 8), (-11, 0)]
 
-    for nbins in range(6):
-        plot_meta_multivar(X, y, colnames=['LSTAT', 'RM', 'CRIM', 'DIS'], targetname='MEDV',
-                           nbins=nbins,
-                           yranges=yranges)
-        savefig(f"meta_boston_r2_nbins_{nbins:.2f}")
+    plot_stratpd_gridsearch(X, y, 'AGE', 'MEDV',
+                            min_samples_leaf_values=[2,5,10,20,30],
+                            nbins_values=[1,3,5,6,10],
+                            yrange=(-10,10))
+
+    # for nbins in range(6):
+    #     plot_meta_multivar(X, y, colnames=['LSTAT', 'RM', 'CRIM', 'DIS'], targetname='MEDV',
+    #                        nbins=nbins,
+    #                        yranges=yranges)
+
+    savefig(f"meta_boston_age_medv")
 
 
 def plot_meta_multivar(X, y, colnames, targetname, nbins, yranges=None):
@@ -530,6 +534,9 @@ def unsup_rent():
     plot_stratpd(X, y, 'latitude', 'price', ax=axes[2, 0], alpha=.2, supervised=False)
     plot_stratpd(X, y, 'latitude', 'price', ax=axes[2, 1], alpha=.2, supervised=True)
 
+    axes[0, 0].set_title("Unsupervised")
+    axes[0, 1].set_title("Supervised")
+
     for i in range(3):
         axes[i, 1].get_yaxis().set_visible(False)
 
@@ -587,7 +594,7 @@ def weather():
                  min_samples_leaf=15,
                  nbins=7,
                  yrange=(-15, 15),
-                 pdp_marker_size=2, alpha=.5)
+                 pdp_marker_size=2, alpha=.5, isdiscrete=True)
 
     savefig(f"dayofyear_vs_temp_stratpd")
     plt.close()
@@ -685,8 +692,9 @@ def meta_weather():
 
     plot_stratpd_gridsearch(X, y, 'dayofyear', 'temp',
                             min_samples_leaf_values=[2,5,10,20,30],
-                            nbins_values=[1,3,5,6,10],
-                            yrange=(-10,10))
+                            nbins_values=[1],
+                            yrange=(-10,10),
+                            isdiscrete=True)
 
     savefig(f"dayofyear_temp_meta")
 
@@ -705,6 +713,7 @@ def weight():
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'education', 'weight', ax=ax,
                  min_samples_leaf=2,
+                 isdiscrete=True,
                  yrange=(-12, 0), alpha=.1, nlines=700, show_ylabel=False)
     #    ax.get_yaxis().set_visible(False)
     savefig(f"education_vs_weight_stratpd")
@@ -773,8 +782,10 @@ def unsup_weight():
 
     fig, axes = plt.subplots(2, 2, figsize=(4, 4))
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 0],
+                 isdiscrete=True,
                  yrange=(-12, 0), alpha=.1, nlines=700, supervised=False)
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 1],
+                 isdiscrete=True,
                  yrange=(-12, 0), alpha=.1, nlines=700, supervised=True)
 
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 0],
@@ -785,6 +796,9 @@ def unsup_weight():
                     alpha=.2,
                     cats=df_raw['pregnant'].unique(),
                     yrange=(-5, 35), supervised=True)
+
+    axes[0, 0].set_title("Unsupervised")
+    axes[0, 1].set_title("Supervised")
 
     axes[0, 1].get_yaxis().set_visible(False)
     axes[1, 1].get_yaxis().set_visible(False)
@@ -815,18 +829,22 @@ def weight_ntrees():
 
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 0],
                  min_samples_leaf=5,
+                 isdiscrete=True,
                  yrange=(-12, 0), alpha=.1, pdp_marker_size=10, show_ylabel=True,
                  ntrees=1, max_features=1.0, bootstrap=False)
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 1],
                  min_samples_leaf=5,
+                 isdiscrete=True,
                  yrange=(-12, 0), alpha=.1, pdp_marker_size=10, show_ylabel=False,
                  ntrees=5, max_features='auto', bootstrap=True)
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 2],
                  min_samples_leaf=5,
+                 isdiscrete=True,
                  yrange=(-12, 0), alpha=.08, pdp_marker_size=10, show_ylabel=False,
                  ntrees=10, max_features='auto', bootstrap=True)
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 3],
                  min_samples_leaf=5,
+                 isdiscrete=True,
                  yrange=(-12, 0), alpha=.05, pdp_marker_size=10, show_ylabel=False,
                  ntrees=30, max_features='auto', bootstrap=True)
 
@@ -1007,6 +1025,15 @@ def bigX():
     X = df.drop('y', axis=1)
     y = df['y']
 
+    # plot_stratpd_gridsearch(X, y, 'x3', 'y',
+    #                         min_samples_leaf_values=[2,5,10,20,30],
+    #                         nbins_values=[1,3,5,6,10],
+    #                         yrange=(-4,4))
+    #
+    # plt.tight_layout()
+    # plt.show()
+    # return
+
     # Partial deriv is just 0.2 so this is correct. flat deriv curve, net effect line at slope .2
     # ICE is way too shallow and not line at n=1000 even
     fig, axes = plt.subplots(2, 2, figsize=(4, 4), sharey=True)
@@ -1018,13 +1045,15 @@ def bigX():
     # random plot doesn't mean that x2's net effect is nonzero. We are trying to
     # strip away x1/x3's effect upon y. When we do, x2 has no effect on y.
     # Ask what is net effect at every x2? 0.
-    plot_stratpd(X, y, 'x2', 'y', ax=axes[0, 0], yrange=(-4, 4), nbins=3,
-                 min_samples_leaf=20,
+    plot_stratpd(X, y, 'x2', 'y', ax=axes[0, 0], yrange=(-4, 4),
+                 min_samples_leaf=2,
+                 nbins=10,
                  pdp_marker_size=2)
 
     # Partial deriv wrt x3 of 1_x3>=0 is 0 everywhere so result must be 0
-    plot_stratpd(X, y, 'x3', 'y', ax=axes[1, 0], yrange=(-4, 4), nbins=3,
-                 min_samples_leaf=20,
+    plot_stratpd(X, y, 'x3', 'y', ax=axes[1, 0], yrange=(-4, 4),
+                 min_samples_leaf=2,
+                 nbins=10,
                  pdp_marker_size=2)
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
@@ -1062,20 +1091,24 @@ def unsup_boston():
     axes[0].set_ylabel('MEDV')
     axes[0].set_xlabel('AGE')
 
-    axes[0].set_title("Scatter")
+    axes[0].set_title("Marginal")
     axes[1].set_title("Unsupervised")
     axes[2].set_title("Supervised")
     axes[3].set_title("PD/ICE")
 
     plot_stratpd(X, y, 'AGE', 'MEDV', ax=axes[1], yrange=(-20, 20),
                  ntrees=20,
-                 min_samples_leaf=30,
+                 min_samples_leaf=5,
+                 isdiscrete=True,
                  bootstrap=True,
+                 max_features='auto',
                  supervised=False, show_ylabel=False,
-                 verbose=True)
+                 verbose=True,
+                 alpha=.1, nlines=1000)
     plot_stratpd(X, y, 'AGE', 'MEDV', ax=axes[2], yrange=(-20, 20),
-                 min_samples_leaf=30,
+                 min_samples_leaf=5,
                  ntrees=1,
+                 isdiscrete=True,
                  supervised=True, show_ylabel=False)
 
     axes[1].text(5, 15, f"20 trees, bootstrap")
@@ -1204,19 +1237,16 @@ def bulldozer():  # warning: takes like 5 minutes to run
 
     # np.random.seed(42)
 
-    def onecol(_, X, y, colname, axes, row, xrange, yrange):
-        avg_per_baths = df.groupby(colname).mean()['SalePrice']
-        axes[row, 0].scatter(X[colname], y, alpha=0.07, s=1)  # , label="observation")
+    def onecol(df, X, y, colname, axes, row, xrange, yrange):
+        axes[row, 0].scatter(X[colname], y, alpha=0.07, s=1)
         axes[row, 0].set_ylabel("SalePrice")  # , fontsize=12)
         axes[row, 0].set_xlabel(colname)  # , fontsize=12)
-        # lowess = sm.nonparametric.lowess(y, X[colname],
-        #                                  frac=.8, is_sorted=False, return_sorted=False)
-        # print(lowess[0:10])
-        # axes[row, 0].scatter(X[colname], lowess, c='orange', s=1)
 
         plot_stratpd(X, y, colname, 'SalePrice', ax=axes[row, 1], xrange=xrange,
                      yrange=yrange, show_ylabel=False,
-                     verbose=False, alpha=.1)
+                     verbose=False, alpha=.1,
+                     isdiscrete=True)
+
         rf = RandomForestRegressor(n_estimators=20, min_samples_leaf=1, n_jobs=-1,
                                    oob_score=True)
         rf.fit(X, y)
@@ -1276,6 +1306,10 @@ def bulldozer():  # warning: takes like 5 minutes to run
     axes[2, 0].set_xlabel('ModelID')  # , fontsize=12)
     axes[2, 0].tick_params(axis='x', which='both', bottom=False)
 
+    # plt.tight_layout()
+    # plt.show()
+    # return
+
     plot_catstratpd(X, y, 'ModelID', 'SalePrice', cats=np.unique(df['ModelID']),
                     ax=axes[2, 1], sort='ascending',
                     # min_samples_leaf_partition=5,
@@ -1302,7 +1336,7 @@ def bulldozer():  # warning: takes like 5 minutes to run
                 sort='ascending',
                 show_xticks=False)
 
-    axes[0, 0].set_title("Scatter")
+    axes[0, 0].set_title("Marginal")
     axes[0, 1].set_title("StratPD")
     axes[0, 2].set_title("PD/ICE")
 
@@ -1462,12 +1496,11 @@ if __name__ == '__main__':
     # bulldozer()
     # cars()
     # meta_cars()
-    # unsup_boston()
     # rent()
-    # rent_int()
     # rent_ntrees()
     # rent_extra_cols()
     # meta_boston()
+    unsup_boston()
     # unsup_rent()
     # weight()
     # weight_ntrees()
@@ -1476,5 +1509,5 @@ if __name__ == '__main__':
     # weather()
     # meta_weather()
     # additivity()
-    meta_additivity()
+    # meta_additivity()
     # bigX()

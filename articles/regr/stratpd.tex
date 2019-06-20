@@ -484,7 +484,7 @@ Overcoming noisy predictive columns or noisy $y$ sometimes requires hyper parame
 
 \subsection{\spd{} and \cspd{} applied to real data} 
 
-We have shown \spd{} operating on a real New York City apartment rent data set in figures such as \figref{fig:baths_price} and \figref{fig:rent_ntrees}.  This section shows both \spd{} and \cspd{} plots for another real Kaggle data set, \cite{bulldozer}, concerning auction sales of used bulldozers.  Of the 52 features, we selected three codependent features: YearMade, MachineHours, and ModelID. \figref{fig:bulldozer} shows marginal plots for the three variables versus bulldozer sale price in the first column, the \spd{} and \cspd{} plots in the second column, and PD/ICE in the third column. The nominal variable ModelID axis in the third row was sorted by sale price. To reduce overplotting and to reduce ICE plotting time, we use the most recent 10,000 records after dropping those with missing values or zero machine hours. Random forests for PD/ICE were trained with 20 not 100 trees but still achieve training set $R^2=0.97$. The  PD/ICE plot for ModelID shows just 1000 of the roughly 1500 unique values (and still takes 6 minutes to generate).
+We have shown \spd{} operating on a real New York City apartment rent data set in figures such as \figref{fig:baths_price} and \figref{fig:rent_ntrees}.  This section shows both \spd{} and \cspd{} plots for another real Kaggle data set, \cite{bulldozer}, concerning auction sales of used bulldozers.  Of the 52 features, we selected three codependent features: YearMade, MachineHours, and ModelID. \figref{fig:bulldozer} shows marginal plots for the three variables versus bulldozer sale price in the first column, the \spd{} and \cspd{} plots in the second column, and PD/ICE in the third column. The nominal variable ModelID axis in the third row was sorted by sale price. To reduce overplotting and to reduce ICE plotting time, we use the most recent 10,000 records after dropping those with missing values or zero machine hours. Random forests for PD/ICE were trained with 20 not 100 trees but still achieve training set $R^2=0.97$. The  PD/ICE plot for ModelID shows just 1000 of the roughly 1500 unique values (and still takes 5 minutes to generate).
 
 \begin{figure}[htbp]
 \begin{center}
@@ -516,6 +516,8 @@ There are two pathological cases to consider during partitioning, one during \xn
 \end{center}
 \end{figure}
 
+\todo{this has changed}
+
 The second partitioning case occurs during piecewise partitioning of $x_c$. Consider the marginal plots in the first column of \figref{fig:rent_intcat} that show the relationship between price and the number of bedrooms and bathrooms. With so many $y$ values for each discrete $x_c$ value, it is highly likely that partitioning $x_c$ will lead to some bins with unique $x_c$ values. In this situation, it is not possible to detect $y$ changes across $x_c$ and that bin must be ignored, which means \spd{} throws out data.  Simulations with 10,000-observation subsamples show that \spd{} ignores roughly 5000 observations for $x_c = x_{\it bedrooms}$ and 6500 for $x_c$ = $x_{\it bathrooms}$. 
 
 One way around this problem it is to treat the discrete integers as categories. The third column of \figref{fig:rent_intcat} shows the \cspd{} version derived from the same data. Instead of ignoring roughly 5000 observations, \cspd{} ignores just 25 observations for $x_c = x_{\it bedrooms}$ but still ignores 4900 for $x_c$ = $x_{\it bathrooms}$. The \cspd{} plots are very similar to the \spd{} plots, except in the regions where there is less data.
@@ -527,6 +529,8 @@ One way around this problem it is to treat the discrete integers as categories. 
 \label{fig:rent_intcat}
 \end{center}
 \end{figure}
+
+\todo{compare continuous vs discrete; show ignored}
 
 To further improve the situation, one can increase the default ${\it min\_samples\_leaf}$ from 10 to 30 to create larger \xnc{} partitions. For $x_c$ = $x_{\it bedrooms}$, \spd{} ignores roughly 4000 and \cspd{} ignores 0 observations and, for $x_c$ = $x_{\it bathrooms}$, \spd{} ignores 3600 and \cspd{} ignores 2155 observations.  Because of the similarity between \spd{} and \cspd{} plots and the stability of the plots under changes to ${\it min\_samples\_leaf}$, we conclude that the stratification approach works for this data set even when ignoring much of the data.
 

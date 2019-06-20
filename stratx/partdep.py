@@ -83,12 +83,37 @@ def dtree_leaf_samples(dtree, X:np.ndarray):
     return sample_idxs_in_leaf
 
 
-def piecewise_xc_space(x: np.ndarray, y: np.ndarray, colname, nbins:int, verbose):
+def discrete_xc_space(x: np.ndarray, y: np.ndarray, colname, verbose):
     start = time.time()
 
-    domain = (np.min(x), np.max(x))
-    # To get n bins, we need n+1 numbers in linear space
-    bins = np.linspace(*domain, num=nbins+1, endpoint=True)
+    ignored = 0
+    xy = pd.concat([pd.Series(x), pd.Series(y)], axis=1)
+    xy.columns = ['x', 'y']
+    xy = xy.sort_values('x')
+    df_avg = xy.groupby('x').mean().reset_index()
+    x = df_avg['x'].values
+    y = df_avg['y'].values
+    uniq_x = np.unique(x)
+
+    if len(uniq_x)==1:
+        print(f"ignore {len(x)} in discrete_xc_space")
+        ignored += len(x)
+        return np.array([]), np.array([]), np.array([]), np.array([]), ignored
+
+    bin_deltas = np.diff(uniq_x)
+    y_deltas = np.diff(y)
+    leaf_slopes = y_deltas / bin_deltas  # "rise over run"
+    leaf_xranges = list(zip(uniq_x, uniq_x[1:]))
+    leaf_sizes = xy['x'].value_counts().sort_index()
+    leaf_r2 = np.full(shape=(len(uniq_x),), fill_value=np.nan) # unused
+
+    stop = time.time()
+    # print(f"discrete_xc_space {stop - start:.3f}s")
+    return leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2, ignored
+
+
+def piecewise_xc_space(x: np.ndarray, y: np.ndarray, colname, nbins:int, verbose):
+    start = time.time()
 
     ignored = 0
     leaf_slopes = []
@@ -96,6 +121,9 @@ def piecewise_xc_space(x: np.ndarray, y: np.ndarray, colname, nbins:int, verbose
     leaf_xranges = []
     leaf_sizes = []
 
+    # To get n bins, we need n+1 numbers in linear space
+    domain = (np.min(x), np.max(x))
+    bins = np.linspace(*domain, num=nbins+1, endpoint=True)
     binned_idx = np.digitize(x, bins)
 
     for i in range(1, len(bins)+1):
@@ -224,7 +252,7 @@ def old_piecewise_xc_space(x: np.ndarray, y: np.ndarray, colname, hires_min_samp
     return leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2, ignored
 
 
-def collect_leaf_slopes(rf, X, y, colname, nbins, verbose):
+def collect_leaf_slopes(rf, X, y, colname, nbins, isdiscrete, verbose):
     """
     For each leaf of each tree of the random forest rf (trained on all features
     except colname), get the samples then isolate the column of interest X values
@@ -262,8 +290,13 @@ def collect_leaf_slopes(rf, X, y, colname, nbins, verbose):
             ignored += len(leaf_x)
             continue
 
-        leaf_xranges_, leaf_sizes_, leaf_slopes_, leaf_r2_, ignored_ = \
-            piecewise_xc_space(leaf_x, leaf_y, colname=colname, nbins=nbins, verbose=verbose)
+        if isdiscrete:
+            leaf_xranges_, leaf_sizes_, leaf_slopes_, leaf_r2_, ignored_ = \
+                discrete_xc_space(leaf_x, leaf_y, colname=colname, verbose=verbose)
+        else:
+            leaf_xranges_, leaf_sizes_, leaf_slopes_, leaf_r2_, ignored_ = \
+                piecewise_xc_space(leaf_x, leaf_y, colname=colname, nbins=nbins, verbose=verbose)
+
         leaf_slopes.extend(leaf_slopes_)
         leaf_r2.extend(leaf_r2_)
         leaf_xranges.extend(leaf_xranges_)
@@ -321,7 +354,10 @@ def plot_stratpd(X, y, colname, targetname=None,
                  max_features = 1.0,
                  bootstrap=False,
                  min_samples_leaf=10,
-                 nbins=3, # this is number of bins, so number of points in bins is nbins+1
+                 nbins=3, # this is number of bins, so number of points in linear space is nbins+1
+                          # ignored if isdiscrete; len(unique(X[colname])) used instead.
+                          # must be >= 1
+                 isdiscrete=False,
                  xrange=None,
                  yrange=None,
                  pdp_marker_size=2,
@@ -364,7 +400,7 @@ def plot_stratpd(X, y, colname, targetname=None,
     uniq_x = np.array(sorted(np.unique(X[colname])))
     # print(f"\nModel wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2, ignored = \
-        collect_leaf_slopes(rf, X, y, colname, nbins=nbins, verbose=verbose)
+        collect_leaf_slopes(rf, X, y, colname, nbins=nbins, isdiscrete=isdiscrete, verbose=verbose)
     if True:
         print(f"StratPD Num samples ignored {ignored} for {colname}")
     slope_at_x = avg_values_at_x(uniq_x, leaf_xranges, leaf_slopes, leaf_sizes)
@@ -391,6 +427,9 @@ def plot_stratpd(X, y, colname, targetname=None,
     # print(dx)
     # print(uniq_x, len(uniq_x))
     # print(curve, len(curve))
+
+    if len(uniq_x) != len(curve):
+        raise AssertionError(f"len(uniq_x) = {len(uniq_x)}, but len(curve) = {len(curve)}; nbins={nbins}")
 
     ax.scatter(uniq_x, curve, s=pdp_marker_size, alpha=1, c='black')
 
@@ -460,6 +499,7 @@ def plot_stratpd(X, y, colname, targetname=None,
 def plot_stratpd_gridsearch(X, y, colname, targetname,
                             min_samples_leaf_values=(2,5,10,20,30),
                             nbins_values=(1,2,3,4,5),
+                            isdiscrete=False,
                             yrange=None,
                             show_regr_line=False):
     nrows = len(nbins_values)
@@ -475,6 +515,7 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
             plot_stratpd(X, y, colname, targetname, ax=axes[row, col],
                          nbins=nbins,
                          min_samples_leaf=msl,
+                         isdiscrete=isdiscrete,
                          yrange=yrange,
                          ntrees=1)
             axes[row, col].set_title(
@@ -606,9 +647,6 @@ def plot_catstratpd(X, y, colname, targetname,
     # avg_per_cat = weighted_sum_per_cat / total_obs_in_leaves
 
     avg_per_cat = np.nanmean(leaf_histos, axis=1)
-
-    if len(cats)>50:
-        show_xticks = False # failsafe
 
     if ax is None:
         fig, ax = plt.subplots(1, 1)
