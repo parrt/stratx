@@ -575,13 +575,10 @@ def catwise_leaves(rf, X, y, colname, verbose):
             # print(f"ignoring {len(sample)} obs for {len(avg_cat_y)} cat(s) in leaf")
             ignored += len(sample)
             continue
+        min_avg = np.min(avg_cat_y)
         # record avg y value per cat in this leaf
         # This assignment copies cat y avgs to appropriate cat row using index
         # leaving cats w/o representation as nan
-
-        # TODO: USE REF CAT NOT SMALLEST!!!!
-        min_avg = np.min(avg_cat_y)
-
         leaf_histos['leaf' + str(ci)] = avg_cat_y - min_avg
         leaf_sizes.append(len(sample))
         ci += 1
