@@ -602,6 +602,7 @@ def catwise_leaves(rf, X, y, colname, verbose):
             ignored += len(sample)
             continue
         min_avg = np.min(avg_cat_y)
+        min_avg = np.mean(y)
         # record avg y value per cat in this leaf
         # This assignment copies cat y avgs to appropriate cat row using index
         # leaving cats w/o representation as nan

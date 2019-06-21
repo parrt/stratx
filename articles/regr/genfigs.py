@@ -645,8 +645,8 @@ def weather():
     """
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'dayofyear', 'temperature', ax=ax,
-                 min_samples_leaf=15,
-                 nbins=7,
+                 min_samples_leaf=30,
+                 # nbins=7,
                  yrange=(-15, 15),
                  pdp_marker_size=2, alpha=.5, isdiscrete=True)
 
@@ -782,6 +782,7 @@ def weight():
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_catstratpd(X, y, 'sex', 'weight', ax=ax,
+                    min_samples_leaf=5,
                     alpha=.2,
                     cats=df_raw['sex'].unique(),
                     yrange=(0, 5),
@@ -791,6 +792,7 @@ def weight():
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=ax,
+                    min_samples_leaf=5,
                     alpha=.2,
                     cats=df_raw['pregnant'].unique(),
                     yrange=(-5, 35),
@@ -1360,9 +1362,6 @@ def bulldozer():  # warning: takes like 5 minutes to run
     axes[2, 0].set_xlabel('ModelID')  # , fontsize=12)
     axes[2, 0].tick_params(axis='x', which='both', bottom=False)
 
-    # plt.tight_layout()
-    # plt.show()
-    # return
 
     plot_catstratpd(X, y, 'ModelID', 'SalePrice', cats=np.unique(df['ModelID']),
                     ax=axes[2, 1], sort='ascending',
@@ -1373,6 +1372,10 @@ def bulldozer():  # warning: takes like 5 minutes to run
                     marker_size=3,
                     show_xticks=False,
                     verbose=False)
+
+    # plt.tight_layout()
+    # plt.show()
+    # return
 
     rf = RandomForestRegressor(n_estimators=20, min_samples_leaf=1, oob_score=True,
                                n_jobs=-1)
@@ -1547,11 +1550,11 @@ def multi_joint_distr():
 
 if __name__ == '__main__':
     # multi_joint_distr()
-    # bulldozer()
+    bulldozer()
     # cars()
     # meta_cars()
     # rent()
-    rent_alone()
+    # rent_alone()
     # rent_ntrees()
     # rent_extra_cols()
     # meta_boston()
