@@ -109,16 +109,17 @@ def discrete_xc_space(x: np.ndarray, y: np.ndarray, colname, verbose):
     leaf_r2 = np.full(shape=(len(uniq_x),), fill_value=np.nan) # unused
 
     # Now strip out elements for non-consecutive x
-    adj = np.where(bin_deltas == 1)[0]   # index of consecutive x values
-    if len(adj)==0: # no consecutive?
-        # print(f"ignore non-consecutive {len(x)} in discrete_xc_space")
-        ignored += len(x)
-        return np.array([]), np.array([]), np.array([]), np.array([]), ignored
+    if False:
+        adj = np.where(bin_deltas == 1)[0]   # index of consecutive x values
+        if len(adj)==0: # no consecutive?
+            # print(f"ignore non-consecutive {len(x)} in discrete_xc_space")
+            ignored += len(x)
+            return np.array([]), np.array([]), np.array([]), np.array([]), ignored
 
-    leaf_slopes = leaf_slopes[adj]
-    leaf_xranges = leaf_xranges[adj]
-    leaf_sizes = leaf_sizes[adj]
-    leaf_r2 = leaf_r2[adj]
+        leaf_slopes = leaf_slopes[adj]
+        leaf_xranges = leaf_xranges[adj]
+        leaf_sizes = leaf_sizes[adj]
+        leaf_r2 = leaf_r2[adj]
 
     stop = time.time()
     # print(f"discrete_xc_space {stop - start:.3f}s")
@@ -381,6 +382,7 @@ def plot_stratpd(X, y, colname, targetname=None,
                  show_dx_line=False,
                  show_xlabel=True,
                  show_ylabel=True,
+                 show_xticks=True,
                  connect_pdp_dots=False,
                  show_importance=False,
                  impcolor='#fdae61',
@@ -486,10 +488,7 @@ def plot_stratpd(X, y, colname, targetname=None,
     if xrange is not None:
         ax.set_xlim(*xrange)
     else:
-        if isdiscrete:
-            ax.set_xticks(uniq_x)
-        else:
-            ax.set_xlim(min(uniq_x), max(uniq_x))
+        ax.set_xlim(min(uniq_x), max(uniq_x))
     if yrange is not None:
         ax.set_ylim(*yrange)
     ax.add_collection(lines)
