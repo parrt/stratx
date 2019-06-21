@@ -163,6 +163,7 @@ def piecewise_xc_space(x: np.ndarray, y: np.ndarray, colname, nbins:int, verbose
         leaf_r2.append(r2)
 
     if len(leaf_slopes)==0:
+        # TODO: adjust ignored variable
         # looks like binning was too fine and we didn't get any slopes
         # If y is evenly spread across integers, we might get single x value with lots of y,
         # which can't tell us about change in y over x as x isn't changing.

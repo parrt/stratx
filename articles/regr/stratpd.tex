@@ -575,26 +575,30 @@ better handle on hyper parameters; summarize what we know now.
 {\it min\_samples\_leaf}, {\it nbins}\\
 \end{array}$
 }
-\KwOut{collection of $\beta$ coefficients, partial dependence curve}
+\KwOut{collection of $\beta_R$ coefficients across $x_c$, partial dependence curve}
 Train random forest regressor $\it rf$ on (\xnc{}, $\bf y$) with hyper-parameters:\\
 ~~~~~$\it ntrees$, $\it bootstrap$, $\it max\_split\_features$, ${\it min\_samples\_leaf}$ \\
 \ForEach{tree $T \in \it rf$}{
     \ForEach{leaf $L \in T$}{
     	$(x^{(L)}, y^{(L)})$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
+%	$R^{(L)} = [min(x^{(L)}),max(x^{(L)})]$\\
 	$bins$ = split range $[min(x^{(L)}),max(x^{(L)})]$ into $nbins$ bins\\
     	\ForEach{bin $B \in bins$}{
-    		$(B_x, B_y)$ = $\{(x_{ic},  y_i)\}_{i \in B}$\\
-    		$R_{B}$ = $[min(B_x), max(B_x)]$\\
-    		\lIf{left$(R_{B})$ = right$(R_{B})$}{{\bf continue}}\tcp*[r]{\it Ignore leaves w/o change in $x_c$}
+    		$(x^{(B)}, y^{(B)})$ = $\{(x_{ic},  y_i)\}_{i \in B}$\\
+    		$R^{(B)}$ = $[min(x^{(B)}), max(x^{(B)})]$\\
+                 $n^{(B)} = \begin{cases} |B| &\mbox{if } width(R^{(B)}) > 0.0 \\ 
+                   0 & otherwise\end{cases}$~~~~~~~({\it Assume $L$ is unique id across trees})\\
+%    		\lIf{left$(R_{B})$ = right$(R_{B})$}{{\bf continue}}~~~~~({\it Ignore leaves w/o change in $x_c$})\\
     		Fit linear model to $(B_x, B_y)$ giving $\beta_{B}$\\
 	}
     }
 }
+$n = \Sigma_{T \in {\it rf}} \Sigma_{L \in T} \Sigma_{B \in L} n^{(B)}$~~~~~~~~~~~~~~~~~~~~~~~~~~~~({\it Num observations supporting $\beta_B$ computations})\\
 $uniqx$ = sorted(unique($x_c$))\\
 \For{$i=1$ {\bf to} $|uniqx|-1$}{
 	$R$ = $(uniqx_i, uniqx_{i+1})$\\
-	\ForEach{bin $B$ not ignored from above}{
-		$\beta_R = \frac{1}{\Sigma_{B \in R} |B|}\Sigma_{B \in R}|B|\beta_{B}$
+	\ForEach{bin $B$ created above}{
+		$\beta_R = \frac{1}{n}\Sigma_{B \in R}|B|\beta_{B}$
 	}
 }
 $pd$ = numerically integrate $\beta_R$'s across $uniqx$\\
@@ -620,16 +624,16 @@ Train random forest regressor $\it rf$ on (\xnc{}, $\bf y$) with hyper-parameter
 ~~~~~$\it ntrees$, $\it bootstrap$, $\it split\_features$, ${\it min\_samples\_leaf}$ \\
 \ForEach{tree $T \in \it rf$}{
     \ForEach{leaf $L \in T$}{
-        $~~~~$Let $(x^{(L)}, y^{(L)})$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
-        $~~~~$Let unique categories be $K=\{k_1, k_2, \,\dots, k_{n_x}\}$ where $n_x \le |unique(X_c)|$\\
-        $~~~~$$n^{(L)} = \begin{cases} |L| &\mbox{if } |{\it unique~cats \in x^{(L)}}| > 1 \\ 
+        Let $(x^{(L)}, y^{(L)})$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
+        Let unique categories be $K=\{k_1, k_2, \,\dots, k_{n_x}\}$ where $n_x \le |unique(X_c)|$\\
+        $n^{(L)} = \begin{cases} |L| &\mbox{if } |{\it unique~cats \in x^{(L)}}| > 1 \\ 
         0 & otherwise\end{cases}$~~~~~({\it Assume $L$ is unique id across trees})\\
-        $~~~~$${\bf y}^{(L,k)} = y^{(L)}[x^{(L)}=k]$~~~~~~~~~~~~~({\it Group by category $k$})\\
-        $~~~~$$\overline{y}^{(L,k)} = \frac{1}{|{\bf y}^{(L,k)}|} \Sigma_{i=1}^{|{\bf y}^{(L,k)}|} y_i^{(L,k)}$ ~~~\,~({\it Mean of $y^{(L)}$ for category $k$})\\
-        $~~~~$$\Delta^{(L,k)} = \overline{y}^{(L,k)} - \overline{y}^{(L)}$ ~~~~~~~~~~~~~({\it Remove contribution of $x_{\overline{c}}$ to $y^{(L)}$})\\
+        ${\bf y}^{(L,k)} = y^{(L)}[x^{(L)}=k]$~~~~~~~~~~~~~({\it Group by category $k$})\\
+        $\overline{y}^{(L,k)} = \frac{1}{|{\bf y}^{(L,k)}|} \Sigma_{i=1}^{|{\bf y}^{(L,k)}|} y_i^{(L,k)}$ ~~~~\,~({\it Mean of $y^{(L)}$ for category $k$})\\
+        $\Delta^{(L,k)} = \overline{y}^{(L,k)} - \overline{y}^{(L)}$ ~~~~~~~~~~~~~({\it Remove contribution of $x_{\overline{c}}$ to $y^{(L)}$})\\
     }
 }
-$n = \Sigma_{T \in {\it rf}} \Sigma_{L \in T} n^{(L)}$~~~~~~~~~~~~~~~~~~~~~\,~~~~({\it Num supporting observations used to compute averages})\\
+$n = \Sigma_{T \in {\it rf}} \Sigma_{L \in T} n^{(L)}$~~~~~~~~~~~~~~~~~~~~~~({\it Num supporting observations used to compute averages})\\
 $\overline{\Delta}^{(k)} = \frac{1}{n} \Sigma_{L} n^{(L)}\Delta^{(L,k)}$\\
 \Return{$\{\overline{\Delta}^{(1)}, \overline{\Delta}^{(2)}, \,\ldots, \overline{\Delta}^{(k)}\}$}, $n$
 \label{alg:CatStratPD}

@@ -57,6 +57,52 @@ Examine CatStrat algorithm.
 \SetAlgorithmName{Algorithm}{List of Algorithms}
 \SetAlgoSkip{}
 \SetInd{.5em}{.5em}
+\TitleOfAlgo{{\em StratPD}}
+\KwIn{$\begin{array}[t]{l}
+{\bf X}, {\bf y}, c,\\
+{\it ntrees=1}, {\it bootstrap=false}, {\it max\_split\_features=all},\\
+{\it min\_samples\_leaf}, {\it nbins}\\
+\end{array}$
+}
+\KwOut{collection of $\beta_R$ coefficients across $x_c$, partial dependence curve}
+Train random forest regressor $\it rf$ on (\xnc{}, $\bf y$) with hyper-parameters:\\
+~~~~~$\it ntrees$, $\it bootstrap$, $\it max\_split\_features$, ${\it min\_samples\_leaf}$ \\
+\ForEach{tree $T \in \it rf$}{
+    \ForEach{leaf $L \in T$}{
+    	$(x^{(L)}, y^{(L)})$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
+%	$R^{(L)} = [min(x^{(L)}),max(x^{(L)})]$\\
+	$bins$ = split range $[min(x^{(L)}),max(x^{(L)})]$ into $nbins$ bins\\
+    	\ForEach{bin $B \in bins$}{
+    		$(x^{(B)}, y^{(B)})$ = $\{(x_{ic},  y_i)\}_{i \in B}$\\
+    		$R^{(B)}$ = $[min(x^{(B)}), max(x^{(B)})]$\\
+                 $n^{(B)} = \begin{cases} |B| &\mbox{if } width(R^{(B)}) > 0.0 \\ 
+                   0 & otherwise\end{cases}$~~~~~~~({\it Assume $L$ is unique id across trees})\\
+%    		\lIf{left$(R_{B})$ = right$(R_{B})$}{{\bf continue}}~~~~~({\it Ignore leaves w/o change in $x_c$})\\
+    		Fit linear model to $(B_x, B_y)$ giving $\beta_{B}$\\
+	}
+    }
+}
+$n = \Sigma_{T \in {\it rf}} \Sigma_{L \in T} \Sigma_{B \in L} n^{(B)}$~~~~~~~~~~~~~~~~~~~~~~~~~~~~({\it Num observations supporting $\beta_B$ computations})\\
+$uniqx$ = sorted(unique($x_c$))\\
+\For{$i=1$ {\bf to} $|uniqx|-1$}{
+	$R$ = $(uniqx_i, uniqx_{i+1})$\\
+	\ForEach{bin $B$ created above}{
+		$\beta_R = \frac{1}{n}\Sigma_{B \in R}|B|\beta_{B}$
+	}
+}
+$pd$ = numerically integrate $\beta_R$'s across $uniqx$\\
+\Return{collection of all $\beta_R$, $pd$}
+\label{alg:StratPD}
+\end{algorithm}
+
+
+\setlength{\algomargin}{5pt}
+\begin{algorithm}[]
+\DontPrintSemicolon
+\LinesNumbered
+\SetAlgorithmName{Algorithm}{List of Algorithms}
+\SetAlgoSkip{}
+\SetInd{.5em}{.5em}
 \TitleOfAlgo{{\em CatStratPD}}
 \KwIn{$\begin{array}[t]{l}
 {\bf X}, {\bf y}, c,\\
