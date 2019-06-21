@@ -615,30 +615,23 @@ $pd$ = numerically integrate $\beta_R$'s across $uniqx$\\
 {\it ntrees=1}, {\it bootstrap=false}, {\it split\_features=all}, {\it min\_samples\_leaf}\\
 \end{array}$
 }
-\KwOut{Mapping from category to effect on $y$}
-Let $D$ be dictionary mapping category to weighted $\Delta_y$ value\\
-Let $S$ be dictionary mapping leaf to leaf size\\
+\KwOut{$\Delta^{(k)}$ = contribution of category $k$ to effect on $y$, $n$ = num support observations}
 Train random forest regressor $\it rf$ on (\xnc{}, $\bf y$) with hyper-parameters:\\
 ~~~~~$\it ntrees$, $\it bootstrap$, $\it split\_features$, ${\it min\_samples\_leaf}$ \\
 \ForEach{tree $T \in \it rf$}{
     \ForEach{leaf $L \in T$}{
-	$(x^{(L)}, y^{(L)})$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
-	$S[L]$ = $\begin{cases} |L| &\mbox{if } |{\it unique~cats \in x^{(L)}}| > 1 \\ 
-0 & otherwise\end{cases}$\tcp*[r]{\it Assume $L$ is unique id across trees}
-	\ForEach{unique $cat \in x^{(L)}$}{
-		$y_{cat}$ = $y^{(L)}[x^{(L)}=cat]$\tcp*[r]{\it Group leaf $x^{(L)}$ by $cat$, get $y$'s}
-		$\overline{y}_{cat}$ = $mean(y_{cat})$\tcp*[]{\it $\overline{\bf y}$ is list of cat means}
-	}
-	\ForEach{unique $cat \in x^{(L)}$}{
-		$\Delta y_{cat} = \overline{y}_{cat} - {min}(\overline{\bf y})$\tcp*[r]{\it Strip \xnc{}'s y contribution}
-		$D[cat] = D[cat] + \Delta y_{cat} \times S[L]$\tcp*[r]{\it Accumulate weighted $\Delta_y$'s for each $cat$}
-	}
-   }
+        $~~~~$Let $(x^{(L)}, y^{(L)})$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
+        $~~~~$Let unique categories be $K=\{k_1, k_2, \,\dots, k_{n_x}\}$ where $n_x \le |unique(X_c)|$\\
+        $~~~~$$n^{(L)} = \begin{cases} |L| &\mbox{if } |{\it unique~cats \in x^{(L)}}| > 1 \\ 
+        0 & otherwise\end{cases}$~~~~~({\it Assume $L$ is unique id across trees})\\
+        $~~~~$${\bf y}^{(L,k)} = y^{(L)}[x^{(L)}=k]$~~~~~~~~~~~~~({\it Group by category $k$})\\
+        $~~~~$$\overline{y}^{(L,k)} = \frac{1}{|{\bf y}^{(L,k)}|} \Sigma_{i=1}^{|{\bf y}^{(L,k)}|} y_i^{(L,k)}$ ~~~\,~({\it Mean of $y^{(L)}$ for category $k$})\\
+        $~~~~$$\Delta^{(L,k)} = \overline{y}^{(L,k)} - \overline{y}^{(L)}$ ~~~~~~~~~~~~~({\it Remove contribution of $x_{\overline{c}}$ to $y^{(L)}$})\\
+    }
 }
-$n = \Sigma_{T \in {\it rf}} \Sigma_{L \in T}S[L]$\tcp*[r]{\it Num observations used to compute averages}
-$D[cat] = \frac{1}{n} D[cat]$\tcp*[r]{\it Get average of leaf averages for $cat$}
-$D[cat] = D[cat] - min(D)$\tcp*[r]{\it Normalize lowest $D[cat]$ to 0}
-\Return{$D$}
+$n = \Sigma_{T \in {\it rf}} \Sigma_{L \in T} n^{(L)}$~~~~~~~~~~~~~~~~~~~~~\,~~~~({\it Num supporting observations used to compute averages})\\
+$\overline{\Delta}^{(k)} = \frac{1}{n} \Sigma_{L} n^{(L)}\Delta^{(L,k)}$\\
+\Return{$\{\overline{\Delta}^{(1)}, \overline{\Delta}^{(2)}, \,\ldots, \overline{\Delta}^{(k)}\}$}, $n$
 \label{alg:CatStratPD}
 \end{algorithm}
 

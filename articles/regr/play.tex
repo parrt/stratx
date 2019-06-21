@@ -1,0 +1,86 @@
+\documentclass[11pt]{article}
+\usepackage{enumitem}
+%\usepackage[T1]{fontenc}
+\usepackage[auth-sc,affil-sl]{authblk}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{color}
+%\usepackage{enumerate}
+\usepackage[round]{natbib}
+%\usepackage{url} % not crucial - just used below for the URL 
+%\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{epstopdf}
+\usepackage{hyperref}
+\usepackage{alltt}
+\usepackage{listings}
+\usepackage{array}
+\usepackage[noline, boxed, linesnumbered, procnumbered, titlenumbered]{algorithm2e}
+%\usepackage[firstpage]{draftwatermark}
+\usepackage[margin=1in]{geometry}  %%jcgs has own margins
+\usepackage{lmodern}
+\usepackage{caption}
+\usepackage{subcaption}
+\newcommand{\spd}{\fontfamily{cmr}\textsc{\small StratPD}}
+\newcommand{\cspd}{\fontfamily{cmr}\textsc{\small CatStratPD}}
+\newcommand{\xnc}{$x_{\overline{c}}$}
+\newcommand{\xnC}{$x_{\overline{C}}$}
+
+\DeclareGraphicsRule{.tif}{png}{.png}{`convert #1 `dirname #1`/`basename #1 .tif`.png}
+
+\textwidth = 6.5 in
+\textheight = 9 in
+\oddsidemargin = 0.0 in
+\evensidemargin = 0.0 in
+\topmargin = 0.0 in
+\headheight = 0.0 in
+\headsep = 0.0 in
+\parskip = 0.2in
+\parindent = 0.0in
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{definition}{Definition}
+
+\title{Playground}
+\author{parrt}
+\begin{document}
+\maketitle
+
+Examine CatStrat algorithm.
+
+\setlength{\algomargin}{5pt}
+\begin{algorithm}[]
+\DontPrintSemicolon
+\LinesNumbered
+\SetAlgorithmName{Algorithm}{List of Algorithms}
+\SetAlgoSkip{}
+\SetInd{.5em}{.5em}
+\TitleOfAlgo{{\em CatStratPD}}
+\KwIn{$\begin{array}[t]{l}
+{\bf X}, {\bf y}, c,\\
+{\it ntrees=1}, {\it bootstrap=false}, {\it split\_features=all}, {\it min\_samples\_leaf}\\
+\end{array}$
+}
+\KwOut{$\Delta^{(k)}$ = contribution of category $k$ to effect on $y$, $n$ = num support observations}
+Train random forest regressor $\it rf$ on (\xnc{}, $\bf y$) with hyper-parameters:\\
+~~~~~$\it ntrees$, $\it bootstrap$, $\it split\_features$, ${\it min\_samples\_leaf}$ \\
+\ForEach{tree $T \in \it rf$}{
+    \ForEach{leaf $L \in T$}{
+        $~~~~$Let $(x^{(L)}, y^{(L)})$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
+        $~~~~$Let unique categories be $K=\{k_1, k_2, \,\dots, k_{n_x}\}$ where $n_x \le |unique(X_c)|$\\
+        $~~~~$$n^{(L)} = \begin{cases} |L| &\mbox{if } |{\it unique~cats \in x^{(L)}}| > 1 \\ 
+        0 & otherwise\end{cases}$~~~~~({\it Assume $L$ is unique id across trees})\\
+        $~~~~$${\bf y}^{(L,k)} = y^{(L)}[x^{(L)}=k]$~~~~~~~~~~~~~({\it Group by category $k$})\\
+        $~~~~$$\overline{y}^{(L,k)} = \frac{1}{|{\bf y}^{(L,k)}|} \Sigma_{i=1}^{|{\bf y}^{(L,k)}|} y_i^{(L,k)}$ ~~~\,~({\it Mean of $y^{(L)}$ for category $k$})\\
+        $~~~~$$\Delta^{(L,k)} = \overline{y}^{(L,k)} - \overline{y}^{(L)}$ ~~~~~~~~~~~~~({\it Remove contribution of $x_{\overline{c}}$ to $y^{(L)}$})\\
+    }
+}
+$n = \Sigma_{T \in {\it rf}} \Sigma_{L \in T} n^{(L)}$~~~~~~~~~~~~~~~~~~~~~\,~~~~({\it Num supporting observations used to compute averages})\\
+$\overline{\Delta}^{(k)} = \frac{1}{n} \Sigma_{L} n^{(L)}\Delta^{(L,k)}$\\
+\Return{$\{\overline{\Delta}^{(1)}, \overline{\Delta}^{(2)}, \,\ldots, \overline{\Delta}^{(k)}\}$}, $n$
+\label{alg:CatStratPD}
+\end{algorithm}
+
+ \end{document}

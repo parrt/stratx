@@ -587,6 +587,7 @@ def catwise_leaves(rf, X, y, colname, verbose):
     catcol = X[colname].astype('category').cat.as_ordered()
     cats = catcol.cat.categories
     leaf_sizes = []
+    leaf_avgs = []
     leaf_histos = pd.DataFrame(index=cats)
     leaf_histos.index.name = 'category'
     ci = 0
@@ -601,19 +602,20 @@ def catwise_leaves(rf, X, y, colname, verbose):
             # print(f"ignoring {len(sample)} obs for {len(avg_cat_y)} cat(s) in leaf")
             ignored += len(sample)
             continue
-        min_avg = np.min(avg_cat_y)
-        min_avg = np.mean(y)
-        # record avg y value per cat in this leaf
+        # record avg y value per cat above avg y in this leaf
         # This assignment copies cat y avgs to appropriate cat row using index
         # leaving cats w/o representation as nan
-        leaf_histos['leaf' + str(ci)] = avg_cat_y - min_avg
+        avg_y = np.mean(combined.iloc[:,-1])
+        leaf_avgs.append(avg_y)
+        leaf_histos['leaf' + str(ci)] = avg_cat_y - avg_y
         leaf_sizes.append(len(sample))
+        # print(f"L avg {avg_y:.2f}: {avg_cat_y - avg_y}")
         ci += 1
 
-    # print(leaf_histos)
+    # print(f"Avg of leaf avgs is {np.mean(leaf_avgs):.2f} vs y avg {np.mean(y)}")
     stop = time.time()
     if verbose: print(f"catwise_leaves {stop - start:.3f}s")
-    return leaf_histos, leaf_sizes, ignored
+    return leaf_histos, np.array(leaf_avgs), leaf_sizes, ignored
 
 
 # only works for ints, not floats
@@ -664,17 +666,18 @@ def plot_catstratpd(X, y, colname, targetname,
     # rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X.drop(colname, axis=1), y)
     # print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
-    leaf_histos, leaf_sizes, ignored = catwise_leaves(rf, X, y, colname, verbose=verbose)
+    leaf_histos, leaf_avgs, leaf_sizes, ignored = catwise_leaves(rf, X, y, colname, verbose=verbose)
 
     if True:
         print(f"CatStratPD Num samples ignored {ignored} for {colname}")
 
-    # weighted_histos = leaf_histos.mul(leaf_sizes)
-    # weighted_sum_per_cat = np.nansum(weighted_histos, axis=1)
-    # total_obs_in_leaves = np.sum(leaf_sizes)
-    # avg_per_cat = weighted_sum_per_cat / total_obs_in_leaves
 
-    avg_per_cat = np.nanmean(leaf_histos, axis=1)
+    weighted_histos = leaf_histos.mul(leaf_sizes)
+    weighted_sum_per_cat = np.nansum(weighted_histos, axis=1)
+    total_obs_in_leaves = np.sum(leaf_sizes)
+    avg_per_cat = weighted_sum_per_cat / total_obs_in_leaves
+
+    # avg_per_cat = np.nanmean(leaf_histos, axis=1)
 
     if ax is None:
         fig, ax = plt.subplots(1, 1)
@@ -690,7 +693,8 @@ def plot_catstratpd(X, y, colname, targetname,
         sort_indexes = avg_per_cat.argsort()[::-1]  # reversed
         cats = cats[sort_indexes]
 
-    # TODO: shouldn't have to do this using ref cat
+    # The category y deltas straddle 0 but it's easier to understand if we normalize
+    # so lowest y delta is 0
     min_avg_value = np.min(avg_per_cat)
 
     # if too many categories, can't do strip plot

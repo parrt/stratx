@@ -645,8 +645,7 @@ def weather():
     """
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'dayofyear', 'temperature', ax=ax,
-                 min_samples_leaf=30,
-                 # nbins=7,
+                 # min_samples_leaf=30,
                  yrange=(-15, 15),
                  pdp_marker_size=2, alpha=.5, isdiscrete=True)
 
@@ -655,9 +654,12 @@ def weather():
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_catstratpd(X, y, 'state', 'temperature', cats=cats,
+                    min_samples_leaf=20,
                     alpha=.3,
                     style='strip',
-                    ax=ax, yrange=(-2, 60))
+                    ax=ax,
+                    yrange=(-2, 60)
+                    )
 
     ax.set_title("StratPD")
     savefig(f"state_vs_temp_stratpd")
@@ -1550,7 +1552,7 @@ def multi_joint_distr():
 
 if __name__ == '__main__':
     # multi_joint_distr()
-    bulldozer()
+    # bulldozer()
     # cars()
     # meta_cars()
     # rent()
@@ -1564,7 +1566,7 @@ if __name__ == '__main__':
     # weight_ntrees()
     # meta_weight()
     # unsup_weight()
-    # weather()
+    weather()
     # meta_weather()
     # additivity()
     # meta_additivity()
