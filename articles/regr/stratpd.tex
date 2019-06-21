@@ -178,7 +178,7 @@ Unfortunately, this stratification approach works for two or three variables but
 {\color{red} JW - the following paragraph is a little clunky. We should write for clarity. Will revisit}
 For the stratification step of \spd{}, the key idea is to relax stratification so that it organizes observations into groups of similar rather than equal observations. Our approach, called \spd, trains a decision tree regressor, $T$, as in \cite{CART}, on $(x_{\overline{c}}, {\bf y})$ to stratify observations according to the relationship between \xnc{} and $y$.  (The \spd{} algorithm also supports the use of random forests \cite{RF} but primarily to deal with duplicated features, as in \secref{sec:dup}.)  Each leaf in the tree, $L \in T$, represents a region of \xnc{} space and $(x^{(L)}, y^{(L)})$ are the $x_c$ and $y$ observations associated with $L$. \spd{} then characterizes the relationship between $y^{(L)}$ and $x^{(L)}$ for each $L$ by 
 \begin{itemize}
-	\item binning $(x^{(L)}, y^{(L)})$ per hyper parameter \texttt{nbins} to partition $x_c$ into bins $B_1, \ldots B_{nbins}$ and next
+	\item binning $(x^{(L)}, y^{(L)})$ per hyper parameter $nbins$ to partition $x_c$ into bins $B_1, \ldots B_{nbins}$ and next
 	\item fitting a simple linear regression of $y$ on $x_c$ over each bin $B_k$ to obtain the estimator $\widehat{\beta}_{B_k}$
 \end{itemize}
 
@@ -204,11 +204,7 @@ The estimator $\widehat{\beta}_R$ is an estimate of the partial derivative acros
 
 Revisiting the \spd{} plot in \figref{fig:height_vs_weight}(d), derived from the apartment rent data set, each blue line represents a local slope $\hat{\beta}_B$ through the observations in bin $B$ (which is a partition of $x_c$ space whose \xnc{} features are similar). Lines extend from the minimum to maximum $x_c$ value in a specific $B$.  Because we are interested in the relative contribution of $x_c$ to $y$, \spd{} plots use zero as a $y$-axis baseline. The black dots represent the integration of the partial derivative estimates up to and including each unique $x_c$ value (except the first $x_c$, whose integral value is 0). The partial derivative estimate at an $x_c$ value is the (weighted) average slope of the blue lines emanating from that value. \spd{} does not interpolate between $x_c$ points and so the plot shows dots not lines. 
 
-Binning $x_c$ space to get localized $\hat{\beta}_B$ slopes is appropriate for continuous $x_c$ but discrete $x_c$ variables are already binned. In this case, hyper parameter {\tt nbins} is ignored and the unique $x_c$ values within a bin are used as the bins, which effectively adjusts the binning granularity per leaf. For
-
-This prevents the creation of awkward bins, such as 1.8 to 3.2 bedrooms or dayofweek 1.3 to 2.1.
-
-$\hat{\beta}_B$ is the The regression line between adjacent bins
+Binning $x_c$ space to get localized $\hat{\beta}_B$ slopes is appropriate for continuous $x_c$ but binning discrete $x_c$ variables leads to awkward bins, such as 1.8 to 3.2 bedrooms or dayofweek 1.3 to 2.1. In the discrete case, hyper parameter $nbins$ is ignored and leaf bins are the ordered adjacent value pairs from unique$(x^{(L)})$; e.g., for unique $x^{(L)}$ values $(1,3,4,5)$, the bin ranges are $((1,3), (3,4), (4,5))$. The rest of Algorithm 1 remains the same.
 
 Partial dependence through stratification also works for data sets with categorical variables in \xnc{}, given a suitable similarity measure between observations that supports categorical variables, but identifying an appropriate categorical similarity measure is a well-known issue.  Decision trees, however, support categorical variables easily and effectively by treating categories as unique integers. Observations with categorical variables that end up in the same leaf are likely to be similar (\cite{RFunsup}). Algorithm 1, therefore, works without modification for \xnc{} containing categorical variables. When the column of interest, $x_c$, is categorical, however, a new algorithm is required.
 
