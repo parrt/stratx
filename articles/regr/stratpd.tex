@@ -617,7 +617,11 @@ $pd$ = numerically integrate $\beta_R$'s across $uniqx$\\
 {\it ntrees=1}, {\it bootstrap=false}, {\it split\_features=all}, {\it min\_samples\_leaf}\\
 \end{array}$
 }
-\KwOut{$\Delta^{(k)}$ = contribution of category $k$ to effect on $y$, $n$ = num support observations}
+\KwOut{$\begin{array}[t]{l}
+\Delta^{(k)} = \text{category } k \text{'s effect on } y \text{ where } mean(\Delta^{(k)})=0\\
+n = \text{number of supported observations}\\
+\end{array}$
+}
 Train random forest regressor $\it rf$ on (\xnc{}, $\bf y$) with hyper-parameters:\\
 ~~~~~$\it ntrees$, $\it bootstrap$, $\it split\_features$, ${\it min\_samples\_leaf}$ \\
 \ForEach{tree $T \in \it rf$}{
@@ -632,8 +636,8 @@ Train random forest regressor $\it rf$ on (\xnc{}, $\bf y$) with hyper-parameter
     }
 }
 $n = \Sigma_{T \in {\it rf}} \Sigma_{L \in T} n^{(L)}$~~~~~~~~~~~~~~~~~~~~~~({\it Num supporting observations used to compute averages})\\
-$\overline{\Delta}^{(k)} = \frac{1}{n} \Sigma_{L} n^{(L)}\Delta^{(L,k)}$\\
-\Return{$\{\overline{\Delta}^{(1)}, \overline{\Delta}^{(2)}, \,\ldots, \overline{\Delta}^{(k)}\}$}, $n$
+$\Delta^{(k)} = \frac{1}{n} \Sigma_{L} n^{(L)}\Delta^{(L,k)}$\\
+\Return{$\{{\Delta}^{(1)}, {\Delta}^{(2)}, \,\ldots, {\Delta}^{(k)}\}$}, $n$
 \label{alg:CatStratPD}
 \end{algorithm}
 

@@ -688,7 +688,6 @@ def plot_catstratpd(X, y, colname, targetname,
     if True:
         print(f"CatStratPD Num samples ignored {ignored} for {colname}")
 
-
     weighted_histos = leaf_histos.mul(leaf_sizes)
     weighted_sum_per_cat = np.nansum(weighted_histos, axis=1)
     total_obs_in_leaves = np.sum(leaf_sizes)
@@ -713,6 +712,8 @@ def plot_catstratpd(X, y, colname, targetname,
     # The category y deltas straddle 0 but it's easier to understand if we normalize
     # so lowest y delta is 0
     min_avg_value = np.min(avg_per_cat)
+
+    # print(f"Avg of avg per cat is {np.mean(avg_per_cat)}") # should be about 0
 
     # if too many categories, can't do strip plot
     if style=='strip':
