@@ -85,6 +85,22 @@ def dtree_leaf_samples(dtree, X:np.ndarray):
 
 
 def discrete_xc_space(x: np.ndarray, y: np.ndarray, colname, verbose):
+    """
+    Use the categories within a leaf as the bins to dynamically change the bins,
+    rather then using a fixed nbins hyper parameter. Group the leaf x,y by x
+    and collect the average y.  The unique x and y averages are the new x and y pairs.
+    The slope for each x is:
+
+        (y_{i+1} - y_i) / (x_{i+1} - x_i)
+
+    If the ordinal/ints are exactly one unit part, then it's just y_{i+1} - y_i. If
+    they are not consecutive, we do not ignore isolated x_i as it ignores too much data.
+    E.g., if x is [1,3,4] and y is [9,8,10] then the second x coordinate is skipped.
+    The two slopes are [(8-9)/2, (10-8)/1] and bin widths are [2,1].
+
+    If there is exactly one category in the leaf, the leaf provides no information
+    about how the categories contribute to changes in y. We have to ignore this leaf.
+    """
     start = time.time()
 
     ignored = 0
@@ -94,7 +110,7 @@ def discrete_xc_space(x: np.ndarray, y: np.ndarray, colname, verbose):
     df_avg = xy.groupby('x').mean().reset_index()
     x = df_avg['x'].values
     y = df_avg['y'].values
-    uniq_x = np.unique(x)
+    uniq_x = x
 
     if len(uniq_x)==1:
         # print(f"ignore {len(x)} in discrete_xc_space")
@@ -108,7 +124,7 @@ def discrete_xc_space(x: np.ndarray, y: np.ndarray, colname, verbose):
     leaf_sizes = xy['x'].value_counts().sort_index().values
     leaf_r2 = np.full(shape=(len(uniq_x),), fill_value=np.nan) # unused
 
-    # Now strip out elements for non-consecutive x
+    # Now strip out elements for non-consecutive x (ack! didn't work very well)
     if False:
         adj = np.where(bin_deltas == 1)[0]   # index of consecutive x values
         if len(adj)==0: # no consecutive?
