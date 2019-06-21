@@ -163,8 +163,17 @@ def rent_alone():
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
 
-    X = df_rent.drop('price', axis=1)
-    y = df_rent['price']
+    plot_stratpd_gridsearch(X, y, 'bathrooms', 'price',
+                            min_samples_leaf_values=[10,20,30,40],#[2,5,10,20,30],
+                            nbins_values=[1,3],#,6,10],
+                            # min_samples_leaf_values=[5,6],
+                            # nbins_values=[5,6],
+                            yrange=(-500,3000),
+                            isdiscrete=False)
+
+    plt.tight_layout()
+    plt.show()
+    return
 
     def onevar(colname, row, col, yrange=None, alpha=.2):
         uniq_x, curve, r2_at_x, ignored = \
@@ -172,13 +181,13 @@ def rent_alone():
                          min_samples_leaf=20,
                          yrange=yrange,
                          alpha=alpha,
-                         nbins=3,
+                         nbins=2,
                          isdiscrete=False,
                          pdp_marker_size=2 if row>=2 else 8,
                          verbose=False)
         uniq_x, curve, r2_at_x, ignored = \
             plot_stratpd(X, y, colname, 'price', ax=axes[row, col+1],
-                         min_samples_leaf=10,
+                         min_samples_leaf=20,
                          yrange=yrange,
                          alpha=alpha,
                          nbins=3,
@@ -194,8 +203,8 @@ def rent_alone():
 
     onevar('bedrooms', row=0, col=0, yrange=(0, 3000))
     onevar('bathrooms', row=1, col=0, yrange=(-500, 3000))
-    onevar('latitude', row=2, col=0, yrange=(-500, 3000))
-    onevar('longitude', row=3, col=0, alpha=.08, yrange=(-3000, 1000))
+    # onevar('latitude', row=2, col=0, yrange=(-500, 3000))
+    # onevar('longitude', row=3, col=0, alpha=.08, yrange=(-3000, 1000))
 
     savefig(f"rent_all")
     plt.close()
@@ -1541,8 +1550,8 @@ if __name__ == '__main__':
     # bulldozer()
     # cars()
     # meta_cars()
-    rent()
-    # rent_alone()
+    # rent()
+    rent_alone()
     # rent_ntrees()
     # rent_extra_cols()
     # meta_boston()

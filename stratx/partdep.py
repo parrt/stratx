@@ -97,16 +97,28 @@ def discrete_xc_space(x: np.ndarray, y: np.ndarray, colname, verbose):
     uniq_x = np.unique(x)
 
     if len(uniq_x)==1:
-        print(f"ignore {len(x)} in discrete_xc_space")
+        # print(f"ignore {len(x)} in discrete_xc_space")
         ignored += len(x)
         return np.array([]), np.array([]), np.array([]), np.array([]), ignored
 
     bin_deltas = np.diff(uniq_x)
     y_deltas = np.diff(y)
     leaf_slopes = y_deltas / bin_deltas  # "rise over run"
-    leaf_xranges = list(zip(uniq_x, uniq_x[1:]))
-    leaf_sizes = xy['x'].value_counts().sort_index()
+    leaf_xranges = np.array(list(zip(uniq_x, uniq_x[1:])))
+    leaf_sizes = xy['x'].value_counts().sort_index().values
     leaf_r2 = np.full(shape=(len(uniq_x),), fill_value=np.nan) # unused
+
+    # Now strip out elements for non-consecutive x
+    adj = np.where(bin_deltas == 1)[0]   # index of consecutive x values
+    if len(adj)==0: # no consecutive?
+        # print(f"ignore non-consecutive {len(x)} in discrete_xc_space")
+        ignored += len(x)
+        return np.array([]), np.array([]), np.array([]), np.array([]), ignored
+
+    leaf_slopes = leaf_slopes[adj]
+    leaf_xranges = leaf_xranges[adj]
+    leaf_sizes = leaf_sizes[adj]
+    leaf_r2 = leaf_r2[adj]
 
     stop = time.time()
     # print(f"discrete_xc_space {stop - start:.3f}s")
@@ -399,22 +411,28 @@ def plot_stratpd(X, y, colname, targetname=None,
                                    oob_score=False)
         rf.fit(X_synth.drop(colname,axis=1), y_synth)
 
-    uniq_x = np.array(sorted(np.unique(X[colname])))
+    real_uniq_x = np.array(sorted(np.unique(X[colname])))
     # print(f"\nModel wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2, ignored = \
         collect_leaf_slopes(rf, X, y, colname, nbins=nbins, isdiscrete=isdiscrete, verbose=verbose)
     if True:
-        print(f"StratPD Num samples ignored {ignored} for {colname}")
-    slope_at_x = avg_values_at_x(uniq_x, leaf_xranges, leaf_slopes, leaf_sizes)
-    r2_at_x = avg_values_at_x(uniq_x, leaf_xranges, leaf_r2, leaf_sizes)
+        print(f"{'discrete ' if isdiscrete else ''}StratPD num samples ignored {ignored} for {colname}")
+
+
+    slope_at_x = avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes, leaf_sizes)
+    r2_at_x = avg_values_at_x(real_uniq_x, leaf_xranges, leaf_r2, leaf_sizes)
     # Drop any nan slopes; implies we have no reliable data for that range
     # Make sure to drop uniq_x values too :)
     notnan_idx = ~np.isnan(slope_at_x) # should be same for slope_at_x and r2_at_x
     slope_at_x = slope_at_x[notnan_idx]
-    uniq_x = uniq_x[notnan_idx]
+    uniq_x = real_uniq_x[notnan_idx]
     r2_at_x = r2_at_x[notnan_idx]
     # print(f'uniq_x = [{", ".join([f"{x:4.1f}" for x in uniq_x])}]')
     # print(f'slopes = [{", ".join([f"{s:4.1f}" for s in slope_at_x])}]')
+
+    if len(uniq_x)==0:
+        raise ValueError(f"Could not compute slopes for partial dependence curve; "
+                             f"binning granularity is likely cause: nbins={nbins}, uniq x={len(real_uniq_x)}")
 
     if ax is None:
         fig, ax = plt.subplots(1,1)
@@ -468,7 +486,10 @@ def plot_stratpd(X, y, colname, targetname=None,
     if xrange is not None:
         ax.set_xlim(*xrange)
     else:
-        ax.set_xlim(min(uniq_x),max(uniq_x))
+        if isdiscrete:
+            ax.set_xticks(uniq_x)
+        else:
+            ax.set_xlim(min(uniq_x), max(uniq_x))
     if yrange is not None:
         ax.set_ylim(*yrange)
     ax.add_collection(lines)
@@ -516,15 +537,21 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
         col = 1
         for msl in min_samples_leaf_values:
             print(f"---------- min_samples_leaf={msl}, nbins={nbins:.2f} ----------- ")
-            plot_stratpd(X, y, colname, targetname, ax=axes[row, col],
-                         nbins=nbins,
-                         min_samples_leaf=msl,
-                         isdiscrete=isdiscrete,
-                         yrange=yrange,
-                         ntrees=1)
-            axes[row, col].set_title(
-                f"leafsz={msl}, nbins={nbins}",
-                fontsize=9)
+            try:
+                plot_stratpd(X, y, colname, targetname, ax=axes[row, col],
+                             nbins=nbins,
+                             min_samples_leaf=msl,
+                             isdiscrete=isdiscrete,
+                             yrange=yrange,
+                             ntrees=1)
+            except ValueError:
+                axes[row, col].set_title(
+                    f"Can't gen: leafsz={msl}, nbins={nbins}",
+                    fontsize=8)
+            else:
+                axes[row, col].set_title(
+                    f"leafsz={msl}, nbins={nbins}",
+                    fontsize=9)
             col += 1
         row += 1
 
