@@ -206,15 +206,48 @@ Revisiting the \spd{} plot in \figref{fig:height_vs_weight}(d), derived from the
 
 There is a special case that deserves attention. When the range of $x^{(B)}$ is 0 for some bin $B$, then $B$ provides no information about how changes in $x_c$ affect $y$ because $x_c$ does not change in $B$. (See leaf $L_5$ in \figref{fig:leaves}.)  Stratification leads to observations that are similar in \xnc{} and, in this case, the observation $x_c$ values are identical. That means that fluctuations in $y$ are likely due to noise or exogenous variables not included in the data set.  Such a bin gets a weight of 0 in Algorithm 1 to reflect the fact that $B$ cannot contribute a $\hat{\beta}_B$. This situation occurs most often when $x_c$ contains integers.
 
-When all or most of the $x_c$ values are discrete integers, some choices of $nbins$ lead to virtually all bins in all leaves getting weight 0. \spd{} would generate a questionable plot due to lack of available $\hat{\beta}_B$. Also, binning integers leads to awkward bins, such as 1.8 to 3.2 bedrooms or dayofweek 1.3 to 2.1. In the discrete case, hyper parameter $nbins$ is ignored and leaf bins are defined as the ordered adjacent value pairs from unique$(x^{(L)})$; e.g., for unique $x^{(L)}$ values $(1,3,4,5)$, the bin ranges are $((1,3), (3,4), (4,5))$. The rest of Algorithm 1 remains the same.
+When all or most of the $x_c$ values are discrete integers, some choices of $nbins$ lead to virtually all bins in all leaves getting weight 0. \spd{} would generate a questionable plot due to lack of available $\hat{\beta}_B$. Also, binning integers leads to awkward bins, such as 1.8 to 3.2 bedrooms or dayofweek 1.3 to 2.1. In the discrete case, hyper parameter $nbins$ is ignored and leaf bins are defined as the ordered adjacent value pairs from unique$(x^{(L)})$; e.g., for unique $x^{(L)}$ values $(1,3,4,5)$, the bin ranges are $((1,3), (3,4), (4,5))$. The rest of Algorithm 1 remains the same. Users of the {\tt stratx} package engage this functionality with hyper parameter ${\it isdiscrete}$.
 
 Partial dependence through stratification also works for data sets with categorical variables in \xnc{}, given a suitable similarity measure between observations that supports categorical variables, but identifying an appropriate categorical similarity measure is a well-known issue.  Decision trees, however, support categorical variables easily and effectively by treating categories as unique integers. Observations with categorical variables that end up in the same leaf are likely to be similar (\cite{RFunsup}). Algorithm 1, therefore, works without modification for \xnc{} containing categorical variables. When the column of interest, $x_c$, is categorical, however, a new algorithm is required.
 
 \subsection{CatStratPD for categorical variables}
 
-The stratification approach can also capture how a categorical variable $x_c$ affects $y$, instead of just a single category at a time (if one were forced to dummy-encode $x_c$). As with \spd{}, the \cspd{} algorithm stratifies $\bf X$ into groups of similar \xnc{} features by training a decision tree regressor on $({\bf X}, {\bf y})$, yielding a collection of leaves. But, because categorical variables can be unordered nominal variables, the notion of $y$ slope is not meaningful between two categories. Instead of partitioning the $x_c$ space in each leaf $L$, \cspd{} groups leaf observations $(x^{(L)}, y^{(L)})$ by the categories in $x^{(L)}$ and computes the average $y^{(L)}$ value per category.  To erase the $y$-contributions of \xnc{}, \cspd{} subtracts the minimum of the $y^{(L)}$ means from all category averages, leaving a relative increase or decrease in $y$  for each category. Then, to get the overall contribution of $x_c$ to $y$ for category $cat$, \cspd{} averages the leaf contributions for $cat$ from all $L$ weighted by $|L|$. See Algorithm 2.
+The stratification approach can also capture how a categorical variable $x_c$ affects $y$, instead of just a single category at a time (if one were forced to dummy-encode $x_c$). As with \spd{},  \cspd{} (Algorithm 2) stratifies $\bf X$ into groups of similar \xnc{} features by training a decision tree regressor on $({\bf X}, {\bf y})$, yielding a collection of leaves. But, because categorical variables can be unordered nominal variables, the notion of $y$ slope is not meaningful between two categories.  Instead, the partial dependence plot for categorical variables shows how each category differs on average from the other categories. The category differences can be shown as zero-centered deltas or shifted up so the lowest delta is zero.
 
-\figref{fig:state_vs_temp}(b) illustrates \cspd{} operating on a categorical variable, $x_{\it state}$, in a synthetic weather data set with data from four states over three years. Temperature data varies in sinusoidal fashion over the year with $N(-5,5)$ noise and different baseline temperatures per state, as the marginal plot in \figref{fig:state_vs_temp}(a) shows. To get the partial dependence of temperature on $x_{\it state}$, \spd{} stratifies by $x_{\it dayofyear}$ and $x_{\it year}$ then groups these similar time buckets by $x_{\it state}$ and computes the average temperature; each blue dot represents a leaf average. The overall temperature estimate per state is the average of those leaf averages, represented by a solid black dash. We use a strip plot to exhibit the variation and density of $y$ values per category. The \cspd{} plot accurately identifies the baseline temperature per state, as does the PD/ICE plot in \figref{fig:state_vs_temp}(c).
+\cspd{} groups leaf observations $(x^{(L)}, y^{(L)})$ by the categories in $x^{(L)}$ and computes the average $y^{(L)}$ value per category $k$. To erase the $y$-contributions of \xnc{}, \cspd{} subtracts the average of $y^{(L)}$ from all leaf category averages, yielding a zero-centered relative increase or decrease in $y$ for each category:\\
+
+\noindent ${\bf y}^{(L,k)} = y^{(L)}[x^{(L)}=k]$~~~~~~~~~~~~~({\it Group leaf $x_c$ by category $k$})\\
+$\overline{y}^{(L,k)} = \frac{1}{|{\bf y}^{(L,k)}|} \Sigma_{i=1}^{|{\bf y}^{(L,k)}|} y_i^{(L,k)}$ ~~~~\,~({\it Mean of leaf $y^{(L)}$ for category $k$})\\
+$\Delta^{(L,k)} = \overline{y}^{(L,k)} - \overline{y}^{(L)}$ ~~~~~~~~~~~~~({\it Remove contribution of $x_{\overline{c}}$ to $y^{(L)}$})\\
+
+\noindent Then, to get the overall contribution of $x_c$ to $y$ for category $k$, \cspd{} computes the weighted average of the leaf contributions for $k$ from all $L$:\\
+
+\noindent $\Delta^{(k)} = \frac{1}{n} \Sigma_{L} |L|\Delta^{(L,k)}$\\
+
+\noindent Subtracting the \xnc{} contribution, $\overline{y}^{(L)}$, normalizes all $\Delta^{(L,k)}$ so they are relative to 0, providing a common baseline from which to average contributions across leaves. Plotting category $k$ against $\Delta^{(k)}$ gives a zero-centered partial dependence plot. The {\tt stratx} package shifts all $\Delta^{(k)}$ so the minimum $\Delta^{(k)}$ is 0 as we find it easier to interpret the plots.
+
+Consider the synthetic weather data shown in \figref{fig:state_vs_temp}(a) where temperature varies in sinusoidal fashion over the year and with different baseline temperatures per state:\\
+
+$y = t[x_{\it state}] + sin(\frac{2 \pi}{365} x_{\it dayofyear} + \frac{365}{2}) \times \epsilon, ~~~ \epsilon \sim N(\mu=-5,\sigma=5)$\\
+
+\noindent where the baseline $t$ per state is $\{{\it CA}=70, {\it CO}=40, {\it AZ}=90, {\it WA}=60\}$. Each sinusoid in \figref{fig:state_vs_temp}(a) is the average of three years' temperature data.
+
+The categorical partial dependence plot for $x_{\it state}$ is shown in \figref{fig:state_vs_temp}(b).
+\cspd{} stratifies \xnc{}=$\{x_{\it dayofyear}, x_{\it year}\}$ then groups these similar time buckets (leaves) by $x_{\it state}$ and computes the average temperature per state in $L$. For each $L$, the average temperature in $L$ is subtracted from the average temperature per state in $L$ to get deltas, which are represented by blue dots in \figref{fig:state_vs_temp}(b). The overall temperature estimate per state is the average of those leaf averages, represented by a solid black dash. We use a strip plot to exhibit the variation and density of $y$ values per category. The \cspd{} plot accurately identifies the baseline temperature per state, as does the PD/ICE plot in \figref{fig:state_vs_temp}(c).
+
+\cut{
+For example, a partial dependence plot \figref{fig:state_vs_temp}(b) for the weather data shown in \figref{fig:state_vs_temp}(a) would show how, on average, the temperature of each state differs from the others on the same day (\xnc=$x_{dayofyear}$).
+
+ $x_c = x_{state}$ versus $y$=temperature
+ 
+For example, the partial dependence plot for $x_{state}$ versus temperature would show how much above or below the average US temperature each state is. 
+
+For example, stratification for apartment rent data might group all one-bathroom apartments in a single building into a leaf. Within leaf $L$, two- and three-bedroom apartments would likely be above the average price in $L$ and zero- and one-bedroom apartments would likely be below the average. The overall categorical partial dependence plot we show the average category deltas across all leaves. 
+
+Subtracting the average $y$ in leaf $L$ removes the contribution of \xnc{} to $y$.
+} 
+
+
 
 \begin{figure}[htbp]
 \begin{center}
@@ -627,16 +660,17 @@ Train random forest regressor $\it rf$ on (\xnc{}, $\bf y$) with hyper-parameter
 \ForEach{tree $T \in \it rf$}{
     \ForEach{leaf $L \in T$}{
         Let $(x^{(L)}, y^{(L)})$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
-        Let unique categories be $K=\{k_1, k_2, \,\dots, k_{n_x}\}$ where $n_x \le |unique(X_c)|$\\
-        $n^{(L)} = \begin{cases} |L| &\mbox{if } |{\it unique~cats \in x^{(L)}}| > 1 \\ 
-        0 & otherwise\end{cases}$~~~~~({\it Assume $L$ is unique id across trees})\\
-        ${\bf y}^{(L,k)} = y^{(L)}[x^{(L)}=k]$~~~~~~~~~~~~~({\it Group by category $k$})\\
-        $\overline{y}^{(L,k)} = \frac{1}{|{\bf y}^{(L,k)}|} \Sigma_{i=1}^{|{\bf y}^{(L,k)}|} y_i^{(L,k)}$ ~~~~\,~({\it Mean of $y^{(L)}$ for category $k$})\\
+        Let $n_x=|unique(x^{(L)})| \le |unique(X_c)|$\\
+%        Let $K=\{k_1, k_2, \,\dots, k_{n_x}\}$ where \\
+        $n^{(L)} = \begin{cases} |L| &\mbox{if } n_x > 1 \\ 
+        0 & otherwise\end{cases}$\\
+        ${\bf y}^{(L,k)} = y^{(L)}[x^{(L)}=k]$~~~~~~~~~~~~~({\it Group leaf $x_c$ by category $k$})\\
+        $\overline{y}^{(L,k)} = \frac{1}{|{\bf y}^{(L,k)}|} \Sigma_{i=1}^{|{\bf y}^{(L,k)}|} y_i^{(L,k)}$ ~~~~\,~({\it Mean of leaf $y^{(L)}$ for category $k$})\\
         $\Delta^{(L,k)} = \overline{y}^{(L,k)} - \overline{y}^{(L)}$ ~~~~~~~~~~~~~({\it Remove contribution of $x_{\overline{c}}$ to $y^{(L)}$})\\
     }
 }
-$n = \Sigma_{T \in {\it rf}} \Sigma_{L \in T} n^{(L)}$~~~~~~~~~~~~~~~~~~~~~~({\it Num supporting observations used to compute averages})\\
-$\Delta^{(k)} = \frac{1}{n} \Sigma_{L} n^{(L)}\Delta^{(L,k)}$\\
+$n = \Sigma_{T \in {\it rf}} \Sigma_{L \in T} ~n^{(L)}$~~~~~~~~~~~~~~~~~~~~~~({\it Num supporting observations})\\
+$\Delta^{(k)} = \frac{1}{n} \Sigma_{L} n^{(L)}\Delta^{(L,k)}$~~~~~~~~~~~~~~~~~~~({\it Change for $k$ is weighted average across leaves})\\
 \Return{$\{{\Delta}^{(1)}, {\Delta}^{(2)}, \,\ldots, {\Delta}^{(k)}\}$}, $n$
 \label{alg:CatStratPD}
 \end{algorithm}
