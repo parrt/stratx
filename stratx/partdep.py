@@ -603,9 +603,10 @@ def catwise_leaves(rf, X, y, colname, verbose):
     ignored = 0
     catcol = X[colname].astype('category').cat.as_ordered()
     cats = catcol.cat.categories
+    catcount = np.zeros(len(cats)+1)
     leaf_sizes = []
     leaf_avgs = []
-    leaf_histos = pd.DataFrame(index=cats)
+    leaf_histos = pd.DataFrame(index=range(0,len(cats)+1))
     leaf_histos.index.name = 'category'
     ci = 0
     Xy = pd.concat([X, y], axis=1)
@@ -613,10 +614,14 @@ def catwise_leaves(rf, X, y, colname, verbose):
     for sample in leaves:
         combined = Xy.iloc[sample]
         # print("\n", combined)
-        avg_cat_y = combined.groupby(colname).mean()
-        avg_cat_y = avg_cat_y.iloc[:,-1]
-        if len(avg_cat_y) < 2:
-            # print(f"ignoring {len(sample)} obs for {len(avg_cat_y)} cat(s) in leaf")
+        groupby = combined.groupby(colname)
+        avg_y_per_cat = groupby.mean()
+        avg_y_per_cat = avg_y_per_cat[y.name]#.iloc[:,-1]
+        count_y_per_cat = combined[colname].value_counts()
+        for k in count_y_per_cat.index:
+            catcount[k] += count_y_per_cat[k]
+        if len(avg_y_per_cat) < 2:
+            # print(f"ignoring {len(sample)} obs for {len(avg_y_per_cat)} cat(s) in leaf")
             ignored += len(sample)
             continue
         # record avg y value per cat above avg y in this leaf
@@ -624,15 +629,16 @@ def catwise_leaves(rf, X, y, colname, verbose):
         # leaving cats w/o representation as nan
         avg_y = np.mean(combined.iloc[:,-1])
         leaf_avgs.append(avg_y)
-        leaf_histos['leaf' + str(ci)] = avg_cat_y - avg_y
+        delta_y_per_cat = avg_y_per_cat - avg_y
+        leaf_histos['leaf' + str(ci)] = delta_y_per_cat
         leaf_sizes.append(len(sample))
-        # print(f"L avg {avg_y:.2f}: {avg_cat_y - avg_y}")
+        # print(f"L avg {avg_y:.2f}: {avg_y_per_cat - avg_y}")
         ci += 1
 
     # print(f"Avg of leaf avgs is {np.mean(leaf_avgs):.2f} vs y avg {np.mean(y)}")
     stop = time.time()
     if verbose: print(f"catwise_leaves {stop - start:.3f}s")
-    return leaf_histos, np.array(leaf_avgs), leaf_sizes, ignored
+    return leaf_histos, np.array(leaf_avgs), leaf_sizes, catcount, ignored
 
 
 # only works for ints, not floats
@@ -647,6 +653,7 @@ def plot_catstratpd(X, y, colname, targetname,
                     yrange=None,
                     title=None,
                     supervised=True,
+                    use_weighted_avg=True,
                     alpha=.15,
                     color='#2c7fb8',
                     pdp_marker_size=.5,
@@ -683,17 +690,23 @@ def plot_catstratpd(X, y, colname, targetname,
     # rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X.drop(colname, axis=1), y)
     # print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
-    leaf_histos, leaf_avgs, leaf_sizes, ignored = catwise_leaves(rf, X, y, colname, verbose=verbose)
+    leaf_histos, leaf_avgs, leaf_sizes, catcount, ignored = \
+        catwise_leaves(rf, X, y, colname, verbose=verbose)
+
+    print(catcount)
 
     if True:
         print(f"CatStratPD Num samples ignored {ignored} for {colname}")
 
-    weighted_histos = leaf_histos.mul(leaf_sizes)
-    weighted_sum_per_cat = np.nansum(weighted_histos, axis=1)
-    total_obs_in_leaves = np.sum(leaf_sizes)
-    avg_per_cat = weighted_sum_per_cat / total_obs_in_leaves
-
-    # avg_per_cat = np.nanmean(leaf_histos, axis=1)
+    if use_weighted_avg:
+        # multiply each column (leaf) by category count vector; each column
+        # has average per cat in a leaf.
+        weighted_histos = leaf_histos.multiply(catcount, axis=0)  # axis=0 implies line up via axis
+        weighted_sum_per_cat = np.nansum(weighted_histos, axis=1) # sum across columns
+        # total_obs_in_leaves = np.sum(catcount)
+        avg_per_cat = weighted_sum_per_cat / catcount
+    else:
+        avg_per_cat = np.nanmean(leaf_histos, axis=1)
 
     if ax is None:
         fig, ax = plt.subplots(1, 1)
@@ -701,7 +714,7 @@ def plot_catstratpd(X, y, colname, targetname,
     ncats = len(cats)
     nleaves = len(leaf_histos.columns)
 
-    sort_indexes = range(ncats)
+    sort_indexes = range(0,ncats+1)
     if sort == 'ascending':
         sort_indexes = avg_per_cat.argsort()
         cats = cats[sort_indexes]

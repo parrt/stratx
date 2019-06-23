@@ -163,17 +163,17 @@ def rent_alone():
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
 
-    plot_stratpd_gridsearch(X, y, 'bathrooms', 'price',
-                            min_samples_leaf_values=[10,20,30,40],#[2,5,10,20,30],
-                            nbins_values=[1,3],#,6,10],
-                            # min_samples_leaf_values=[5,6],
-                            # nbins_values=[5,6],
-                            yrange=(-500,3000),
-                            isdiscrete=False)
-
-    plt.tight_layout()
-    plt.show()
-    return
+    # plot_stratpd_gridsearch(X, y, 'bathrooms', 'price',
+    #                         min_samples_leaf_values=[10,20,30,40],#[2,5,10,20,30],
+    #                         nbins_values=[1,3],#,6,10],
+    #                         # min_samples_leaf_values=[5,6],
+    #                         # nbins_values=[5,6],
+    #                         yrange=(-500,3000),
+    #                         isdiscrete=False)
+    #
+    # plt.tight_layout()
+    # plt.show()
+    # return
 
     def onevar(colname, row, col, yrange=None, alpha=.2):
         uniq_x, curve, r2_at_x, ignored = \
@@ -190,7 +190,6 @@ def rent_alone():
                          min_samples_leaf=20,
                          yrange=yrange,
                          alpha=alpha,
-                         nbins=3,
                          isdiscrete=True,
                          pdp_marker_size=2 if row>=2 else 8,
                          verbose=False)
@@ -203,8 +202,8 @@ def rent_alone():
 
     onevar('bedrooms', row=0, col=0, yrange=(0, 3000))
     onevar('bathrooms', row=1, col=0, yrange=(-500, 3000))
-    # onevar('latitude', row=2, col=0, yrange=(-500, 3000))
-    # onevar('longitude', row=3, col=0, alpha=.08, yrange=(-3000, 1000))
+    onevar('latitude', row=2, col=0, yrange=(-500, 3000))
+    onevar('longitude', row=3, col=0, alpha=.08, yrange=(-3000, 1000))
 
     savefig(f"rent_all")
     plt.close()
@@ -295,6 +294,7 @@ def plot_with_noise_col(df, colname, nbins):
     y = df['price']
     uniq_x, curve, r2_at_x, ignored = \
         plot_stratpd(X, y, colname, 'price', ax=axes[0, 0], alpha=.15, show_xlabel=True,
+                     isdiscrete=colname in {'bedrooms', 'bathrooms'},
                      nbins=nbins,
                      show_ylabel=False)
     axes[0, 0].set_ylim(-1000, 5000)
@@ -303,6 +303,7 @@ def plot_with_noise_col(df, colname, nbins):
     X = df[features_with_noise]
     y = df['price']
     plot_stratpd(X, y, colname, 'price', ax=axes[0, 1], alpha=.15,
+                 isdiscrete=colname in {'bedrooms', 'bathrooms'},
                  nbins=nbins,
                  show_ylabel=False)
     axes[0, 1].set_ylim(-1000, 5000)
@@ -362,6 +363,7 @@ def plot_with_dup_col(df, colname, nbins):
     print(f"shape is {X.shape}")
     uniq_x, curve, r2_at_x, ignored = \
         plot_stratpd(X, y, colname, 'price', ax=axes[0, 0], alpha=.15, show_xlabel=True,
+                     isdiscrete=colname in {'bedrooms', 'bathrooms'},
                      nbins=nbins,
                      show_ylabel=True,
                      verbose=verbose)
@@ -372,17 +374,20 @@ def plot_with_dup_col(df, colname, nbins):
     y = df['price']
     print(f"shape with dup is {X.shape}")
     plot_stratpd(X, y, colname, 'price', ax=axes[0, 1], alpha=.15, show_ylabel=False,
+                 isdiscrete=colname in {'bedrooms','bathrooms'},
+                 nbins=nbins,
                  verbose=verbose)
     axes[0, 1].set_ylim(-1000, 5000)
     axes[0, 1].set_title(f"StratPD w/{type} col")
 
     uniq_x_, curve_, r2_at_x_, ignored_ = \
         plot_stratpd(X, y, colname, 'price', ax=axes[0, 2], alpha=.15, show_xlabel=True,
+                     isdiscrete=colname in {'bedrooms', 'bathrooms'},
                      show_ylabel=False,
                      ntrees=15,
                      max_features=2,
-                     nbins=nbins,
                      bootstrap=False,
+                     nbins=nbins,
                      verbose=verbose
                      )
     axes[0, 2].set_ylim(-1000, 5000)
@@ -478,7 +483,7 @@ def rent_ntrees():
         alphas = [.1,.08,.05,.04]
         for i, t in enumerate(trees):
             plot_stratpd(X, y, colname, 'price', ax=axes[row, i], alpha=alphas[i],
-                         min_samples_leaf=20,
+                         # min_samples_leaf=20,
                          yrange=yrange,
                          supervised=supervised,
                          show_ylabel=t == 2,
@@ -499,9 +504,9 @@ def rent_ntrees():
     for i in range(0, 4):
         axes[0, i].set_title(f"{trees[i]} trees")
 
-    onevar('bedrooms', row=0, yrange=(0, 3000))
-    onevar('bathrooms', row=1, yrange=(-500, 3000))
-    onevar('latitude', row=2, yrange=(-500, 3000))
+    onevar('bedrooms', row=0, yrange=(-500, 4000))
+    onevar('bathrooms', row=1, yrange=(-500, 4000))
+    onevar('latitude', row=2, yrange=(-500, 4000))
 
     savefig(f"rent_ntrees")
     plt.close()
@@ -579,14 +584,14 @@ def unsup_rent():
 
     fig, axes = plt.subplots(3, 2, figsize=(4, 6))
 
-    plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 0], alpha=.2, supervised=False)
-    plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 1], alpha=.2, supervised=True)
+    plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 0], yrange=(-500,4000), alpha=.2, isdiscrete=True, supervised=False)
+    plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 1], yrange=(-500,4000), alpha=.2, isdiscrete=True, supervised=True)
 
-    plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 0], alpha=.2, supervised=False)
-    plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 1], alpha=.2, supervised=True)
+    plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 0], yrange=(-500,4000), alpha=.2, isdiscrete=True, supervised=False)
+    plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 1], yrange=(-500,4000), alpha=.2, isdiscrete=True, supervised=True)
 
-    plot_stratpd(X, y, 'latitude', 'price', ax=axes[2, 0], alpha=.2, supervised=False)
-    plot_stratpd(X, y, 'latitude', 'price', ax=axes[2, 1], alpha=.2, supervised=True)
+    plot_stratpd(X, y, 'latitude', 'price', nbins=2, ax=axes[2, 0], yrange=(-500,4000), alpha=.2, supervised=False)
+    plot_stratpd(X, y, 'latitude', 'price', nbins=2, ax=axes[2, 1], yrange=(-500,4000), alpha=.2, supervised=True)
 
     axes[0, 0].set_title("Unsupervised")
     axes[0, 1].set_title("Supervised")
@@ -633,7 +638,7 @@ def weather():
     df_cat_to_catcode(df)
     X = df.drop('temperature', axis=1)
     y = df['temperature']
-    cats = np.unique(df['state'])
+    cats = np.unique(catencoders['state'])
 
     figsize = (2.5, 2.5)
     """
@@ -643,14 +648,14 @@ def weather():
     Flip to N(-5,5) which is more realistic and we see sinusoid for both, even at
     scale. yep, the N(0,5) was obscuring sine for both. 
     """
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
-    plot_stratpd(X, y, 'dayofyear', 'temperature', ax=ax,
-                 # min_samples_leaf=30,
-                 yrange=(-15, 15),
-                 pdp_marker_size=2, alpha=.5, isdiscrete=True)
-
-    savefig(f"dayofyear_vs_temp_stratpd")
-    plt.close()
+    # fig, ax = plt.subplots(1, 1, figsize=figsize)
+    # plot_stratpd(X, y, 'dayofyear', 'temperature', ax=ax,
+    #              # min_samples_leaf=30,
+    #              yrange=(-15, 15),
+    #              pdp_marker_size=2, alpha=.5, isdiscrete=True)
+    #
+    # savefig(f"dayofyear_vs_temp_stratpd")
+    # plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_catstratpd(X, y, 'state', 'temperature', cats=cats,
@@ -658,7 +663,7 @@ def weather():
                     alpha=.3,
                     style='strip',
                     ax=ax,
-                    yrange=(-2, 60)
+                    yrange=(-2, 60),
                     )
 
     ax.set_title("StratPD")
@@ -748,7 +753,7 @@ def meta_weather():
 
     plot_stratpd_gridsearch(X, y, 'dayofyear', 'temp',
                             min_samples_leaf_values=[2,5,10,20,30],
-                            nbins_values=[1],
+                            nbins_values=[1,2],
                             yrange=(-10,10),
                             isdiscrete=True)
 
@@ -1332,7 +1337,7 @@ def bulldozer():  # warning: takes like 5 minutes to run
     df = df.dropna(axis='rows')  # drop any rows with nan
 
     # Get subsample; it's a (sorted) timeseries so get last records not random
-    df = df.iloc[-10_000:]  # take only last 10,000 records
+    df = df.iloc[-1_000:]  # take only last 10,000 records
 
     X, y = df[basefeatures], df['SalePrice']
 
@@ -1341,9 +1346,9 @@ def bulldozer():  # warning: takes like 5 minutes to run
 
     fig, axes = plt.subplots(3, 3, figsize=(7, 6))
 
-    onecol(df, X, y, 'YearMade', axes, 0, xrange=(1960, 2012), yrange=(-1000, 60000))
-    onecol(df, X, y, 'MachineHours', axes, 1, xrange=(0, 35_000),
-           yrange=(-40_000, 40_000))
+    # onecol(df, X, y, 'YearMade', axes, 0, xrange=(1960, 2012), yrange=(-1000, 60000))
+    # onecol(df, X, y, 'MachineHours', axes, 1, xrange=(0, 35_000),
+    #        yrange=(-40_000, 40_000))
 
     # show marginal plot sorted by model's sale price
     sort_indexes = y.argsort()
@@ -1366,18 +1371,20 @@ def bulldozer():  # warning: takes like 5 minutes to run
 
 
     plot_catstratpd(X, y, 'ModelID', 'SalePrice', cats=np.unique(df['ModelID']),
+                    min_samples_leaf=5,
+                    use_weighted_avg=True,
                     ax=axes[2, 1], sort='ascending',
-                    # min_samples_leaf_partition=5,
-                    yrange=(0, 130000), show_ylabel=False,
+                    # yrange=(0, 130000),
+                    show_ylabel=False,
                     alpha=0.1,
                     style='scatter',
                     marker_size=3,
                     show_xticks=False,
                     verbose=False)
 
-    # plt.tight_layout()
-    # plt.show()
-    # return
+    plt.tight_layout()
+    plt.show()
+    return
 
     rf = RandomForestRegressor(n_estimators=20, min_samples_leaf=1, oob_score=True,
                                n_jobs=-1)
@@ -1562,11 +1569,11 @@ if __name__ == '__main__':
     # meta_boston()
     # unsup_boston()
     # unsup_rent()
-    weight()
+    # weight()
     # weight_ntrees()
     # meta_weight()
     # unsup_weight()
-    # weather()
+    weather()
     # meta_weather()
     # additivity()
     # meta_additivity()
