@@ -638,7 +638,8 @@ def weather():
     df_cat_to_catcode(df)
     X = df.drop('temperature', axis=1)
     y = df['temperature']
-    cats = np.unique(catencoders['state'])
+    cats = catencoders['state'].values
+    cats = np.insert(cats, 0, None) # prepend a None for catcode 0
 
     figsize = (2.5, 2.5)
     """
@@ -658,17 +659,20 @@ def weather():
     # plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    plot_catstratpd(X, y, 'state', 'temperature', cats=cats,
+    plot_catstratpd(X, y, 'state', 'temperature', catnames=cats,
                     min_samples_leaf=20,
                     alpha=.3,
                     style='strip',
                     ax=ax,
                     yrange=(-2, 60),
+                    use_weighted_avg=True
                     )
 
     ax.set_title("StratPD")
     savefig(f"state_vs_temp_stratpd")
     plt.close()
+
+    return
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)

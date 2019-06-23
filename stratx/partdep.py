@@ -601,12 +601,12 @@ def catwise_leaves(rf, X, y, colname, verbose):
     """
     start = time.time()
     ignored = 0
-    catcol = X[colname].astype('category').cat.as_ordered()
-    cats = catcol.cat.categories
-    catcount = np.zeros(len(cats)+1)
+    # catcol = X[colname].astype('category').cat.as_ordered()
+    cats = np.unique(X[colname])
+    catcount = np.zeros(max(cats)+1, dtype=int)
     leaf_sizes = []
     leaf_avgs = []
-    leaf_histos = pd.DataFrame(index=range(0,len(cats)+1))
+    leaf_histos = pd.DataFrame(index=range(0,len(catcount)))
     leaf_histos.index.name = 'category'
     ci = 0
     Xy = pd.concat([X, y], axis=1)
@@ -627,7 +627,7 @@ def catwise_leaves(rf, X, y, colname, verbose):
         # record avg y value per cat above avg y in this leaf
         # This assignment copies cat y avgs to appropriate cat row using index
         # leaving cats w/o representation as nan
-        avg_y = np.mean(combined.iloc[:,-1])
+        avg_y = np.mean(combined[y.name])#combined.iloc[:,-1])
         leaf_avgs.append(avg_y)
         delta_y_per_cat = avg_y_per_cat - avg_y
         leaf_histos['leaf' + str(ci)] = delta_y_per_cat
@@ -642,8 +642,13 @@ def catwise_leaves(rf, X, y, colname, verbose):
 
 
 # only works for ints, not floats
-def plot_catstratpd(X, y, colname, targetname,
-                    cats=None,
+def plot_catstratpd(X, y,
+                    colname,       # X[colname] expected to be numeric codes
+                    targetname,
+                    catnames=None, # map of catcodes to catnames; converted to map if sequence passed
+                                   # must pass dict or series if catcodes are not 1..n contiguous
+                                   # None implies use np.unique(X[colname]) values
+                                   # Must be 0-indexed list of names if list
                     ax=None,
                     sort='ascending',
                     ntrees=1,
@@ -664,9 +669,6 @@ def plot_catstratpd(X, y, colname, targetname,
                     show_ylabel=True,
                     show_xticks=True,
                     verbose=False):
-    if ntrees==1:
-        max_features = 1.0
-        bootstrap = False
 
     if supervised:
         rf = RandomForestRegressor(n_estimators=ntrees,
@@ -686,6 +688,27 @@ def plot_catstratpd(X, y, colname, targetname,
                                    max_features = max_features,
                                    oob_score=False)
         rf.fit(X_synth.drop(colname,axis=1), y_synth)
+
+    if catnames is None:
+        catcodes = np.unique(X[colname])
+        catnames = [None] * (max(catnames) + 1)
+        for c in catcodes:
+            catnames[c] = c
+        catnames = np.array(catnames)
+    elif not isinstance(catnames, dict):
+        # must be a list of names then
+        catcodes = []
+        catnames_ = [None] * len(catnames)
+        for i,c in enumerate(catnames):
+            if c is not None:
+                catcodes.append(i)
+            catnames_[i] = c
+        catcodes = np.array(catcodes)
+        catnames = np.array(catnames_)
+    elif isinstance(catnames, pd.Series):
+        catcodes = catnames.index
+    else:
+        raise ValueError("catnames must be None, 0-indexed list, or pd.Series")
 
     # rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X.drop(colname, axis=1), y)
@@ -711,20 +734,20 @@ def plot_catstratpd(X, y, colname, targetname,
     if ax is None:
         fig, ax = plt.subplots(1, 1)
 
-    ncats = len(cats)
+    ncats = len(catnames)
     nleaves = len(leaf_histos.columns)
 
-    sort_indexes = range(0,ncats+1)
+    sort_indexes = catcodes #range(0,ncats)
     if sort == 'ascending':
         sort_indexes = avg_per_cat.argsort()
-        cats = cats[sort_indexes]
+        # cats = catnames[sort_indexes]
     elif sort == 'descending':
         sort_indexes = avg_per_cat.argsort()[::-1]  # reversed
-        cats = cats[sort_indexes]
+        # cats = catnames[sort_indexes]
 
     # The category y deltas straddle 0 but it's easier to understand if we normalize
     # so lowest y delta is 0
-    min_avg_value = np.min(avg_per_cat)
+    min_avg_value = np.nanmin(avg_per_cat)
 
     # print(f"Avg of avg per cat is {np.mean(avg_per_cat)}") # should be about 0
 
@@ -735,6 +758,7 @@ def plot_catstratpd(X, y, colname, targetname,
         mu = 0
         x_noise = np.random.normal(mu, sigma, size=nleaves) # to make strip plot
         for i in sort_indexes:
+            if catnames[i] is None: continue
             ax.scatter(x_noise + xloc, leaf_histos.iloc[i] - min_avg_value,
                        alpha=alpha, marker='o', s=marker_size,
                        c=color)
@@ -759,9 +783,9 @@ def plot_catstratpd(X, y, colname, targetname,
             xloc += 1
         ax.scatter(xlocs, avg_per_cat[sort_indexes] - min_avg_value, c=pdp_color, s=pdp_marker_size)
 
-    ax.set_xticks(range(1, ncats + 1))
+    ax.set_xticks(catcodes)
     if show_xticks: # sometimes too many
-        ax.set_xticklabels(cats)
+        ax.set_xticklabels(catnames[sort_indexes])
     else:
         ax.set_xticklabels([])
         ax.tick_params(axis='x', which='both', bottom=False)
@@ -776,7 +800,7 @@ def plot_catstratpd(X, y, colname, targetname,
     if yrange is not None:
         ax.set_ylim(*yrange)
 
-    return cats, avg_per_cat[sort_indexes]-min_avg_value, ignored
+    return catcodes, avg_per_cat[sort_indexes]-min_avg_value, ignored
 
 
 # -------------- B I N N I N G ---------------
