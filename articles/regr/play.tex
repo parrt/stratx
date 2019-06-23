@@ -109,23 +109,29 @@ $pd$ = numerically integrate $\beta_R$'s across $uniqx$\\
 {\it ntrees=1}, {\it bootstrap=false}, {\it split\_features=all}, {\it min\_samples\_leaf}\\
 \end{array}$
 }
-\KwOut{$\Delta^{(k)}$ = contribution of category $k$ to effect on $y$, $n$ = num support observations}
+\KwOut{$\begin{array}[t]{l}
+\Delta^{(k)} = \text{category } k \text{'s effect on } y \text{ where } mean(\Delta^{(k)})=0\\
+n = \text{number of supported observations}\\
+\end{array}$
+}
 Train random forest regressor $\it rf$ on (\xnc{}, $\bf y$) with hyper-parameters:\\
 ~~~~~$\it ntrees$, $\it bootstrap$, $\it split\_features$, ${\it min\_samples\_leaf}$ \\
 \ForEach{tree $T \in \it rf$}{
     \ForEach{leaf $L \in T$}{
-        $~~~~$Let $(x^{(L)}, y^{(L)})$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
-        $~~~~$Let unique categories be $K=\{k_1, k_2, \,\dots, k_{n_x}\}$ where $n_x \le |unique(X_c)|$\\
-        $~~~~$$n^{(L)} = \begin{cases} |L| &\mbox{if } |{\it unique~cats \in x^{(L)}}| > 1 \\ 
-        0 & otherwise\end{cases}$~~~~~({\it Assume $L$ is unique id across trees})\\
-        $~~~~$${\bf y}^{(L,k)} = y^{(L)}[x^{(L)}=k]$~~~~~~~~~~~~~({\it Group by category $k$})\\
-        $~~~~$$\overline{y}^{(L,k)} = \frac{1}{|{\bf y}^{(L,k)}|} \Sigma_{i=1}^{|{\bf y}^{(L,k)}|} y_i^{(L,k)}$ ~~~\,~({\it Mean of $y^{(L)}$ for category $k$})\\
-        $~~~~$$\Delta^{(L,k)} = \overline{y}^{(L,k)} - \overline{y}^{(L)}$ ~~~~~~~~~~~~~({\it Remove contribution of $x_{\overline{c}}$ to $y^{(L)}$})\\
+        Let $(x^{(L)}, y^{(L)})$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
+        Let $n_x^{(L)}=|unique(x^{(L)})|$\\
+%        Let $K=\{k_1, k_2, \,\dots, k_{n_x}\}$ where \\
+        ${\bf y}^{(L,k)} = y^{(L)}[x^{(L)}=k]$~~~~~~~~~~~~~({\it Group leaf $x_c$ by category $k$})\\
+        $n^{(L,k)} = \begin{cases} |{\bf y}^{(L,k)}| &\mbox{if } n_x > 1 \\ 
+        0 & otherwise\end{cases}$\\
+        $\overline{y}^{(L,k)} = \frac{1}{|{\bf y}^{(L,k)}|} \Sigma_{i=1}^{|{\bf y}^{(L,k)}|} y_i^{(L,k)}$ ~~~~\,~({\it Mean of leaf $y^{(L)}$ for category $k$})\\
+        $\Delta^{(L,k)} = \overline{y}^{(L,k)} - \overline{y}^{(L)}$ ~~~~~~~~~~~~~({\it Remove contribution of $x_{\overline{c}}$ to $y^{(L)}$})\\
     }
 }
-$n = \Sigma_{T \in {\it rf}} \Sigma_{L \in T} n^{(L)}$~~~~~~~~~~~~~~~~~~~~~\,~~~~({\it Num supporting observations used to compute averages})\\
-$\overline{\Delta}^{(k)} = \frac{1}{n} \Sigma_{L} n^{(L)}\Delta^{(L,k)}$\\
-\Return{$\{\overline{\Delta}^{(1)}, \overline{\Delta}^{(2)}, \,\ldots, \overline{\Delta}^{(k)}\}$}, $n$
+$n^{(k)} = \Sigma_{T \in {\it rf}} \Sigma_{L \in T} ~n^{(L,k)}$~~~~~~~~~~~~~~~~~~~~~~({\it Num supporting observations for $k$})\\
+%$\Delta^{(k)} = \frac{1}{|n^{(k)}|} \Sigma_{T \in {\it rf}} \Sigma_{L \in T} \Sigma_{i=1}^{|{\bf y}^{(L,k)}|} ~ y_i^{(L,k)} \mathbf{1}_{n_x^{(L)}>1}$~~~~~({\it Average change in $y$ for $k$ across leaves})\\
+$\Delta^{(k)} = \frac{1}{n^{(k)}} \Sigma_{T \in {\it rf}} \Sigma_{L} \,n^{(L,k)}\Delta^{(L,k)}$~~~~~~~~~~({\it Change for $k$ is weighted, averaged across leaves})\\
+\Return{$\{{\Delta}^{(1)}, {\Delta}^{(2)}, \,\ldots, {\Delta}^{(k)}\}$}, $n$
 \label{alg:CatStratPD}
 \end{algorithm}
 

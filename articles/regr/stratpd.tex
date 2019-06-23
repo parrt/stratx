@@ -178,8 +178,8 @@ Unfortunately, this stratification approach works for two or three variables but
 {\color{red} JW - the following paragraph is a little clunky. We should write for clarity. Will revisit}
 For the stratification step of \spd{}, the key idea is to relax stratification so that it organizes observations into groups of similar rather than equal observations. Our approach, called \spd, trains a decision tree regressor, $T$, as in \cite{CART}, on $(x_{\overline{c}}, {\bf y})$ to stratify observations according to the relationship between \xnc{} and $y$.  (The \spd{} algorithm also supports the use of random forests \cite{RF} but primarily to deal with duplicated features, as in \secref{sec:dup}.)  Each leaf in the tree, $L \in T$, represents a region of \xnc{} space and $(x^{(L)}, y^{(L)})$ are the $x_c$ and $y$ observations associated with $L$. \spd{} then characterizes the relationship between $y^{(L)}$ and $x^{(L)}$ for each $L$ by 
 \begin{itemize}
-	\item binning $(x^{(L)}, y^{(L)})$ per hyper parameter $nbins$ to partition $x^{(L)}$ space into bins $B_1, \ldots B_{nbins}$ and next
-	\item fitting a simple linear regression of $y$ on $x_c$ over each bin $B_k$ to obtain the estimator $\widehat{\beta}_{B_k}$
+	\item binning $(x^{(L)}, y^{(L)})$ per hyper parameter $nbins$ to partition $x^{(L)}$ space into bins $B_1, \,\ldots, B_{nbins}$ and next
+	\item fitting a simple linear regression of $y$ on $x_c$ across each bin $B_i$ to obtain the estimator $\widehat{\beta}_{B_i}$
 \end{itemize}
 
 The collection of $\widehat{\beta}_{B}$ coefficients represent the localized slope across the $x_c$ space of $L$. Ignoring the $y$-intercepts removes the contribution of \xnc{} to $y$ in $B$. The regions of $x_c$ spanned by the various $\widehat{\beta}_{B}$ generally overlap and the slope in any region, $R$, is the weighted average of all $\widehat{\beta}_{B}$ that overlap $R$:
@@ -204,11 +204,13 @@ The estimator $\widehat{\beta}_R$ is an estimate of the partial derivative acros
 
 Revisiting the \spd{} plot in \figref{fig:height_vs_weight}(d), derived from the apartment rent data set, each blue line represents a local slope $\hat{\beta}_B$ through the observations in bin $B$ (which is a partition of $x_c$ space whose \xnc{} features are similar). Lines extend from the minimum to maximum $x_c$ value in a specific $B$.  Because we are interested in the relative contribution of $x_c$ to $y$, \spd{} plots use zero as a $y$-axis baseline. The black dots represent the integration of the partial derivative estimates up to and including each unique $x_c$ value (except the first $x_c$, whose integral value is 0). The partial derivative estimate at an $x_c$ value is the (weighted) average slope of the blue lines emanating from that value. \spd{} does not interpolate between $x_c$ points and so the plot shows dots not lines. 
 
-There is a special case that deserves attention. When the range of $x^{(B)}$ is 0 for some bin $B$, then $B$ provides no information about how changes in $x_c$ affect $y$ because $x_c$ does not change in $B$. (See leaf $L_5$ in \figref{fig:leaves}.)  Stratification leads to observations that are similar in \xnc{} and, in this case, the observation $x_c$ values are identical. That means that fluctuations in $y$ are likely due to noise or exogenous variables not included in the data set.  Such a bin gets a weight of 0 in Algorithm 1 to reflect the fact that $B$ cannot contribute a $\hat{\beta}_B$. This situation occurs most often when $x_c$ contains integers.
+As the number of  variables, $p$, increases, stratifying \xnc{} into bins of similar values would normally require more and more data. But decision tree training focuses on those variables that reduce the variance in $y$ (without using $x_c$), leading to leaves that best flatten $y$ subject to hyper parameter ${\it min\_samples\_leaf}$. One can imagine a leaf with some variables in \xnc{} that are not similar, but that would mean that training could not use them to reduce $y$ variance within the leaf. If those variables with unequal values do not explain much $y$ variance, they are unlikely to affect the partial dependence computation for $y$ on $x_c$ in $L$.
+
+There is a special case that deserves attention. When the range of $x^{(B)}$ is 0 for some bin $B$, then $B$ does not support any conclusions about how changes in $x_c$ affect $y$ because $x_c$ does not change in $B$. (See leaf $L_5$ in \figref{fig:leaves}.)  Stratification leads to observations that are similar in \xnc{} and, in this case, the observation $x_c$ values are identical. That means that fluctuations in $y$ are likely due to noise or exogenous variables not included in the data set.  Such a bin gets a weight of 0 in Algorithm 1 to reflect the fact that $B$ cannot contribute a $\hat{\beta}_B$. This situation occurs most often when $x_c$ contains integers.
 
 When all or most of the $x_c$ values are discrete integers, some choices of $nbins$ lead to virtually all bins in all leaves getting weight 0. \spd{} would generate a questionable plot due to lack of available $\hat{\beta}_B$. Also, binning integers leads to awkward bins, such as 1.8 to 3.2 bedrooms or dayofweek 1.3 to 2.1. In the discrete case, hyper parameter $nbins$ is ignored and leaf bins are defined as the ordered adjacent value pairs from unique$(x^{(L)})$; e.g., for unique $x^{(L)}$ values $(1,3,4,5)$, the bin ranges are $((1,3), (3,4), (4,5))$. The rest of Algorithm 1 remains the same. Users of the {\tt stratx} package engage this functionality with hyper parameter ${\it isdiscrete}$.
 
-Partial dependence through stratification also works for data sets with categorical variables in \xnc{}, given a suitable similarity measure between observations that supports categorical variables, but identifying an appropriate categorical similarity measure is a well-known issue.  Decision trees, however, support categorical variables easily and effectively by treating categories as unique integers. Observations with categorical variables that end up in the same leaf are likely to be similar (\cite{RFunsup}). Algorithm 1, therefore, works without modification for \xnc{} containing categorical variables. When the column of interest, $x_c$, is categorical, however, a new algorithm is required.
+Partial dependence through stratification also works for data sets with categorical variables in \xnc{}, given a suitable similarity measure between observations that supports categorical variables, but identifying an appropriate categorical similarity measure is a well-known issue.  Decision trees, however, support categorical variables easily and effectively by treating categories as unique integers. Observations with categorical variables that end up in the same leaf are likely to be similar (\cite{RFunsup}). Algorithm 1, therefore, works without modification for \xnc{} containing categorical variables encoded as unique integers. When the column of interest, $x_c$, is categorical, however, a new algorithm is required.
 
 \subsection{CatStratPD for categorical variables}
 
@@ -217,18 +219,22 @@ The stratification approach can also capture how a categorical variable $x_c$ af
 \cspd{} groups leaf observations $(x^{(L)}, y^{(L)})$ by the categories in $x^{(L)}$ and computes the average $y^{(L)}$ value per category $k$. To erase the $y$-contributions of \xnc{}, \cspd{} subtracts the average of $y^{(L)}$ from all leaf category averages, yielding a zero-centered relative increase or decrease in $y$ for each category:\\
 
 \noindent ${\bf y}^{(L,k)} = y^{(L)}[x^{(L)}=k]$~~~~~~~~~~~~~({\it Group leaf $x_c$ by category $k$})\\
-$\overline{y}^{(L,k)} = \frac{1}{|{\bf y}^{(L,k)}|} \Sigma_{i=1}^{|{\bf y}^{(L,k)}|} y_i^{(L,k)}$ ~~~~\,~({\it Mean of leaf $y^{(L)}$ for category $k$})\\
+$n^{(L,k)} = |{\bf y}^{(L,k)}|$ if $|unique(x^{(L)})| > 1$ else 0\\
+$\overline{y}^{(L,k)} = \frac{1}{n^{(L,k)}} \Sigma_{i=1}^{n^{(L,k)}} y_i^{(L,k)}$ ~~~~~~~~({\it Mean of leaf $y^{(L)}$ for category $k$})\\
 $\Delta^{(L,k)} = \overline{y}^{(L,k)} - \overline{y}^{(L)}$ ~~~~~~~~~~~~~({\it Remove contribution of $x_{\overline{c}}$ to $y^{(L)}$})\\
 
 \noindent Then, to get the overall contribution of $x_c$ to $y$ for category $k$, \cspd{} computes the weighted average of the leaf contributions for $k$ from all $L$:\\
 
-\noindent $\Delta^{(k)} = \frac{1}{n} \Sigma_{L} |L|\Delta^{(L,k)}$\\
+\noindent $n^{(k)} = \Sigma_{T \in {\it rf}} \Sigma_{L \in T} ~n^{(L,k)}$~\,~~~~~~~~~~~~~~~({\it Num supporting observations for $k$})\\
+$\Delta^{(k)} = \frac{1}{n^{(k)}} \Sigma_{T \in {\it rf}} \Sigma_{L} \,n^{(L,k)}\Delta^{(L,k)}$~~~~~~~({\it Delta for $k$ is weighted, averaged across leaves})\\
 
-\noindent Subtracting the \xnc{} contribution, $\overline{y}^{(L)}$, normalizes all $\Delta^{(L,k)}$ so they are relative to 0, providing a common baseline from which to average contributions across leaves. Plotting category $k$ against $\Delta^{(k)}$ gives a zero-centered partial dependence plot. The {\tt stratx} package shifts all $\Delta^{(k)}$ so the minimum $\Delta^{(k)}$ is 0 as we find it easier to interpret the plots.
+\noindent Subtracting the \xnc{} contribution, $\overline{y}^{(L)}$, normalizes all $\Delta^{(L,k)}$ so they are relative to 0, providing a common baseline from which to average contributions across leaves. When there is only one category in $L$, the leaf does not support any conclusions about changes in $y$ for any category so $n^{(L,k)}=0$, dropping it from the weighted average. 
 
-Consider the synthetic weather data shown in \figref{fig:state_vs_temp}(a) where temperature varies in sinusoidal fashion over the year and with different baseline temperatures per state:\\
+Plotting category $k$ against $\Delta^{(k)}$ gives a zero-centered partial dependence plot. The {\tt stratx} package shifts all $\Delta^{(k)}$ so the minimum $\Delta^{(k)}$ is 0 as we find it easier to interpret the plots. Consider the synthetic weather data shown in \figref{fig:state_vs_temp}(a) where temperature varies in sinusoidal fashion over the year and with different baseline temperatures per state:
 
-$y = t[x_{\it state}] + sin(\frac{2 \pi}{365} x_{\it dayofyear} + \frac{365}{2}) \times \epsilon, ~~~ \epsilon \sim N(\mu=-5,\sigma=5)$\\
+\begin{equation}\label{eq:weather}
+y = t[x_{\it state}] + sin(\frac{2 \pi}{365} x_{\it dayofyear} + \frac{365}{2}) \times \epsilon, ~~~ \epsilon \sim N(\mu=-5,\sigma=5)
+\end{equation}
 
 \noindent where the baseline $t$ per state is $\{{\it CA}=70, {\it CO}=40, {\it AZ}=90, {\it WA}=60\}$. Each sinusoid in \figref{fig:state_vs_temp}(a) is the average of three years' temperature data.
 
@@ -541,6 +547,8 @@ The \cspd{} plot for ModelID (sorted by sale price) closely matches the marginal
 
 \subsection{Pathological partitioning issues}
 
+Equation \ref{eq:weather}
+
 There are two pathological cases to consider during partitioning, one during \xnc{} and the other during $x_c$ partitioning.  The first case occurs when training yields a decision tree with very large leaves, with perhaps hundreds or thousands of observations.  This can happen when \xnc{} contains a single categorical variable or when the only strongly-predictive variable in \xnc{} is categorical.  The weather data set is a case in point. Choosing $x_c$=$x_{dayofyear}$, means \xnc{}=\{$x_{state}$,$x_{year}$\} and categorical $x_{state}$ accounts for most of the variation in temperature.  \figref{fig:dayofyear_vs_temp}(a) shows the marginal plot of $x_{state}$ versus temperature. A decision tree, $T$, splitting on just $x_{\it state}$, would group all 365 daily temperature observations for a single state into just one leaf. (The marginal plot is showing the complete sine waves but from the side, edge on.)   The \spd{} plot in \figref{fig:dayofyear_vs_temp}(b) clearly shows the sinusoidal temperature fluctuations over the year. The PD/ICE plot also identifies the noisy sine waves, as shown in \figref{fig:dayofyear_vs_temp}(c), but is not smooth as it relies on predictions from a model trained on noisy data. The \spd{} plot is averaging slopes that are themselves smoothing agents.
 
 \begin{figure}[htbp]
@@ -574,6 +582,8 @@ To further improve the situation, one can increase the default ${\it min\_sample
 \subsection{Hyper parameters}
 
 \section{Discussion and Future Work}
+
+\todo{James: check this out!} with large $p$, RFs seek to minimize variance in $y$ which means weak predictors in \xnc{} appear less often in decision nodes meaning leaves won't squash weak predictors but that's ok. They don't explain much $y$ variance so regressing $y$ on $x_c$ in a leaf should give good partial dependence results.
 
 can only squash vars in \xnc{} so endogenous vars or vars we don't include that exist end up inflating y. if those vars are codependencies, makes it worse I'd say.
 
@@ -652,7 +662,7 @@ $pd$ = numerically integrate $\beta_R$'s across $uniqx$\\
 }
 \KwOut{$\begin{array}[t]{l}
 \Delta^{(k)} = \text{category } k \text{'s effect on } y \text{ where } mean(\Delta^{(k)})=0\\
-n = \text{number of supported observations}\\
+n^{(k)} = \text{number of supported observations per category $k$}\\
 \end{array}$
 }
 Train random forest regressor $\it rf$ on (\xnc{}, $\bf y$) with hyper-parameters:\\
@@ -660,21 +670,20 @@ Train random forest regressor $\it rf$ on (\xnc{}, $\bf y$) with hyper-parameter
 \ForEach{tree $T \in \it rf$}{
     \ForEach{leaf $L \in T$}{
         Let $(x^{(L)}, y^{(L)})$ = $\{(x_{ic},  y_i)\}_{i \in L}$\\
-        Let $n_x=|unique(x^{(L)})| \le |unique(X_c)|$\\
+        Let $n_x^{(L)}=|unique(x^{(L)})|$\\
 %        Let $K=\{k_1, k_2, \,\dots, k_{n_x}\}$ where \\
-        $n^{(L)} = \begin{cases} |L| &\mbox{if } n_x > 1 \\ 
-        0 & otherwise\end{cases}$\\
         ${\bf y}^{(L,k)} = y^{(L)}[x^{(L)}=k]$~~~~~~~~~~~~~({\it Group leaf $x_c$ by category $k$})\\
+        $n^{(L,k)} = \begin{cases} |{\bf y}^{(L,k)}| &\mbox{if } n_x > 1 \\ 
+        0 & otherwise\end{cases}$\\
         $\overline{y}^{(L,k)} = \frac{1}{|{\bf y}^{(L,k)}|} \Sigma_{i=1}^{|{\bf y}^{(L,k)}|} y_i^{(L,k)}$ ~~~~\,~({\it Mean of leaf $y^{(L)}$ for category $k$})\\
         $\Delta^{(L,k)} = \overline{y}^{(L,k)} - \overline{y}^{(L)}$ ~~~~~~~~~~~~~({\it Remove contribution of $x_{\overline{c}}$ to $y^{(L)}$})\\
     }
 }
-$n = \Sigma_{T \in {\it rf}} \Sigma_{L \in T} ~n^{(L)}$~~~~~~~~~~~~~~~~~~~~~~({\it Num supporting observations})\\
-$\Delta^{(k)} = \frac{1}{n} \Sigma_{L} n^{(L)}\Delta^{(L,k)}$~~~~~~~~~~~~~~~~~~~({\it Change for $k$ is weighted average across leaves})\\
-\Return{$\{{\Delta}^{(1)}, {\Delta}^{(2)}, \,\ldots, {\Delta}^{(k)}\}$}, $n$
+$n^{(k)} = \Sigma_{T \in {\it rf}} \Sigma_{L \in T} ~n^{(L,k)}$~~~~~~~~~~~~~~~~({\it Num supporting observations for $k$})\\
+$\Delta^{(k)} = \frac{1}{n^{(k)}} \Sigma_{T \in {\it rf}} \Sigma_{L} \,n^{(L,k)}\Delta^{(L,k)}$~~~~~~~({\it Delta for $k$ is weighted, averaged across leaves})\\
+\Return{$\{{\Delta}^{(1)}, {\Delta}^{(2)}, \,\ldots, {\Delta}^{(k)}\}$, $\{{n}^{(1)}, {n}^{(2)}, \,\ldots, {n}^{(k)}\}$}\\
 \label{alg:CatStratPD}
 \end{algorithm}
-
 \newpage
 \bibliographystyle{apalike}
 
