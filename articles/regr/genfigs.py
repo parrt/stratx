@@ -61,8 +61,8 @@ def savefig(filename, pad=0):
     plt.tight_layout(pad=pad, w_pad=0, h_pad=0)
     # plt.savefig(f"images/{filename}.pdf")
     plt.savefig(f"images/{filename}.png", dpi=300)
-    plt.tight_layout()
-    plt.show()
+    # plt.tight_layout()
+    # plt.show()
     plt.close()
 
 
@@ -113,7 +113,7 @@ def load_rent():
 def rent():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     df_rent = load_rent()
-    df_rent = df_rent[-4_000:]  # get a small subsample since SVM is slowwww
+    df_rent = df_rent[-10_000:]  # get a small subsample since SVM is slowwww
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
     figsize = (5, 4)
@@ -804,7 +804,7 @@ def weight():
                     alpha=.2,
                     catnames={1:'F', 2:'M'},
                     yrange=(0, 5),
-                    use_weighted_avg=False
+                    use_weighted_avg=True
                     )
     savefig(f"sex_vs_weight_stratpd")
     plt.close()
@@ -815,7 +815,7 @@ def weight():
                     alpha=.2,
                     catnames={0:False, 1:True},
                     yrange=(-5, 35),
-                    use_weighted_avg=False
+                    use_weighted_avg=True
                     )
     savefig(f"pregnant_vs_weight_stratpd")
     plt.close()
@@ -1352,7 +1352,7 @@ def bulldozer():  # warning: takes like 5 minutes to run
     df = df.dropna(axis='rows')  # drop any rows with nan
 
     # Get subsample; it's a (sorted) timeseries so get last records not random
-    df = df.iloc[-1_000:]  # take only last 10,000 records
+    df = df.iloc[-10_000:]  # take only last 10,000 records
 
     X, y = df[basefeatures], df['SalePrice']
 
@@ -1360,9 +1360,9 @@ def bulldozer():  # warning: takes like 5 minutes to run
 
     fig, axes = plt.subplots(3, 3, figsize=(7, 6))
 
-    # onecol(df, X, y, 'YearMade', axes, 0, xrange=(1960, 2012), yrange=(-1000, 60000))
-    # onecol(df, X, y, 'MachineHours', axes, 1, xrange=(0, 35_000),
-    #        yrange=(-40_000, 40_000))
+    onecol(df, X, y, 'YearMade', axes, 0, xrange=(1960, 2012), yrange=(-1000, 60000))
+    onecol(df, X, y, 'MachineHours', axes, 1, xrange=(0, 35_000),
+           yrange=(-40_000, 40_000))
 
     # show marginal plot sorted by model's sale price
     sort_indexes = y.argsort()
@@ -1398,9 +1398,9 @@ def bulldozer():  # warning: takes like 5 minutes to run
                     show_xticks=False,
                     verbose=False)
 
-    plt.tight_layout()
-    plt.show()
-    return
+    # plt.tight_layout()
+    # plt.show()
+    # return
 
     rf = RandomForestRegressor(n_estimators=20, min_samples_leaf=1, oob_score=True,
                                n_jobs=-1)
@@ -1527,8 +1527,8 @@ def multi_joint_distr():
     axes[1, 2].text(1, 13, 'StratPD', horizontalalignment='left')
     axes[1, 3].text(1, 13, 'StratPD', horizontalalignment='left')
 
-    plt.show()
-    return
+    # plt.show()
+    # return
 
     nfeatures = 4
     regrs = [
@@ -1579,7 +1579,7 @@ def multi_joint_distr():
 
 
 if __name__ == '__main__':
-    multi_joint_distr()
+    # multi_joint_distr()
     # bulldozer()
     # cars()
     # meta_cars()
@@ -1593,7 +1593,7 @@ if __name__ == '__main__':
     # weight()
     # weight_ntrees()
     # meta_weight()
-    # unsup_weight()
+    unsup_weight()
     # weather()
     # meta_weather()
     # additivity()
