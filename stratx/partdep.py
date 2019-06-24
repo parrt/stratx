@@ -358,7 +358,10 @@ def avg_values_at_x(uniq_x, leaf_ranges, leaf_values, leaf_weights, use_weighted
     # collect the slope for each range (taken from a leaf) as collection of
     # flat lines across the same x range
     for r, slope, w in zip(leaf_ranges, leaf_values, leaf_weights):
-        s = np.full(nx, slope*w, dtype=float) # s has value*weight at all locations (flat line)
+        if use_weighted_avg:
+            s = np.full(nx, slope*w, dtype=float) # s has value*weight at all locations (flat line)
+        else:
+            s = np.full(nx, slope, dtype=float)
         # now trim line so it's only valid in range r;
         # don't set slope on right edge
         s[np.where( (uniq_x < r[0]) | (uniq_x >= r[1]) )] = np.nan

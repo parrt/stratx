@@ -1579,11 +1579,11 @@ def multi_joint_distr():
 
 
 if __name__ == '__main__':
-    # multi_joint_distr()
+    multi_joint_distr()
     # bulldozer()
     # cars()
     # meta_cars()
-    rent()
+    # rent()
     # rent_alone()
     # rent_ntrees()
     # rent_extra_cols()
