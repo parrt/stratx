@@ -113,7 +113,7 @@ def load_rent():
 def rent():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     df_rent = load_rent()
-    df_rent = df_rent[-10_000:]  # get a small subsample since SVM is slowwww
+    df_rent = df_rent[-4_000:]  # get a small subsample since SVM is slowwww
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
     figsize = (5, 4)
@@ -246,7 +246,7 @@ def rent_int():
                  ax=axes[0, 1], alpha=.2, show_ylabel=False)
     axes[0, 1].set_ylim(-500, 5000)
 
-    plot_catstratpd(X, y, 'bedrooms', 'price', cats=np.unique(X['bedrooms']),
+    plot_catstratpd(X, y, 'bedrooms', 'price', catnames=np.unique(X['bedrooms']),
                     min_samples_leaf=catstratpd_min_samples_leaf_partition,
                     ax=axes[0, 2], alpha=.2, show_ylabel=False,
                     sort=None)
@@ -260,7 +260,7 @@ def rent_int():
 
     X['bathrooms'] = X['bathrooms'].astype(str)
     baths = np.unique(X['bathrooms'])
-    plot_catstratpd(X, y, 'bathrooms', 'price', cats=baths,
+    plot_catstratpd(X, y, 'bathrooms', 'price', catnames=baths,
                     min_samples_leaf=catstratpd_min_samples_leaf_partition,
                     ax=axes[1, 2], alpha=.2, show_ylabel=False,
                     sort=None)
@@ -633,13 +633,20 @@ def weather():
     df_yr3['year'] = 1982
     df_raw = pd.concat([df_yr1, df_yr2, df_yr3], axis=0)
     df = df_raw.copy()
-    catencoders = df_string_to_cat(df)
-    print(catencoders)
-    df_cat_to_catcode(df)
+    # catencoders = df_string_to_cat(df)
+    # states = catencoders['state']
+    # print(states)
+    #
+    # df_cat_to_catcode(df)
+
+    names = {'CO': 5, 'CA': 10, 'AZ': 15, 'WA': 20}
+    df['state'] = df['state'].map(names)
+    catnames = {v:k for k,v in names.items()}
+
     X = df.drop('temperature', axis=1)
     y = df['temperature']
-    cats = catencoders['state'].values
-    cats = np.insert(cats, 0, None) # prepend a None for catcode 0
+    # cats = catencoders['state'].values
+    # cats = np.insert(cats, 0, None) # prepend a None for catcode 0
 
     figsize = (2.5, 2.5)
     """
@@ -659,7 +666,7 @@ def weather():
     # plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    plot_catstratpd(X, y, 'state', 'temperature', catnames=cats,
+    plot_catstratpd(X, y, 'state', 'temperature', catnames=catnames,
                     min_samples_leaf=20,
                     alpha=.3,
                     style='strip',
@@ -775,41 +782,45 @@ def weight():
     y = df['weight']
     figsize = (2.5, 2.5)
 
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
-    plot_stratpd(X, y, 'education', 'weight', ax=ax,
-                 min_samples_leaf=2,
-                 isdiscrete=True,
-                 yrange=(-12, 0), alpha=.1, nlines=700, show_ylabel=False)
-    #    ax.get_yaxis().set_visible(False)
-    savefig(f"education_vs_weight_stratpd")
-    plt.close()
-
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
-    plot_stratpd(X, y, 'height', 'weight', ax=ax,
-                 yrange=(0, 160), alpha=.1, nlines=700, show_ylabel=False)
-    #    ax.get_yaxis().set_visible(False)
-    savefig(f"height_vs_weight_stratpd")
-    plt.close()
+    # fig, ax = plt.subplots(1, 1, figsize=figsize)
+    # plot_stratpd(X, y, 'education', 'weight', ax=ax,
+    #              min_samples_leaf=2,
+    #              isdiscrete=True,
+    #              yrange=(-12, 0), alpha=.1, nlines=700, show_ylabel=False)
+    # #    ax.get_yaxis().set_visible(False)
+    # savefig(f"education_vs_weight_stratpd")
+    # plt.close()
+    #
+    # fig, ax = plt.subplots(1, 1, figsize=figsize)
+    # plot_stratpd(X, y, 'height', 'weight', ax=ax,
+    #              yrange=(0, 160), alpha=.1, nlines=700, show_ylabel=False)
+    # #    ax.get_yaxis().set_visible(False)
+    # savefig(f"height_vs_weight_stratpd")
+    # plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_catstratpd(X, y, 'sex', 'weight', ax=ax,
-                    min_samples_leaf=5,
+                    min_samples_leaf=15,
                     alpha=.2,
-                    cats=df_raw['sex'].unique(),
+                    catnames={1:'F', 2:'M'},
                     yrange=(0, 5),
+                    use_weighted_avg=False
                     )
     savefig(f"sex_vs_weight_stratpd")
     plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=ax,
-                    min_samples_leaf=5,
+                    min_samples_leaf=15,
                     alpha=.2,
-                    cats=df_raw['pregnant'].unique(),
+                    catnames={0:False, 1:True},
                     yrange=(-5, 35),
+                    use_weighted_avg=False
                     )
     savefig(f"pregnant_vs_weight_stratpd")
     plt.close()
+
+    return
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
@@ -857,11 +868,11 @@ def unsup_weight():
 
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 0],
                     alpha=.2,
-                    cats=df_raw['pregnant'].unique(),
+                    catnames=df_raw['pregnant'].unique(),
                     yrange=(-5, 35), supervised=False)
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 1],
                     alpha=.2,
-                    cats=df_raw['pregnant'].unique(),
+                    catnames=df_raw['pregnant'].unique(),
                     yrange=(-5, 35), supervised=True)
 
     axes[0, 0].set_title("Unsupervised")
@@ -916,19 +927,19 @@ def weight_ntrees():
                  ntrees=30, max_features='auto', bootstrap=True)
 
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 0], alpha=.2,
-                    cats=df_raw['pregnant'].unique(), show_ylabel=True,
+                    catnames={0:False, 1:True}, show_ylabel=True,
                     yrange=(0, 35),
                     ntrees=1, max_features=1.0, bootstrap=False)
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 1], alpha=.2,
-                    cats=df_raw['pregnant'].unique(), show_ylabel=False,
+                    catnames={0:False, 1:True}, show_ylabel=False,
                     yrange=(0, 35),
                     ntrees=5, max_features='auto', bootstrap=True)
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 2], alpha=.2,
-                    cats=df_raw['pregnant'].unique(), show_ylabel=False,
+                    catnames={0:False, 1:True}, show_ylabel=False,
                     yrange=(0, 35),
                     ntrees=10, max_features='auto', bootstrap=True)
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 3], alpha=.2,
-                    cats=df_raw['pregnant'].unique(), show_ylabel=False,
+                    catnames={0:False, 1:True}, show_ylabel=False,
                     yrange=(0, 35),
                     ntrees=30, max_features='auto', bootstrap=True)
 
@@ -1346,7 +1357,6 @@ def bulldozer():  # warning: takes like 5 minutes to run
     X, y = df[basefeatures], df['SalePrice']
 
     print(f"Avg bulldozer price is {np.mean(y):.2f}$")
-    print(f"after cleanup {len(X)} bulldozer records")
 
     fig, axes = plt.subplots(3, 3, figsize=(7, 6))
 
@@ -1374,14 +1384,16 @@ def bulldozer():  # warning: takes like 5 minutes to run
     axes[2, 0].tick_params(axis='x', which='both', bottom=False)
 
 
-    plot_catstratpd(X, y, 'ModelID', 'SalePrice', cats=np.unique(df['ModelID']),
+    plot_catstratpd(X, y, 'ModelID', 'SalePrice',
                     min_samples_leaf=5,
                     use_weighted_avg=True,
-                    ax=axes[2, 1], sort='ascending',
-                    # yrange=(0, 130000),
+                    ax=axes[2, 1],
+                    sort='ascending',
+                    yrange=(0, 130000),
                     show_ylabel=False,
                     alpha=0.1,
                     style='scatter',
+                    # style='strip',
                     marker_size=3,
                     show_xticks=False,
                     verbose=False)
@@ -1474,6 +1486,8 @@ def multi_joint_distr():
                      min_samples_leaf=min_samples_leaf_partition,
                      nbins=nbins,
                      yrange=yrange, show_xlabel=False, show_ylabel=True)
+
+
     r = LinearRegression()
     r.fit(uniqx.reshape(-1, 1), pdp)
     axes[1, 0].text(1, 10, f"Slope={r.coef_[0]:.2f}")
@@ -1512,6 +1526,9 @@ def multi_joint_distr():
     axes[1, 1].text(1, 13, 'StratPD', horizontalalignment='left')
     axes[1, 2].text(1, 13, 'StratPD', horizontalalignment='left')
     axes[1, 3].text(1, 13, 'StratPD', horizontalalignment='left')
+
+    plt.show()
+    return
 
     nfeatures = 4
     regrs = [
@@ -1566,7 +1583,7 @@ if __name__ == '__main__':
     # bulldozer()
     # cars()
     # meta_cars()
-    # rent()
+    rent()
     # rent_alone()
     # rent_ntrees()
     # rent_extra_cols()
@@ -1577,7 +1594,7 @@ if __name__ == '__main__':
     # weight_ntrees()
     # meta_weight()
     # unsup_weight()
-    weather()
+    # weather()
     # meta_weather()
     # additivity()
     # meta_additivity()

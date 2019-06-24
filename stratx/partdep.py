@@ -343,7 +343,7 @@ def collect_leaf_slopes(rf, X, y, colname, nbins, isdiscrete, verbose):
     return leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2, ignored
 
 
-def avg_values_at_x(uniq_x, leaf_ranges, leaf_values, leaf_weights):
+def avg_values_at_x(uniq_x, leaf_ranges, leaf_values, leaf_weights, use_weighted_avg):
     """
     Compute the weighted average of leaf_values at each uniq_x.
 
@@ -372,9 +372,13 @@ def avg_values_at_x(uniq_x, leaf_ranges, leaf_values, leaf_weights):
     # The value could be genuinely zero so we use nan not 0 for out-of-range
     # Now average horiz across the matrix, averaging within each range
     # avg_value_at_x = np.nanmean(slopes, axis=1)
-    sum_values_at_x = np.nansum(slopes, axis=1)
-    sum_weights_at_x = np.nansum(weights, axis=1)
-    avg_value_at_x = sum_values_at_x / sum_weights_at_x
+    if use_weighted_avg:
+        sum_values_at_x = np.nansum(slopes, axis=1)
+        sum_weights_at_x = np.nansum(weights, axis=1)
+        avg_value_at_x = sum_values_at_x / sum_weights_at_x
+    else:
+        avg_value_at_x = np.nanmean(slopes, axis=1)
+
     stop = time.time()
     # print(f"avg_value_at_x {stop - start:.3f}s")
     return avg_value_at_x
@@ -390,6 +394,7 @@ def plot_stratpd(X, y, colname, targetname=None,
                           # ignored if isdiscrete; len(unique(X[colname])) used instead.
                           # must be >= 1
                  isdiscrete=False,
+                 use_weighted_avg=False,
                  xrange=None,
                  yrange=None,
                  pdp_marker_size=2,
@@ -438,8 +443,8 @@ def plot_stratpd(X, y, colname, targetname=None,
         print(f"{'discrete ' if isdiscrete else ''}StratPD num samples ignored {ignored} for {colname}")
 
 
-    slope_at_x = avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes, leaf_sizes)
-    r2_at_x = avg_values_at_x(real_uniq_x, leaf_xranges, leaf_r2, leaf_sizes)
+    slope_at_x = avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes, leaf_sizes, use_weighted_avg)
+    r2_at_x = avg_values_at_x(real_uniq_x, leaf_xranges, leaf_r2, leaf_sizes, use_weighted_avg)
     # Drop any nan slopes; implies we have no reliable data for that range
     # Make sure to drop uniq_x values too :)
     notnan_idx = ~np.isnan(slope_at_x) # should be same for slope_at_x and r2_at_x
@@ -603,42 +608,48 @@ def catwise_leaves(rf, X, y, colname, verbose):
     ignored = 0
     # catcol = X[colname].astype('category').cat.as_ordered()
     cats = np.unique(X[colname])
-    catcount = np.zeros(max(cats)+1, dtype=int)
+    # catcounts = np.zeros(max(cats)+1, dtype=int)
     leaf_sizes = []
     leaf_avgs = []
-    leaf_histos = pd.DataFrame(index=range(0,len(catcount)))
+    maxcat = max(cats)
+    leaf_histos = pd.DataFrame(index=range(0,maxcat+1))
     leaf_histos.index.name = 'category'
+    leaf_catcounts = pd.DataFrame(index=range(0,maxcat+1))
+    leaf_catcounts.index.name = 'category'
     ci = 0
     Xy = pd.concat([X, y], axis=1)
     leaves = leaf_samples(rf, X.drop(colname, axis=1))
+    # print(f"{len(leaves)} leaves")
     for sample in leaves:
         combined = Xy.iloc[sample]
         # print("\n", combined)
         groupby = combined.groupby(colname)
         avg_y_per_cat = groupby.mean()
         avg_y_per_cat = avg_y_per_cat[y.name]#.iloc[:,-1]
-        count_y_per_cat = combined[colname].value_counts()
-        for k in count_y_per_cat.index:
-            catcount[k] += count_y_per_cat[k]
         if len(avg_y_per_cat) < 2:
+            print(avg_y_per_cat)
             # print(f"ignoring {len(sample)} obs for {len(avg_y_per_cat)} cat(s) in leaf")
             ignored += len(sample)
             continue
+        count_y_per_cat = combined[colname].value_counts()
+        # for k in count_y_per_cat.index:
+        #     catcounts[k] += count_y_per_cat[k]
+        leaf_catcounts['leaf' + str(ci)] = count_y_per_cat
         # record avg y value per cat above avg y in this leaf
         # This assignment copies cat y avgs to appropriate cat row using index
         # leaving cats w/o representation as nan
-        avg_y = np.mean(combined[y.name])#combined.iloc[:,-1])
+        avg_y = np.mean(combined[y.name])
         leaf_avgs.append(avg_y)
         delta_y_per_cat = avg_y_per_cat - avg_y
         leaf_histos['leaf' + str(ci)] = delta_y_per_cat
         leaf_sizes.append(len(sample))
-        # print(f"L avg {avg_y:.2f}: {avg_y_per_cat - avg_y}")
+        # print(f"L avg {avg_y:.2f}:\n\t{delta_y_per_cat}")
         ci += 1
 
     # print(f"Avg of leaf avgs is {np.mean(leaf_avgs):.2f} vs y avg {np.mean(y)}")
     stop = time.time()
     if verbose: print(f"catwise_leaves {stop - start:.3f}s")
-    return leaf_histos, np.array(leaf_avgs), leaf_sizes, catcount, ignored
+    return leaf_histos, np.array(leaf_avgs), leaf_sizes, leaf_catcounts, ignored
 
 
 # only works for ints, not floats
@@ -689,103 +700,118 @@ def plot_catstratpd(X, y,
                                    oob_score=False)
         rf.fit(X_synth.drop(colname,axis=1), y_synth)
 
-    if catnames is None:
+    if catnames is None or isinstance(catnames, pd.Series):
         catcodes = np.unique(X[colname])
-        catnames = [None] * (max(catnames) + 1)
+        catnames = [None] * (max(catcodes) + 1)
         for c in catcodes:
             catnames[c] = c
         catnames = np.array(catnames)
+    elif isinstance(catnames, dict):
+        catnames_ = [None] * (max(catnames.keys()) + 1)
+        catcodes = []
+        for code,name in catnames.items():
+            catcodes.append(code)
+            catnames_[code] = name
+        catcodes = np.array(catcodes)
+        catnames = np.array(catnames_)
     elif not isinstance(catnames, dict):
         # must be a list of names then
         catcodes = []
         catnames_ = [None] * len(catnames)
-        for i,c in enumerate(catnames):
+        for cat,c in enumerate(catnames):
             if c is not None:
-                catcodes.append(i)
-            catnames_[i] = c
+                catcodes.append(cat)
+            catnames_[cat] = c
         catcodes = np.array(catcodes)
         catnames = np.array(catnames_)
-    elif isinstance(catnames, pd.Series):
-        catcodes = catnames.index
     else:
         raise ValueError("catnames must be None, 0-indexed list, or pd.Series")
 
     # rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X.drop(colname, axis=1), y)
     # print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
-    leaf_histos, leaf_avgs, leaf_sizes, catcount, ignored = \
+    leaf_histos, leaf_avgs, leaf_sizes, leaf_catcounts, ignored = \
         catwise_leaves(rf, X, y, colname, verbose=verbose)
-
-    print(catcount)
 
     if True:
         print(f"CatStratPD Num samples ignored {ignored} for {colname}")
 
     if use_weighted_avg:
-        # multiply each column (leaf) by category count vector; each column
-        # has average per cat in a leaf.
-        weighted_histos = leaf_histos.multiply(catcount, axis=0)  # axis=0 implies line up via axis
-        weighted_sum_per_cat = np.nansum(weighted_histos, axis=1) # sum across columns
-        # total_obs_in_leaves = np.sum(catcount)
-        avg_per_cat = weighted_sum_per_cat / catcount
+        weighted_histos = leaf_histos * leaf_catcounts
+        weighted_sum_per_cat = np.nansum(weighted_histos, axis=1)  # sum across columns
+        total_obs_per_cat = np.nansum(leaf_catcounts, axis=1)
+        avg_per_cat = weighted_sum_per_cat / total_obs_per_cat
+        # print(leaf_histos)
+        # print(leaf_catcounts)
+        # print(weighted_histos)
+        # print(total_obs_per_cat)
+        # print(avg_per_cat)
+        if False:
+            # multiply each column (leaf) by category count vector; each column
+            # has average per cat in a leaf.
+            weighted_histos = leaf_histos.multiply(leaf_sizes, axis=1)
+            weighted_sum_per_cat = np.nansum(weighted_histos, axis=1) # sum across columns
+            # Some leaves don't have a category and leaf_histos[cat][leaf]=nan. We need to
+            # know the total leaf sizes used for each cat. leaf_histos.notna() converts
+            # nan to 0 and anything else to 1.  Multiply by leaf sizes times each row
+            # and then we can sum them across columns to get total obs used for cat
+            leaf_sizes_for_leaves_with_each_cat = leaf_histos.notna().multiply(leaf_sizes, axis=1)
+            total_obs_across_leaves_per_cat = np.sum(leaf_sizes_for_leaves_with_each_cat, axis=1)
+            avg_per_cat = weighted_sum_per_cat / total_obs_across_leaves_per_cat
     else:
         avg_per_cat = np.nanmean(leaf_histos, axis=1)
 
     if ax is None:
         fig, ax = plt.subplots(1, 1)
 
-    ncats = len(catnames)
+    ncats = len(catcodes)
     nleaves = len(leaf_histos.columns)
 
-    sort_indexes = catcodes #range(0,ncats)
+    sorted_catcodes = catcodes
     if sort == 'ascending':
-        sort_indexes = avg_per_cat.argsort()
-        # cats = catnames[sort_indexes]
+        sorted_indexes = avg_per_cat[~np.isnan(avg_per_cat)].argsort()
+        sorted_catcodes = catcodes[sorted_indexes]
     elif sort == 'descending':
-        sort_indexes = avg_per_cat.argsort()[::-1]  # reversed
-        # cats = catnames[sort_indexes]
+        sorted_indexes = avg_per_cat.argsort()[::-1]  # reversed
+        sorted_catcodes = catcodes[sorted_indexes]
+
 
     # The category y deltas straddle 0 but it's easier to understand if we normalize
     # so lowest y delta is 0
     min_avg_value = np.nanmin(avg_per_cat)
 
-    # print(f"Avg of avg per cat is {np.mean(avg_per_cat)}") # should be about 0
+    # print(leaf_histos.iloc[np.nonzero(catcounts)])
+    # # print(leaf_histos.notna().multiply(leaf_sizes, axis=1))
+    # # print(np.sum(leaf_histos.notna().multiply(leaf_sizes, axis=1), axis=1))
+    # print(f"leaf_sizes: {list(leaf_sizes)}")
+    # print(f"weighted_sum_per_cat: {list(weighted_sum_per_cat[np.nonzero(weighted_sum_per_cat)])}")
+    # # print(f"catcounts: {list(catcounts[np.nonzero(catcounts)])}")
+    # # print(f"Avg per cat: {list(avg_per_cat[np.nonzero(catcounts)]-min_avg_value)}")
+    # print(f"Avg per cat: {list(avg_per_cat[~np.isnan(avg_per_cat)]-min_avg_value)}")
 
     # if too many categories, can't do strip plot
-    if style=='strip':
-        xloc = 1
-        sigma = .02
-        mu = 0
+    xloc = 0
+    sigma = .02
+    mu = 0
+    if style == 'strip':
         x_noise = np.random.normal(mu, sigma, size=nleaves) # to make strip plot
-        for i in sort_indexes:
-            if catnames[i] is None: continue
-            ax.scatter(x_noise + xloc, leaf_histos.iloc[i] - min_avg_value,
-                       alpha=alpha, marker='o', s=marker_size,
-                       c=color)
-            ax.plot([xloc - .1, xloc + .1], [avg_per_cat[i]-min_avg_value] * 2,
+    else:
+        x_noise = np.zeros(shape=(nleaves,))
+    for cat in sorted_catcodes:
+        if catnames[cat] is None: continue
+        ax.scatter(x_noise + xloc, leaf_histos.iloc[cat] - min_avg_value,
+                   alpha=alpha, marker='o', s=marker_size,
+                   c=color)
+        if style == 'strip':
+            ax.plot([xloc - .1, xloc + .1], [avg_per_cat[cat]-min_avg_value] * 2,
                     c='black', linewidth=2)
-            xloc += 1
-    else: # do straight plot
-        xlocs = np.arange(1,ncats+1)
-        """
-        
-                       leaf0       leaf1
-        category
-        1         166.430176  186.796956
-        2         219.590349  176.448626
-        """
-        sorted_histos = leaf_histos.iloc[sort_indexes,:]
-        xloc = 1
-        for i in range(nleaves):
-            ax.scatter(xlocs, sorted_histos.iloc[:,i] - min_avg_value,
-                       alpha=alpha, marker='o', s=marker_size,
-                       c=color)
-            xloc += 1
-        ax.scatter(xlocs, avg_per_cat[sort_indexes] - min_avg_value, c=pdp_color, s=pdp_marker_size)
+        else:
+            ax.scatter(xloc, avg_per_cat[cat]-min_avg_value, c=pdp_color, s=pdp_marker_size)
+        xloc += 1
 
-    ax.set_xticks(catcodes)
+    ax.set_xticks(range(0, ncats))
     if show_xticks: # sometimes too many
-        ax.set_xticklabels(catnames[sort_indexes])
+        ax.set_xticklabels(catnames[sorted_catcodes])
     else:
         ax.set_xticklabels([])
         ax.tick_params(axis='x', which='both', bottom=False)
@@ -800,7 +826,7 @@ def plot_catstratpd(X, y,
     if yrange is not None:
         ax.set_ylim(*yrange)
 
-    return catcodes, avg_per_cat[sort_indexes]-min_avg_value, ignored
+    return catcodes, avg_per_cat[sorted_catcodes]-min_avg_value, ignored
 
 
 # -------------- B I N N I N G ---------------
