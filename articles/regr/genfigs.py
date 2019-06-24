@@ -818,9 +818,6 @@ def weight():
                     use_weighted_avg=True
                     )
     savefig(f"pregnant_vs_weight_stratpd")
-    plt.close()
-
-    return
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
@@ -1590,10 +1587,10 @@ if __name__ == '__main__':
     # meta_boston()
     # unsup_boston()
     # unsup_rent()
-    # weight()
+    weight()
     # weight_ntrees()
     # meta_weight()
-    unsup_weight()
+    # unsup_weight()
     # weather()
     # meta_weather()
     # additivity()
