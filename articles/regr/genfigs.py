@@ -62,8 +62,8 @@ def savefig(filename, pad=0):
     # plt.savefig(f"images/{filename}.pdf")
     plt.savefig(f"images/{filename}.png", dpi=300)
 
-    plt.tight_layout()
-    plt.show()
+    # plt.tight_layout()
+    # plt.show()
 
     plt.close()
 
@@ -345,7 +345,7 @@ def plot_with_noise_col(df, colname, nbins):
     axes[0, 1].get_xaxis().set_visible(False)
 
 
-def plot_with_dup_col(df, colname, nbins):
+def plot_with_dup_col(df, colname, nbins, min_samples_leaf):
     features = ['bedrooms', 'bathrooms', 'latitude', 'longitude']
     features_with_dup = ['bedrooms', 'bathrooms', 'latitude', 'longitude',
                          colname + '_dup']
@@ -366,6 +366,7 @@ def plot_with_dup_col(df, colname, nbins):
     uniq_x, curve, r2_at_x, ignored = \
         plot_stratpd(X, y, colname, 'price', ax=axes[0, 0], alpha=.15, show_xlabel=True,
                      isdiscrete=colname in {'bedrooms', 'bathrooms'},
+                     min_samples_leaf=min_samples_leaf,
                      nbins=nbins,
                      show_ylabel=True,
                      verbose=verbose)
@@ -376,6 +377,7 @@ def plot_with_dup_col(df, colname, nbins):
     y = df['price']
     print(f"shape with dup is {X.shape}")
     plot_stratpd(X, y, colname, 'price', ax=axes[0, 1], alpha=.15, show_ylabel=False,
+                 min_samples_leaf=min_samples_leaf,
                  isdiscrete=colname in {'bedrooms','bathrooms'},
                  nbins=nbins,
                  verbose=verbose)
@@ -384,6 +386,7 @@ def plot_with_dup_col(df, colname, nbins):
 
     uniq_x_, curve_, r2_at_x_, ignored_ = \
         plot_stratpd(X, y, colname, 'price', ax=axes[0, 2], alpha=.15, show_xlabel=True,
+                     min_samples_leaf=min_samples_leaf,
                      isdiscrete=colname in {'bedrooms', 'bathrooms'},
                      show_ylabel=False,
                      ntrees=15,
@@ -451,7 +454,7 @@ def rent_extra_cols():
 
     colname = 'bedrooms'
     print(f"Range of {colname}: {min(df_rent[colname]), max(df_rent[colname])}")
-    plot_with_dup_col(df_rent, colname, nbins=nbins)
+    plot_with_dup_col(df_rent, colname, nbins=nbins, min_samples_leaf=50)
     savefig(f"{colname}_vs_price_dup")
 
     plot_with_noise_col(df_rent, colname, nbins=nbins)
@@ -459,7 +462,7 @@ def rent_extra_cols():
 
     colname = 'bathrooms'
     print(f"Range of {colname}: {min(df_rent[colname]), max(df_rent[colname])}")
-    plot_with_dup_col(df_rent, colname, nbins=nbins)
+    plot_with_dup_col(df_rent, colname, nbins=nbins, min_samples_leaf=50)
     savefig(f"{colname}_vs_price_dup")
 
     colname = 'bathrooms'
@@ -775,7 +778,7 @@ def meta_weather():
 
 def weight():
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_raw = toy_weight_data(1000)
+    df_raw = toy_weight_data(2000)
     df = df_raw.copy()
     catencoders = df_string_to_cat(df)
     df_cat_to_catcode(df)
@@ -791,10 +794,13 @@ def weight():
                  yrange=(-12, 0), alpha=.1, nlines=700, show_ylabel=False)
     #    ax.get_yaxis().set_visible(False)
     savefig(f"education_vs_weight_stratpd")
+    ax.set_xlim(10,18)
+    ax.set_xticks([10,12,14,16,18])
     plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'height', 'weight', ax=ax,
+                 min_samples_leaf=2,
                  yrange=(0, 160), alpha=.1, nlines=700, show_ylabel=False)
     #    ax.get_yaxis().set_visible(False)
     savefig(f"height_vs_weight_stratpd")
@@ -825,6 +831,8 @@ def weight():
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = predict_ice(rf, X, 'education', 'weight')
     plot_ice(ice, 'education', 'weight', ax=ax, yrange=(-12, 0))
+    ax.set_xlim(10,18)
+    ax.set_xticks([10,12,14,16,18])
     savefig(f"education_vs_weight_pdp")
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
@@ -984,37 +992,37 @@ def additivity():
 
     fig, axes = plt.subplots(2, 2, figsize=(4, 4))  # , sharey=True)
     plot_stratpd(X, y, 'x1', 'y',
-                 min_samples_leaf=30,
+                 min_samples_leaf=50,
                  nbins=3,
-                 ax=axes[0, 0], yrange=(-2, 2))
+                 ax=axes[0, 0], yrange=(-3, 3))
 
     plot_stratpd(X, y, 'x2', 'y',
-                 min_samples_leaf=30,
+                 min_samples_leaf=50,
                  nbins=3,
-                 ax=axes[1, 0])
+                 ax=axes[1, 0],
+                 yrange=(-3,3))
 
-    axes[0, 0].set_ylim(-2, 2)
-    axes[1, 0].set_ylim(-2, 2)
+    # axes[0, 0].set_ylim(-2, 2)
+    # axes[1, 0].set_ylim(-2, 2)
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
     print(f"RF OOB {rf.oob_score_}")
 
     ice = predict_ice(rf, X, 'x1', 'y', numx=20, nlines=700)
-    plot_ice(ice, 'x1', 'y', ax=axes[0, 1], yrange=(-2, 2), show_ylabel=False)
+    plot_ice(ice, 'x1', 'y', ax=axes[0, 1], yrange=(-3, 3), show_ylabel=False)
 
     ice = predict_ice(rf, X, 'x2', 'y', numx=20, nlines=700)
-    plot_ice(ice, 'x2', 'y', ax=axes[1, 1], yrange=(-2, 2), show_ylabel=False)
+    plot_ice(ice, 'x2', 'y', ax=axes[1, 1], yrange=(-3, 3), show_ylabel=False)
 
     savefig(f"additivity")
-    plt.close()
 
 
 def meta_additivity():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     n = 1000
     noises = [0, .5, .8, 1.0]
-    sizes = [2, 5, 10, 30]
+    sizes = [2, 10, 30, 50]
 
     fig, axes = plt.subplots(len(noises) + 1, len(sizes), figsize=(7, 8), sharey=True,
                              sharex=True)
@@ -1319,7 +1327,7 @@ def bulldozer():  # warning: takes like 5 minutes to run
 
         plot_stratpd(X, y, colname, 'SalePrice', ax=axes[row, 1], xrange=xrange,
                      yrange=yrange, show_ylabel=False,
-                     verbose=False, alpha=.1,
+                     verbose=False, alpha=.07,
                      isdiscrete=True)
 
         rf = RandomForestRegressor(n_estimators=20, min_samples_leaf=1, n_jobs=-1,
@@ -1576,23 +1584,26 @@ def multi_joint_distr():
 
 
 if __name__ == '__main__':
+    # FROM PAPER:
     # multi_joint_distr()
-    # bulldozer()
-    # cars()
-    # meta_cars()
+    bulldozer()
     # rent()
-    # rent_alone()
     # rent_ntrees()
     # rent_extra_cols()
-    # meta_boston()
-    # unsup_boston()
     # unsup_rent()
-    weight()
+    # unsup_boston()
+    # weight()
     # weight_ntrees()
-    # meta_weight()
     # unsup_weight()
     # weather()
-    # meta_weather()
     # additivity()
     # meta_additivity()
     # bigX()
+
+    # EXTRA GOODIES
+    # meta_weather()
+    # meta_weight()
+    # meta_boston()
+    # rent_alone()
+    # cars()
+    # meta_cars()

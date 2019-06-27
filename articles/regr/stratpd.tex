@@ -377,22 +377,19 @@ We begin by reproducing graphs from \cite{ICE}, starting with their equation in 
 y = 0.2x_1 - 5x_2 + 10x_2\mathbf{1}_{x_3 \geq 0} + \epsilon~~~~~x_1, x_2, x_3 \sim U(-1,1), \epsilon \sim N(0,1)
 \end{equation}
 
-\noindent \figref{fig:bigx_stratpd} shows the \spd{} plots in the left column for $x_2$ and $x_3$ and the PD/ICE plots in the right column. (1000 observations were drawn.) As \cite{ICE} points out, the PD plot (top row, right side) for $x_2$ shows no effect of $x_2$ on $y$ predictions, but the ICE plot makes it clear that the apparent lack of PD effect is due to an interaction or interactions with other variables that cancel out. In this case, we know from Equation \eqref{eq:bigX} that $x_3$ ``turns off'' $10 x_2$ roughly half the time ($x_3 \sim U(-1,1)$), yielding an $x_2$ contribution to $y$ of $5 x_2$ not $-5 x_2$. The \spd{} plot also shows a relatively flat partial dependence line, although it is much smoother than the PD/ICE line. The noise, $\epsilon \sim N(0,1)$, is about as large as the ``data'' and so there is nontrivial variation from simulation to simulation; curves should be taken as clues not absolute truth. Because \spd{} draws the approximate partial derivatives of $y$ along $x_2$, there is a regular pattern of alternating lines of roughly slope 4 or 5, which is what we would expect since $\frac{\partial y}{\partial x_2}$ is either 5 or -5.
+\noindent \figref{fig:bigx_stratpd} shows the \spd{} plots in the left column for $x_2$ and $x_3$ and the PD/ICE plots in the right column. (1000 observations were drawn.) As \cite{ICE} points out, the PD plot (top row, right side) shows no effect of $x_2$ on $y$ predictions, but the ICE plot makes it clear that the apparent lack of PD effect is due to an interaction or interactions with other variables that cancel out. In this case, we know from Equation \eqref{eq:bigX} that $x_3$ ``turns off'' $10 x_2$ roughly half the time ($x_3 \sim U(-1,1)$), yielding an $x_2$ contribution to $y$ of $5 x_2$ not $-5 x_2$. The \spd{} plot also shows a relatively flat partial dependence line, although it is much smoother than the PD/ICE line. The noise, $\epsilon \sim N(0,1)$, is about as large as the ``data'' and so there is nontrivial variation from simulation to simulation; curves should be taken as clues not absolute truth. Because \spd{} draws the approximate partial derivatives of $y$ along $x_2$, there is a regular pattern of alternating lines of roughly slope 4 or 5, which is what we would expect since $\frac{\partial y}{\partial x_2}$ is either 5 or -5.
 
-\begin{figure}[htbp]
-\begin{subfigure}[h]{0.495\textwidth}
+\begin{minipage}[c]{0.45\textwidth}
 \includegraphics[scale=0.7]{images/bigx.png}
-\caption{{\bf big X from ICE}1000 observations}
+\captionof{figure}{{\bf big X from ICE}1000 observations}
 \label{fig:bigx_stratpd}
-\end{subfigure}
-\begin{subfigure}[h]{0.495\textwidth}
+\end{minipage} \begin{minipage}[c]{0.45\textwidth}
 \includegraphics[scale=0.7]{images/additivity.png}
-\caption{{\bf additivity from PD/ICE} 1000 observations}
+\captionof{figure}{{\bf additivity from PD/ICE} 1000 observations}
 \label{fig:additivity_stratpd}
-\end{subfigure}
-\end{figure}
+\end{minipage}
 
-The partial dependence curves in the \spd{} and PD/ICE plots for $x_3$ in \figref{fig:bigx_stratpd} are also flat lines because $\frac{\partial y}{\partial x_3}=0$ when $x_3 < 0$ and $10 x_2$ when $x_3 \ge 0$. Since $x_2 \sim U(-1,1)$, $10 x_2$ contributes positive and negative noise to $y$, which the \spd{} plot exhibits with partial derivative lines at random angles.   \todo{James: can you check the ICE paper when they describe that the interactions of $x_3$ are just around 0?  From the equation they are clearly $\ge 0$.}
+The partial dependence curves in the \spd{} and PD/ICE plots for $x_3$ in \figref{fig:bigx_stratpd} are also relatively flat lines because $\frac{\partial y}{\partial x_3}=0$ when $x_3 < 0$ and $10 x_2$ when $x_3 \ge 0$. Since $x_2 \sim U(-1,1)$, $10 x_2$ contributes positive and negative noise to $y$, which the \spd{} plot exhibits with partial derivative lines at random angles.
 
 \cite{ICE} also demonstrate the use of ICE plots for additivity assessment using a second-order equation:
 
@@ -400,13 +397,11 @@ The partial dependence curves in the \spd{} and PD/ICE plots for $x_3$ in \figre
 y = x_1^2 + x_2 + \epsilon~~~~~x_1, x_2 \sim U(-1,1), \epsilon \sim N(0,1)
 \end{equation}
 
-\noindent We will use this equation to demonstrate that the local, nonparametric method of \spd{} can identify quadratic relationships, as shown in the left column of \figref{fig:additivity_stratpd}; the right column shows the equivalent PD/ICE plots. The \spd{} plots are smoother, which makes identifying the partial dependence relationship more pronounced visually than in the PD/ICE plots.  To smooth out the noise, we set \spd{} hyper parameter ${\it min\_samples\_leaf}$ to 30, which means $T$ partitions \xnc{} space into leaves with at least 30 observations; the default is 10. We examine noise more closely in \secref{sec:noise}.
-
-The effect of $x_2$ on $y$ should be a line with slope 1, as shown in the second row of \figref{fig:additivity_stratpd}. Both PD/ICE and \spd{} plots give accurate depictions of the linear relationship, but \spd{} makes it more clear that the partial dependence of $y$ on $x_2$ is linear.
+\noindent We will use this equation to demonstrate that the local, nonparametric method of \spd{} can identify quadratic relationships, as shown in the left column of \figref{fig:additivity_stratpd}; the right column shows the equivalent PD/ICE plots. The \spd{} plots for $x_1$ and $x_2$ are smoother, which can make the partial dependence relationships more pronounced visually than in the PD/ICE plots.  The effect of $x_2$ on $y$ should be a line with slope 1, as shown in the second row of \figref{fig:additivity_stratpd}. Both PD/ICE and \spd{} plots give reasonable depictions of the linear relationship, but \spd{} makes it more clear that the partial dependence of $y$ on $x_2$ is linear not curvilinear. To smooth out the noise, we set \spd{} hyper parameter ${\it min\_samples\_leaf}$ to 50, which means stratification partitions \xnc{} space into leaves with at least 50 observations; the default is 10. We examine noise more closely in \secref{sec:noise}.
 
 \subsection{Isolating the effect of codependent features on $y$}\label{sec:codep}
 
-None of the variables used in Equations \eqref{eq:bigX} and \eqref{eq:parabola} are codependent and ICE plots have no problem exposing interactions and generating accurate PD curves.  PD/ICE make the assumption that variables are independent, however, and the plots become less accurate as codependence grows.  To compare \spd{} to PD/ICE for codependent variables, we synthesized a body weight data set with 1000 observations drawn from the following equation with codependence between features.
+None of the variables used in Equations \eqref{eq:bigX} and \eqref{eq:parabola} are codependent and ICE plots have no problem exposing interactions and generating accurate PD curves.  PD/ICE make the assumption that variables are independent, however, and the plots become less accurate as codependence grows.  To compare \spd{} to PD/ICE for codependent variables, we synthesized a body weight data set with 2000 observations drawn from the following equation with codependence between features.
 
 \begin{equation}\label{eq:weight}
 \begin{array}{rll}
@@ -442,9 +437,9 @@ def toy_weight_data(n):
     df.loc[df['sex']=='F','education'] = 12 + np.random.randint(0,8,size=nwomen)
 }
 
-Because of the codependence between $x_{pregnant}$ and $x_{height}$ via $x_{sex}$, \figref{fig:height_vs_weight} demonstrated that PD/ICE plot incorrectly showed shorter people as heavier on average. PD/ICE conjures up unlikely observation such as pregnant males, resulting in biased ICE lines.
+Because of the codependence between $x_{pregnant}$ and $x_{height}$ via $x_{sex}$, \figref{fig:height_vs_weight} demonstrated that the PD/ICE plot incorrectly shows shorter people as heavier on average. PD/ICE conjures up unlikely observation such as pregnant males, resulting in biased ICE lines.
 
-As another example of isolating codependent variable effects, compare the PD/ICE and \spd{} plots in \figref{fig:education_vs_weight} showing number of years of education versus weight. Weight is related to education by slope -1.5, so a perfect partial dependence graph would show a drop of 12 pounds over 8 years of education. The PD/ICE plot captures only about two thirds of that relationship, whereas, the \spd{} plot gets the true education-weight relationship.  Female observations have at least 12 years of education, versus 10 for males, so $x_{education}$ and $x_{sex}$ are codependent, though, there is no interaction term. The fact that women are shorter on average biases the education-weight PD/ICE plot because the baseline weight is lower from which the education contribution is  subtracted.
+As another example of isolating codependent variable effects, compare the \spd{} and PD/ICE plots in \figref{fig:education_vs_weight} showing number of years of education versus weight. Weight is related to education by slope -1.5, so a perfect partial dependence graph would show a drop of 12 pounds over 8 years of education. The PD/ICE plot captures only about two thirds of that relationship, whereas, the \spd{} plot gets the true education-weight relationship.  Female observations have at least 12 years of education, versus 10 for males, so $x_{education}$ and $x_{sex}$ are codependent, though, there is no interaction term. The fact that women are shorter on average biases the education-weight PD/ICE plot because the baseline weight is lower from which the education contribution is  subtracted.
 
 \begin{figure}[htbp]
 \begin{center}
@@ -455,7 +450,7 @@ As another example of isolating codependent variable effects, compare the PD/ICE
 \end{center}
 \end{figure}
 
-Because the ``signal-to-noise ratio'' is low in the bodyweight data set, we set hyper parameter ${\it min\_samples\_leaf}=2$. That asks \spd{} to partition \xnc{} into very tight regions, leaving at least two observations from which estimate the change in $y$ over $x_c$ space.
+Because the ``signal-to-noise ratio'' is low in the bodyweight data set, we set hyper parameter ${\it min\_samples\_leaf}=2$ to partition \xnc{} into very tight regions, leaving at least two observations from which estimate the change in $y$ over $x_c$ space. Type regions increase the likelihood that $y$ fluctuations in each leaf are due solely to changes in $x_c$.
 
 \subsection{The effect of model choice on PD/ICE plots}
 
@@ -472,7 +467,7 @@ Perhaps the biggest issue with PD and ICE plots is that they rely on predictions
 \right)
 \]
 
-\noindent where $y = x_1 + x_2 + x_3 + x_4$.  There are PD/ICE plots from four different models, random forests (100 trees), support vector machines ($\gamma=1/4$), ordinary least squares linear models, and $k$-nearest neighbor ($k=5$).  Because this data set is essentially skewed noise, we increased the number of data points per leaf during $T$ partitioning of \xnc{} and decreased the number of bins for piecewise partitioning: ${\it min\_samples\_leaf} = 20$, ${\it nbins} = 2$.
+\noindent where $y = x_1 + x_2 + x_3 + x_4$.  The last four rows show PD/ICE plots from four different models: random forests (100 trees), support vector machines ($\gamma=1/4$), ordinary least squares linear models, and $k$-nearest neighbor ($k=5$).  Because this data set is essentially skewed noise, we increased the number of data points per leaf during stratification of \xnc{} and decreased the number of bins for $x_c$ partitioning: ${\it min\_samples\_leaf} = 20$, ${\it nbins} = 2$.
 
 \begin{figure}[htbp]
 \begin{center}
@@ -482,11 +477,14 @@ Perhaps the biggest issue with PD and ICE plots is that they rely on predictions
 \end{center}
 \end{figure}
 
-Because $\frac{\partial y}{\partial x_{c}} = 1$ for all $x_c$, the partial dependence curves should be lines with slope 1.  The second row of \figref{fig:4var} has \spd{} plots that show linear relationships and the slopes are almost correct.  The PD/ICE plots derived from RF and SVM models show distinct flattening or curving behavior at the edges because the variables are codependent. Models are presented with highly unlikely combinations of $x_i$ variables that are outside of the training data and are forced to extrapolate outside of their support range.  The linear model does very well because it assumes the relationship is linear and, therefore, extrapolates linearly without issue. The nearest neighbor model also captures the linear relationship well but underestimates the partial dependence slope for $x_3$ and $x_4$.
+Because $\frac{\partial y}{\partial x_{c}} = 1$ for all $x_c$, the partial dependence curves should be lines with slope 1.  The second row of \figref{fig:4var} has \spd{} plots that show linear relationships and the slopes are close to 1.  The PD/ICE plots derived from RF and SVM models show distinct flattening or curving behavior at the edges because the variables are codependent. Models are presented with highly unlikely combinations of $x_i$ variables that are outside of the training data and are forced to extrapolate outside of their support range.  The linear model does very well because it assumes the relationship is linear and, therefore, extrapolates linearly without issue. The nearest neighbor model also captures the linear relationship well but underestimates the partial dependence slope for $x_3$ and $x_4$.
  
 \subsection{Duplicated columns require multiple decision trees}\label{sec:dup}
 
-Isolating $x_c$ from codependent variables in \xnc{} through decision tree stratification works well in our experiments unless $x_c$ is a linear function of a variable in \xnc{}. In that case, stratification hammers out variation in $x_c$, as if the decision tree were trained on $(\bf X, y)$ not (\xnc, $\bf y$). To simulate this pathological situation, we duplicated $x_{\it bathrooms}$ from the rent data set and generated the \spd{} and PD/ICE plots in \figref{fig:baths_dup}. The first column shows plots without a duplicated column and the second column shows the result of duplicating $x_{\it bathrooms}$. Both plots show much reduced partial dependence of $y$ on the highly-predictive variable $x_{\it bathrooms}$. In the case of \spd{}, the stratification process groups the data by apartments with similar bathrooms and so it shows no partial dependence for the duplicated variable.  \todo{why are there many fewer lines in stratpd plot would do begin to column?}
+Isolating $x_c$ from codependent variables in \xnc{} through decision tree stratification works well in our experiments unless $x_c$ is a linear function of a variable in \xnc{}. In that case, stratification hammers out variation in $x_c$, as if the decision tree were trained on $(\bf X, y)$ not (\xnc, $\bf y$). To simulate this pathological situation, we duplicated $x_{\it bathrooms}$ from the rent data set and generated the \spd{} and PD/ICE plots in \figref{fig:baths_dup}. The first column shows \spd{} and PD/ICE plots without a duplicated column and the second column shows the result of duplicating $x_{\it bathrooms}$. Both plots show much reduced partial dependence of $y$ on the highly-predictive variable $x_{\it bathrooms}$. In the case of \spd{}, the stratification process groups the data by apartments with similar bathrooms and so it shows very little partial dependence for the duplicated bathrooms variable.   There are many fewer lines in the \spd{} plot for the duplicated column because half of the data does not support any conclusions about partial dependence: most of the leaves contain a unique $x_c$ value.
+
+samples/leaf 50, nbins=2
+
 
 \begin{figure}[htbp]
 \begin{center}
@@ -496,16 +494,13 @@ Isolating $x_c$ from codependent variables in \xnc{} through decision tree strat
 \end{center}
 \end{figure}
 
-The problem with the PD/ICE plot is not because of codependence between $x_{\it bathrooms}$ and its duplicate. Instead, that PD/ICE is lower because of the nature of this data set and the way random forests train. With two identical variables, decision nodes that split on one of those variables will choose between them with 50\% probability.  To create ICE trendlines, only one of the duplicate variables changes through $x_{\it bathrooms}$ space, which means that roughly half the tree decision nodes will lead to predictions that ignore the shifted $x_c$ variable.  This has the effect that the model underestimates rent prices.  For example, given an observation with $x_{\it bathrooms}=1$, (simplifying slightly) half the trees in the forest would predict rent appropriate for one bathroom even when the trend line shifts the $x_c$ bathrooms to 4. \todo{James: is this clear enough?}  It would be possible to change the model in an effort to overcome this issue, but many models do not support duplicated or highly-correlated variables.
+The problem with the PD/ICE plot is not because of codependence between $x_{\it bathrooms}$ and its duplicate. Instead, that PD/ICE is lower because of the nature of this data set and the way random forests train. With two identical variables, decision nodes that split on one of those variables will choose between them with 50\% probability.  To create ICE trendlines, only one of the duplicate variables changes through $x_{\it bathrooms}$ space, which means that roughly half the tree decision nodes will lead to predictions that ignore the shifted $x_c$ variable.  This has the effect that the model underestimates rent prices.  For example, given an observation with $x_{\it bathrooms}=1$, (simplifying slightly) half the trees in the forest would predict rent appropriate for one bathroom even when the trend line shifts the $x_c$ bathrooms to 4. \todo{James: is this clear enough?}  It would be possible to switch models in an effort to overcome this issue, but many models do not support duplicated or highly-correlated variables.
 
-\cut{
-the reason that the ice plot is lowered is due to the data, which has very few data points in the high range of bedrooms. The average is maybe 1.2, so for roughly half the trees, the prediction will be for 1.2 bedrooms no matter what the duplicated bedroom column says.  This problem occurs for strongly predictive features in RF. Linear model couldn't handle duplicate column.}
-
-To compensate for duplicate columns, \spd{} supports the use of random forests rather than a single decision tree to stratify \xnc{} space. The difference from conventional random forest training is that bootstrapping is not important and, in fact, increases bias because the individual trees are working on 2/3 of the data set. The third column, top row in \figref{fig:baths_dup} shows the \spd{} plot resulting from the use of 15 trees ($ntrees=15$) and limiting decision node variable choice to one of two randomly-selected variables at each split (${\it max\_split\_features}=2$).  Restricting the number of variables available during node splitting prevents partitioning from relying too heavily on the duplicate of $x_c$, leading to a number of leaves that vary in $x_c$.
+To compensate for duplicate columns, \spd{} supports the use of random forests rather than a single decision tree to stratify \xnc{} space. \spd{} uses decision trees by default rather than conventional random forests because bootstrapping is not important and, in fact, increases bias as the individual trees are working on 2/3 of the data set. The third column, top row in \figref{fig:baths_dup} shows the \spd{} plot resulting from the use of 15 trees ($ntrees=15$) and limiting decision node variable choice to one of two randomly-selected variables at each split (${\it max\_split\_features}=2$).  Restricting the number of variables available during node splitting prevents partitioning from relying too heavily on the duplicate of $x_c$, leading to a number of leaves that vary in $x_c$.
 
 \subsection{Compensating for noise}\label{sec:noise}
 
-To explore the effect of irrelevant variables on \spd{} plots, we introduced a noise column ($x_{\it noise} \sim U(0,50)$) to the rent data set. Because decision trees ignore variables with low predictive power, stratification automatically ignores irrelevant or noise columns.  \figref{fig:beds_noise} shows \spd{} and PD/ICE plots for the original data set and the data set with a noise column. Both approaches are unaffected by the introduction of the noise column, but that is true for PD/ICE because it is derived from a random forest. PD/ICE plots derived from models that are confused by noise columns would not be accurate. \todo{why no 5-8 dots? ignored from binning; see section}
+To explore the effect of irrelevant variables on \spd{} plots, we introduced a noise column ($x_{\it noise} \sim U(0,50)$) to the rent data set. Because decision trees ignore variables with low predictive power, stratification automatically ignores irrelevant or noise columns.  \figref{fig:beds_noise} shows \spd{} and PD/ICE plots for the original data set and the data set with a noise column. Both approaches are unaffected by the introduction of the noise column, but that is true for PD/ICE because it is derived from a random forest. PD/ICE plots derived from models that are confused by noise columns would not be accurate.
 
 \begin{figure}[htbp]
 \begin{center}
@@ -518,7 +513,7 @@ To explore the effect of irrelevant variables on \spd{} plots, we introduced a n
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.7]{images/meta_additivity_noise.png}
-\caption{effect of noise $y = x_1^2 + x_2 + \epsilon$, min leaf size for $x_c=0.3$}
+\caption{effect of noise $y = x_1^2 + x_2 + \epsilon$, min leaf size for $nbins=3$}
 \label{fig:meta_noise}
 \end{center}
 \end{figure}
@@ -527,29 +522,27 @@ Overcoming noisy predictive columns or noisy $y$ sometimes requires hyper parame
 
 \subsection{\spd{} and \cspd{} applied to real data} 
 
-We have shown \spd{} operating on a real New York City apartment rent data set in figures such as \figref{fig:baths_price} and \figref{fig:rent_ntrees}.  This section shows both \spd{} and \cspd{} plots for another real Kaggle data set, \cite{bulldozer}, concerning auction sales of used bulldozers.  Of the 52 features, we selected three codependent features: YearMade, MachineHours, and ModelID. \figref{fig:bulldozer} shows marginal plots for the three variables versus bulldozer sale price in the first column, the \spd{} and \cspd{} plots in the second column, and PD/ICE in the third column. The nominal variable ModelID axis in the third row was sorted by sale price. To reduce overplotting and to reduce ICE plotting time, we use the most recent 10,000 records after dropping those with missing values or zero machine hours. Random forests for PD/ICE were trained with 20 not 100 trees but still achieve training set $R^2=0.97$. The  PD/ICE plot for ModelID shows just 1000 of the roughly 1500 unique values (and still takes 5 minutes to generate).
+We have shown \spd{} operating on a real New York City apartment rent data set in figures such as \figref{fig:baths_price} and \figref{fig:rent_ntrees}.  This section shows both \spd{} and \cspd{} plots for another real Kaggle data set, \cite{bulldozer}, concerning auction sales of used bulldozers.  Of the 52 features, we selected three codependent features: YearMade, MachineHours, and ModelID. \figref{fig:bulldozer} shows marginal plots for the three variables versus bulldozer sale price in the first column, the \spd{} and \cspd{} plots in the second column, and PD/ICE in the third column. The nominal variable ModelID axis in the third row was sorted by sale price. To reduce overplotting and to reduce ICE plotting time, we use the most recent 10,000 records after dropping those with missing values or zero machine hours. Random forests for PD/ICE were trained with 20 not 100 trees. The  PD/ICE plot for ModelID shows just 1000 of the roughly 1500 unique values (and still takes 5 minutes to generate).
 
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.7]{images/bulldozer.png}
-\caption{bulldozer; endogeneity, CatStrat Partition RF: missing ModelID training $R^2$ 0.59, Strat Partition RF: missing YearMade training $R^2$ 0.7186, Strat Partition RF: missing MachineHoursCurrentMeter training $R^2$ 0.7714}
+\caption{bulldozer; endogeneity, RF OOB $R^2$ about .77 for all features.}
 \label{fig:bulldozer}
 \end{center}
 \end{figure}
 
-As this is a real not synthesized data set, the true partial dependence curves are unknown. Further, using only three features means the stratification approach will not be able to cancel out contributions to the sale price from the unused features. (Nontrivial feature engineering would be required to extract predictive features from the other variables and these three get ``out of bag'' $R^2=0.77$) This could be influencing the \spd{} and \cspd{} plots to be more similar to the marginal plots than is correct.
+As this is a real not synthesized data set, the true partial dependence curves are unknown. Further, using only three features means the stratification approach will not be able to cancel out contributions to the sale price from the unused features. (Nontrivial feature engineering would be required to extract predictive features from the other variables and these three get an ``out of bag'' metric of $R^2=0.77$) These exogenous variables could be influencing the \spd{} and \cspd{} plots to be more similar to the marginal plots than is correct.
 
-Both the \spd{} and PD/ICE plots show a price decay as bulldozers age, though the \spd{} plot is more linear and the PD/ICE plot is more exponential. It is possible that the linear decay shown in the \spd{} plot is real because it differs significantly from the PD/ICE plot, which will suffer from the codependence of these three features. For example, the ICE lines shift the MachineHours feature into impossible observations, such as bulldozers that have been in use before they were manufactured or bulldozers sold before their ModelID existed. It is clear from both plots that there is a great deal of price variability as bulldozers age, given the slope and ICE lines.  The \spd{} plot (but not the PD/ICE plot) illustrates that there were many fewer bulldozers for sale that were manufactured before 1990 given the scarcity of lines in that range (which it is consistent with the marginal plot).
+Both the \spd{} and PD/ICE plots show a price decay as bulldozers age, though the \spd{} plot is more linear for bulldozers older than about 1980 and the PD/ICE plot looks more exponential. It is possible that the linear decay shown in the \spd{} plot is real because it differs significantly from the PD/ICE plot, which will suffer from the codependence of these three features. For example, the ICE lines shift the MachineHours feature into impossible observations, such as bulldozers that have been in use before they were manufactured or bulldozers sold before their ModelID existed. It is clear from both plots that there is a great deal of price variability as bulldozers age, given the \spd{} slope lines and ICE lines.  The \spd{} plot (but not the PD/ICE plot) illustrates that there were many fewer bulldozers for sale that were manufactured before 1990 given the scarcity of lines in that range (which it is consistent with the marginal plot).
 
-The \spd{} plot for MachineHours is flat in the $x_c$ region where there is sufficient data, indicating no overall change in price as bulldozers get more use.  While counterintuitive, the slope lines indicate a high degree of variability that cancels out, very much like the ``big X'' pattern in \figref{fig:additivity_stratpd}. The PD/ICE plot shows a gradual increase in price as bulldozers get more use, which is highly unlikely, and also shows an immediate drop of about \$30,000 for machines that get used for a few hours. Given that the average bulldozer price is about \$36,000, that initial drop is likely due to variable codependence rather than bulldozers truly losing most of their value immediately.
+The \spd{} plot for MachineHours is linear with a slight negative slope in the $x_c$ region where there is sufficient data, which is plausible.  The slope lines indicate a high degree of variability that often cancel out, very much like the ``big X'' pattern in \figref{fig:additivity_stratpd}. The PD/ICE plot shows a gradual increase in price as bulldozers get more use, which is highly unlikely, and also shows an immediate drop of about \$30,000 for machines that get used for a few hours. Given that the average bulldozer price is about \$36,000, that initial drop is likely due to variable codependence rather than bulldozers truly losing most of their value immediately.
 
-The \cspd{} plot for ModelID (sorted by sale price) closely matches the marginal plot, which could be the true relationship or due to variables omitted from \xnc{} or even $\bf X$. The PD/ICE plot also shows that some models are much more expensive than others, but is much more curvilinear. The difference between the plots might mean the \cspd{} plot it is closer to reality because the PD/ICE plots are sensitive to the codependence between the three variables.
+The \cspd{} plot for ModelID (sorted by sale price) closely matches the marginal plot, which could be the true relationship or due to variables omitted from \xnc{} or even omitted from $\bf X$. The PD/ICE plot also shows that some models are much more expensive than others, but is much more curvilinear.
 
 \subsection{Pathological partitioning issues}
 
-Equation \ref{eq:weather}
-
-There are two pathological cases to consider during partitioning, one during \xnc{} and the other during $x_c$ partitioning.  The first case occurs when training yields a decision tree with very large leaves, with perhaps hundreds or thousands of observations.  This can happen when \xnc{} contains a single categorical variable or when the only strongly-predictive variable in \xnc{} is categorical.  The weather data set is a case in point. Choosing $x_c$=$x_{dayofyear}$, means \xnc{}=\{$x_{state}$,$x_{year}$\} and categorical $x_{state}$ accounts for most of the variation in temperature.  \figref{fig:dayofyear_vs_temp}(a) shows the marginal plot of $x_{state}$ versus temperature. A decision tree, $T$, splitting on just $x_{\it state}$, would group all 365 daily temperature observations for a single state into just one leaf. (The marginal plot is showing the complete sine waves but from the side, edge on.)   The \spd{} plot in \figref{fig:dayofyear_vs_temp}(b) clearly shows the sinusoidal temperature fluctuations over the year. The PD/ICE plot also identifies the noisy sine waves, as shown in \figref{fig:dayofyear_vs_temp}(c), but is not smooth as it relies on predictions from a model trained on noisy data. The \spd{} plot is averaging slopes that are themselves smoothing agents.
+There is a pathological case to consider during \xnc{} partitioning when training yields a decision tree with very large leaves, perhaps hundreds or thousands of observations.  This can happen when \xnc{} contains a single categorical variable or when the only strongly-predictive variable in \xnc{} is categorical.  The weather data set from Equation \ref{eq:weather} is a case in point. (See the marginal plot in \figref{fig:dayofyear_vs_temp}(a).) Choosing $x_c$=$x_{dayofyear}$, means \xnc{}=\{$x_{state}$,$x_{year}$\} and categorical $x_{state}$ accounts for the largest changes in temperature.   A decision tree splitting on just $x_{\it state}$, for example, would group all 365 daily temperature observations for a single state into just one leaf. (The marginal plot shows the complete sine waves but from the side, edge on.)   The \spd{} plot in \figref{fig:dayofyear_vs_temp}(b) clearly shows the sinusoidal temperature fluctuations over the year while holding the state and year constant. The PD/ICE plot also identifies the noisy sine waves, as shown in \figref{fig:dayofyear_vs_temp}(c), but is not smooth.
 
 \begin{figure}[htbp]
 \begin{center}
@@ -560,24 +553,6 @@ There are two pathological cases to consider during partitioning, one during \xn
 \label{fig:dayofyear_vs_temp}
 \end{center}
 \end{figure}
-
-\todo{this has changed}
-
-The second partitioning case occurs during piecewise partitioning of $x_c$. Consider the marginal plots in the first column of \figref{fig:rent_intcat} that show the relationship between price and the number of bedrooms and bathrooms. With so many $y$ values for each discrete $x_c$ value, it is highly likely that partitioning $x_c$ will lead to some bins with unique $x_c$ values. In this situation, it is not possible to detect $y$ changes across $x_c$ and that bin must be ignored, which means \spd{} throws out data.  Simulations with 10,000-observation subsamples show that \spd{} ignores roughly 5000 observations for $x_c = x_{\it bedrooms}$ and 6500 for $x_c$ = $x_{\it bathrooms}$. 
-
-One way around this problem it is to treat the discrete integers as categories. The third column of \figref{fig:rent_intcat} shows the \cspd{} version derived from the same data. Instead of ignoring roughly 5000 observations, \cspd{} ignores just 25 observations for $x_c = x_{\it bedrooms}$ but still ignores 4900 for $x_c$ = $x_{\it bathrooms}$. The \cspd{} plots are very similar to the \spd{} plots, except in the regions where there is less data.
-
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.7]{images/rent_intcat.png}
-\caption{int cat not usual stratpd}
-\label{fig:rent_intcat}
-\end{center}
-\end{figure}
-
-\todo{compare continuous vs discrete; show ignored}
-
-To further improve the situation, one can increase the default ${\it min\_samples\_leaf}$ from 10 to 30 to create larger \xnc{} partitions. For $x_c$ = $x_{\it bedrooms}$, \spd{} ignores roughly 4000 and \cspd{} ignores 0 observations and, for $x_c$ = $x_{\it bathrooms}$, \spd{} ignores 3600 and \cspd{} ignores 2155 observations.  Because of the similarity between \spd{} and \cspd{} plots and the stability of the plots under changes to ${\it min\_samples\_leaf}$, we conclude that the stratification approach works for this data set even when ignoring much of the data.
 
 \subsection{Hyper parameters}
 
