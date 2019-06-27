@@ -630,14 +630,14 @@ def catwise_leaves(rf, X, y, colname, verbose):
         avg_y_per_cat = groupby.mean()
         avg_y_per_cat = avg_y_per_cat[y.name]#.iloc[:,-1]
         if len(avg_y_per_cat) < 2:
-            print(avg_y_per_cat)
             # print(f"ignoring {len(sample)} obs for {len(avg_y_per_cat)} cat(s) in leaf")
             ignored += len(sample)
             continue
+
+        # we'll weight by count per cat later so must track
         count_y_per_cat = combined[colname].value_counts()
-        # for k in count_y_per_cat.index:
-        #     catcounts[k] += count_y_per_cat[k]
         leaf_catcounts['leaf' + str(ci)] = count_y_per_cat
+
         # record avg y value per cat above avg y in this leaf
         # This assignment copies cat y avgs to appropriate cat row using index
         # leaving cats w/o representation as nan
@@ -744,23 +744,6 @@ def plot_catstratpd(X, y,
         weighted_sum_per_cat = np.nansum(weighted_histos, axis=1)  # sum across columns
         total_obs_per_cat = np.nansum(leaf_catcounts, axis=1)
         avg_per_cat = weighted_sum_per_cat / total_obs_per_cat
-        # print(leaf_histos)
-        # print(leaf_catcounts)
-        # print(weighted_histos)
-        # print(total_obs_per_cat)
-        # print(avg_per_cat)
-        if False:
-            # multiply each column (leaf) by category count vector; each column
-            # has average per cat in a leaf.
-            weighted_histos = leaf_histos.multiply(leaf_sizes, axis=1)
-            weighted_sum_per_cat = np.nansum(weighted_histos, axis=1) # sum across columns
-            # Some leaves don't have a category and leaf_histos[cat][leaf]=nan. We need to
-            # know the total leaf sizes used for each cat. leaf_histos.notna() converts
-            # nan to 0 and anything else to 1.  Multiply by leaf sizes times each row
-            # and then we can sum them across columns to get total obs used for cat
-            leaf_sizes_for_leaves_with_each_cat = leaf_histos.notna().multiply(leaf_sizes, axis=1)
-            total_obs_across_leaves_per_cat = np.sum(leaf_sizes_for_leaves_with_each_cat, axis=1)
-            avg_per_cat = weighted_sum_per_cat / total_obs_across_leaves_per_cat
     else:
         avg_per_cat = np.nanmean(leaf_histos, axis=1)
 
@@ -814,7 +797,7 @@ def plot_catstratpd(X, y,
 
     ax.set_xticks(range(0, ncats))
     if show_xticks: # sometimes too many
-        ax.set_xticklabels(catnames[sorted_catcodes])
+        ax.set_xticklabels(catnames[sorted_indexes])
     else:
         ax.set_xticklabels([])
         ax.tick_params(axis='x', which='both', bottom=False)

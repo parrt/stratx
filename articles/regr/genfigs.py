@@ -61,8 +61,10 @@ def savefig(filename, pad=0):
     plt.tight_layout(pad=pad, w_pad=0, h_pad=0)
     # plt.savefig(f"images/{filename}.pdf")
     plt.savefig(f"images/{filename}.png", dpi=300)
-    # plt.tight_layout()
-    # plt.show()
+
+    plt.tight_layout()
+    plt.show()
+
     plt.close()
 
 
@@ -782,32 +784,30 @@ def weight():
     y = df['weight']
     figsize = (2.5, 2.5)
 
-    # fig, ax = plt.subplots(1, 1, figsize=figsize)
-    # plot_stratpd(X, y, 'education', 'weight', ax=ax,
-    #              min_samples_leaf=2,
-    #              isdiscrete=True,
-    #              yrange=(-12, 0), alpha=.1, nlines=700, show_ylabel=False)
-    # #    ax.get_yaxis().set_visible(False)
-    # savefig(f"education_vs_weight_stratpd")
-    # plt.close()
-    #
-    # fig, ax = plt.subplots(1, 1, figsize=figsize)
-    # plot_stratpd(X, y, 'height', 'weight', ax=ax,
-    #              yrange=(0, 160), alpha=.1, nlines=700, show_ylabel=False)
-    # #    ax.get_yaxis().set_visible(False)
-    # savefig(f"height_vs_weight_stratpd")
-    # plt.close()
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    plot_stratpd(X, y, 'education', 'weight', ax=ax,
+                 min_samples_leaf=2,
+                 isdiscrete=True,
+                 yrange=(-12, 0), alpha=.1, nlines=700, show_ylabel=False)
+    #    ax.get_yaxis().set_visible(False)
+    savefig(f"education_vs_weight_stratpd")
+    plt.close()
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    plot_stratpd(X, y, 'height', 'weight', ax=ax,
+                 yrange=(0, 160), alpha=.1, nlines=700, show_ylabel=False)
+    #    ax.get_yaxis().set_visible(False)
+    savefig(f"height_vs_weight_stratpd")
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_catstratpd(X, y, 'sex', 'weight', ax=ax,
-                    min_samples_leaf=15,
+                    min_samples_leaf=50,
                     alpha=.2,
                     catnames={1:'F', 2:'M'},
                     yrange=(0, 5),
                     use_weighted_avg=True
                     )
     savefig(f"sex_vs_weight_stratpd")
-    plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=ax,
