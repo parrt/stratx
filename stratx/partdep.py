@@ -561,6 +561,7 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
                                  figsize=((ncols + 1) * 2.5, 2.5))
         marginal_plot_(X, y, colname, targetname, ax=axes[0],
                        show_regr_line=show_regr_line, alpha=alpha)
+        axes[0].set_title("Marginal", fontsize=10)
         col = 1
         for msl in min_samples_leaf_values:
             print(
@@ -591,6 +592,8 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
         row = 0
         for i, nbins in enumerate(nbins_values):
             marginal_plot_(X, y, colname, targetname, ax=axes[row, 0], show_regr_line=show_regr_line)
+            if row==0:
+                axes[row,0].set_title("Marginal", fontsize=10)
             col = 1
             for msl in min_samples_leaf_values:
                 print(f"---------- min_samples_leaf={msl}, nbins={nbins:.2f} ----------- ")
@@ -615,7 +618,7 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
 
 
 def marginal_plot_(X, y, colname, targetname, ax, alpha=.1, show_regr_line=True):
-    ax.scatter(X[colname], y, alpha=alpha, label=None)
+    ax.scatter(X[colname], y, alpha=alpha, label=None, s=10)
     ax.set_xlabel(colname)
     ax.set_ylabel(targetname)
     col = X[colname]
@@ -632,7 +635,7 @@ def marginal_plot_(X, y, colname, targetname, ax, alpha=.1, show_regr_line=True)
 def marginal_catplot_(X, y, colname, targetname, ax, catnames, alpha=.1):
     catcodes, catnames_, catcode2name = getcats(X, colname, catnames)
 
-    ax.scatter(X[colname].values, y.values, alpha=alpha, label=None)
+    ax.scatter(X[colname].values, y.values, alpha=alpha, label=None, s=10)
     ax.set_xlabel(colname)
     ax.set_ylabel(targetname)
     # col = X[colname]
@@ -651,6 +654,7 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
                              figsize=((ncols + 1) * 2.5, 2.5))
 
     marginal_catplot_(X, y, colname, targetname, catnames=catnames, ax=axes[0], alpha=0.05)
+    axes[0].set_title("Marginal", fontsize=10)
 
     col = 1
     for msl in min_samples_leaf_values:

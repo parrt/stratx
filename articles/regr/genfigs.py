@@ -62,8 +62,8 @@ def savefig(filename, pad=0):
     # plt.savefig(f"images/{filename}.pdf")
     plt.savefig(f"images/{filename}.png", dpi=300)
 
-    # plt.tight_layout()
-    # plt.show()
+    plt.tight_layout()
+    plt.show()
 
     plt.close()
 
@@ -122,6 +122,19 @@ def rent():
     colname = 'bedrooms'
 
     fig, axes = plt.subplots(2, 2, figsize=figsize)
+
+    axes[0, 0].set_title("Marginal", fontsize=10)
+    axes[0, 0].set_xlim(0,8); axes[0, 0].set_xticks([0,2,4,6,8])
+
+    axes[0, 1].set_title("PD/ICE RF", fontsize=10)
+    axes[0, 1].set_xlim(0,8); axes[0, 1].set_xticks([0,2,4,6,8])
+
+    axes[1, 0].set_title("PD/ICE SVM", fontsize=10)
+    axes[1, 0].set_xlim(0,8); axes[1, 0].set_xticks([0,2,4,6,8])
+
+    axes[1, 1].set_title("StratPD", fontsize=10)
+    axes[1, 1].set_xlim(0,8); axes[1, 1].set_xticks([0,2,4,6,8])
+
     avg_per_baths = df_rent.groupby(colname).mean()['price']
     axes[0, 0].scatter(df_rent[colname], df_rent['price'], alpha=0.07,
                        s=5)  # , label="observation")
@@ -145,17 +158,14 @@ def rent():
     m.fit(X, y)
 
     ice = predict_ice(m, X, colname, 'price', nlines=1000)
-    plot_ice(ice, colname, 'price', alpha=.2, ax=axes[1, 0], show_ylabel=True)
+    plot_ice(ice, colname, 'price', alpha=.3, ax=axes[1, 0], show_ylabel=True)
     axes[1, 0].set_ylim(-1000, 5000)
 
     plot_stratpd(X, y, colname, 'price', ax=axes[1, 1], alpha=.1, show_ylabel=False, pdp_marker_size=8,
                  isdiscrete=True)
     axes[1, 1].set_ylim(-1000, 5000)
 
-    # axes[1,1].get_yaxis().set_visible(False)
-
     savefig(f"{colname}_vs_price")
-    plt.close()
 
 
 def rent_grid():
@@ -167,7 +177,7 @@ def rent_grid():
 
     plot_stratpd_gridsearch(X, y, 'latitude', 'price',
                             min_samples_leaf_values=[5,10,30,50],
-                            yrange=(-500,3000),
+                            yrange=(-500,3500),
                             marginal_alpha=0.05
                             )
 
@@ -175,12 +185,11 @@ def rent_grid():
 
     plot_stratpd_gridsearch(X, y, 'bathrooms', 'price',
                             min_samples_leaf_values=[5,10,30,50],
-                            yrange=(-500,3000),
-                            isdiscrete=True)
+                            yrange=(-500,4000),
+                            isdiscrete=True,
+                            alpha=.15)
 
     savefig("bathrooms_meta")
-
-
 
 
 def rent_alone():
@@ -681,6 +690,7 @@ def weather():
                  yrange=(-15, 15),
                  pdp_marker_size=2, alpha=.5, isdiscrete=True)
 
+    ax.set_title("StratPD")
     savefig(f"dayofyear_vs_temp_stratpd")
     plt.close()
 
@@ -703,9 +713,8 @@ def weather():
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = predict_ice(rf, X, 'dayofyear', 'temperature')
     plot_ice(ice, 'dayofyear', 'temperature', ax=ax, yrange=(-15, 15))
-
+    ax.set_title("PD/ICE")
     savefig(f"dayofyear_vs_temp_pdp")
-    plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = predict_catice(rf, X, 'state', 'temperature')
@@ -713,9 +722,7 @@ def weather():
                 pdp_marker_size=10,
                 yrange=(-2, 60))
     ax.set_title("PD/ICE")
-
     savefig(f"state_vs_temp_pdp")
-    plt.close()
 
     # fig, ax = plt.subplots(1, 1, figsize=figsize)
     # rtreeviz_univar(ax,
@@ -731,9 +738,8 @@ def weather():
     ax.set_xticklabels(np.concatenate([[''], catencoders['state']]))
     ax.set_xlabel("state")
     ax.set_ylabel("temperature")
-
+    ax.set_title("Marginal")
     savefig(f"state_vs_temp")
-    plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     df = df_raw.copy()
@@ -813,16 +819,17 @@ def weight():
                  isdiscrete=True,
                  yrange=(-12, 0), alpha=.1, nlines=700, show_ylabel=False)
     #    ax.get_yaxis().set_visible(False)
-    savefig(f"education_vs_weight_stratpd")
+    ax.set_title("StratPD", fontsize=10)
     ax.set_xlim(10,18)
     ax.set_xticks([10,12,14,16,18])
-    plt.close()
+    savefig(f"education_vs_weight_stratpd")
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'height', 'weight', ax=ax,
                  min_samples_leaf=2,
                  yrange=(0, 160), alpha=.1, nlines=700, show_ylabel=False)
     #    ax.get_yaxis().set_visible(False)
+    ax.set_title("StratPD", fontsize=10)
     savefig(f"height_vs_weight_stratpd")
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
@@ -833,6 +840,7 @@ def weight():
                     yrange=(0, 5),
                     use_weighted_avg=True
                     )
+    ax.set_title("StratPD", fontsize=10)
     savefig(f"sex_vs_weight_stratpd")
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
@@ -843,6 +851,7 @@ def weight():
                     yrange=(-5, 35),
                     use_weighted_avg=True
                     )
+    ax.set_title("StratPD", fontsize=10)
     savefig(f"pregnant_vs_weight_stratpd")
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
@@ -853,23 +862,28 @@ def weight():
     plot_ice(ice, 'education', 'weight', ax=ax, yrange=(-12, 0))
     ax.set_xlim(10,18)
     ax.set_xticks([10,12,14,16,18])
+    ax.set_title("PD/ICE", fontsize=10)
     savefig(f"education_vs_weight_pdp")
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = predict_ice(rf, X, 'height', 'weight')
     plot_ice(ice, 'height', 'weight', ax=ax, yrange=(0, 160))
+    ax.set_title("PD/ICE", fontsize=10)
+    ax.set_title("PD/ICE", fontsize=10)
     savefig(f"height_vs_weight_pdp")
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = predict_catice(rf, X, 'sex', 'weight')
     plot_catice(ice, 'sex', 'weight', cats=df_raw['sex'].unique(), ax=ax, yrange=(0, 5),
                 pdp_marker_size=15)
+    ax.set_title("PD/ICE", fontsize=10)
     savefig(f"sex_vs_weight_pdp")
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = predict_catice(rf, X, 'pregnant', 'weight', cats=df_raw['pregnant'].unique())
     plot_catice(ice, 'pregnant', 'weight', cats=df_raw['pregnant'].unique(), ax=ax,
                 yrange=(-5, 35), pdp_marker_size=15)
+    ax.set_title("PD/ICE", fontsize=10)
     savefig(f"pregnant_vs_weight_pdp")
 
 
@@ -1036,6 +1050,9 @@ def additivity():
     ice = predict_ice(rf, X, 'x2', 'y', numx=20, nlines=700)
     plot_ice(ice, 'x2', 'y', ax=axes[1, 1], yrange=(-3, 3), show_ylabel=False)
 
+    axes[0, 0].set_title("StratPD", fontsize=10)
+    axes[0, 1].set_title("PD/ICE", fontsize=10)
+
     savefig(f"additivity")
 
 
@@ -1173,6 +1190,9 @@ def bigX():
     axes[0, 1].get_yaxis().set_visible(False)
     axes[1, 1].get_yaxis().set_visible(False)
 
+    axes[0, 0].set_title("StratPD", fontsize=10)
+    axes[0, 1].set_title("PD/ICE", fontsize=10)
+
     savefig(f"bigx")
     plt.close()
 
@@ -1189,15 +1209,15 @@ def unsup_boston():
     X = df.drop('MEDV', axis=1)
     y = df['MEDV']
 
-    fig, axes = plt.subplots(1, 4, figsize=(8.4, 2))
+    fig, axes = plt.subplots(1, 4, figsize=(9, 2))
 
     axes[0].scatter(df['AGE'], y, s=5, alpha=.7)
     axes[0].set_ylabel('MEDV')
     axes[0].set_xlabel('AGE')
 
     axes[0].set_title("Marginal")
-    axes[1].set_title("Unsupervised")
-    axes[2].set_title("Supervised")
+    axes[1].set_title("Unsupervised StratPD")
+    axes[2].set_title("Supervised StratPD")
     axes[3].set_title("PD/ICE")
 
     plot_stratpd(X, y, 'AGE', 'MEDV', ax=axes[1], yrange=(-20, 20),
@@ -1478,7 +1498,7 @@ def multi_joint_distr():
 
     yrange = (-2, 15)
 
-    fig, axes = plt.subplots(6, 4, figsize=(7.5, 8), sharey=False)  # , sharex=True)
+    fig, axes = plt.subplots(6, 4, figsize=(7.5, 8.5), sharey=False)  # , sharex=True)
 
     axes[0, 0].scatter(X['x1'], y, s=5, alpha=.08)
     axes[0, 0].set_xlim(0, 13)
@@ -1493,9 +1513,11 @@ def multi_joint_distr():
     axes[0, 3].set_xlim(0, 13)
     axes[0, 3].set_ylim(3, 45)
 
-    # axes[0, 0].set_xlabel("x1")
-    # axes[0, 1].set_xlabel("x2")
-    # axes[0, 2].set_xlabel("x3")
+    axes[0, 0].text(1, 38, 'Marginal', horizontalalignment='left')
+    axes[0, 1].text(1, 38, 'Marginal', horizontalalignment='left')
+    axes[0, 2].text(1, 38, 'Marginal', horizontalalignment='left')
+    axes[0, 3].text(1, 38, 'Marginal', horizontalalignment='left')
+
     axes[0, 0].set_ylabel("y")
 
     for i in range(6):
@@ -1548,10 +1570,10 @@ def multi_joint_distr():
     r.fit(uniqx.reshape(-1, 1), pdp)
     axes[1, 3].text(1, 10, f"Slope={r.coef_[0]:.2f}")
 
-    axes[1, 0].text(1, 13, 'StratPD', horizontalalignment='left')
-    axes[1, 1].text(1, 13, 'StratPD', horizontalalignment='left')
-    axes[1, 2].text(1, 13, 'StratPD', horizontalalignment='left')
-    axes[1, 3].text(1, 13, 'StratPD', horizontalalignment='left')
+    axes[1, 0].text(1, 12, 'StratPD', horizontalalignment='left')
+    axes[1, 1].text(1, 12, 'StratPD', horizontalalignment='left')
+    axes[1, 2].text(1, 12, 'StratPD', horizontalalignment='left')
+    axes[1, 3].text(1, 12, 'StratPD', horizontalalignment='left')
 
     # plt.show()
     # return
@@ -1567,20 +1589,20 @@ def multi_joint_distr():
         regr.fit(X, y)
         rname = regr.__class__.__name__
         if rname == 'SVR':
-            rname = "SVM"
+            rname = "SVM PD/ICE"
         if rname == 'RandomForestRegressor':
-            rname = "RF"
+            rname = "RF PD/ICE"
         if rname == 'LinearRegression':
-            rname = 'Linear'
+            rname = 'Linear PD/ICE'
         if rname == 'KNeighborsRegressor':
-            rname = 'kNN'
+            rname = 'kNN PD/ICE'
 
         show_xlabel = True if row == 5 else False
 
-        axes[row, 0].text(3, 10, rname, horizontalalignment='left')
-        axes[row, 1].text(3, 10, rname, horizontalalignment='left')
-        axes[row, 2].text(3, 10, rname, horizontalalignment='left')
-        axes[row, 3].text(3, 10, rname, horizontalalignment='left')
+        axes[row, 0].text(.5, 11, rname, horizontalalignment='left')
+        axes[row, 1].text(.5, 11, rname, horizontalalignment='left')
+        axes[row, 2].text(.5, 11, rname, horizontalalignment='left')
+        axes[row, 3].text(.5, 11, rname, horizontalalignment='left')
         ice = predict_ice(regr, X, 'x1', 'y')
         plot_ice(ice, 'x1', 'y', ax=axes[row, 0], xrange=(0, 13), yrange=yrange,
                  alpha=.08,
@@ -1606,23 +1628,23 @@ def multi_joint_distr():
 
 if __name__ == '__main__':
     # FROM PAPER:
-    # multi_joint_distr()
     # bulldozer()
-    rent()
+    # rent()
     rent_grid()
-    rent_ntrees()
-    rent_extra_cols()
-    unsup_rent()
-    unsup_boston()
-    weight()
-    weight_ntrees()
-    unsup_weight()
-    meta_weight()
-    weather()
-    meta_weather()
-    additivity()
-    meta_additivity()
-    bigX()
+    # rent_ntrees()
+    # rent_extra_cols()
+    # unsup_rent()
+    # unsup_boston()
+    # weight()
+    # weight_ntrees()
+    # unsup_weight()
+    # meta_weight()
+    # weather()
+    # meta_weather()
+    # additivity()
+    # meta_additivity()
+    # bigX()
+    # multi_joint_distr()
 
     # EXTRA GOODIES
     # meta_boston()

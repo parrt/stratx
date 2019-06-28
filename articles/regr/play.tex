@@ -48,6 +48,13 @@
 \begin{document}
 \maketitle
 
+\begin{abstract}
+Model interpretability is important to machine learning practitioners and a key component of  interpretation is the characterization of partial dependence of the response on any subset of features used in the model. The two most common strategies suffer from a number of critical weaknesses. First,  linear regression model coefficients describe how a unit change in an explanatory variable changes the response, while holding other variables constant. But, linear regression is inapplicable for high dimensional, $p>n$, data sets or when a linear model is insufficient to capture the relationship between explanatory variables and the response. Second, Partial Dependence (PD) plots and Individual Conditional Expectation (ICE) plots give biased results for the common situation of codependent variables and they rely on fitted models provided by the user. When the supplied model is a poor choice due to systematic bias or overfitting, PD/ICE plots provide little (if any) useful information.  
+
+To address these issues, we introduce a new strategy, called \spd{}, that does not depend on a user's fitted model, provides accurate results in the presence codependent variables, and is applicable to high dimensional settings. The strategy works by stratifying a data set into groups of observations that are similar, except in the variable of interest, through the use of a decision tree. Any fluctuations of the response variable within a group is likely due to the variable of interest. We apply \spd{} to a collection of simulations and case studies to show that \spd{} is a fast, reliable, and robust method for assessing partial dependence with clear advantages over state-of-the-art methods. 
+\end{abstract}
+
+\pagebreak	
 Examine CatStrat algorithm.
 
 \setlength{\algomargin}{5pt}
