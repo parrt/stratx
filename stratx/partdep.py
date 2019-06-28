@@ -614,22 +614,11 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
             row += 1
 
 
-def marginal_plot_(X, y, colname, targetname, ax, alpha=.1, show_regr_line=True, sort='ascending'):
-    if sort=='ascending':
-        sort_indexes = y.argsort()
-        sorted_ys = y.values[sort_indexes]
-        cats = X[colname].values[sort_indexes]
-    else:
-        cats = X[colname].values
-        sorted_ys = y
-
-    ax.scatter(cats, sorted_ys, alpha=alpha, label=None)
+def marginal_plot_(X, y, colname, targetname, ax, alpha=.1, show_regr_line=True):
+    ax.scatter(X[colname], y, alpha=alpha, label=None)
     ax.set_xlabel(colname)
     ax.set_ylabel(targetname)
     col = X[colname]
-
-    # ax.set_xticks(cats)
-    # ax.set_xticklabels(catnames_)
 
     if show_regr_line:
         r = LinearRegression()
@@ -640,15 +629,29 @@ def marginal_plot_(X, y, colname, targetname, ax, alpha=.1, show_regr_line=True,
         ax.text(min(xcol) * 1.02, max(y) * .95, f"$\\beta_{{{colname}}}$={r.coef_[0]:.3f}")
 
 
+def marginal_catplot_(X, y, colname, targetname, ax, catnames, alpha=.1):
+    catcodes, catnames_, catcode2name = getcats(X, colname, catnames)
+
+    ax.scatter(X[colname].values, y.values, alpha=alpha, label=None)
+    ax.set_xlabel(colname)
+    ax.set_ylabel(targetname)
+    # col = X[colname]
+    # cats = np.unique(col)
+
+    ax.set_xticks(catcodes)
+    ax.set_xticklabels(catnames_)
+
+
 def plot_catstratpd_gridsearch(X, y, colname, targetname,
                                min_samples_leaf_values=(2, 5, 10, 20, 30),
                                catnames=None,
-                               yrange=None,
-                               show_regr_line=False,
-                               sort='ascending'):
+                               yrange=None):
     ncols = len(min_samples_leaf_values)
     fig, axes = plt.subplots(1, ncols + 1,
                              figsize=((ncols + 1) * 2.5, 2.5))
+
+    marginal_catplot_(X, y, colname, targetname, catnames=catnames, ax=axes[0], alpha=0.05)
+
     col = 1
     for msl in min_samples_leaf_values:
         print(f"---------- min_samples_leaf={msl} ----------- ")
@@ -661,18 +664,13 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
                                 catnames=catnames,
                                 yrange=yrange,
                                 ntrees=1,
-                                sort=sort,
-                                show_xticks=True)
-            print(catcodes_)
-            print(catnames_)
+                                show_xticks=True,
+                                sort=False)
         except ValueError:
             axes[col].set_title(f"Can't gen: leafsz={msl}", fontsize=8)
         else:
             axes[col].set_title(f"leafsz={msl}, ignored={ignored / len(X):.2f}%", fontsize=9)
         col += 1
-
-    marginal_plot_(X, y, colname, targetname, ax=axes[0],
-                   show_regr_line=show_regr_line, sort=sort)
 
 
 def catwise_leaves(rf, X, y, colname, verbose):
@@ -737,12 +735,12 @@ def catwise_leaves(rf, X, y, colname, verbose):
 
 # only works for ints, not floats
 def plot_catstratpd(X, y,
-                    colname,       # X[colname] expected to be numeric codes
+                    colname,  # X[colname] expected to be numeric codes
                     targetname,
-                    catnames=None, # map of catcodes to catnames; converted to map if sequence passed
-                                   # must pass dict or series if catcodes are not 1..n contiguous
-                                   # None implies use np.unique(X[colname]) values
-                                   # Must be 0-indexed list of names if list
+                    catnames=None,  # map of catcodes to catnames; converted to map if sequence passed
+                    # must pass dict or series if catcodes are not 1..n contiguous
+                    # None implies use np.unique(X[colname]) values
+                    # Must be 0-indexed list of names if list
                     ax=None,
                     sort='ascending',
                     ntrees=1,
@@ -783,32 +781,7 @@ def plot_catstratpd(X, y,
                                    oob_score=False)
         rf.fit(X_synth.drop(colname,axis=1), y_synth)
 
-    if catnames is None or isinstance(catnames, pd.Series):
-        catcodes = np.unique(X[colname])
-        catnames = [None] * (max(catcodes) + 1)
-        for c in catcodes:
-            catnames[c] = c
-        catnames = np.array(catnames)
-    elif isinstance(catnames, dict):
-        catnames_ = [None] * (max(catnames.keys()) + 1)
-        catcodes = []
-        for code,name in catnames.items():
-            catcodes.append(code)
-            catnames_[code] = name
-        catcodes = np.array(catcodes)
-        catnames = np.array(catnames_)
-    elif not isinstance(catnames, dict):
-        # must be a list of names then
-        catcodes = []
-        catnames_ = [None] * len(catnames)
-        for cat,c in enumerate(catnames):
-            if c is not None:
-                catcodes.append(cat)
-            catnames_[cat] = c
-        catcodes = np.array(catcodes)
-        catnames = np.array(catnames_)
-    else:
-        raise ValueError("catnames must be None, 0-indexed list, or pd.Series")
+    catcodes, _, catcode2name = getcats(X, colname, catnames)
 
     # rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X.drop(colname, axis=1), y)
@@ -864,7 +837,7 @@ def plot_catstratpd(X, y,
     else:
         x_noise = np.zeros(shape=(nleaves,))
     for cat in sorted_catcodes:
-        if catnames[cat] is None: continue
+        if catcode2name[cat] is None: continue
         ax.scatter(x_noise + xloc, leaf_histos.iloc[cat] - min_avg_value,
                    alpha=alpha, marker='o', s=marker_size,
                    c=color)
@@ -877,7 +850,7 @@ def plot_catstratpd(X, y,
 
     ax.set_xticks(range(0, ncats))
     if show_xticks: # sometimes too many
-        ax.set_xticklabels(catnames[sorted_catcodes])
+        ax.set_xticklabels(catcode2name[sorted_catcodes])
     else:
         ax.set_xticklabels([])
         ax.tick_params(axis='x', which='both', bottom=False)
@@ -893,7 +866,42 @@ def plot_catstratpd(X, y,
         ax.set_ylim(*yrange)
 
     ycats = avg_per_cat[sorted_catcodes] - min_avg_value
-    return catcodes, catnames[sorted_catcodes], ycats, ignored
+    return catcodes, catcode2name[sorted_catcodes], ycats, ignored
+
+
+def getcats(X, colname, incoming_cats):
+    if incoming_cats is None or isinstance(incoming_cats, pd.Series):
+        catcodes = np.unique(X[colname])
+        catcode2name = [None] * (max(catcodes) + 1)
+        for c in catcodes:
+            catcode2name[c] = c
+        catcode2name = np.array(catcode2name)
+        catnames = catcodes
+    elif isinstance(incoming_cats, dict):
+        catnames_ = [None] * (max(incoming_cats.keys()) + 1)
+        catcodes = []
+        catnames = []
+        for code, name in incoming_cats.items():
+            catcodes.append(code)
+            catnames.append(name)
+            catnames_[code] = name
+        catcodes = np.array(catcodes)
+        catnames = np.array(catnames)
+        catcode2name = np.array(catnames_)
+    elif not isinstance(incoming_cats, dict):
+        # must be a list of names then
+        catcodes = []
+        catnames_ = [None] * len(incoming_cats)
+        for cat, c in enumerate(incoming_cats):
+            if c is not None:
+                catcodes.append(cat)
+            catnames_[cat] = c
+        catcodes = np.array(catcodes)
+        catcode2name = np.array(catnames_)
+        catnames = np.array(incoming_cats)
+    else:
+        raise ValueError("catnames must be None, 0-indexed list, or pd.Series")
+    return catcodes, catnames, catcode2name
 
 
 # -------------- B I N N I N G ---------------

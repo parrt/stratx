@@ -62,8 +62,8 @@ def savefig(filename, pad=0):
     # plt.savefig(f"images/{filename}.pdf")
     plt.savefig(f"images/{filename}.png", dpi=300)
 
-    # plt.tight_layout()
-    # plt.show()
+    plt.tight_layout()
+    plt.show()
 
     plt.close()
 
@@ -791,7 +791,8 @@ def meta_weather():
                             min_samples_leaf_values=[2,5,10,20,30],
                             nbins_values=[1,2],
                             yrange=(-10,10),
-                            isdiscrete=True)
+                            isdiscrete=True,
+                            alpha=.15)
     savefig(f"dayofyear_temp_meta")
 
 
@@ -828,7 +829,7 @@ def weight():
     plot_catstratpd(X, y, 'sex', 'weight', ax=ax,
                     min_samples_leaf=50,
                     alpha=.2,
-                    catnames={1:'F', 2:'M'},
+                    catnames={1: 'F', 2: 'M'},
                     yrange=(0, 5),
                     use_weighted_avg=True
                     )
@@ -1608,7 +1609,7 @@ if __name__ == '__main__':
     # multi_joint_distr()
     # bulldozer()
     # rent()
-    rent_grid()
+    # rent_grid()
     # rent_ntrees()
     # rent_extra_cols()
     # unsup_rent()
@@ -1618,7 +1619,7 @@ if __name__ == '__main__':
     # unsup_weight()
     # meta_weight()
     # weather()
-    # meta_weather()
+    meta_weather()
     # additivity()
     # meta_additivity()
     # bigX()
