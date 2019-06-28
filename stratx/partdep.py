@@ -415,6 +415,7 @@ def plot_stratpd(X, y, colname, targetname=None,
                  alpha=.4,
                  verbose=False
                  ):
+
     # print(f"Unique {colname} = {len(np.unique(X[colname]))}/{len(X)}")
     if supervised:
         rf = RandomForestRegressor(n_estimators=ntrees,
@@ -443,7 +444,7 @@ def plot_stratpd(X, y, colname, targetname=None,
     leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2, ignored = \
         collect_leaf_slopes(rf, X, y, colname, nbins=nbins, isdiscrete=isdiscrete, verbose=verbose)
     if True:
-        print(f"{'discrete ' if isdiscrete else ''}StratPD num samples ignored {ignored} for {colname}")
+        print(f"{'discrete ' if isdiscrete else ''}StratPD num samples ignored {ignored}/{len(X)} for {colname}")
 
 
     slope_at_x = avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes, leaf_sizes, use_weighted_avg)
@@ -550,41 +551,83 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
                             nbins_values=(1,2,3,4,5),
                             isdiscrete=False,
                             yrange=None,
-                            show_regr_line=False):
-    nrows = len(nbins_values)
+                            show_regr_line=False,
+                            marginal_alpha=.05,
+                            alpha=.1):
     ncols = len(min_samples_leaf_values)
-    fig, axes = plt.subplots(nrows, ncols + 1, figsize=((ncols + 1) * 2.5, nrows * 2.5))
-
-    row = 0
-    for i, nbins in enumerate(nbins_values):
-        marginal_plot(X, y, colname, targetname, ax=axes[row, 0], show_regr_line=show_regr_line)
+    if isdiscrete:
+        fig, axes = plt.subplots(1, ncols + 1,
+                                 figsize=((ncols + 1) * 2.5, 2.5))
+        marginal_plot_(X, y, colname, targetname, ax=axes[0],
+                       show_regr_line=show_regr_line, alpha=alpha)
         col = 1
         for msl in min_samples_leaf_values:
-            print(f"---------- min_samples_leaf={msl}, nbins={nbins:.2f} ----------- ")
+            print(
+                f"---------- min_samples_leaf={msl} ----------- ")
             try:
-                plot_stratpd(X, y, colname, targetname, ax=axes[row, col],
-                             nbins=nbins,
-                             min_samples_leaf=msl,
-                             isdiscrete=isdiscrete,
-                             yrange=yrange,
-                             ntrees=1)
+                uniq_x, curve, r2_at_x, ignored = \
+                    plot_stratpd(X, y, colname, targetname, ax=axes[col],
+                                 min_samples_leaf=msl,
+                                 isdiscrete=True,
+                                 yrange=yrange,
+                                 ntrees=1,
+                                 alpha=alpha)
             except ValueError:
-                axes[row, col].set_title(
-                    f"Can't gen: leafsz={msl}, nbins={nbins}",
+                axes[col].set_title(
+                    f"Can't gen: leafsz={msl}",
                     fontsize=8)
             else:
-                axes[row, col].set_title(
-                    f"leafsz={msl}, nbins={nbins}",
-                    fontsize=9)
+                axes[col].set_title(
+                    f"leafsz={msl}, ignored={ignored / len(X):.2f}%",fontsize=9)
             col += 1
-        row += 1
+
+    else:
+        nrows = len(nbins_values)
+        fig, axes = plt.subplots(nrows, ncols + 1,
+                                 figsize=((ncols + 1) * 2.5, nrows * 2.5))
+
+        row = 0
+        for i, nbins in enumerate(nbins_values):
+            marginal_plot_(X, y, colname, targetname, ax=axes[row, 0], show_regr_line=show_regr_line)
+            col = 1
+            for msl in min_samples_leaf_values:
+                print(f"---------- min_samples_leaf={msl}, nbins={nbins:.2f} ----------- ")
+                try:
+                    uniq_x, curve, r2_at_x, ignored = \
+                        plot_stratpd(X, y, colname, targetname, ax=axes[row, col],
+                                     nbins=nbins,
+                                     min_samples_leaf=msl,
+                                     isdiscrete=isdiscrete,
+                                     yrange=yrange,
+                                     ntrees=1)
+                except ValueError:
+                    axes[row, col].set_title(
+                        f"Can't gen: leafsz={msl}, nbins={nbins}",
+                        fontsize=8)
+                else:
+                    axes[row, col].set_title(
+                        f"leafsz={msl}, nbins={nbins},\nignored={ignored/len(X):.2f}%",
+                        fontsize=9)
+                col += 1
+            row += 1
 
 
-def marginal_plot(X, y, colname, targetname, ax, alpha=.1, show_regr_line=True):
-    ax.scatter(X[colname], y, alpha=alpha, label=None)
+def marginal_plot_(X, y, colname, targetname, ax, alpha=.1, show_regr_line=True, sort='ascending'):
+    if sort=='ascending':
+        sort_indexes = y.argsort()
+        sorted_ys = y.values[sort_indexes]
+        cats = X[colname].values[sort_indexes]
+    else:
+        cats = X[colname].values
+        sorted_ys = y
+
+    ax.scatter(cats, sorted_ys, alpha=alpha, label=None)
     ax.set_xlabel(colname)
     ax.set_ylabel(targetname)
     col = X[colname]
+
+    ax.set_xticks(cats)
+    ax.set_xticklabels(catnames_)
 
     if show_regr_line:
         r = LinearRegression()
@@ -593,6 +636,41 @@ def marginal_plot(X, y, colname, targetname, ax, alpha=.1, show_regr_line=True):
         yhat = r.predict(xcol.reshape(-1, 1))
         ax.plot(xcol, yhat, linewidth=1, c='orange', label=f"$\\beta_{{{colname}}}$")
         ax.text(min(xcol) * 1.02, max(y) * .95, f"$\\beta_{{{colname}}}$={r.coef_[0]:.3f}")
+
+
+def plot_catstratpd_gridsearch(X, y, colname, targetname,
+                               min_samples_leaf_values=(2, 5, 10, 20, 30),
+                               catnames=None,
+                               yrange=None,
+                               show_regr_line=False,
+                               sort='ascending'):
+    ncols = len(min_samples_leaf_values)
+    fig, axes = plt.subplots(1, ncols + 1,
+                             figsize=((ncols + 1) * 2.5, 2.5))
+    col = 1
+    for msl in min_samples_leaf_values:
+        print(f"---------- min_samples_leaf={msl} ----------- ")
+        if yrange is not None:
+            axes[col].set_ylim(yrange)
+        try:
+            catcodes_, catnames_, curve, ignored = \
+                plot_catstratpd(X, y, colname, targetname, ax=axes[col],
+                                min_samples_leaf=msl,
+                                catnames=catnames,
+                                yrange=yrange,
+                                ntrees=1,
+                                sort=sort,
+                                show_xticks=True)
+            print(catcodes_)
+            print(catnames_)
+        except ValueError:
+            axes[col].set_title(f"Can't gen: leafsz={msl}", fontsize=8)
+        else:
+            axes[col].set_title(f"leafsz={msl}, ignored={ignored / len(X):.2f}%", fontsize=9)
+        col += 1
+
+    marginal_plot_(X, y, colname, targetname, ax=axes[0],
+                   show_regr_line=show_regr_line, sort=sort)
 
 
 def catwise_leaves(rf, X, y, colname, verbose):
@@ -797,7 +875,7 @@ def plot_catstratpd(X, y,
 
     ax.set_xticks(range(0, ncats))
     if show_xticks: # sometimes too many
-        ax.set_xticklabels(catnames[sorted_indexes])
+        ax.set_xticklabels(catnames[sorted_catcodes])
     else:
         ax.set_xticklabels([])
         ax.tick_params(axis='x', which='both', bottom=False)
@@ -812,7 +890,8 @@ def plot_catstratpd(X, y,
     if yrange is not None:
         ax.set_ylim(*yrange)
 
-    return catcodes, avg_per_cat[sorted_catcodes]-min_avg_value, ignored
+    ycats = avg_per_cat[sorted_catcodes] - min_avg_value
+    return catcodes, catnames[sorted_catcodes], ycats, ignored
 
 
 # -------------- B I N N I N G ---------------

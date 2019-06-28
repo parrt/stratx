@@ -158,24 +158,37 @@ def rent():
     plt.close()
 
 
-def rent_alone():
+def rent_grid():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     df_rent = load_rent()
     df_rent = df_rent[-10_000:]  # get a small subsample
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
 
-    # plot_stratpd_gridsearch(X, y, 'bathrooms', 'price',
-    #                         min_samples_leaf_values=[10,20,30,40],#[2,5,10,20,30],
-    #                         nbins_values=[1,3],#,6,10],
-    #                         # min_samples_leaf_values=[5,6],
-    #                         # nbins_values=[5,6],
-    #                         yrange=(-500,3000),
-    #                         isdiscrete=False)
-    #
-    # plt.tight_layout()
-    # plt.show()
-    # return
+    plot_stratpd_gridsearch(X, y, 'latitude', 'price',
+                            min_samples_leaf_values=[5,10,30,50],
+                            yrange=(-500,3000),
+                            marginal_alpha=0.05
+                            )
+
+    savefig("latitude_meta")
+
+    plot_stratpd_gridsearch(X, y, 'bathrooms', 'price',
+                            min_samples_leaf_values=[5,10,30,50],
+                            yrange=(-500,3000),
+                            isdiscrete=True)
+
+    savefig("bathrooms_meta")
+
+
+
+
+def rent_alone():
+    print(f"----------- {inspect.stack()[0][3]} -----------")
+    df_rent = load_rent()
+    df_rent = df_rent[-10_000:]  # get a small subsample
+    X = df_rent.drop('price', axis=1)
+    y = df_rent['price']
 
     def onevar(colname, row, col, yrange=None, alpha=.2):
         uniq_x, curve, r2_at_x, ignored = \
@@ -532,7 +545,8 @@ def meta_boston():
     plot_stratpd_gridsearch(X, y, 'AGE', 'MEDV',
                             min_samples_leaf_values=[2,5,10,20,30],
                             nbins_values=[1,3,5,6,10],
-                            yrange=(-10,10))
+                            yrange=(-10,10),
+                            isdiscrete=True)
 
     # for nbins in range(6):
     #     plot_meta_multivar(X, y, colnames=['LSTAT', 'RM', 'CRIM', 'DIS'], targetname='MEDV',
@@ -554,7 +568,7 @@ def plot_meta_multivar(X, y, colnames, targetname, nbins, yranges=None):
 
     row = 0
     for i, colname in enumerate(colnames):
-        marginal_plot(X, y, colname, targetname, ax=axes[row, 0])
+        marginal_plot_(X, y, colname, targetname, ax=axes[row, 0])
         col = 2
         for msl in min_samples_leaf_values:
             print(
@@ -638,7 +652,7 @@ def weather():
     df_yr3['year'] = 1982
     df_raw = pd.concat([df_yr1, df_yr2, df_yr3], axis=0)
     df = df_raw.copy()
-    # catencoders = df_string_to_cat(df)
+    catencoders = df_string_to_cat(df_raw.copy())
     # states = catencoders['state']
     # print(states)
     #
@@ -661,18 +675,18 @@ def weather():
     Flip to N(-5,5) which is more realistic and we see sinusoid for both, even at
     scale. yep, the N(0,5) was obscuring sine for both. 
     """
-    # fig, ax = plt.subplots(1, 1, figsize=figsize)
-    # plot_stratpd(X, y, 'dayofyear', 'temperature', ax=ax,
-    #              # min_samples_leaf=30,
-    #              yrange=(-15, 15),
-    #              pdp_marker_size=2, alpha=.5, isdiscrete=True)
-    #
-    # savefig(f"dayofyear_vs_temp_stratpd")
-    # plt.close()
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    plot_stratpd(X, y, 'dayofyear', 'temperature', ax=ax,
+                 # min_samples_leaf=30,
+                 yrange=(-15, 15),
+                 pdp_marker_size=2, alpha=.5, isdiscrete=True)
+
+    savefig(f"dayofyear_vs_temp_stratpd")
+    plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_catstratpd(X, y, 'state', 'temperature', catnames=catnames,
-                    min_samples_leaf=20,
+                    min_samples_leaf=30,
                     alpha=.3,
                     style='strip',
                     ax=ax,
@@ -682,9 +696,6 @@ def weather():
 
     ax.set_title("StratPD")
     savefig(f"state_vs_temp_stratpd")
-    plt.close()
-
-    return
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
@@ -716,8 +727,8 @@ def weather():
     # plt.show()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    ax.scatter(X['state'], y, alpha=.05, s=20)
-    ax.set_xticklabels(np.concatenate([[''], catencoders['state'].values]))
+    ax.scatter(X['state'], y, alpha=.05, s=15)
+    ax.set_xticklabels(np.concatenate([[''], catencoders['state']]))
     ax.set_xlabel("state")
     ax.set_ylabel("temperature")
 
@@ -762,17 +773,25 @@ def meta_weather():
     df = df_raw.copy()
     print(df.head(5))
 
-    catencoders = df_string_to_cat(df)
-    df_cat_to_catcode(df)
+    names = {'CO': 5, 'CA': 10, 'AZ': 15, 'WA': 20}
+    df['state'] = df['state'].map(names)
+    catnames = {v:k for k,v in names.items()}
+
     X = df.drop('temperature', axis=1)
     y = df['temperature']
+
+    plot_catstratpd_gridsearch(X, y, 'state', 'temp',
+                               min_samples_leaf_values=[2, 5, 20, 40],
+                               catnames=catnames,
+                               yrange=(-5,60)
+                               )
+    savefig(f"state_temp_meta")
 
     plot_stratpd_gridsearch(X, y, 'dayofyear', 'temp',
                             min_samples_leaf_values=[2,5,10,20,30],
                             nbins_values=[1,2],
                             yrange=(-10,10),
                             isdiscrete=True)
-
     savefig(f"dayofyear_temp_meta")
 
 
@@ -967,7 +986,8 @@ def meta_weight():
     plot_stratpd_gridsearch(X, y, colname='height', targetname='weight', yrange=(0,150))
     savefig("height_weight_meta")
 
-    plot_stratpd_gridsearch(X, y, colname='education', targetname='weight', yrange=(-10,0))
+    plot_stratpd_gridsearch(X, y, colname='education', targetname='weight', yrange=(-10,0),
+                            isdiscrete=True)
     savefig("education_weight_meta")
 
 
@@ -1586,8 +1606,9 @@ def multi_joint_distr():
 if __name__ == '__main__':
     # FROM PAPER:
     # multi_joint_distr()
-    bulldozer()
+    # bulldozer()
     # rent()
+    # rent_grid()
     # rent_ntrees()
     # rent_extra_cols()
     # unsup_rent()
@@ -1595,14 +1616,14 @@ if __name__ == '__main__':
     # weight()
     # weight_ntrees()
     # unsup_weight()
+    # meta_weight()
     # weather()
+    meta_weather()
     # additivity()
     # meta_additivity()
     # bigX()
 
     # EXTRA GOODIES
-    # meta_weather()
-    # meta_weight()
     # meta_boston()
     # rent_alone()
     # cars()

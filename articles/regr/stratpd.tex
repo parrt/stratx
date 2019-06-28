@@ -559,6 +559,56 @@ There is a pathological case to consider during \xnc{} partitioning when trainin
 
 \subsection{Hyper parameters}
 
+There are two primary hyper parameters for \spd{} and these affect the partitioning of \xnc{} and $x_c$:
+
+\begin{enumerate}
+\item {\it min\_samples\_leaf}.  Decision tree and random forest training seeks \xnc{} feature space partitions (leaves) with at least {\it min\_samples\_leaf} observations. The default is 10 observations.
+\item {\it nbins}. The range of $x_c$ space for each partition (leaf) is split into equal-sized bins from which \spd{} obtains a piecewise linear approximation of $y$ on $x_c$. The default is 3 bins.
+\end{enumerate}
+
+The key idea behind \spd{} is stratification and so {\it min\_samples\_leaf} is the most important hyper parameter. Larger values lead to more observations in each $x_c$ bin, which gets more accurate $\hat{\beta}$ estimates. As {\it min\_samples\_leaf} gets larger, however, it is more likely that variables from \xnc{} are contributing to $y$.  Smaller values lead to much more confidence that fluctuations in $y$ are due solely to $x_c$, but smaller bins lead to higher variance among the $\hat{\beta}$ estimates. Fewer observations per leaf can also cause stratification to miss nonlinear and complex behavior between $y$ and $x_c$.
+
+We recommend that users compare \spd{} plots using a number of different combinations of hyper parameters {\it min\_samples\_leaf} and {\it nbins}; the {\tt stratx} package provides function {\tt plot\_stratpd\_gridsearch()} for this purpose. \figref{fig:rent_grid} illustrates that function operating on $x_{\it latitude}$ versus apartment price for the rent data set. Because the partial dependence curve is fairly stable in shape across a wide range of hyper parameters, \figref{fig:rent_grid} increases confidence in the depicted relationship between $x_{\it latitude}$ and $y$. On the other hand, the average $y$ value grows as {\it nbins} increases, which decreases confidence in the magnitude of the effect depicted.
+
+The ``ignored'' percentage shown for each graph dictates how many of the observations do not support conclusions about $x_c$'s effect on $y$. This occurs when all $x_c$ values within a bin are the same. As the size of the leaves grows, the size of the bins grows, which reduces the likelihood that all $x_c$ values will be the same.  The number of bins also changes the percentage of nonsupporting observations.
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.5]{images/latitude_meta.png}
+\caption{{\bf  rent latitude leaf size and nbins gridsearch}}
+\label{fig:rent_grid}
+\end{center}
+\end{figure}
+
+In the discrete case, \spd{} has no {\it nbins} hyper parameter as the discrete values delineate the bins in each leaf. \figref{fig:rent_grid} shows the results of {\tt plot\_stratpd\_gridsearch()} operating on $x_{\it bathrooms}$ versus rent price. The partial dependence curve is stable in {\it min\_samples\_leaf}.
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.5]{images/bathrooms_meta.png}
+\caption{{\bf rent bathrooms leaf size and nbins gridsearch}}
+\label{fig:rent_grid}
+\end{center}
+\end{figure}
+
+As with the discrete case of \spd{}, \cspd{} also does not have hyper parameter {\it nbins}. \figref{fig:weather_grid}.
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.5]{images/state_temp_meta.png}
+\caption{{\bf state vs temp leaf size gridsearch}}
+\label{fig:weather_grid}
+\end{center}
+\end{figure}
+
+
+As discussed in \secref{sec:dup}, multiple trees are useful for dealing with duplicate columns in our experience. To engage random forest functionality, rather than simple decision tree \xnc{} partitioning, there are three more hyper parameters:
+
+\begin{enumerate}
+\item {\it ntrees}. The number of trees in the random forest. The default is 1; i.e., a decision tree.
+\item {\it max\_features}. The number of features considered by the random forest when partitioning feature space. Decision trees use a default of 1.0, meaning consider all features, but random forests typically use $sqrt(p)$ or similar.
+\item {\it bootstrap}.  Sample \xnc{} to get $n$ observations with replacement. Decision trees use a default of false, so this must be true to get a random forest.
+\end{enumerate}
+
 \section{Discussion and Future Work}
 
 \todo{James: check this out!} with large $p$, RFs seek to minimize variance in $y$ which means weak predictors in \xnc{} appear less often in decision nodes meaning leaves won't squash weak predictors but that's ok. They don't explain much $y$ variance so regressing $y$ on $x_c$ in a leaf should give good partial dependence results.
