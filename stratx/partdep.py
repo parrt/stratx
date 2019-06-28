@@ -580,7 +580,7 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
                     fontsize=8)
             else:
                 axes[col].set_title(
-                    f"leafsz={msl}, ignored={ignored / len(X):.2f}%",fontsize=9)
+                    f"leafsz={msl}, ignored={100*ignored / len(X):.2f}%",fontsize=9)
             col += 1
 
     else:
@@ -608,7 +608,7 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
                         fontsize=8)
                 else:
                     axes[row, col].set_title(
-                        f"leafsz={msl}, nbins={nbins},\nignored={ignored/len(X):.2f}%",
+                        f"leafsz={msl}, nbins={nbins},\nignored={100*ignored/len(X):.2f}%",
                         fontsize=9)
                 col += 1
             row += 1

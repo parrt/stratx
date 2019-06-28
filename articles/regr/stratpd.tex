@@ -568,7 +568,7 @@ There are two primary hyper parameters for \spd{} and these affect the partition
 
 The key idea behind \spd{} is stratification and so {\it min\_samples\_leaf} is the most important hyper parameter. Larger values lead to more observations in each $x_c$ bin, which gets more accurate $\hat{\beta}$ estimates. As {\it min\_samples\_leaf} gets larger, however, it is more likely that variables from \xnc{} are contributing to $y$.  Smaller values lead to much more confidence that fluctuations in $y$ are due solely to $x_c$, but smaller bins lead to higher variance among the $\hat{\beta}$ estimates. Fewer observations per leaf can also cause stratification to miss nonlinear and complex behavior between $y$ and $x_c$.
 
-We recommend that users compare \spd{} plots using a number of different combinations of hyper parameters {\it min\_samples\_leaf} and {\it nbins}; the {\tt stratx} package provides function {\tt plot\_stratpd\_gridsearch()} for this purpose. \figref{fig:rent_grid} illustrates that function operating on $x_{\it latitude}$ versus apartment price for the rent data set. Because the partial dependence curve is fairly stable in shape across a wide range of hyper parameters, \figref{fig:rent_grid} increases confidence in the depicted relationship between $x_{\it latitude}$ and $y$. On the other hand, the average $y$ value grows as {\it nbins} increases, which decreases confidence in the magnitude of the effect depicted.
+We recommend that users compare \spd{} plots using a number of different combinations of hyper parameters {\it min\_samples\_leaf} and {\it nbins}; the {\tt stratx} package provides function {\tt plot\_stratpd\_gridsearch()} for this purpose. \figref{fig:rent_grid} illustrates that function operating on $x_{\it latitude}$ versus apartment price for the rent data set. Because the partial dependence curve is fairly stable in shape across a wide range of hyper parameters, \figref{fig:rent_grid} increases confidence in the depicted relationship between $x_{\it latitude}$ and $y$. On the other hand, the average $y$ value grows as {\it nbins} increases, which decreases confidence in the magnitude of the effect depicted, at least for larger {\it nbins} values.
 
 The ``ignored'' percentage shown for each graph dictates how many of the observations do not support conclusions about $x_c$'s effect on $y$. This occurs when all $x_c$ values within a bin are the same. As the size of the leaves grows, the size of the bins grows, which reduces the likelihood that all $x_c$ values will be the same.  The number of bins also changes the percentage of nonsupporting observations.
 
@@ -590,7 +590,7 @@ In the discrete case, \spd{} has no {\it nbins} hyper parameter as the discrete 
 \end{center}
 \end{figure}
 
-As with the discrete case of \spd{}, \cspd{} also does not have hyper parameter {\it nbins}. \figref{fig:weather_grid}.
+As with the discrete case of \spd{}, \cspd{} also does not have hyper parameter {\it nbins}. \figref{fig:weather_grid} shows $x_{\it state}$ versus temperature for the weather data set. With a {\it min\_samples\_leaf} of 2, roughly 1/4 of the data does not support any conclusions. More importantly, choosing a {\it min\_samples\_leaf} that is less than the number of categories means that \cspd{} cannot consider the relationship of all categories at once. At {\it min\_samples\_leaf}=20, \cspd{} finds the appropriate categorical partial dependence.
 
 \begin{figure}[htbp]
 \begin{center}
