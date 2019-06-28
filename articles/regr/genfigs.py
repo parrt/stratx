@@ -123,16 +123,16 @@ def rent():
 
     fig, axes = plt.subplots(2, 2, figsize=figsize)
 
-    axes[0, 0].set_title("Marginal", fontsize=10)
+    axes[0, 0].set_title("(a) Marginal", fontsize=10)
     axes[0, 0].set_xlim(0,8); axes[0, 0].set_xticks([0,2,4,6,8])
 
-    axes[0, 1].set_title("PD/ICE RF", fontsize=10)
+    axes[0, 1].set_title("(b) PD/ICE RF", fontsize=10)
     axes[0, 1].set_xlim(0,8); axes[0, 1].set_xticks([0,2,4,6,8])
 
-    axes[1, 0].set_title("PD/ICE SVM", fontsize=10)
+    axes[1, 0].set_title("(c) PD/ICE SVM", fontsize=10)
     axes[1, 0].set_xlim(0,8); axes[1, 0].set_xticks([0,2,4,6,8])
 
-    axes[1, 1].set_title("StratPD", fontsize=10)
+    axes[1, 1].set_title("(d) StratPD", fontsize=10)
     axes[1, 1].set_xlim(0,8); axes[1, 1].set_xticks([0,2,4,6,8])
 
     avg_per_baths = df_rent.groupby(colname).mean()['price']
@@ -813,35 +813,35 @@ def weight():
     y = df['weight']
     figsize = (2.5, 2.5)
 
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
-    plot_stratpd(X, y, 'education', 'weight', ax=ax,
-                 min_samples_leaf=2,
-                 isdiscrete=True,
-                 yrange=(-12, 0), alpha=.1, nlines=700, show_ylabel=False)
-    #    ax.get_yaxis().set_visible(False)
-    ax.set_title("StratPD", fontsize=10)
-    ax.set_xlim(10,18)
-    ax.set_xticks([10,12,14,16,18])
-    savefig(f"education_vs_weight_stratpd")
-
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
-    plot_stratpd(X, y, 'height', 'weight', ax=ax,
-                 min_samples_leaf=2,
-                 yrange=(0, 160), alpha=.1, nlines=700, show_ylabel=False)
-    #    ax.get_yaxis().set_visible(False)
-    ax.set_title("StratPD", fontsize=10)
-    savefig(f"height_vs_weight_stratpd")
-
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
-    plot_catstratpd(X, y, 'sex', 'weight', ax=ax,
-                    min_samples_leaf=50,
-                    alpha=.2,
-                    catnames={1: 'F', 2: 'M'},
-                    yrange=(0, 5),
-                    use_weighted_avg=True
-                    )
-    ax.set_title("StratPD", fontsize=10)
-    savefig(f"sex_vs_weight_stratpd")
+    # fig, ax = plt.subplots(1, 1, figsize=figsize)
+    # plot_stratpd(X, y, 'education', 'weight', ax=ax,
+    #              min_samples_leaf=2,
+    #              isdiscrete=True,
+    #              yrange=(-12, 0), alpha=.1, nlines=700, show_ylabel=False)
+    # #    ax.get_yaxis().set_visible(False)
+    # ax.set_title("StratPD", fontsize=10)
+    # ax.set_xlim(10,18)
+    # ax.set_xticks([10,12,14,16,18])
+    # savefig(f"education_vs_weight_stratpd")
+    #
+    # fig, ax = plt.subplots(1, 1, figsize=figsize)
+    # plot_stratpd(X, y, 'height', 'weight', ax=ax,
+    #              min_samples_leaf=2,
+    #              yrange=(0, 160), alpha=.1, nlines=700, show_ylabel=False)
+    # #    ax.get_yaxis().set_visible(False)
+    # ax.set_title("StratPD", fontsize=10)
+    # savefig(f"height_vs_weight_stratpd")
+    #
+    # fig, ax = plt.subplots(1, 1, figsize=figsize)
+    # plot_catstratpd(X, y, 'sex', 'weight', ax=ax,
+    #                 min_samples_leaf=50,
+    #                 alpha=.2,
+    #                 catnames={1: 'F', 2: 'M'},
+    #                 yrange=(0, 5),
+    #                 use_weighted_avg=True
+    #                 )
+    # ax.set_title("StratPD", fontsize=10)
+    # savefig(f"sex_vs_weight_stratpd")
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=ax,
@@ -853,6 +853,8 @@ def weight():
                     )
     ax.set_title("StratPD", fontsize=10)
     savefig(f"pregnant_vs_weight_stratpd")
+
+    return
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
@@ -1630,12 +1632,12 @@ if __name__ == '__main__':
     # FROM PAPER:
     # bulldozer()
     # rent()
-    rent_grid()
+    # rent_grid()
     # rent_ntrees()
     # rent_extra_cols()
     # unsup_rent()
     # unsup_boston()
-    # weight()
+    weight()
     # weight_ntrees()
     # unsup_weight()
     # meta_weight()
