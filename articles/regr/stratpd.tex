@@ -562,6 +562,8 @@ The \cspd{} plot for ModelID (sorted by sale price) closely matches the marginal
 
 There is a pathological case to consider during \xnc{} partitioning when training yields a decision tree with very large leaves, perhaps hundreds or thousands of observations.  This can happen when \xnc{} contains a single categorical variable or when the only strongly-predictive variable in \xnc{} is categorical.  The weather data set from Equation \ref{eq:weather} is a case in point. (See the marginal plot in \figref{fig:dayofyear_vs_temp}(a).) Choosing $x_c$=$x_{dayofyear}$, means \xnc{}=\{$x_{state}$,$x_{year}$\} and categorical $x_{state}$ accounts for the largest changes in temperature.   A decision tree splitting on just $x_{\it state}$, for example, would group all 365 daily temperature observations for a single state into just one leaf. (The marginal plot shows the complete sine waves but from the side, edge on.)   The \spd{} plot in \figref{fig:dayofyear_vs_temp}(b) clearly shows the sinusoidal temperature fluctuations over the year while holding the state and year constant. The PD/ICE plot also identifies the noisy sine waves, as shown in \figref{fig:dayofyear_vs_temp}(c), but is not smooth.
 
+\todo{state order is wrong again}
+
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.7]{images/state_vs_temp.png}
