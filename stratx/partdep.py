@@ -553,7 +553,8 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
                             yrange=None,
                             show_regr_line=False,
                             marginal_alpha=.05,
-                            alpha=.1):
+                            alpha=.1,
+                            use_weighted_avg=True):
     ncols = len(min_samples_leaf_values)
     if isdiscrete:
         fig, axes = plt.subplots(1, ncols + 1,
@@ -569,6 +570,7 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
                     plot_stratpd(X, y, colname, targetname, ax=axes[col],
                                  min_samples_leaf=msl,
                                  isdiscrete=True,
+                                 use_weighted_avg=use_weighted_avg,
                                  yrange=yrange,
                                  ntrees=1,
                                  alpha=alpha)
@@ -626,8 +628,8 @@ def marginal_plot_(X, y, colname, targetname, ax, alpha=.1, show_regr_line=True,
     ax.set_ylabel(targetname)
     col = X[colname]
 
-    ax.set_xticks(cats)
-    ax.set_xticklabels(catnames_)
+    # ax.set_xticks(cats)
+    # ax.set_xticklabels(catnames_)
 
     if show_regr_line:
         r = LinearRegression()
