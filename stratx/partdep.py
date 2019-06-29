@@ -446,7 +446,6 @@ def plot_stratpd(X, y, colname, targetname=None,
     if True:
         print(f"{'discrete ' if isdiscrete else ''}StratPD num samples ignored {ignored}/{len(X)} for {colname}")
 
-
     slope_at_x = avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes, leaf_sizes, use_weighted_avg)
     r2_at_x = avg_values_at_x(real_uniq_x, leaf_xranges, leaf_r2, leaf_sizes, use_weighted_avg)
     # Drop any nan slopes; implies we have no reliable data for that range
@@ -466,13 +465,13 @@ def plot_stratpd(X, y, colname, targetname=None,
         fig, ax = plt.subplots(1,1)
 
     # print(f"diff: {np.diff(uniq_x)}")
-    dx = slope_at_x[:-1] * np.diff(uniq_x)          # last slope is nan since no data after last x value
-    # print(f"dx: {dx}")
-    curve = np.cumsum(dx)                           # we lose one value here
+    dydx = slope_at_x[:-1] * np.diff(uniq_x)          # last slope is nan since no data after last x value
+    # print(f"dydx: {dydx}")
+    curve = np.cumsum(dydx)                           # we lose one value here
     # curve = cumtrapz(slope_at_x, x=uniq_x)          # we lose one value here
     curve = np.concatenate([np.array([0]), curve])  # add back the 0 we lost
     # print(slope_at_x, len(slope_at_x))
-    # print(dx)
+    # print(dydx)
     # print(uniq_x, len(uniq_x))
     # print(curve, len(curve))
 
