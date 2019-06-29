@@ -215,29 +215,44 @@ def meta_weight():
     plt.show()
 
 
-def rent():
+def load_rent():
+    """
+    *Data use rules prevent us from storing this data in this repo*. Download the data
+    set from Kaggle. (You must be a registered Kaggle user and must be logged in.)
+    Go to the Kaggle [data page](https://www.kaggle.com/c/two-sigma-connect-rental-listing-inquiries/data)
+    and save `train.json`
+    :return:
+    """
     df = pd.read_json('notebooks/data/train.json')
 
     # Create ideal numeric data set w/o outliers etc...
-    # Create ideal numeric data set w/o outliers etc...
     df = df[(df.price > 1_000) & (df.price < 10_000)]
-    df = df[df.bathrooms <= 6]  # There's almost no data for above
+    df = df[df.bathrooms <= 4]  # There's almost no data for above with small sample
     df = df[(df.longitude != 0) | (df.latitude != 0)]
     df = df[(df['latitude'] > 40.55) & (df['latitude'] < 40.94) &
             (df['longitude'] > -74.1) & (df['longitude'] < -73.67)]
+    df = df.sort_values('created')
     df_rent = df[['bedrooms', 'bathrooms', 'latitude', 'longitude', 'price']]
-    df_rent.head()
 
-    df_rent = df_rent[-10_000:]  # get a small subsample
+    return df_rent
+
+
+def rent():
+    df_rent = load_rent()
+    df_rent = df_rent[-10_000:]  # get a small subsample since SVM is slowwww
+    df_rent['latitude'] = (df_rent['latitude'] - 40) * 100  # shift so easier to read
 
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
 
     fig, ax = plt.subplots(1, 1, figsize=(3,3))
     min_samples_leaf = 10#0.0001
-    plot_stratpd(X=X, y=y, colname='longitude', targetname='price', ax=ax,
-                 nbins_smoothing=None,
-                 min_samples_leaf=min_samples_leaf)
+    plot_stratpd(X=X, closest_y=y, colname='bedrooms', targetname='price', ax=ax,
+                 nbins=2,
+                 nbins_smoothing=9,#10,
+                 min_samples_leaf=min_samples_leaf,
+                 show_slope_lines=False,
+                 yrange=(0,4000))
 
     plt.tight_layout()
     plt.show()
@@ -254,6 +269,9 @@ def meta_rent():
     df = df[(df['latitude'] > 40.55) & (df['latitude'] < 40.94) &
             (df['longitude'] > -74.1) & (df['longitude'] < -73.67)]
     df_rent = df[['bedrooms', 'bathrooms', 'latitude', 'longitude', 'price']]
+
+    df_rent['latitude'] = (df_rent['latitude'] - 40) * 100  # shift so easier to read
+
     df_rent.head()
 
     # df_rent = df_rent.sample(n=8000, random_state=111)  # get a small subsample

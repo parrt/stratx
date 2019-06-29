@@ -86,7 +86,10 @@ def dtree_leaf_samples(dtree, X:np.ndarray):
 
 
 def collect_point_betas(X, y, colname, leaves, nbins:int):
+    leaf_xranges = []
+    leaf_slopes = []
     point_betas = np.full(shape=(len(X),), fill_value=np.nan)
+
     for samples in leaves: # samples is set of obs indexes that live in a single leaf
         leaf_all_x = X.iloc[samples]
         leaf_x = leaf_all_x[colname].values
@@ -96,14 +99,10 @@ def collect_point_betas(X, y, colname, leaves, nbins:int):
         last_bin_extension = 0.0000001
         domain = (np.min(leaf_x), np.max(leaf_x)+last_bin_extension)
         bins = np.linspace(*domain, num=nbins+1, endpoint=True)
-#         print('bins', bins)
         binned_idx = np.digitize(leaf_x, bins) # bin number for values in leaf_x
-#         print(leaf_x, '->', leaf_y)
-#         print(f"leaf samples: {samples}, binned_idx: {binned_idx}")
         for b in range(1, len(bins)+1):
             bin_x = leaf_x[binned_idx == b]
             bin_y = leaf_y[binned_idx == b]
-            bin_obs_idx = np.digitize(bin_x, bins) # bin number for values in leaf_x
             if len(bin_x)<2: # either no or too little data
     #             print(f'ignoring {bin_x} -> {bin_y}')
                 continue
@@ -112,32 +111,35 @@ def collect_point_betas(X, y, colname, leaves, nbins:int):
     #             print(f'ignoring {bin_x} -> {bin_y} for same range')
                 continue
             lm = LinearRegression()
-    #         bin_x = bin_x.reshape(-1, 1)
             leaf_obs_idx_for_bin = np.nonzero((leaf_x>=bins[b-1]) &(leaf_x<bins[b]))
-            leaf_x_in_bin = leaf_x[leaf_obs_idx_for_bin]
             obs_idx = samples[leaf_obs_idx_for_bin]
-#             print("\tx in range", leaf_x_in_bin, leaf_obs_idx_for_bin, "obs idx", obs_idx)
             lm.fit(bin_x.reshape(-1, 1), bin_y)
-#             print(f'\tbin{b}', bin_x, '->', bin_y, 'beta', lm.coef_[0])
             point_betas[obs_idx] = lm.coef_[0]
-    return point_betas
+            leaf_slopes.append(lm.coef_[0])
+            leaf_xranges.append(r)
+
+    leaf_slopes = np.array(leaf_slopes)
+    return leaf_xranges, leaf_slopes, point_betas
 
 
-def plot_stratpd(X, y, colname, targetname, ntrees=1, min_samples_leaf=10, bootstrap=False,
+def plot_stratpd(X, closest_y, colname, targetname,
+                 ntrees=1, min_samples_leaf=10, bootstrap=False,
                  max_features=1.0,
-                 nbins=2, # piecewise binning
-                 nbins_smoothing=None, # binning of overall X[colname] space in plot
+                 nbins=2,  # piecewise binning
+                 nbins_smoothing=None,  # binning of overall X[colname] space in plot
                  ax=None,
                  xrange=None,
                  yrange=None,
                  title=None,
                  show_xlabel=True,
                  show_ylabel=True,
-                 show_xticks=True,
                  show_pdp_line=True,
+                 show_slope_lines=True,
                  pdp_marker_size=5,
                  pdp_line_width=.5,
                  slope_line_color='#2c7fb8',
+                 slope_line_width=.5,
+                 slope_line_alpha=.3,
                  pdp_line_color='black',
                  pdp_marker_color='black'
                  ):
@@ -145,15 +147,16 @@ def plot_stratpd(X, y, colname, targetname, ntrees=1, min_samples_leaf=10, boots
                                min_samples_leaf=min_samples_leaf,
                                bootstrap=bootstrap,
                                max_features=max_features)
-    rf.fit(X.drop(colname, axis=1), y)
+    rf.fit(X.drop(colname, axis=1), closest_y)
     leaves = leaf_samples(rf, X.drop(colname, axis=1))
     nnodes = rf.estimators_[0].tree_.node_count
+    print(rf)
     print(f"Partitioning 'x not {colname}': {nnodes} nodes in (first) tree, "
           f"{len(rf.estimators_)} trees, {len(leaves)} total leaves")
 
-    point_betas = collect_point_betas(X, y, colname, leaves, nbins)
+    leaf_xranges, leaf_slopes, point_betas = collect_point_betas(X, closest_y, colname, leaves, nbins)
     Xbetas = np.vstack([X[colname].values, point_betas]).T # get x_c, beta matrix
-    Xbetas = Xbetas[Xbetas[:,0].argsort()] # sort by x coordinate
+    # Xbetas = Xbetas[Xbetas[:,0].argsort()] # sort by x coordinate (not needed)
 
     x = Xbetas[:, 0]
     domain = (np.min(x), np.max(x))  # ignores any max(x) points as no slope info after that
@@ -162,6 +165,7 @@ def plot_stratpd(X, y, colname, targetname, ntrees=1, min_samples_leaf=10, boots
         bins_smoothing = np.array(sorted(np.unique(x)))
     else:
         bins_smoothing = np.linspace(*domain, num=nbins_smoothing + 1, endpoint=True)
+    last_x = bins_smoothing[-1]
 
     noinfo = np.isnan(Xbetas[:, 1])
     Xbetas = Xbetas[~noinfo]
@@ -169,25 +173,56 @@ def plot_stratpd(X, y, colname, targetname, ntrees=1, min_samples_leaf=10, boots
     avg_slopes_per_bin, _, _ = binned_statistic(x=Xbetas[:, 0], values=Xbetas[:, 1],
                                                 bins=bins_smoothing, statistic='mean')
 
+    # beware: avg_slopes_per_bin might have nan for empty bins
     bin_deltas = np.diff(bins_smoothing)
     avg_slopes_per_bin *= bin_deltas  # compute y delta across bin width to get up/down bump for this bin
 
-    # avg_slopes_per_bin might have nan for empty bins
-    print('bins     ', bins_smoothing)
+    print('bins_smoothing', bins_smoothing, ', deltas', bin_deltas)
     print('avgslopes', avg_slopes_per_bin)
-    has_slope_info = np.nonzero(~np.isnan(avg_slopes_per_bin))
-    # print('has_slope_info', has_slope_info)
-    # print('bins     ', bins[has_slope_info])
-    # print('avgslopes', avg_slopes_per_bin[has_slope_info])
-    curve = np.nancumsum(avg_slopes_per_bin)        # we lose one value here
-    curve = np.concatenate([np.array([0]), curve])  # add back the 0 we lost
+
+    # manual cumsum (not needed)
+    avg_slopes_per_bin = np.concatenate([np.array([0]), avg_slopes_per_bin])  # we start at 0 for min(x)
+    plot_x = []
+    plot_y = []
+    cumslope = 0.0
+    # avg_slopes_per_bin_ = np.concatenate([np.array([0]), avg_slopes_per_bin])  # we start at 0 for min(x)
+    for x, slope in zip(bins_smoothing, avg_slopes_per_bin):
+        if np.isnan(slope):
+            print(f"{x:5.1f},{cumslope:5.1f},{slope:5.1f} SKIP")
+            continue
+        cumslope += slope
+        plot_x.append(x)
+        plot_y.append(cumslope)
+        print(f"{x:5.1f},{cumslope:5.1f},{slope:5.1f}")
+
+    if False:
+        curve = np.nancumsum(avg_slopes_per_bin)
+        curve = np.concatenate([np.array([0]), curve])  # we start at 0 for min(x)
+
+        # TODO: ??? maybe not np.isnan(avg_slopes_per_bin) doesn't work for bins_smoothing; loses last bin
+        # as bins has 1 more element than avg_slopes_per_bin
+        # Add right edge of last bin
+
+        has_slope_info = np.nonzero(~np.isnan(avg_slopes_per_bin))
+        print('has_slope_info', has_slope_info, 'no slope', np.nonzero(np.isnan(curve)))
+        print('bins     ', bins_smoothing[has_slope_info])
+        print('curve', curve[has_slope_info])
+
+        bins_smoothing = bins_smoothing[has_slope_info]
+        curve = curve[has_slope_info]
+
+    # PLOT
 
     if ax is None:
         fig, ax = plt.subplots(1,1)
 
-    ax.scatter(bins_smoothing[has_slope_info], curve[has_slope_info], s=pdp_marker_size, c=pdp_marker_color)
+    # Draw bin left edge markers; ignore bins with no data (nan)
+    ax.scatter(plot_x, plot_y,
+               s=pdp_marker_size, c=pdp_marker_color)
+
     if show_pdp_line:
-        ax.plot(bins_smoothing[has_slope_info], curve[has_slope_info], lw=pdp_line_width, c=pdp_line_color)
+        ax.plot(plot_x, plot_y,
+                lw=pdp_line_width, c=pdp_line_color)
 
     if xrange is not None:
         ax.set_xlim(*xrange)
@@ -196,12 +231,33 @@ def plot_stratpd(X, y, colname, targetname, ntrees=1, min_samples_leaf=10, boots
     if yrange is not None:
         ax.set_ylim(*yrange)
 
+    if show_slope_lines:
+        segments = []
+        for xr, slope in zip(leaf_xranges, leaf_slopes):
+            w = np.abs(xr[1] - xr[0])
+            # widths.append(w)
+            y_delta = slope * (w)
+            closest_x_i = np.abs(bins_smoothing - xr[0]).argmin() # find curve point for xr[0]
+            closest_x = bins_smoothing[closest_x_i]
+            closest_y = curve[closest_x_i]
+            one_line = [(closest_x, closest_y), (closest_x+w, closest_y + y_delta)]
+            segments.append( one_line )
+
+        # if nlines is not None:
+        #     nlines = min(nlines, len(segments))
+        #     idxs = np.random.randint(low=0, high=len(segments), size=nlines)
+        #     segments = np.array(segments)[idxs]
+
+        lines = LineCollection(segments, alpha=slope_line_alpha, color=slope_line_color, linewidths=slope_line_width)
+        ax.add_collection(lines)
+
     if show_xlabel:
         ax.set_xlabel(colname)
     if show_ylabel:
         ax.set_ylabel(targetname)
     if title is not None:
         ax.set_title(title)
+
 
     return Xbetas
 
