@@ -10,6 +10,7 @@ from sklearn.linear_model import LinearRegression, Lasso
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
+from scipy.stats import binned_statistic
 
 import time
 from pandas.api.types import is_string_dtype, is_object_dtype, is_categorical_dtype, is_bool_dtype
@@ -82,6 +83,127 @@ def dtree_leaf_samples(dtree, X:np.ndarray):
     d = d.reset_index() # get 0..n-1 as column called index so we can do groupby
     sample_idxs_in_leaf = d.groupby('leafid')['index'].apply(lambda x: x.values)
     return sample_idxs_in_leaf
+
+
+def collect_point_betas(X, y, colname, leaves, nbins:int):
+    point_betas = np.full(shape=(len(X),), fill_value=np.nan)
+    for samples in leaves: # samples is set of obs indexes that live in a single leaf
+        leaf_all_x = X.iloc[samples]
+        leaf_x = leaf_all_x[colname].values
+        leaf_y = y.iloc[samples].values
+        # Right edge of last bin is max(leaf_x) but that means we ignore the last value
+        # every time. Tweak domain right edge a bit so max(leaf_x) falls in last bin.
+        last_bin_extension = 0.0000001
+        domain = (np.min(leaf_x), np.max(leaf_x)+last_bin_extension)
+        bins = np.linspace(*domain, num=nbins+1, endpoint=True)
+#         print('bins', bins)
+        binned_idx = np.digitize(leaf_x, bins) # bin number for values in leaf_x
+#         print(leaf_x, '->', leaf_y)
+#         print(f"leaf samples: {samples}, binned_idx: {binned_idx}")
+        for b in range(1, len(bins)+1):
+            bin_x = leaf_x[binned_idx == b]
+            bin_y = leaf_y[binned_idx == b]
+            bin_obs_idx = np.digitize(bin_x, bins) # bin number for values in leaf_x
+            if len(bin_x)<2: # either no or too little data
+    #             print(f'ignoring {bin_x} -> {bin_y}')
+                continue
+            r = (np.min(bin_x), np.max(bin_x))
+            if np.isclose(r[0], r[1]):
+    #             print(f'ignoring {bin_x} -> {bin_y} for same range')
+                continue
+            lm = LinearRegression()
+    #         bin_x = bin_x.reshape(-1, 1)
+            leaf_obs_idx_for_bin = np.nonzero((leaf_x>=bins[b-1]) &(leaf_x<bins[b]))
+            leaf_x_in_bin = leaf_x[leaf_obs_idx_for_bin]
+            obs_idx = samples[leaf_obs_idx_for_bin]
+#             print("\tx in range", leaf_x_in_bin, leaf_obs_idx_for_bin, "obs idx", obs_idx)
+            lm.fit(bin_x.reshape(-1, 1), bin_y)
+#             print(f'\tbin{b}', bin_x, '->', bin_y, 'beta', lm.coef_[0])
+            point_betas[obs_idx] = lm.coef_[0]
+    return point_betas
+
+
+def plot_stratpd(X, y, colname, targetname, ntrees=1, min_samples_leaf=10, bootstrap=False,
+                 max_features=1.0,
+                 nbins=2, # piecewise binning
+                 nbins_smoothing=None, # binning of overall X[colname] space in plot
+                 ax=None,
+                 xrange=None,
+                 yrange=None,
+                 title=None,
+                 show_xlabel=True,
+                 show_ylabel=True,
+                 show_xticks=True,
+                 show_pdp_line=True,
+                 pdp_marker_size=5,
+                 pdp_line_width=.5,
+                 slope_line_color='#2c7fb8',
+                 pdp_line_color='black',
+                 pdp_marker_color='black'
+                 ):
+    rf = RandomForestRegressor(n_estimators=ntrees,
+                               min_samples_leaf=min_samples_leaf,
+                               bootstrap=bootstrap,
+                               max_features=max_features)
+    rf.fit(X.drop(colname, axis=1), y)
+    leaves = leaf_samples(rf, X.drop(colname, axis=1))
+    nnodes = rf.estimators_[0].tree_.node_count
+    print(f"Partitioning 'x not {colname}': {nnodes} nodes in (first) tree, "
+          f"{len(rf.estimators_)} trees, {len(leaves)} total leaves")
+
+    point_betas = collect_point_betas(X, y, colname, leaves, nbins)
+    Xbetas = np.vstack([X[colname].values, point_betas]).T # get x_c, beta matrix
+    Xbetas = Xbetas[Xbetas[:,0].argsort()] # sort by x coordinate
+
+    x = Xbetas[:, 0]
+    domain = (np.min(x), np.max(x))  # ignores any max(x) points as no slope info after that
+    if nbins_smoothing is None:
+        # use all unique values as bin edges if no bin width
+        bins_smoothing = np.array(sorted(np.unique(x)))
+    else:
+        bins_smoothing = np.linspace(*domain, num=nbins_smoothing + 1, endpoint=True)
+
+    noinfo = np.isnan(Xbetas[:, 1])
+    Xbetas = Xbetas[~noinfo]
+
+    avg_slopes_per_bin, _, _ = binned_statistic(x=Xbetas[:, 0], values=Xbetas[:, 1],
+                                                bins=bins_smoothing, statistic='mean')
+
+    bin_deltas = np.diff(bins_smoothing)
+    avg_slopes_per_bin *= bin_deltas  # compute y delta across bin width to get up/down bump for this bin
+
+    # avg_slopes_per_bin might have nan for empty bins
+    print('bins     ', bins_smoothing)
+    print('avgslopes', avg_slopes_per_bin)
+    has_slope_info = np.nonzero(~np.isnan(avg_slopes_per_bin))
+    # print('has_slope_info', has_slope_info)
+    # print('bins     ', bins[has_slope_info])
+    # print('avgslopes', avg_slopes_per_bin[has_slope_info])
+    curve = np.nancumsum(avg_slopes_per_bin)        # we lose one value here
+    curve = np.concatenate([np.array([0]), curve])  # add back the 0 we lost
+
+    if ax is None:
+        fig, ax = plt.subplots(1,1)
+
+    ax.scatter(bins_smoothing[has_slope_info], curve[has_slope_info], s=pdp_marker_size, c=pdp_marker_color)
+    if show_pdp_line:
+        ax.plot(bins_smoothing[has_slope_info], curve[has_slope_info], lw=pdp_line_width, c=pdp_line_color)
+
+    if xrange is not None:
+        ax.set_xlim(*xrange)
+    else:
+        ax.set_xlim(*domain)
+    if yrange is not None:
+        ax.set_ylim(*yrange)
+
+    if show_xlabel:
+        ax.set_xlabel(colname)
+    if show_ylabel:
+        ax.set_ylabel(targetname)
+    if title is not None:
+        ax.set_title(title)
+
+    return Xbetas
 
 
 def discrete_xc_space(x: np.ndarray, y: np.ndarray, colname, verbose):
@@ -387,7 +509,7 @@ def avg_values_at_x(uniq_x, leaf_ranges, leaf_values, leaf_weights, use_weighted
     return avg_value_at_x
 
 
-def plot_stratpd(X, y, colname, targetname=None,
+def blort_plot_stratpd(X, y, colname, targetname=None,
                  ax=None,
                  ntrees=1,
                  max_features = 1.0,

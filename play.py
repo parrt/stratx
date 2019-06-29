@@ -228,56 +228,16 @@ def rent():
     df_rent = df[['bedrooms', 'bathrooms', 'latitude', 'longitude', 'price']]
     df_rent.head()
 
-    df_rent = df_rent.sample(n=10000)  # get a small subsample
+    df_rent = df_rent[-10_000:]  # get a small subsample
 
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
 
-    supervised = True
-
-    fig, axes = plt.subplots(4, 2, figsize=(8,16))
+    fig, ax = plt.subplots(1, 1, figsize=(3,3))
     min_samples_leaf = 10#0.0001
-    plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 0],
-                 min_samples_leaf=min_samples_leaf,
-                 alpha=.2, yrange=(0, 3000), nlines=1000, supervised=supervised)
-    # plot_catstratpd(X, y, 'bedrooms', 'price', cats=np.unique(X['bedrooms']),
-    #                 ax=axes[0, 1],
-    #                 min_samples_leaf=min_samples_leaf,
-    #                 alpha=1,
-    #                 # yrange=(0, 3000),
-    #                 sort=None)
-
-    plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 0],
-                 min_samples_leaf=min_samples_leaf,
-                 alpha=.2, yrange=(-500, 3000), nlines=1000, supervised=supervised)
-    # plot_catstratpd(X, y, 'bathrooms', 'price', cats=np.unique(X['bedrooms']),
-    #                 ax=axes[1, 1],
-    #                 min_samples_leaf=min_samples_leaf,
-    #                 alpha=1,
-    #                 # yrange=(0, 3000),
-    #                 sort=None)
-
-    # plot_stratpd(X, y, 'latitude', 'price', ax=axes[2, 0],
-    #              min_samples_leaf=min_samples_leaf,
-    #              alpha=.2, yrange=(0, 3000), nlines=1000, supervised=supervised)
-    # plot_stratpd(X, y, 'longitude', 'price', ax=axes[3, 0],
-    #              min_samples_leaf=min_samples_leaf,
-    #              alpha=.2, nlines=1000, supervised=supervised)
-
-    # rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
-    # rf.fit(X, y)
-
-    # rf = Lasso()
-    # rf.fit(X, y)
-
-    # ice = predict_ice(rf, X, 'bedrooms', 'price')
-    # plot_ice(ice, 'bedrooms', 'price', ax=axes[0, 1], alpha=.05, yrange=(0,3000))
-    # ice = predict_ice(rf, X, 'bathrooms', 'price')
-    # plot_ice(ice, 'bathrooms', 'price', alpha=.05, ax=axes[1, 1])
-    # ice = predict_ice(rf, X, 'latitude', 'price')
-    # plot_ice(ice, 'latitude', 'price', ax=axes[2, 1], alpha=.05, yrange=(0,1700))
-    # ice = predict_ice(rf, X, 'longitude', 'price')
-    # plot_ice(ice, 'longitude', 'price', ax=axes[3, 1], alpha=.05, yrange=(-750,3000))
+    plot_stratpd(X=X, y=y, colname='longitude', targetname='price', ax=ax,
+                 nbins_smoothing=None,
+                 min_samples_leaf=min_samples_leaf)
 
     plt.tight_layout()
     plt.show()
@@ -759,10 +719,10 @@ def foo():
 
 if __name__ == '__main__':
     # foo()
-    meta_additivity()
+    # meta_additivity()
     # imp_cars()
     # multi_joint_distr()
-    # rent()
+    rent()
     # meta_rent()
     # weight()
     # dep_weight()
