@@ -288,29 +288,54 @@ def plot_discrete_stratpd(X, y, colname, targetname,
     print(f"Partitioning 'x not {colname}': {nnodes} nodes in (first) tree, "
           f"{len(rf.estimators_)} trees, {len(leaves)} total leaves")
 
-    bin_betas, bin_counts = collect_bin_betas(X, y, colname, leaves)
-    # print(bin_counts)
+    if False: # fast for positive integers
+        leaf_xranges, leaf_slopes, bin_betas, bin_counts = \
+            collect_posint_betas(X, y, colname, leaves)
+        # print(bin_counts)
 
-    avg_slopes_per_bin = np.nanmean(bin_betas, axis=1)
+        avg_slopes_per_bin = np.nanmean(bin_betas, axis=1)
 
-    maxx = max(X[colname])
+        maxx = max(X[colname])
 
-    avg_slopes_per_bin_ = np.concatenate(
-        [np.array([0]), avg_slopes_per_bin[:-1]])  # drop last one and put 0 at front
-    print(avg_slopes_per_bin_)
-    pdpx = [] # track x,y together in case something y is nan
-    pdpy = []
-    cumslope = 0.0
-    for x, slope in zip(np.arange(0, maxx + 1), avg_slopes_per_bin_):
-        if np.isnan(slope):
-            print(f"{x:5.3f},{cumslope:5.1f},{slope:5.1f} SKIP")
-            continue
-        cumslope += slope
-        pdpx.append(x)
-        pdpy.append(cumslope)
-        print(f"{x:5.3f},{cumslope:5.1f},{slope:5.1f}")
-    pdpx = np.array(pdpx)
-    pdpy = np.array(pdpy)
+        avg_slopes_per_bin_ = np.concatenate(
+            [np.array([0]), avg_slopes_per_bin[:-1]])  # drop last one and put 0 at front
+        print(avg_slopes_per_bin_)
+        pdpx = [] # track x,y together in case something y is nan
+        pdpy = []
+        cumslope = 0.0
+        for x, slope in zip(np.arange(0, maxx + 1), avg_slopes_per_bin_):
+            if np.isnan(slope):
+                print(f"{x:5.3f},{cumslope:5.1f},{slope:5.1f} SKIP")
+                continue
+            cumslope += slope
+            pdpx.append(x)
+            pdpy.append(cumslope)
+            print(f"{x:5.3f},{cumslope:5.1f},{slope:5.1f}")
+        pdpx = np.array(pdpx)
+        pdpy = np.array(pdpy)
+    else:
+        leaf_xranges, leaf_sizes, leaf_slopes, ignored = \
+            collect_discrete_slopes(rf, X, y, colname)
+
+        print('leaf_xranges', leaf_xranges)
+        print('leaf_slopes', leaf_slopes)
+
+
+        real_uniq_x = np.array(sorted(np.unique(X[colname])))
+        if True:
+            print(f"{'discrete ' if isdiscrete else ''}StratPD num samples ignored {ignored}/{len(X)} for {colname}")
+
+        slope_at_x = avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes)
+        # Drop any nan slopes; implies we have no reliable data for that range
+        # Make sure to drop uniq_x values too :)
+        notnan_idx = ~np.isnan(slope_at_x) # should be same for slope_at_x and r2_at_x
+        slope_at_x = slope_at_x[notnan_idx]
+        pdpx = real_uniq_x[notnan_idx]
+
+        y_deltas = slope_at_x[:-1] * np.diff(pdpx)    # last slope is nan since no data after last x value
+        # print(f"y_deltas: {y_deltas}")
+        pdpy = np.cumsum(y_deltas)                    # we lose one value here
+        pdpy = np.concatenate([np.array([0]), pdpy])  # add back the 0 we lost
 
     # PLOT
 
@@ -333,24 +358,24 @@ def plot_discrete_stratpd(X, y, colname, targetname,
     if yrange is not None:
         ax.set_ylim(*yrange)
 
-    # if show_slope_lines:
-    #     segments = []
-    #     for xr, slope in zip(leaf_xranges, leaf_slopes):
-    #         w = np.abs(xr[1] - xr[0])
-    #         delta_y = slope * w
-    #         closest_x_i = np.abs(plot_x - xr[0]).argmin() # find curve point for xr[0]
-    #         closest_x = plot_x[closest_x_i]
-    #         closest_y = pdpy[closest_x_i]
-    #         one_line = [(closest_x, closest_y), (closest_x+w, closest_y + delta_y)]
-    #         segments.append( one_line )
-    #
-    #     # if nlines is not None:
-    #     #     nlines = min(nlines, len(segments))
-    #     #     idxs = np.random.randint(low=0, high=len(segments), size=nlines)
-    #     #     segments = np.array(segments)[idxs]
-    #
-    #     lines = LineCollection(segments, alpha=slope_line_alpha, color=slope_line_color, linewidths=slope_line_width)
-    #     ax.add_collection(lines)
+    if show_slope_lines:
+        segments = []
+        for xr, slope in zip(leaf_xranges, leaf_slopes):
+            w = np.abs(xr[1] - xr[0])
+            delta_y = slope * w
+            closest_x_i = np.abs(pdpx - xr[0]).argmin() # find curve point for xr[0]
+            closest_x = pdpx[closest_x_i]
+            closest_y = pdpy[closest_x_i]
+            one_line = [(closest_x, closest_y), (closest_x+w, closest_y + delta_y)]
+            segments.append( one_line )
+
+        # if nlines is not None:
+        #     nlines = min(nlines, len(segments))
+        #     idxs = np.random.randint(low=0, high=len(segments), size=nlines)
+        #     segments = np.array(segments)[idxs]
+
+        lines = LineCollection(segments, alpha=slope_line_alpha, color=slope_line_color, linewidths=slope_line_width)
+        ax.add_collection(lines)
 
     if show_xlabel:
         ax.set_xlabel(colname)
@@ -359,8 +384,24 @@ def plot_discrete_stratpd(X, y, colname, targetname,
     if title is not None:
         ax.set_title(title)
 
-def collect_bin_betas(X, y, colname, leaves):
+
+def collect_posint_betas(X, y, colname, leaves):
+    """
+    Only works for positive integers, not floats, not negatives. It's faster than generic
+    version.
+    :param X:
+    :param y:
+    :param colname:
+    :param leaves:
+    :return:
+    """
+
+    # TODO: actually am I assuming consecutive x values by storing in matrix
+    # by x start location of slope? probably.
+
     maxx = max(X[colname])
+    leaf_slopes = []
+    leaf_xranges = []
     bin_betas = np.full(shape=(maxx + 1, len(leaves)), fill_value=np.nan)
     bin_counts = np.zeros(shape=(maxx + 1, len(leaves)))
     for li, samples in enumerate(
@@ -383,24 +424,26 @@ def collect_bin_betas(X, y, colname, leaves):
 
         bin_deltas = np.diff(bins)
         y_deltas = np.diff(binavgs)
-        leaf_slopes = y_deltas / bin_deltas  # "rise over run"
-        leaf_xranges = np.array(list(zip(bins, bins[1:])))
+        leaf_bin_slopes = y_deltas / bin_deltas  # "rise over run"
+        leaf_slopes.extend(leaf_bin_slopes)
+        leaf_bin_xranges = np.array(list(zip(bins, bins[1:])))
+        leaf_xranges.extend(leaf_bin_xranges)
         #     print('bin_deltas',bin_deltas)
         #     print('y_deltas', y_deltas)
         #     print('leaf_slopes',leaf_slopes)
         #     print(leaf_xranges)
         leaf_betas = np.full(shape=(maxx + 1,), fill_value=np.nan)
-        leaf_betas[bins[:-1]] = leaf_slopes
+        leaf_betas[bins[:-1]] = leaf_bin_slopes
         bin_betas[:, li] = leaf_betas
         leaf_counts = np.zeros(shape=(maxx + 1,))
         leaf_counts[bins] = bcount[bins]
         bin_counts[:, li] = leaf_counts
     # print('bin_betas', bin_betas)
     # print('bin_counts', bin_counts)
-    return bin_betas, bin_counts
+    return leaf_xranges, leaf_slopes, bin_betas, bin_counts
 
 
-def blort_discrete_xc_space(x: np.ndarray, y: np.ndarray, colname, verbose):
+def discrete_xc_space(x: np.ndarray, y: np.ndarray, colname, verbose):
     """
     Use the categories within a leaf as the bins to dynamically change the bins,
     rather then using a fixed nbins hyper parameter. Group the leaf x,y by x
@@ -438,24 +481,10 @@ def blort_discrete_xc_space(x: np.ndarray, y: np.ndarray, colname, verbose):
     leaf_slopes = y_deltas / bin_deltas  # "rise over run"
     leaf_xranges = np.array(list(zip(uniq_x, uniq_x[1:])))
     leaf_sizes = xy['x'].value_counts().sort_index().values
-    leaf_r2 = np.full(shape=(len(uniq_x),), fill_value=np.nan) # unused
-
-    # Now strip out elements for non-consecutive x (ack! didn't work very well)
-    if False:
-        adj = np.where(bin_deltas == 1)[0]   # index of consecutive x values
-        if len(adj)==0: # no consecutive?
-            # print(f"ignore non-consecutive {len(x)} in discrete_xc_space")
-            ignored += len(x)
-            return np.array([]), np.array([]), np.array([]), np.array([]), ignored
-
-        leaf_slopes = leaf_slopes[adj]
-        leaf_xranges = leaf_xranges[adj]
-        leaf_sizes = leaf_sizes[adj]
-        leaf_r2 = leaf_r2[adj]
 
     stop = time.time()
     # print(f"discrete_xc_space {stop - start:.3f}s")
-    return leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2, ignored
+    return leaf_xranges, leaf_sizes, leaf_slopes, None, ignored
 
 
 def piecewise_xc_space(x: np.ndarray, y: np.ndarray, colname, nbins:int, verbose):
@@ -600,7 +629,7 @@ def old_piecewise_xc_space(x: np.ndarray, y: np.ndarray, colname, hires_min_samp
     return leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2, ignored
 
 
-def collect_leaf_slopes(rf, X, y, colname, nbins, isdiscrete, verbose):
+def collect_discrete_slopes(rf, X, y, colname, verbose=False):
     """
     For each leaf of each tree of the random forest rf (trained on all features
     except colname), get the samples then isolate the column of interest X values
@@ -610,12 +639,13 @@ def collect_leaf_slopes(rf, X, y, colname, nbins, isdiscrete, verbose):
     the slope won't be different. (We are ignoring the intercept of the regression line).
 
     Return for each leaf, the ranges of X[colname] partitions, num obs per leaf,
-    associated slope for each range, r^2 of line through points.
+    associated slope for each range
+
+    Only does discrete now after doing pointwise continuous slopes differently.
     """
     start = time.time()
-    leaf_slopes = []
-    leaf_r2 = []
-    leaf_xranges = []
+    leaf_deltas = []  # drop or rise between discrete x values
+    leaf_xranges = [] # drop is from one discrete value to next
     leaf_sizes = []
 
     ignored = 0
@@ -638,28 +668,25 @@ def collect_leaf_slopes(rf, X, y, colname, nbins, isdiscrete, verbose):
             ignored += len(leaf_x)
             continue
 
-        if isdiscrete:
-            leaf_xranges_, leaf_sizes_, leaf_slopes_, leaf_r2_, ignored_ = \
-                discrete_xc_space(leaf_x, leaf_y, colname=colname, verbose=verbose)
-        else:
-            leaf_xranges_, leaf_sizes_, leaf_slopes_, leaf_r2_, ignored_ = \
-                piecewise_xc_space(leaf_x, leaf_y, colname=colname, nbins=nbins, verbose=verbose)
+        leaf_xranges_, leaf_sizes_, leaf_slopes_, leaf_r2_, ignored_ = \
+            discrete_xc_space(leaf_x, leaf_y, colname=colname, verbose=verbose)
 
-        leaf_slopes.extend(leaf_slopes_)
-        leaf_r2.extend(leaf_r2_)
+        leaf_deltas.extend(leaf_slopes_)
         leaf_xranges.extend(leaf_xranges_)
         leaf_sizes.extend(leaf_sizes_)
         ignored += ignored_
 
     leaf_xranges = np.array(leaf_xranges)
     leaf_sizes = np.array(leaf_sizes)
-    leaf_slopes = np.array(leaf_slopes)
+    leaf_deltas = np.array(leaf_deltas)
+
+    leaf_slopes = leaf_deltas / (leaf_xranges[:,1] - leaf_xranges[:,0]) # "rise over run"
     stop = time.time()
     if verbose: print(f"collect_leaf_slopes {stop - start:.3f}s")
-    return leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2, ignored
+    return leaf_xranges, leaf_sizes, leaf_slopes, ignored
 
 
-def avg_values_at_x(uniq_x, leaf_ranges, leaf_values, leaf_weights, use_weighted_avg):
+def weighted_avg_values_at_x(uniq_x, leaf_ranges, leaf_values, leaf_weights, use_weighted_avg):
     """
     Compute the weighted average of leaf_values at each uniq_x.
 
@@ -697,6 +724,34 @@ def avg_values_at_x(uniq_x, leaf_ranges, leaf_values, leaf_weights, use_weighted
         avg_value_at_x = sum_values_at_x / sum_weights_at_x
     else:
         avg_value_at_x = np.nanmean(slopes, axis=1)
+
+    stop = time.time()
+    # print(f"avg_value_at_x {stop - start:.3f}s")
+    return avg_value_at_x
+
+def avg_values_at_x(uniq_x, leaf_ranges, leaf_values):
+    """
+    Compute the weighted average of leaf_values at each uniq_x.
+
+    Value at max(x) is NaN since we have no data beyond that point.
+    """
+    start = time.time()
+    nx = len(uniq_x)
+    nslopes = len(leaf_values)
+    slopes = np.zeros(shape=(nx, nslopes))
+    i = 0  # leaf index; we get a line for each leaf
+    # collect the slope for each range (taken from a leaf) as collection of
+    # flat lines across the same x range
+    for r, slope in zip(leaf_ranges, leaf_values):
+        s = np.full(nx, slope, dtype=float)
+        # now trim line so it's only valid in range r;
+        # don't set slope on right edge
+        s[np.where( (uniq_x < r[0]) | (uniq_x >= r[1]) )] = np.nan
+        slopes[:, i] = s
+        i += 1
+    # The value could be genuinely zero so we use nan not 0 for out-of-range
+    # Now average horiz across the matrix, averaging within each range
+    avg_value_at_x = np.nanmean(slopes, axis=1)
 
     stop = time.time()
     # print(f"avg_value_at_x {stop - start:.3f}s")
