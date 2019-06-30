@@ -316,23 +316,27 @@ def plot_discrete_stratpd(X, y, colname, targetname,
     else:
         leaf_xranges, leaf_sizes, leaf_slopes, ignored = \
             collect_discrete_slopes(rf, X, y, colname)
+        # leaf_xranges, leaf_sizes, leaf_slopes, _, ignored = \
+            #collect_leaf_slopes(rf, X, y, colname, nbins=0, isdiscrete=1, verbose=0)
 
         print('leaf_xranges', leaf_xranges)
         print('leaf_slopes', leaf_slopes)
-
 
         real_uniq_x = np.array(sorted(np.unique(X[colname])))
         if True:
             print(f"{'discrete ' if isdiscrete else ''}StratPD num samples ignored {ignored}/{len(X)} for {colname}")
 
         slope_at_x = avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes)
+        # slope_at_x = weighted_avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes, leaf_sizes, use_weighted_avg=True)
+
         # Drop any nan slopes; implies we have no reliable data for that range
         # Make sure to drop uniq_x values too :)
         notnan_idx = ~np.isnan(slope_at_x) # should be same for slope_at_x and r2_at_x
         slope_at_x = slope_at_x[notnan_idx]
         pdpx = real_uniq_x[notnan_idx]
 
-        y_deltas = slope_at_x[:-1] * np.diff(pdpx)    # last slope is nan since no data after last x value
+        dx = np.diff(pdpx)
+        y_deltas = slope_at_x[:-1] * dx  # last slope is nan since no data after last x value
         # print(f"y_deltas: {y_deltas}")
         pdpy = np.cumsum(y_deltas)                    # we lose one value here
         pdpy = np.concatenate([np.array([0]), pdpy])  # add back the 0 we lost
@@ -484,7 +488,7 @@ def discrete_xc_space(x: np.ndarray, y: np.ndarray, colname, verbose):
 
     stop = time.time()
     # print(f"discrete_xc_space {stop - start:.3f}s")
-    return leaf_xranges, leaf_sizes, leaf_slopes, None, ignored
+    return leaf_xranges, leaf_sizes, leaf_slopes, [], ignored
 
 
 def piecewise_xc_space(x: np.ndarray, y: np.ndarray, colname, nbins:int, verbose):
@@ -629,6 +633,65 @@ def old_piecewise_xc_space(x: np.ndarray, y: np.ndarray, colname, hires_min_samp
     return leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2, ignored
 
 
+def collect_leaf_slopes(rf, X, y, colname, nbins, isdiscrete, verbose):
+    """
+    For each leaf of each tree of the random forest rf (trained on all features
+    except colname), get the samples then isolate the column of interest X values
+    and the target y values. Perform another partition of X[colname] vs y and do
+    piecewise linear regression to get the slopes in various regions of X[colname].
+    We don't need to subtract the minimum y value before regressing because
+    the slope won't be different. (We are ignoring the intercept of the regression line).
+
+    Return for each leaf, the ranges of X[colname] partitions, num obs per leaf,
+    associated slope for each range, r^2 of line through points.
+    """
+    start = time.time()
+    leaf_slopes = []
+    leaf_r2 = []
+    leaf_xranges = []
+    leaf_sizes = []
+
+    ignored = 0
+
+    leaves = leaf_samples(rf, X.drop(colname, axis=1))
+
+    if verbose:
+        nnodes = rf.estimators_[0].tree_.node_count
+        print(f"Partitioning 'x not {colname}': {nnodes} nodes in (first) tree, "
+              f"{len(rf.estimators_)} trees, {len(leaves)} total leaves")
+
+    for samples in leaves:
+        one_leaf_samples = X.iloc[samples]
+        leaf_x = one_leaf_samples[colname].values
+        leaf_y = y.iloc[samples].values
+
+        r = (np.min(leaf_x), np.max(leaf_x))
+        if np.isclose(r[0], r[1]):
+            # print(f"ignoring xleft=xright @ {r[0]}")
+            ignored += len(leaf_x)
+            continue
+
+        if isdiscrete:
+            leaf_xranges_, leaf_sizes_, leaf_slopes_, leaf_r2_, ignored_ = \
+                discrete_xc_space(leaf_x, leaf_y, colname=colname, verbose=verbose)
+        else:
+            leaf_xranges_, leaf_sizes_, leaf_slopes_, leaf_r2_, ignored_ = \
+                piecewise_xc_space(leaf_x, leaf_y, colname=colname, nbins=nbins, verbose=verbose)
+
+        leaf_slopes.extend(leaf_slopes_)
+        leaf_r2.extend(leaf_r2_)
+        leaf_xranges.extend(leaf_xranges_)
+        leaf_sizes.extend(leaf_sizes_)
+        ignored += ignored_
+
+    leaf_xranges = np.array(leaf_xranges)
+    leaf_sizes = np.array(leaf_sizes)
+    leaf_slopes = np.array(leaf_slopes)
+    stop = time.time()
+    if verbose: print(f"collect_leaf_slopes {stop - start:.3f}s")
+    return leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2, ignored
+
+
 def collect_discrete_slopes(rf, X, y, colname, verbose=False):
     """
     For each leaf of each tree of the random forest rf (trained on all features
@@ -644,7 +707,7 @@ def collect_discrete_slopes(rf, X, y, colname, verbose=False):
     Only does discrete now after doing pointwise continuous slopes differently.
     """
     start = time.time()
-    leaf_deltas = []  # drop or rise between discrete x values
+    leaf_slopes = []  # drop or rise between discrete x values
     leaf_xranges = [] # drop is from one discrete value to next
     leaf_sizes = []
 
@@ -671,16 +734,15 @@ def collect_discrete_slopes(rf, X, y, colname, verbose=False):
         leaf_xranges_, leaf_sizes_, leaf_slopes_, leaf_r2_, ignored_ = \
             discrete_xc_space(leaf_x, leaf_y, colname=colname, verbose=verbose)
 
-        leaf_deltas.extend(leaf_slopes_)
+        leaf_slopes.extend(leaf_slopes_)
         leaf_xranges.extend(leaf_xranges_)
         leaf_sizes.extend(leaf_sizes_)
         ignored += ignored_
 
     leaf_xranges = np.array(leaf_xranges)
     leaf_sizes = np.array(leaf_sizes)
-    leaf_deltas = np.array(leaf_deltas)
+    leaf_slopes = np.array(leaf_slopes)
 
-    leaf_slopes = leaf_deltas / (leaf_xranges[:,1] - leaf_xranges[:,0]) # "rise over run"
     stop = time.time()
     if verbose: print(f"collect_leaf_slopes {stop - start:.3f}s")
     return leaf_xranges, leaf_sizes, leaf_slopes, ignored
@@ -817,8 +879,8 @@ def blort_plot_stratpd(X, y, colname, targetname=None,
     if True:
         print(f"{'discrete ' if isdiscrete else ''}StratPD num samples ignored {ignored}/{len(X)} for {colname}")
 
-    slope_at_x = avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes, leaf_sizes, use_weighted_avg)
-    r2_at_x = avg_values_at_x(real_uniq_x, leaf_xranges, leaf_r2, leaf_sizes, use_weighted_avg)
+    slope_at_x = weighted_avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes, leaf_sizes, use_weighted_avg)
+    r2_at_x = weighted_avg_values_at_x(real_uniq_x, leaf_xranges, leaf_r2, leaf_sizes, use_weighted_avg)
     # Drop any nan slopes; implies we have no reliable data for that range
     # Make sure to drop uniq_x values too :)
     notnan_idx = ~np.isnan(slope_at_x) # should be same for slope_at_x and r2_at_x

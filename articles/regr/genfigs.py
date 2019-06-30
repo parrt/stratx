@@ -694,13 +694,15 @@ def weather():
     """
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'dayofyear', 'temperature', ax=ax,
-                 # min_samples_leaf=30,
-                 yrange=(-15, 15),
-                 pdp_marker_size=2, alpha=.5, isdiscrete=True)
+                 min_samples_leaf=30,
+                 yrange=(-10, 10),
+                 pdp_marker_size=2, slope_line_alpha=.5, isdiscrete=True)
 
     ax.set_title("StratPD")
     savefig(f"dayofyear_vs_temp_stratpd")
     plt.close()
+
+    return
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_catstratpd(X, y, 'state', 'temperature', catnames=catnames,
@@ -1643,7 +1645,7 @@ if __name__ == '__main__':
     # FROM PAPER:
     # bulldozer()
     # rent()
-    rent_grid()
+    # rent_grid()
     # rent_ntrees()
     # rent_extra_cols()
     # unsup_rent()
@@ -1652,7 +1654,7 @@ if __name__ == '__main__':
     # weight_ntrees()
     # unsup_weight()
     # meta_weight()
-    # weather()
+    weather()
     # meta_weather()
     # additivity()
     # meta_additivity()
