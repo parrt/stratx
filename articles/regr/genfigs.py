@@ -177,14 +177,25 @@ def rent_grid():
 
     plot_stratpd_gridsearch(X, y, 'latitude', 'price',
                             min_samples_leaf_values=[5,10,30,50],
+                            nbins_smoothing=20,
                             yrange=(-500,3500),
                             marginal_alpha=0.05
                             )
 
     savefig("latitude_meta")
 
+    plot_stratpd_gridsearch(X, y, 'longitude', 'price',
+                            min_samples_leaf_values=[5,10,30,50],
+                            nbins_smoothing=20,
+                            yrange=(1000,-4000),
+                            marginal_alpha=0.05
+                            )
+
+    savefig("longitude_meta")
+
     plot_stratpd_gridsearch(X, y, 'bathrooms', 'price',
                             min_samples_leaf_values=[5,10,30,50],
+                            nbins_smoothing=20,
                             yrange=(-500,4000),
                             isdiscrete=True,
                             alpha=.15)
@@ -200,23 +211,21 @@ def rent_alone():
     y = df_rent['price']
 
     def onevar(colname, row, col, yrange=None, alpha=.2):
-        uniq_x, curve, r2_at_x, ignored = \
-            plot_stratpd(X, y, colname, 'price', ax=axes[row, col],
-                         min_samples_leaf=20,
-                         yrange=yrange,
-                         alpha=alpha,
-                         nbins=2,
-                         isdiscrete=False,
-                         pdp_marker_size=2 if row>=2 else 8,
-                         verbose=False)
-        uniq_x, curve, r2_at_x, ignored = \
-            plot_stratpd(X, y, colname, 'price', ax=axes[row, col+1],
-                         min_samples_leaf=20,
-                         yrange=yrange,
-                         alpha=alpha,
-                         isdiscrete=True,
-                         pdp_marker_size=2 if row>=2 else 8,
-                         verbose=False)
+        plot_stratpd(X, y, colname, 'price', ax=axes[row, col],
+                     min_samples_leaf=20,
+                     yrange=yrange,
+                     alpha=alpha,
+                     nbins=2,
+                     isdiscrete=False,
+                     pdp_marker_size=2 if row >= 2 else 8,
+                     verbose=False)
+        plot_stratpd(X, y, colname, 'price', ax=axes[row, col + 1],
+                     min_samples_leaf=20,
+                     yrange=yrange,
+                     alpha=alpha,
+                     isdiscrete=True,
+                     pdp_marker_size=2 if row >= 2 else 8,
+                     verbose=False)
 
     fig, axes = plt.subplots(4, 2, figsize=(5, 8))#, sharey=True)
     # for i in range(1, 4):
@@ -316,11 +325,10 @@ def plot_with_noise_col(df, colname, nbins):
     # STRATPD ON ROW 1
     X = df[features]
     y = df['price']
-    uniq_x, curve, r2_at_x, ignored = \
-        plot_stratpd(X, y, colname, 'price', ax=axes[0, 0], alpha=.15, show_xlabel=True,
-                     isdiscrete=colname in {'bedrooms', 'bathrooms'},
-                     nbins=nbins,
-                     show_ylabel=False)
+    plot_stratpd(X, y, colname, 'price', ax=axes[0, 0], alpha=.15, show_xlabel=True,
+                 isdiscrete=colname in {'bedrooms', 'bathrooms'},
+                 nbins=nbins,
+                 show_ylabel=False)
     axes[0, 0].set_ylim(-1000, 5000)
     axes[0, 0].set_title(f"StratPD")
 
@@ -406,7 +414,7 @@ def plot_with_dup_col(df, colname, nbins, min_samples_leaf):
     axes[0, 1].set_ylim(-1000, 5000)
     axes[0, 1].set_title(f"StratPD w/{type} col")
 
-    uniq_x_, curve_, r2_at_x_, ignored_ = \
+    leaf_xranges, leaf_slopes, Xbetas, ignored = \
         plot_stratpd(X, y, colname, 'price', ax=axes[0, 2], alpha=.15, show_xlabel=True,
                      min_samples_leaf=min_samples_leaf,
                      isdiscrete=colname in {'bedrooms', 'bathrooms'},
@@ -1082,10 +1090,11 @@ def meta_additivity():
             if col > 1: axes[row, col].get_yaxis().set_visible(False)
             plot_stratpd(X, y, 'x1', 'y', ax=axes[row, col],
                          min_samples_leaf=s,
-                         nbins=3,
+                         nbins=4,
+                         nbins_smoothing=50,
                          yrange=(-1, 1),
                          pdp_marker_size=1,
-                         alpha=.4,
+                         slope_line_alpha=.4,
                          show_ylabel=False,
                          show_xlabel=show_xlabel)
             if col == 0:
@@ -1169,14 +1178,16 @@ def bigX():
     # strip away x1/x3's effect upon y. When we do, x2 has no effect on y.
     # Ask what is net effect at every x2? 0.
     plot_stratpd(X, y, 'x2', 'y', ax=axes[0, 0], yrange=(-4, 4),
-                 min_samples_leaf=2,
-                 nbins=10,
+                 min_samples_leaf=20,
+                 nbins_smoothing=30,
+                 # nbins=10,
                  pdp_marker_size=2)
 
     # Partial deriv wrt x3 of 1_x3>=0 is 0 everywhere so result must be 0
     plot_stratpd(X, y, 'x3', 'y', ax=axes[1, 0], yrange=(-4, 4),
-                 min_samples_leaf=2,
-                 nbins=10,
+                 min_samples_leaf=20,
+                 nbins_smoothing=30,
+                 # nbins=10,
                  pdp_marker_size=2)
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
@@ -1480,7 +1491,7 @@ def multi_joint_distr():
     # np.random.seed(42)
     n = 1000
     min_samples_leaf_partition = 20
-    nbins = 2
+    nbins = 3
     df = pd.DataFrame(np.random.multivariate_normal([6, 6, 6, 6],
                                                     [
                                                         [1, 5, .7, 3],
@@ -1530,7 +1541,7 @@ def multi_joint_distr():
         for j in range(4):
             axes[i, j].set_xlim(0, 15)
 
-    uniqx, pdp, r2_at_x, ignored = \
+    leaf_xranges, leaf_slopes, Xbetas, pdpx, pdpy, ignored = \
         plot_stratpd(X, y, 'x1', 'y', ax=axes[1, 0], xrange=(0, 13),
                      # show_dx_line=True,
                      min_samples_leaf=min_samples_leaf_partition,
@@ -1539,37 +1550,37 @@ def multi_joint_distr():
 
 
     r = LinearRegression()
-    r.fit(uniqx.reshape(-1, 1), pdp)
+    r.fit(pdpx.reshape(-1, 1), pdpy)
     axes[1, 0].text(1, 10, f"Slope={r.coef_[0]:.2f}")
 
-    uniqx, pdp, r2_at_x, ignored = \
+    leaf_xranges, leaf_slopes, Xbetas, pdpx, pdpy, ignored = \
         plot_stratpd(X, y, 'x2', 'y', ax=axes[1, 1], xrange=(0, 13),
                      # show_dx_line=True,
                      min_samples_leaf=min_samples_leaf_partition,
                      nbins=nbins,
                      yrange=yrange, show_xlabel=False, show_ylabel=False)
     r = LinearRegression()
-    r.fit(uniqx.reshape(-1, 1), pdp)
+    r.fit(pdpx.reshape(-1, 1), pdpy)
     axes[1, 1].text(1, 10, f"Slope={r.coef_[0]:.2f}")
 
-    uniqx, pdp, r2_at_x, ignored = \
+    leaf_xranges, leaf_slopes, Xbetas, pdpx, pdpy, ignored = \
         plot_stratpd(X, y, 'x3', 'y', ax=axes[1, 2], xrange=(0, 13),
                      # show_dx_line=True,
                      min_samples_leaf=min_samples_leaf_partition,
                      nbins=nbins,
                      yrange=yrange, show_xlabel=False, show_ylabel=False)
     r = LinearRegression()
-    r.fit(uniqx.reshape(-1, 1), pdp)
+    r.fit(pdpx.reshape(-1, 1), pdpy)
     axes[1, 2].text(1, 10, f"Slope={r.coef_[0]:.2f}")
 
-    uniqx, pdp, r2_at_x, ignored = \
+    leaf_xranges, leaf_slopes, Xbetas, pdpx, pdpy, ignored = \
         plot_stratpd(X, y, 'x4', 'y', ax=axes[1, 3], xrange=(0, 13),
                      # show_dx_line=True,
                      min_samples_leaf=min_samples_leaf_partition,
                      nbins=nbins,
                      yrange=yrange, show_xlabel=False, show_ylabel=False)
     r = LinearRegression()
-    r.fit(uniqx.reshape(-1, 1), pdp)
+    r.fit(pdpx.reshape(-1, 1), pdpy)
     axes[1, 3].text(1, 10, f"Slope={r.coef_[0]:.2f}")
 
     axes[1, 0].text(1, 12, 'StratPD', horizontalalignment='left')
@@ -1632,12 +1643,12 @@ if __name__ == '__main__':
     # FROM PAPER:
     # bulldozer()
     # rent()
-    # rent_grid()
+    rent_grid()
     # rent_ntrees()
     # rent_extra_cols()
     # unsup_rent()
     # unsup_boston()
-    weight()
+    # weight()
     # weight_ntrees()
     # unsup_weight()
     # meta_weight()

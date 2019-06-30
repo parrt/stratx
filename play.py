@@ -240,19 +240,20 @@ def load_rent():
 def rent():
     df_rent = load_rent()
     df_rent = df_rent[-10_000:]  # get a small subsample since SVM is slowwww
-    df_rent['latitude'] = (df_rent['latitude'] - 40) * 100  # shift so easier to read
+    # df_rent['latitude'] = (df_rent['latitude'] - 40) * 100  # shift so easier to read
 
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
 
     fig, ax = plt.subplots(1, 1, figsize=(3,3))
-    min_samples_leaf = 10#0.0001
-    plot_stratpd(X=X, closest_y=y, colname='bedrooms', targetname='price', ax=ax,
-                 nbins=2,
-                 nbins_smoothing=9,#10,
-                 min_samples_leaf=min_samples_leaf,
-                 show_slope_lines=False,
-                 yrange=(0,4000))
+    plot_stratpd(X=X, y=y, colname='bedrooms', targetname='price', ax=ax,
+                 min_samples_leaf=10,
+                 nbins=5,
+                 nbins_smoothing=10,#None,#10,
+                 show_slope_lines=True,
+                 # yrange=(0,5000)
+                 isdiscrete=True
+                 )
 
     plt.tight_layout()
     plt.show()
@@ -273,8 +274,6 @@ def meta_rent():
     df_rent['latitude'] = (df_rent['latitude'] - 40) * 100  # shift so easier to read
 
     df_rent.head()
-
-    # df_rent = df_rent.sample(n=8000, random_state=111)  # get a small subsample
 
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
@@ -361,7 +360,7 @@ def weather():
                 df_ = df.sample(n=len(X), replace=True)
                 X_ = df_.drop('temperature', axis=1)
                 y_ = df_['temperature']
-                uniq_x, curve, r2_at_x = \
+                leaf_xranges, leaf_slopes, Xbetas, ignored = \
                     plot_stratpd(X_, y_, 'dayofyear', 'temperature', ax=axes[0][j],
                                  min_samples_leaf=2,
                                  min_samples_leaf_piecewise=sz,
@@ -509,7 +508,7 @@ def multi_joint_distr():
     min_samples_leaf = .005
     min_r2_hires = .3
     hires_window_width = .3
-    uniqx, pdp, r2_at_x = \
+    leaf_xranges, leaf_slopes, Xbetas, ignored = \
         plot_stratpd(X, y, 'x1', 'y', ax=axes[1,0], xrange=(0,12),
                      # show_dx_line=True,
                      min_samples_leaf=min_samples_leaf,
@@ -518,7 +517,7 @@ def multi_joint_distr():
     r.fit(uniqx.reshape(-1, 1), pdp)
     axes[1,0].text(3,7,f"Slope={r.coef_[0]:.2f}")
 
-    uniqx, pdp, r2_at_x = \
+    leaf_xranges, leaf_slopes, Xbetas, ignored = \
         plot_stratpd(X, y, 'x2', 'y', ax=axes[1,1], xrange=(0,12),
                      # show_dx_line=True,
                      min_samples_leaf=min_samples_leaf,
@@ -527,7 +526,7 @@ def multi_joint_distr():
     r.fit(uniqx.reshape(-1, 1), pdp)
     axes[1,1].text(3,7,f"Slope={r.coef_[0]:.2f}")
 
-    uniqx, pdp, r2_at_x = \
+    leaf_xranges, leaf_slopes, Xbetas, ignored = \
         plot_stratpd(X, y, 'x3', 'y', ax=axes[1,2], xrange=(0,12),
                      # show_dx_line=True,
                      min_samples_leaf=min_samples_leaf,
@@ -536,7 +535,7 @@ def multi_joint_distr():
     r.fit(uniqx.reshape(-1, 1), pdp)
     axes[1,2].text(3,7,f"Slope={r.coef_[0]:.2f}")
 
-    uniqx, pdp, r2_at_x = \
+    leaf_xranges, leaf_slopes, Xbetas, ignored = \
         plot_stratpd(X, y, 'x4', 'y', ax=axes[1,3], xrange=(0,12),
                      # show_dx_line=True,
                      min_samples_leaf=min_samples_leaf,

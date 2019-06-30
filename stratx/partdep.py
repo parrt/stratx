@@ -16,6 +16,7 @@ import time
 from pandas.api.types import is_string_dtype, is_object_dtype, is_categorical_dtype, is_bool_dtype
 from scipy.integrate import cumtrapz
 import scipy.stats as stats
+import inspect
 from dtreeviz.trees import *
 
 
@@ -86,6 +87,7 @@ def dtree_leaf_samples(dtree, X:np.ndarray):
 
 
 def collect_point_betas(X, y, colname, leaves, nbins:int):
+    ignored = 0
     leaf_xranges = []
     leaf_slopes = []
     point_betas = np.full(shape=(len(X),), fill_value=np.nan)
@@ -103,12 +105,13 @@ def collect_point_betas(X, y, colname, leaves, nbins:int):
         for b in range(1, len(bins)+1):
             bin_x = leaf_x[binned_idx == b]
             bin_y = leaf_y[binned_idx == b]
-            if len(bin_x)<2: # either no or too little data
-    #             print(f'ignoring {bin_x} -> {bin_y}')
+            if len(bin_x) < 2: # could be none or 1 in bin
+                ignored += len(bin_x)
                 continue
             r = (np.min(bin_x), np.max(bin_x))
-            if np.isclose(r[0], r[1]):
+            if len(bin_x)<2 or np.isclose(r[0], r[1]):
     #             print(f'ignoring {bin_x} -> {bin_y} for same range')
+                ignored += len(bin_x)
                 continue
             lm = LinearRegression()
             leaf_obs_idx_for_bin = np.nonzero((leaf_x>=bins[b-1]) &(leaf_x<bins[b]))
@@ -119,14 +122,15 @@ def collect_point_betas(X, y, colname, leaves, nbins:int):
             leaf_xranges.append(r)
 
     leaf_slopes = np.array(leaf_slopes)
-    return leaf_xranges, leaf_slopes, point_betas
+    return leaf_xranges, leaf_slopes, point_betas, ignored
 
 
-def plot_stratpd(X, closest_y, colname, targetname,
+def plot_stratpd(X, y, colname, targetname,
                  ntrees=1, min_samples_leaf=10, bootstrap=False,
                  max_features=1.0,
-                 nbins=2,  # piecewise binning
+                 nbins=3,  # piecewise binning
                  nbins_smoothing=None,  # binning of overall X[colname] space in plot
+                 isdiscrete=False,
                  ax=None,
                  xrange=None,
                  yrange=None,
@@ -143,20 +147,26 @@ def plot_stratpd(X, closest_y, colname, targetname,
                  pdp_line_color='black',
                  pdp_marker_color='black'
                  ):
+
+    if isdiscrete:
+        return plot_discrete_stratpd(**locals()) # delegate
+
     rf = RandomForestRegressor(n_estimators=ntrees,
                                min_samples_leaf=min_samples_leaf,
                                bootstrap=bootstrap,
                                max_features=max_features)
-    rf.fit(X.drop(colname, axis=1), closest_y)
+    rf.fit(X.drop(colname, axis=1), y)
     leaves = leaf_samples(rf, X.drop(colname, axis=1))
     nnodes = rf.estimators_[0].tree_.node_count
-    print(rf)
     print(f"Partitioning 'x not {colname}': {nnodes} nodes in (first) tree, "
           f"{len(rf.estimators_)} trees, {len(leaves)} total leaves")
 
-    leaf_xranges, leaf_slopes, point_betas = collect_point_betas(X, closest_y, colname, leaves, nbins)
+    leaf_xranges, leaf_slopes, point_betas, ignored = \
+        collect_point_betas(X, y, colname, leaves, nbins)
     Xbetas = np.vstack([X[colname].values, point_betas]).T # get x_c, beta matrix
     # Xbetas = Xbetas[Xbetas[:,0].argsort()] # sort by x coordinate (not needed)
+
+    print(f"{'discrete ' if isdiscrete else ''}StratPD num samples ignored {ignored}/{len(X)} for {colname}")
 
     x = Xbetas[:, 0]
     domain = (np.min(x), np.max(x))  # ignores any max(x) points as no slope info after that
@@ -165,7 +175,6 @@ def plot_stratpd(X, closest_y, colname, targetname,
         bins_smoothing = np.array(sorted(np.unique(x)))
     else:
         bins_smoothing = np.linspace(*domain, num=nbins_smoothing + 1, endpoint=True)
-    last_x = bins_smoothing[-1]
 
     noinfo = np.isnan(Xbetas[:, 1])
     Xbetas = Xbetas[~noinfo]
@@ -175,41 +184,27 @@ def plot_stratpd(X, closest_y, colname, targetname,
 
     # beware: avg_slopes_per_bin might have nan for empty bins
     bin_deltas = np.diff(bins_smoothing)
-    avg_slopes_per_bin *= bin_deltas  # compute y delta across bin width to get up/down bump for this bin
+    delta_ys = avg_slopes_per_bin * bin_deltas  # compute y delta across bin width to get up/down bump for this bin
 
     print('bins_smoothing', bins_smoothing, ', deltas', bin_deltas)
-    print('avgslopes', avg_slopes_per_bin)
+    print('avgslopes', delta_ys)
 
-    # manual cumsum (not needed)
-    avg_slopes_per_bin = np.concatenate([np.array([0]), avg_slopes_per_bin])  # we start at 0 for min(x)
+    # manual cumsum
+    delta_ys = np.concatenate([np.array([0]), delta_ys])  # we start at 0 for min(x)
     plot_x = []
     plot_y = []
     cumslope = 0.0
-    # avg_slopes_per_bin_ = np.concatenate([np.array([0]), avg_slopes_per_bin])  # we start at 0 for min(x)
-    for x, slope in zip(bins_smoothing, avg_slopes_per_bin):
+    # delta_ys_ = np.concatenate([np.array([0]), delta_ys])  # we start at 0 for min(x)
+    for x, slope in zip(bins_smoothing, delta_ys):
         if np.isnan(slope):
-            print(f"{x:5.1f},{cumslope:5.1f},{slope:5.1f} SKIP")
+            print(f"{x:5.3f},{cumslope:5.1f},{slope:5.1f} SKIP")
             continue
         cumslope += slope
         plot_x.append(x)
         plot_y.append(cumslope)
-        print(f"{x:5.1f},{cumslope:5.1f},{slope:5.1f}")
-
-    if False:
-        curve = np.nancumsum(avg_slopes_per_bin)
-        curve = np.concatenate([np.array([0]), curve])  # we start at 0 for min(x)
-
-        # TODO: ??? maybe not np.isnan(avg_slopes_per_bin) doesn't work for bins_smoothing; loses last bin
-        # as bins has 1 more element than avg_slopes_per_bin
-        # Add right edge of last bin
-
-        has_slope_info = np.nonzero(~np.isnan(avg_slopes_per_bin))
-        print('has_slope_info', has_slope_info, 'no slope', np.nonzero(np.isnan(curve)))
-        print('bins     ', bins_smoothing[has_slope_info])
-        print('curve', curve[has_slope_info])
-
-        bins_smoothing = bins_smoothing[has_slope_info]
-        curve = curve[has_slope_info]
+        print(f"{x:5.3f},{cumslope:5.1f},{slope:5.1f}")
+    plot_x = np.array(plot_x)
+    plot_y = np.array(plot_y)
 
     # PLOT
 
@@ -235,12 +230,11 @@ def plot_stratpd(X, closest_y, colname, targetname,
         segments = []
         for xr, slope in zip(leaf_xranges, leaf_slopes):
             w = np.abs(xr[1] - xr[0])
-            # widths.append(w)
-            y_delta = slope * (w)
-            closest_x_i = np.abs(bins_smoothing - xr[0]).argmin() # find curve point for xr[0]
-            closest_x = bins_smoothing[closest_x_i]
-            closest_y = curve[closest_x_i]
-            one_line = [(closest_x, closest_y), (closest_x+w, closest_y + y_delta)]
+            delta_y = slope * w
+            closest_x_i = np.abs(plot_x - xr[0]).argmin() # find curve point for xr[0]
+            closest_x = plot_x[closest_x_i]
+            closest_y = plot_y[closest_x_i]
+            one_line = [(closest_x, closest_y), (closest_x+w, closest_y + delta_y)]
             segments.append( one_line )
 
         # if nlines is not None:
@@ -258,11 +252,155 @@ def plot_stratpd(X, closest_y, colname, targetname,
     if title is not None:
         ax.set_title(title)
 
+    return leaf_xranges, leaf_slopes, Xbetas, plot_x, plot_y, ignored
 
-    return Xbetas
+
+def plot_discrete_stratpd(X, y, colname, targetname,
+                          ntrees=1, min_samples_leaf=10, bootstrap=False,
+                          max_features=1.0,
+                          nbins=3,  # piecewise binning
+                          nbins_smoothing=None,
+                          # binning of overall X[colname] space in plot
+                          isdiscrete=False,
+                          ax=None,
+                          xrange=None,
+                          yrange=None,
+                          title=None,
+                          show_xlabel=True,
+                          show_ylabel=True,
+                          show_pdp_line=True,
+                          show_slope_lines=True,
+                          pdp_marker_size=5,
+                          pdp_line_width=.5,
+                          slope_line_color='#2c7fb8',
+                          slope_line_width=.5,
+                          slope_line_alpha=.3,
+                          pdp_line_color='black',
+                          pdp_marker_color='black'
+                          ):
+    rf = RandomForestRegressor(n_estimators=ntrees,
+                               min_samples_leaf=min_samples_leaf,
+                               bootstrap=bootstrap,
+                               max_features=max_features)
+    rf.fit(X.drop(colname, axis=1), y)
+    leaves = leaf_samples(rf, X.drop(colname, axis=1))
+    nnodes = rf.estimators_[0].tree_.node_count
+    print(f"Partitioning 'x not {colname}': {nnodes} nodes in (first) tree, "
+          f"{len(rf.estimators_)} trees, {len(leaves)} total leaves")
+
+    bin_betas, bin_counts = collect_bin_betas(X, y, colname, leaves)
+    # print(bin_counts)
+
+    avg_slopes_per_bin = np.nanmean(bin_betas, axis=1)
+
+    maxx = max(X[colname])
+
+    avg_slopes_per_bin_ = np.concatenate(
+        [np.array([0]), avg_slopes_per_bin[:-1]])  # drop last one and put 0 at front
+    print(avg_slopes_per_bin_)
+    pdpx = [] # track x,y together in case something y is nan
+    pdpy = []
+    cumslope = 0.0
+    for x, slope in zip(np.arange(0, maxx + 1), avg_slopes_per_bin_):
+        if np.isnan(slope):
+            print(f"{x:5.3f},{cumslope:5.1f},{slope:5.1f} SKIP")
+            continue
+        cumslope += slope
+        pdpx.append(x)
+        pdpy.append(cumslope)
+        print(f"{x:5.3f},{cumslope:5.1f},{slope:5.1f}")
+    pdpx = np.array(pdpx)
+    pdpy = np.array(pdpy)
+
+    # PLOT
+
+    if ax is None:
+        fig, ax = plt.subplots(1,1)
+
+    # Draw bin left edge markers; ignore bins with no data (nan)
+    ax.scatter(pdpx, pdpy,
+               s=pdp_marker_size, c=pdp_marker_color)
+
+    if show_pdp_line:
+        ax.plot(pdpx, pdpy,
+                lw=pdp_line_width, c=pdp_line_color)
+
+    domain = (np.min(X[colname]), np.max(X[colname]))  # ignores any max(x) points as no slope info after that
+    if xrange is not None:
+        ax.set_xlim(*xrange)
+    else:
+        ax.set_xlim(*domain)
+    if yrange is not None:
+        ax.set_ylim(*yrange)
+
+    # if show_slope_lines:
+    #     segments = []
+    #     for xr, slope in zip(leaf_xranges, leaf_slopes):
+    #         w = np.abs(xr[1] - xr[0])
+    #         delta_y = slope * w
+    #         closest_x_i = np.abs(plot_x - xr[0]).argmin() # find curve point for xr[0]
+    #         closest_x = plot_x[closest_x_i]
+    #         closest_y = pdpy[closest_x_i]
+    #         one_line = [(closest_x, closest_y), (closest_x+w, closest_y + delta_y)]
+    #         segments.append( one_line )
+    #
+    #     # if nlines is not None:
+    #     #     nlines = min(nlines, len(segments))
+    #     #     idxs = np.random.randint(low=0, high=len(segments), size=nlines)
+    #     #     segments = np.array(segments)[idxs]
+    #
+    #     lines = LineCollection(segments, alpha=slope_line_alpha, color=slope_line_color, linewidths=slope_line_width)
+    #     ax.add_collection(lines)
+
+    if show_xlabel:
+        ax.set_xlabel(colname)
+    if show_ylabel:
+        ax.set_ylabel(targetname)
+    if title is not None:
+        ax.set_title(title)
+
+def collect_bin_betas(X, y, colname, leaves):
+    maxx = max(X[colname])
+    bin_betas = np.full(shape=(maxx + 1, len(leaves)), fill_value=np.nan)
+    bin_counts = np.zeros(shape=(maxx + 1, len(leaves)))
+    for li, samples in enumerate(
+        leaves):  # samples is set of obs indexes that live in a single leaf
+        leaf_all_x = X.iloc[samples]
+        leaf_x = leaf_all_x[colname].values
+        leaf_y = y.iloc[samples].values
+
+        bcount = np.bincount(leaf_x)
+        bsum = np.bincount(leaf_x, weights=leaf_y)  # sum ys for each values of x
+        binavgs = bsum / bcount
+        bins = np.nonzero(bsum)[0]
+        binavgs = binavgs[bins]
+        #     print()
+        #     print('leaf_x',list(leaf_x))
+        #     print('bcount',bcount)
+        #     print('bsum',bsum)
+        #     print('bins', bins)
+        #     print('binavgs',binavgs)
+
+        bin_deltas = np.diff(bins)
+        y_deltas = np.diff(binavgs)
+        leaf_slopes = y_deltas / bin_deltas  # "rise over run"
+        leaf_xranges = np.array(list(zip(bins, bins[1:])))
+        #     print('bin_deltas',bin_deltas)
+        #     print('y_deltas', y_deltas)
+        #     print('leaf_slopes',leaf_slopes)
+        #     print(leaf_xranges)
+        leaf_betas = np.full(shape=(maxx + 1,), fill_value=np.nan)
+        leaf_betas[bins[:-1]] = leaf_slopes
+        bin_betas[:, li] = leaf_betas
+        leaf_counts = np.zeros(shape=(maxx + 1,))
+        leaf_counts[bins] = bcount[bins]
+        bin_counts[:, li] = leaf_counts
+    # print('bin_betas', bin_betas)
+    # print('bin_counts', bin_counts)
+    return bin_betas, bin_counts
 
 
-def discrete_xc_space(x: np.ndarray, y: np.ndarray, colname, verbose):
+def blort_discrete_xc_space(x: np.ndarray, y: np.ndarray, colname, verbose):
     """
     Use the categories within a leaf as the bins to dynamically change the bins,
     rather then using a fixed nbins hyper parameter. Group the leaf x,y by x
@@ -726,6 +864,7 @@ def blort_plot_stratpd(X, y, colname, targetname=None,
 def plot_stratpd_gridsearch(X, y, colname, targetname,
                             min_samples_leaf_values=(2,5,10,20,30),
                             nbins_values=(1,2,3,4,5),
+                            nbins_smoothing=None,
                             isdiscrete=False,
                             yrange=None,
                             show_regr_line=False,
@@ -744,14 +883,13 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
             print(
                 f"---------- min_samples_leaf={msl} ----------- ")
             try:
-                uniq_x, curve, r2_at_x, ignored = \
+                leaf_xranges, leaf_slopes, Xbetas, plot_x, plot_y, ignored = \
                     plot_stratpd(X, y, colname, targetname, ax=axes[col],
                                  min_samples_leaf=msl,
                                  isdiscrete=True,
-                                 use_weighted_avg=use_weighted_avg,
                                  yrange=yrange,
                                  ntrees=1,
-                                 alpha=alpha)
+                                 slope_line_alpha=alpha)
             except ValueError:
                 axes[col].set_title(
                     f"Can't gen: leafsz={msl}",
@@ -775,11 +913,11 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
             for msl in min_samples_leaf_values:
                 print(f"---------- min_samples_leaf={msl}, nbins={nbins:.2f} ----------- ")
                 try:
-                    uniq_x, curve, r2_at_x, ignored = \
+                    leaf_xranges, leaf_slopes, Xbetas, plot_x, plot_y, ignored = \
                         plot_stratpd(X, y, colname, targetname, ax=axes[row, col],
                                      nbins=nbins,
                                      min_samples_leaf=msl,
-                                     isdiscrete=isdiscrete,
+                                     nbins_smoothing=nbins_smoothing,
                                      yrange=yrange,
                                      ntrees=1)
                 except ValueError:
