@@ -246,8 +246,8 @@ def rent():
     y = df_rent['price']
 
     fig, ax = plt.subplots(1, 1, figsize=(3,3))
-    plot_stratpd(X=X, y=y, colname='bathrooms', targetname='price', ax=ax,
-                 min_samples_leaf=10,
+    plot_stratpd(X=X, y=y, colname='longitude', targetname='price', ax=ax,
+                 min_samples_leaf=50,
                  nbins=5,
                  nbins_smoothing=10,#None,#10,
                  show_slope_lines=True,

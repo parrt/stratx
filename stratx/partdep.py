@@ -131,10 +131,12 @@ def plot_stratpd(X, y, colname, targetname,
                  nbins=3,  # piecewise binning
                  nbins_smoothing=None,  # binning of overall X[colname] space in plot
                  isdiscrete=False,
+                 supervised=True,
                  ax=None,
                  xrange=None,
                  yrange=None,
                  title=None,
+                 nlines=None,
                  show_xlabel=True,
                  show_ylabel=True,
                  show_pdp_line=True,
@@ -145,17 +147,37 @@ def plot_stratpd(X, y, colname, targetname,
                  slope_line_width=.5,
                  slope_line_alpha=.3,
                  pdp_line_color='black',
-                 pdp_marker_color='black'
+                 pdp_marker_color='black',
+                 verbose=False
                  ):
 
     if isdiscrete:
-        return plot_discrete_stratpd(**locals()) # delegate
+        args = locals()
+        del args['isdiscrete']
+        return plot_discrete_stratpd(**args) # delegate
 
-    rf = RandomForestRegressor(n_estimators=ntrees,
-                               min_samples_leaf=min_samples_leaf,
-                               bootstrap=bootstrap,
-                               max_features=max_features)
-    rf.fit(X.drop(colname, axis=1), y)
+    if supervised:
+        rf = RandomForestRegressor(n_estimators=ntrees,
+                                   min_samples_leaf=min_samples_leaf,
+                                   bootstrap=bootstrap,
+                                   max_features=max_features)
+        rf.fit(X.drop(colname, axis=1), y)
+        if verbose:
+            print(f"Strat Partition RF: missing {colname} training R^2 {rf.score(X.drop(colname, axis=1), y)}")
+
+    else:
+        """
+        Wow. Breiman's trick works in most cases. Falls apart on Boston housing MEDV target vs AGE
+        """
+        if verbose: print("USING UNSUPERVISED MODE")
+        X_synth, y_synth = conjure_twoclass(X)
+        rf = RandomForestRegressor(n_estimators=ntrees,
+                                   min_samples_leaf=min_samples_leaf,
+                                   bootstrap=bootstrap,
+                                   max_features=max_features,
+                                   oob_score=False)
+        rf.fit(X_synth.drop(colname, axis=1), y_synth)
+
     leaves = leaf_samples(rf, X.drop(colname, axis=1))
     nnodes = rf.estimators_[0].tree_.node_count
     print(f"Partitioning 'x not {colname}': {nnodes} nodes in (first) tree, "
@@ -186,25 +208,25 @@ def plot_stratpd(X, y, colname, targetname,
     bin_deltas = np.diff(bins_smoothing)
     delta_ys = avg_slopes_per_bin * bin_deltas  # compute y delta across bin width to get up/down bump for this bin
 
-    print('bins_smoothing', bins_smoothing, ', deltas', bin_deltas)
-    print('avgslopes', delta_ys)
+    # print('bins_smoothing', bins_smoothing, ', deltas', bin_deltas)
+    # print('avgslopes', delta_ys)
 
     # manual cumsum
     delta_ys = np.concatenate([np.array([0]), delta_ys])  # we start at 0 for min(x)
-    plot_x = []
-    plot_y = []
+    pdpx = []
+    pdpy = []
     cumslope = 0.0
     # delta_ys_ = np.concatenate([np.array([0]), delta_ys])  # we start at 0 for min(x)
     for x, slope in zip(bins_smoothing, delta_ys):
         if np.isnan(slope):
-            print(f"{x:5.3f},{cumslope:5.1f},{slope:5.1f} SKIP")
+            # print(f"{x:5.3f},{cumslope:5.1f},{slope:5.1f} SKIP")
             continue
         cumslope += slope
-        plot_x.append(x)
-        plot_y.append(cumslope)
-        print(f"{x:5.3f},{cumslope:5.1f},{slope:5.1f}")
-    plot_x = np.array(plot_x)
-    plot_y = np.array(plot_y)
+        pdpx.append(x)
+        pdpy.append(cumslope)
+        # print(f"{x:5.3f},{cumslope:5.1f},{slope:5.1f}")
+    pdpx = np.array(pdpx)
+    pdpy = np.array(pdpy)
 
     # PLOT
 
@@ -212,11 +234,11 @@ def plot_stratpd(X, y, colname, targetname,
         fig, ax = plt.subplots(1,1)
 
     # Draw bin left edge markers; ignore bins with no data (nan)
-    ax.scatter(plot_x, plot_y,
+    ax.scatter(pdpx, pdpy,
                s=pdp_marker_size, c=pdp_marker_color)
 
     if show_pdp_line:
-        ax.plot(plot_x, plot_y,
+        ax.plot(pdpx, pdpy,
                 lw=pdp_line_width, c=pdp_line_color)
 
     if xrange is not None:
@@ -231,9 +253,9 @@ def plot_stratpd(X, y, colname, targetname,
         for xr, slope in zip(leaf_xranges, leaf_slopes):
             w = np.abs(xr[1] - xr[0])
             delta_y = slope * w
-            closest_x_i = np.abs(plot_x - xr[0]).argmin() # find curve point for xr[0]
-            closest_x = plot_x[closest_x_i]
-            closest_y = plot_y[closest_x_i]
+            closest_x_i = np.abs(pdpx - xr[0]).argmin() # find curve point for xr[0]
+            closest_x = pdpx[closest_x_i]
+            closest_y = pdpy[closest_x_i]
             one_line = [(closest_x, closest_y), (closest_x+w, closest_y + delta_y)]
             segments.append( one_line )
 
@@ -252,7 +274,7 @@ def plot_stratpd(X, y, colname, targetname,
     if title is not None:
         ax.set_title(title)
 
-    return leaf_xranges, leaf_slopes, Xbetas, plot_x, plot_y, ignored
+    return leaf_xranges, leaf_slopes, Xbetas, pdpx, pdpy, ignored
 
 
 def plot_discrete_stratpd(X, y, colname, targetname,
@@ -261,11 +283,12 @@ def plot_discrete_stratpd(X, y, colname, targetname,
                           nbins=3,  # piecewise binning
                           nbins_smoothing=None,
                           # binning of overall X[colname] space in plot
-                          isdiscrete=False,
+                          supervised=True,
                           ax=None,
                           xrange=None,
                           yrange=None,
                           title=None,
+                          nlines=None,
                           show_xlabel=True,
                           show_ylabel=True,
                           show_pdp_line=True,
@@ -276,13 +299,31 @@ def plot_discrete_stratpd(X, y, colname, targetname,
                           slope_line_width=.5,
                           slope_line_alpha=.3,
                           pdp_line_color='black',
-                          pdp_marker_color='black'
+                          pdp_marker_color='black',
+                          verbose=False
                           ):
-    rf = RandomForestRegressor(n_estimators=ntrees,
-                               min_samples_leaf=min_samples_leaf,
-                               bootstrap=bootstrap,
-                               max_features=max_features)
-    rf.fit(X.drop(colname, axis=1), y)
+    if supervised:
+        rf = RandomForestRegressor(n_estimators=ntrees,
+                                   min_samples_leaf=min_samples_leaf,
+                                   bootstrap=bootstrap,
+                                   max_features=max_features)
+        rf.fit(X.drop(colname, axis=1), y)
+        if verbose:
+            print(f"Strat Partition RF: missing {colname} training R^2 {rf.score(X.drop(colname, axis=1), y)}")
+
+    else:
+        """
+        Wow. Breiman's trick works in most cases. Falls apart on Boston housing MEDV target vs AGE
+        """
+        if verbose: print("USING UNSUPERVISED MODE")
+        X_synth, y_synth = conjure_twoclass(X)
+        rf = RandomForestRegressor(n_estimators=ntrees,
+                                   min_samples_leaf=min_samples_leaf,
+                                   bootstrap=bootstrap,
+                                   max_features=max_features,
+                                   oob_score=False)
+        rf.fit(X_synth.drop(colname, axis=1), y_synth)
+
     leaves = leaf_samples(rf, X.drop(colname, axis=1))
     nnodes = rf.estimators_[0].tree_.node_count
     print(f"Partitioning 'x not {colname}': {nnodes} nodes in (first) tree, "
@@ -319,12 +360,12 @@ def plot_discrete_stratpd(X, y, colname, targetname,
         # leaf_xranges, leaf_sizes, leaf_slopes, _, ignored = \
             #collect_leaf_slopes(rf, X, y, colname, nbins=0, isdiscrete=1, verbose=0)
 
-        print('leaf_xranges', leaf_xranges)
-        print('leaf_slopes', leaf_slopes)
+        # print('leaf_xranges', leaf_xranges)
+        # print('leaf_slopes', leaf_slopes)
 
         real_uniq_x = np.array(sorted(np.unique(X[colname])))
         if True:
-            print(f"{'discrete ' if isdiscrete else ''}StratPD num samples ignored {ignored}/{len(X)} for {colname}")
+            print(f"discrete StratPD num samples ignored {ignored}/{len(X)} for {colname}")
 
         slope_at_x = avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes)
         # slope_at_x = weighted_avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes, leaf_sizes, use_weighted_avg=True)
@@ -387,6 +428,8 @@ def plot_discrete_stratpd(X, y, colname, targetname,
         ax.set_ylabel(targetname)
     if title is not None:
         ax.set_title(title)
+
+    return leaf_xranges, leaf_slopes, pdpx, pdpy, ignored
 
 
 def collect_posint_betas(X, y, colname, leaves):
@@ -984,29 +1027,29 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
                             nbins_smoothing=None,
                             isdiscrete=False,
                             yrange=None,
+                            xrange=None,
                             show_regr_line=False,
                             marginal_alpha=.05,
-                            alpha=.1,
+                            slope_line_alpha=.1,
                             use_weighted_avg=True):
     ncols = len(min_samples_leaf_values)
     if isdiscrete:
         fig, axes = plt.subplots(1, ncols + 1,
                                  figsize=((ncols + 1) * 2.5, 2.5))
         marginal_plot_(X, y, colname, targetname, ax=axes[0],
-                       show_regr_line=show_regr_line, alpha=alpha)
+                       show_regr_line=show_regr_line, alpha=marginal_alpha)
         axes[0].set_title("Marginal", fontsize=10)
         col = 1
         for msl in min_samples_leaf_values:
-            print(
-                f"---------- min_samples_leaf={msl} ----------- ")
+            print(f"---------- min_samples_leaf={msl} ----------- ")
             try:
-                leaf_xranges, leaf_slopes, Xbetas, plot_x, plot_y, ignored = \
-                    plot_stratpd(X, y, colname, targetname, ax=axes[col],
-                                 min_samples_leaf=msl,
-                                 isdiscrete=True,
-                                 yrange=yrange,
-                                 ntrees=1,
-                                 slope_line_alpha=alpha)
+                leaf_xranges, leaf_slopes, pdpx, pdpy, ignored = \
+                    plot_discrete_stratpd(X, y, colname, targetname, ax=axes[col],
+                                          min_samples_leaf=msl,
+                                          xrange=xrange,
+                                          yrange=yrange,
+                                          ntrees=1,
+                                          slope_line_alpha=slope_line_alpha)
             except ValueError:
                 axes[col].set_title(
                     f"Can't gen: leafsz={msl}",

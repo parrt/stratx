@@ -161,7 +161,7 @@ def rent():
     plot_ice(ice, colname, 'price', alpha=.3, ax=axes[1, 0], show_ylabel=True)
     axes[1, 0].set_ylim(-1000, 5000)
 
-    plot_stratpd(X, y, colname, 'price', ax=axes[1, 1], alpha=.1, show_ylabel=False, pdp_marker_size=8,
+    plot_stratpd(X, y, colname, 'price', ax=axes[1, 1], slope_line_alpha=.1, show_ylabel=False, pdp_marker_size=8,
                  isdiscrete=True)
     axes[1, 1].set_ylim(-1000, 5000)
 
@@ -198,7 +198,7 @@ def rent_grid():
                             nbins_smoothing=20,
                             yrange=(-500,4000),
                             isdiscrete=True,
-                            alpha=.15)
+                            slope_line_alpha=.15)
 
     savefig("bathrooms_meta")
 
@@ -210,22 +210,20 @@ def rent_alone():
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
 
-    def onevar(colname, row, col, yrange=None, alpha=.2):
+    def onevar(colname, row, col, yrange=None, slope_line_alpha=.2):
         plot_stratpd(X, y, colname, 'price', ax=axes[row, col],
                      min_samples_leaf=20,
                      yrange=yrange,
-                     alpha=alpha,
+                     slope_line_alpha=slope_line_alpha,
                      nbins=2,
                      isdiscrete=False,
-                     pdp_marker_size=2 if row >= 2 else 8,
-                     verbose=False)
+                     pdp_marker_size=2 if row >= 2 else 8)
         plot_stratpd(X, y, colname, 'price', ax=axes[row, col + 1],
                      min_samples_leaf=20,
                      yrange=yrange,
-                     alpha=alpha,
+                     slope_line_alpha=slope_line_alpha,
                      isdiscrete=True,
-                     pdp_marker_size=2 if row >= 2 else 8,
-                     verbose=False)
+                     pdp_marker_size=2 if row >= 2 else 8)
 
     fig, axes = plt.subplots(4, 2, figsize=(5, 8))#, sharey=True)
     # for i in range(1, 4):
@@ -236,7 +234,7 @@ def rent_alone():
     onevar('bedrooms', row=0, col=0, yrange=(0, 3000))
     onevar('bathrooms', row=1, col=0, yrange=(-500, 3000))
     onevar('latitude', row=2, col=0, yrange=(-500, 3000))
-    onevar('longitude', row=3, col=0, alpha=.08, yrange=(-3000, 1000))
+    onevar('longitude', row=3, col=0, slope_line_alpha=.08, yrange=(-3000, 1000))
 
     savefig(f"rent_all")
     plt.close()
@@ -276,26 +274,26 @@ def rent_int():
     plot_stratpd(X, y, 'bedrooms', 'price',
                  min_samples_leaf=stratpd_min_samples_leaf_partition,
                  nbins=1,
-                 ax=axes[0, 1], alpha=.2, show_ylabel=False)
+                 ax=axes[0, 1], slope_line_alpha=.2, show_ylabel=False)
     axes[0, 1].set_ylim(-500, 5000)
 
     plot_catstratpd(X, y, 'bedrooms', 'price', catnames=np.unique(X['bedrooms']),
                     min_samples_leaf=catstratpd_min_samples_leaf_partition,
-                    ax=axes[0, 2], alpha=.2, show_ylabel=False,
+                    ax=axes[0, 2], slope_line_alpha=.2, show_ylabel=False,
                     sort=None)
     axes[0, 2].set_ylim(-500, 5000)
 
     plot_stratpd(X, y, 'bathrooms', 'price',
                  min_samples_leaf=stratpd_min_samples_leaf_partition,
                  nbins=1,
-                 ax=axes[1, 1], alpha=.2, show_ylabel=False)
+                 ax=axes[1, 1], slope_line_alpha=.2, show_ylabel=False)
     axes[1, 1].set_ylim(-500, 5000)
 
     X['bathrooms'] = X['bathrooms'].astype(str)
     baths = np.unique(X['bathrooms'])
     plot_catstratpd(X, y, 'bathrooms', 'price', catnames=baths,
                     min_samples_leaf=catstratpd_min_samples_leaf_partition,
-                    ax=axes[1, 2], alpha=.2, show_ylabel=False,
+                    ax=axes[1, 2], slope_line_alpha=.2, show_ylabel=False,
                     sort=None)
     axes[1, 2].set_ylim(-500, 5000)
 
@@ -325,7 +323,7 @@ def plot_with_noise_col(df, colname, nbins):
     # STRATPD ON ROW 1
     X = df[features]
     y = df['price']
-    plot_stratpd(X, y, colname, 'price', ax=axes[0, 0], alpha=.15, show_xlabel=True,
+    plot_stratpd(X, y, colname, 'price', ax=axes[0, 0], slope_line_alpha=.15, show_xlabel=True,
                  isdiscrete=colname in {'bedrooms', 'bathrooms'},
                  nbins=nbins,
                  show_ylabel=False)
@@ -334,7 +332,7 @@ def plot_with_noise_col(df, colname, nbins):
 
     X = df[features_with_noise]
     y = df['price']
-    plot_stratpd(X, y, colname, 'price', ax=axes[0, 1], alpha=.15,
+    plot_stratpd(X, y, colname, 'price', ax=axes[0, 1], slope_line_alpha=.15,
                  isdiscrete=colname in {'bedrooms', 'bathrooms'},
                  nbins=nbins,
                  show_ylabel=False)
@@ -393,20 +391,20 @@ def plot_with_dup_col(df, colname, nbins, min_samples_leaf):
     X = df[features]
     y = df['price']
     print(f"shape is {X.shape}")
-    uniq_x, curve, r2_at_x, ignored = \
-        plot_stratpd(X, y, colname, 'price', ax=axes[0, 0], alpha=.15, show_xlabel=True,
-                     isdiscrete=colname in {'bedrooms', 'bathrooms'},
-                     min_samples_leaf=min_samples_leaf,
-                     nbins=nbins,
-                     show_ylabel=True,
-                     verbose=verbose)
+    plot_stratpd(X, y, colname, 'price', ax=axes[0, 0], slope_line_alpha=.15,
+                 show_xlabel=True,
+                 isdiscrete=colname in {'bedrooms', 'bathrooms'},
+                 min_samples_leaf=min_samples_leaf,
+                 nbins=nbins,
+                 show_ylabel=True,
+                 verbose=verbose)
     axes[0, 0].set_ylim(-1000, 5000)
     axes[0, 0].set_title(f"StratPD")
 
     X = df[features_with_dup]
     y = df['price']
     print(f"shape with dup is {X.shape}")
-    plot_stratpd(X, y, colname, 'price', ax=axes[0, 1], alpha=.15, show_ylabel=False,
+    plot_stratpd(X, y, colname, 'price', ax=axes[0, 1], slope_line_alpha=.15, show_ylabel=False,
                  min_samples_leaf=min_samples_leaf,
                  isdiscrete=colname in {'bedrooms','bathrooms'},
                  nbins=nbins,
@@ -414,17 +412,16 @@ def plot_with_dup_col(df, colname, nbins, min_samples_leaf):
     axes[0, 1].set_ylim(-1000, 5000)
     axes[0, 1].set_title(f"StratPD w/{type} col")
 
-    leaf_xranges, leaf_slopes, Xbetas, ignored = \
-        plot_stratpd(X, y, colname, 'price', ax=axes[0, 2], alpha=.15, show_xlabel=True,
-                     min_samples_leaf=min_samples_leaf,
-                     isdiscrete=colname in {'bedrooms', 'bathrooms'},
-                     show_ylabel=False,
-                     ntrees=15,
-                     max_features=2,
-                     bootstrap=False,
-                     nbins=nbins,
-                     verbose=verbose
-                     )
+    plot_stratpd(X, y, colname, 'price', ax=axes[0, 2], slope_line_alpha=.15, show_xlabel=True,
+                 min_samples_leaf=min_samples_leaf,
+                 isdiscrete=colname in {'bedrooms', 'bathrooms'},
+                 show_ylabel=False,
+                 ntrees=15,
+                 max_features=2,
+                 bootstrap=False,
+                 nbins=nbins,
+                 verbose=verbose
+                 )
     axes[0, 2].set_ylim(-1000, 5000)
     axes[0, 2].set_title(f"StratPD w/{type} col")
     axes[0, 2].text(.2, 4000, "ntrees=15")
@@ -465,7 +462,7 @@ def plot_with_dup_col(df, colname, nbins, min_samples_leaf):
     axes[1, 2].set_title(f"PD/ICE w/{type} col")
     axes[1, 2].text(.2, 4000, "Cannot compensate")
 
-    print(f"max curve {np.max(curve):.0f}, max curve with dup {np.max(curve_):.0f}")
+    # print(f"max curve {np.max(curve):.0f}, max curve with dup {np.max(curve_):.0f}")
 
     axes[1, 2].get_xaxis().set_visible(False)
     axes[1, 2].get_yaxis().set_visible(False)
@@ -517,7 +514,7 @@ def rent_ntrees():
     def onevar(colname, row, yrange=None):
         alphas = [.1,.08,.05,.04]
         for i, t in enumerate(trees):
-            plot_stratpd(X, y, colname, 'price', ax=axes[row, i], alpha=alphas[i],
+            plot_stratpd(X, y, colname, 'price', ax=axes[row, i], slope_line_alpha=alphas[i],
                          # min_samples_leaf=20,
                          yrange=yrange,
                          supervised=supervised,
@@ -620,14 +617,14 @@ def unsup_rent():
 
     fig, axes = plt.subplots(3, 2, figsize=(4, 6))
 
-    plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 0], yrange=(-500,4000), alpha=.2, isdiscrete=True, supervised=False)
-    plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 1], yrange=(-500,4000), alpha=.2, isdiscrete=True, supervised=True)
+    plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 0], yrange=(-500,4000), slope_line_alpha=.2, isdiscrete=True, supervised=False)
+    plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 1], yrange=(-500,4000), slope_line_alpha=.2, isdiscrete=True, supervised=True)
 
-    plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 0], yrange=(-500,4000), alpha=.2, isdiscrete=True, supervised=False)
-    plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 1], yrange=(-500,4000), alpha=.2, isdiscrete=True, supervised=True)
+    plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 0], yrange=(-500,4000), slope_line_alpha=.2, isdiscrete=True, supervised=False)
+    plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 1], yrange=(-500,4000), slope_line_alpha=.2, isdiscrete=True, supervised=True)
 
-    plot_stratpd(X, y, 'latitude', 'price', nbins=2, ax=axes[2, 0], yrange=(-500,4000), alpha=.2, supervised=False)
-    plot_stratpd(X, y, 'latitude', 'price', nbins=2, ax=axes[2, 1], yrange=(-500,4000), alpha=.2, supervised=True)
+    plot_stratpd(X, y, 'latitude', 'price', nbins=2, ax=axes[2, 0], yrange=(-500,4000), slope_line_alpha=.2, supervised=False)
+    plot_stratpd(X, y, 'latitude', 'price', nbins=2, ax=axes[2, 1], yrange=(-500,4000), slope_line_alpha=.2, supervised=True)
 
     axes[0, 0].set_title("Unsupervised")
     axes[0, 1].set_title("Supervised")
@@ -694,15 +691,12 @@ def weather():
     """
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'dayofyear', 'temperature', ax=ax,
-                 min_samples_leaf=30,
                  yrange=(-10, 10),
                  pdp_marker_size=2, slope_line_alpha=.5, isdiscrete=True)
 
     ax.set_title("StratPD")
     savefig(f"dayofyear_vs_temp_stratpd")
     plt.close()
-
-    return
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_catstratpd(X, y, 'state', 'temperature', catnames=catnames,
@@ -711,7 +705,7 @@ def weather():
                     style='strip',
                     ax=ax,
                     yrange=(-2, 60),
-                    use_weighted_avg=True
+                    use_weighted_avg=False
                     )
 
     ax.set_title("StratPD")
@@ -808,7 +802,7 @@ def meta_weather():
                             nbins_values=[1,2],
                             yrange=(-10,10),
                             isdiscrete=True,
-                            alpha=.15)
+                            slope_line_alpha=.15)
     savefig(f"dayofyear_temp_meta")
 
 
@@ -823,35 +817,35 @@ def weight():
     y = df['weight']
     figsize = (2.5, 2.5)
 
-    # fig, ax = plt.subplots(1, 1, figsize=figsize)
-    # plot_stratpd(X, y, 'education', 'weight', ax=ax,
-    #              min_samples_leaf=2,
-    #              isdiscrete=True,
-    #              yrange=(-12, 0), alpha=.1, nlines=700, show_ylabel=False)
-    # #    ax.get_yaxis().set_visible(False)
-    # ax.set_title("StratPD", fontsize=10)
-    # ax.set_xlim(10,18)
-    # ax.set_xticks([10,12,14,16,18])
-    # savefig(f"education_vs_weight_stratpd")
-    #
-    # fig, ax = plt.subplots(1, 1, figsize=figsize)
-    # plot_stratpd(X, y, 'height', 'weight', ax=ax,
-    #              min_samples_leaf=2,
-    #              yrange=(0, 160), alpha=.1, nlines=700, show_ylabel=False)
-    # #    ax.get_yaxis().set_visible(False)
-    # ax.set_title("StratPD", fontsize=10)
-    # savefig(f"height_vs_weight_stratpd")
-    #
-    # fig, ax = plt.subplots(1, 1, figsize=figsize)
-    # plot_catstratpd(X, y, 'sex', 'weight', ax=ax,
-    #                 min_samples_leaf=50,
-    #                 alpha=.2,
-    #                 catnames={1: 'F', 2: 'M'},
-    #                 yrange=(0, 5),
-    #                 use_weighted_avg=True
-    #                 )
-    # ax.set_title("StratPD", fontsize=10)
-    # savefig(f"sex_vs_weight_stratpd")
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    plot_stratpd(X, y, 'education', 'weight', ax=ax,
+                 min_samples_leaf=2,
+                 isdiscrete=True,
+                 yrange=(-12, 0), slope_line_alpha=.1, nlines=700, show_ylabel=False)
+    #    ax.get_yaxis().set_visible(False)
+    ax.set_title("StratPD", fontsize=10)
+    ax.set_xlim(10,18)
+    ax.set_xticks([10,12,14,16,18])
+    savefig(f"education_vs_weight_stratpd")
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    plot_stratpd(X, y, 'height', 'weight', ax=ax,
+                 min_samples_leaf=2,
+                 yrange=(0, 160), slope_line_alpha=.1, nlines=700, show_ylabel=False)
+    #    ax.get_yaxis().set_visible(False)
+    ax.set_title("StratPD", fontsize=10)
+    savefig(f"height_vs_weight_stratpd")
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    plot_catstratpd(X, y, 'sex', 'weight', ax=ax,
+                    min_samples_leaf=50,
+                    alpha=.2,
+                    catnames={1: 'F', 2: 'M'},
+                    yrange=(0, 5),
+                    use_weighted_avg=False
+                    )
+    ax.set_title("StratPD", fontsize=10)
+    savefig(f"sex_vs_weight_stratpd")
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=ax,
@@ -859,12 +853,10 @@ def weight():
                     alpha=.2,
                     catnames={0:False, 1:True},
                     yrange=(-5, 35),
-                    use_weighted_avg=True
+                    use_weighted_avg=False
                     )
     ax.set_title("StratPD", fontsize=10)
     savefig(f"pregnant_vs_weight_stratpd")
-
-    return
 
     rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
     rf.fit(X, y)
@@ -912,17 +904,17 @@ def unsup_weight():
     fig, axes = plt.subplots(2, 2, figsize=(4, 4))
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 0],
                  isdiscrete=True,
-                 yrange=(-12, 0), alpha=.1, nlines=700, supervised=False)
+                 yrange=(-12, 0), slope_line_alpha=.1, nlines=700, supervised=False)
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 1],
                  isdiscrete=True,
-                 yrange=(-12, 0), alpha=.1, nlines=700, supervised=True)
+                 yrange=(-12, 0), slope_line_alpha=.1, nlines=700, supervised=True)
 
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 0],
-                    alpha=.2,
+                    slope_line_alpha=.2,
                     catnames=df_raw['pregnant'].unique(),
                     yrange=(-5, 35), supervised=False)
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 1],
-                    alpha=.2,
+                    slope_line_alpha=.2,
                     catnames=df_raw['pregnant'].unique(),
                     yrange=(-5, 35), supervised=True)
 
@@ -959,37 +951,37 @@ def weight_ntrees():
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 0],
                  min_samples_leaf=5,
                  isdiscrete=True,
-                 yrange=(-12, 0), alpha=.1, pdp_marker_size=10, show_ylabel=True,
+                 yrange=(-12, 0), slope_line_alpha=.1, pdp_marker_size=10, show_ylabel=True,
                  ntrees=1, max_features=1.0, bootstrap=False)
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 1],
                  min_samples_leaf=5,
                  isdiscrete=True,
-                 yrange=(-12, 0), alpha=.1, pdp_marker_size=10, show_ylabel=False,
+                 yrange=(-12, 0), slope_line_alpha=.1, pdp_marker_size=10, show_ylabel=False,
                  ntrees=5, max_features='auto', bootstrap=True)
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 2],
                  min_samples_leaf=5,
                  isdiscrete=True,
-                 yrange=(-12, 0), alpha=.08, pdp_marker_size=10, show_ylabel=False,
+                 yrange=(-12, 0), slope_line_alpha=.08, pdp_marker_size=10, show_ylabel=False,
                  ntrees=10, max_features='auto', bootstrap=True)
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 3],
                  min_samples_leaf=5,
                  isdiscrete=True,
-                 yrange=(-12, 0), alpha=.05, pdp_marker_size=10, show_ylabel=False,
+                 yrange=(-12, 0), slope_line_alpha=.05, pdp_marker_size=10, show_ylabel=False,
                  ntrees=30, max_features='auto', bootstrap=True)
 
-    plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 0], alpha=.2,
+    plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 0], slope_line_alpha=.2,
                     catnames={0:False, 1:True}, show_ylabel=True,
                     yrange=(0, 35),
                     ntrees=1, max_features=1.0, bootstrap=False)
-    plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 1], alpha=.2,
+    plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 1], slope_line_alpha=.2,
                     catnames={0:False, 1:True}, show_ylabel=False,
                     yrange=(0, 35),
                     ntrees=5, max_features='auto', bootstrap=True)
-    plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 2], alpha=.2,
+    plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 2], slope_line_alpha=.2,
                     catnames={0:False, 1:True}, show_ylabel=False,
                     yrange=(0, 35),
                     ntrees=10, max_features='auto', bootstrap=True)
-    plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 3], alpha=.2,
+    plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 3], slope_line_alpha=.2,
                     catnames={0:False, 1:True}, show_ylabel=False,
                     yrange=(0, 35),
                     ntrees=30, max_features='auto', bootstrap=True)
@@ -1008,14 +1000,14 @@ def meta_weight():
     X = df.drop('weight', axis=1)
     y = df['weight']
 
-    yranges = [(0, 150), (-10, 0)]
+    plot_stratpd_gridsearch(X, y, colname='education', targetname='weight',
+                            xrange=(10,18),
+                            yrange=(-12,0),
+                            isdiscrete=True)
+    savefig("education_weight_meta")
 
     plot_stratpd_gridsearch(X, y, colname='height', targetname='weight', yrange=(0,150))
     savefig("height_weight_meta")
-
-    plot_stratpd_gridsearch(X, y, colname='education', targetname='weight', yrange=(-10,0),
-                            isdiscrete=True)
-    savefig("education_weight_meta")
 
 
 def additivity_data(n, sd=1.0):
@@ -1039,14 +1031,16 @@ def additivity():
 
     fig, axes = plt.subplots(2, 2, figsize=(4, 4))  # , sharey=True)
     plot_stratpd(X, y, 'x1', 'y',
-                 min_samples_leaf=50,
+                 min_samples_leaf=5,
                  nbins=3,
+                 isdiscrete=True,
                  ax=axes[0, 0], yrange=(-3, 3))
 
     plot_stratpd(X, y, 'x2', 'y',
-                 min_samples_leaf=50,
+                 min_samples_leaf=10,
                  nbins=3,
                  ax=axes[1, 0],
+                 isdiscrete=True,
                  yrange=(-3,3))
 
     # axes[0, 0].set_ylim(-2, 2)
@@ -1114,7 +1108,7 @@ def meta_additivity():
 
     # row = 0
     # for sd in noises:
-    #     axes[row, 0].scatter(X['x1'], y, alpha=.12, label=None)
+    #     axes[row, 0].scatter(X['x1'], y, slope_line_alpha=.12, label=None)
     #     axes[row, 0].set_xlabel("x1")
     #     axes[row, 0].set_ylabel("y")
     #     axes[row, 0].set_ylim(-5, 5)
@@ -1180,15 +1174,17 @@ def bigX():
     # strip away x1/x3's effect upon y. When we do, x2 has no effect on y.
     # Ask what is net effect at every x2? 0.
     plot_stratpd(X, y, 'x2', 'y', ax=axes[0, 0], yrange=(-4, 4),
-                 min_samples_leaf=20,
+                 min_samples_leaf=5,
                  nbins_smoothing=30,
+                 isdiscrete=True,
                  # nbins=10,
                  pdp_marker_size=2)
 
     # Partial deriv wrt x3 of 1_x3>=0 is 0 everywhere so result must be 0
     plot_stratpd(X, y, 'x3', 'y', ax=axes[1, 0], yrange=(-4, 4),
-                 min_samples_leaf=20,
+                 min_samples_leaf=5,
                  nbins_smoothing=30,
+                 isdiscrete=True,
                  # nbins=10,
                  pdp_marker_size=2)
 
@@ -1243,7 +1239,7 @@ def unsup_boston():
                  max_features='auto',
                  supervised=False, show_ylabel=False,
                  verbose=True,
-                 alpha=.1, nlines=1000)
+                 slope_line_alpha=.1, nlines=1000)
     plot_stratpd(X, y, 'AGE', 'MEDV', ax=axes[2], yrange=(-20, 20),
                  min_samples_leaf=5,
                  ntrees=1,
@@ -1383,7 +1379,7 @@ def bulldozer():  # warning: takes like 5 minutes to run
 
         plot_stratpd(X, y, colname, 'SalePrice', ax=axes[row, 1], xrange=xrange,
                      yrange=yrange, show_ylabel=False,
-                     verbose=False, alpha=.07,
+                     verbose=False, slope_line_alpha=.07,
                      isdiscrete=True)
 
         rf = RandomForestRegressor(n_estimators=20, min_samples_leaf=1, n_jobs=-1,
@@ -1447,7 +1443,7 @@ def bulldozer():  # warning: takes like 5 minutes to run
 
     plot_catstratpd(X, y, 'ModelID', 'SalePrice',
                     min_samples_leaf=5,
-                    use_weighted_avg=True,
+                    use_weighted_avg=False,
                     ax=axes[2, 1],
                     sort='ascending',
                     yrange=(0, 130000),
@@ -1492,8 +1488,8 @@ def multi_joint_distr():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     # np.random.seed(42)
     n = 1000
-    min_samples_leaf_partition = 20
-    nbins = 3
+    min_samples_leaf = 30
+    nbins = 2
     df = pd.DataFrame(np.random.multivariate_normal([6, 6, 6, 6],
                                                     [
                                                         [1, 5, .7, 3],
@@ -1543,11 +1539,12 @@ def multi_joint_distr():
         for j in range(4):
             axes[i, j].set_xlim(0, 15)
 
-    leaf_xranges, leaf_slopes, Xbetas, pdpx, pdpy, ignored = \
+    leaf_xranges, leaf_slopes, pdpx, pdpy, ignored = \
         plot_stratpd(X, y, 'x1', 'y', ax=axes[1, 0], xrange=(0, 13),
-                     # show_dx_line=True,
-                     min_samples_leaf=min_samples_leaf_partition,
+                     min_samples_leaf=min_samples_leaf,
+                     isdiscrete=True,
                      nbins=nbins,
+                     nbins_smoothing=50,
                      yrange=yrange, show_xlabel=False, show_ylabel=True)
 
 
@@ -1555,30 +1552,33 @@ def multi_joint_distr():
     r.fit(pdpx.reshape(-1, 1), pdpy)
     axes[1, 0].text(1, 10, f"Slope={r.coef_[0]:.2f}")
 
-    leaf_xranges, leaf_slopes, Xbetas, pdpx, pdpy, ignored = \
+    leaf_xranges, leaf_slopes, pdpx, pdpy, ignored = \
         plot_stratpd(X, y, 'x2', 'y', ax=axes[1, 1], xrange=(0, 13),
                      # show_dx_line=True,
-                     min_samples_leaf=min_samples_leaf_partition,
+                     min_samples_leaf=min_samples_leaf,
+                     isdiscrete=True,
                      nbins=nbins,
                      yrange=yrange, show_xlabel=False, show_ylabel=False)
     r = LinearRegression()
     r.fit(pdpx.reshape(-1, 1), pdpy)
     axes[1, 1].text(1, 10, f"Slope={r.coef_[0]:.2f}")
 
-    leaf_xranges, leaf_slopes, Xbetas, pdpx, pdpy, ignored = \
+    leaf_xranges, leaf_slopes, pdpx, pdpy, ignored = \
         plot_stratpd(X, y, 'x3', 'y', ax=axes[1, 2], xrange=(0, 13),
                      # show_dx_line=True,
-                     min_samples_leaf=min_samples_leaf_partition,
+                     min_samples_leaf=min_samples_leaf,
+                     isdiscrete=True,
                      nbins=nbins,
                      yrange=yrange, show_xlabel=False, show_ylabel=False)
     r = LinearRegression()
     r.fit(pdpx.reshape(-1, 1), pdpy)
     axes[1, 2].text(1, 10, f"Slope={r.coef_[0]:.2f}")
 
-    leaf_xranges, leaf_slopes, Xbetas, pdpx, pdpy, ignored = \
+    leaf_xranges, leaf_slopes, pdpx, pdpy, ignored = \
         plot_stratpd(X, y, 'x4', 'y', ax=axes[1, 3], xrange=(0, 13),
                      # show_dx_line=True,
-                     min_samples_leaf=min_samples_leaf_partition,
+                     min_samples_leaf=min_samples_leaf,
+                     isdiscrete=True,
                      nbins=nbins,
                      yrange=yrange, show_xlabel=False, show_ylabel=False)
     r = LinearRegression()
@@ -1654,12 +1654,12 @@ if __name__ == '__main__':
     # weight_ntrees()
     # unsup_weight()
     # meta_weight()
-    weather()
+    # weather()
     # meta_weather()
     # additivity()
     # meta_additivity()
     # bigX()
-    # multi_joint_distr()
+    multi_joint_distr()
 
     # EXTRA GOODIES
     # meta_boston()
