@@ -66,7 +66,7 @@
 
 \if0\blind
 {
-  \title{{\fontfamily{cmr}\textsc{StratPD}}: \bf A Localized Approach to Partial Dependence Plots for Codependent Variables}
+  \title{\bf A Stratification Approach to Partial Dependence for Codependent Variables}
 
   \author{Terence Parr and James D. Wilson\\
       University of San Francisco\\
@@ -153,7 +153,7 @@ Obtaining radically different PD and ICE plots for different underlying models i
 
  {\color{red} Terence - I think we should embellish this paragraph a little more to sell how \spd{} is awesome in comparison to the other strategies.}
 
-There are two remaining issues with PD plots associated with the relationship between features. First, as Friedman pointed out, PD plots are most accurate ``{\em when {\em [the model]} is dominated by low order interactions.}''  Feature interactions, such as $x_1x_2$ in a linear model, are difficult to tease apart to obtain partial dependence on just $x_1$ or $x_2$. \cut{\todo{James: should we remove this parenthetical? Yep!, described in Section 1} (Feature $x_j^T = (x_{1j}, .., x_{Nj})$ is a column vector of the  $n \times p$ explanatory matrix ${\bf X}$).} ICE plots address this issue by showing separate prediction curves for each observation as the feature of interest is moved through all possible values.  This not only shows the variation hidden by the PD average curve, but it depicts interaction relationships between the feature of interest and other features.
+There are two remaining issues with PD plots associated with the relationship between features. First, as Friedman pointed out, PD plots are most accurate ``{\em when {\em [the model]} is dominated by low order interactions.}''  Feature interactions, such as $x_1x_2$ in a linear model, are difficult to tease apart to obtain partial dependence on just $x_1$ or $x_2$. \cut{\todo{James: should we remove this parenthetical? Yep!, described in Section 1} (Feature $x_j^T = (x_{1j}, .., x_{Nj})$ is a column vector of the  $n \times p$ explanatory matrix ${\bf X}$).} ICE plots address this issue by showing separate prediction curves for each observation as the feature of interest is moved through all possible values.  This not only shows the variation hidden by the PD average curve, but it depicts interaction relationships between the feature of interest and other features. \todo{parrt:in progress}
 
 The second issue stems from a lack of independence between features.  In a nutshell, not every combination of codependent features is sensible or even possible. For example, in the apartment rent application in Figure 1, there are no apartments with five bedrooms with just one or even zero bathrooms. Similarly, there are no four bathroom studios. Because PD and ICE alter observations by shifting the feature of interest through all possible feature values, they run the risk of conjuring up nonsensical observations which influence the calculation of partial dependence. In our experience, features in real data sets are very often codependent to some degree. This problem can be mitigated by computing PD and ICE plots on groups of mutually-dependent or interacting features of interest. For example, if sex and pregnancy are codependent features, PD/ICE can compute the partial dependence of the response variable on these two features as a single meta-feature.  This would involve identifying suitable codependent feature subsets and computing PD/ICE plots for many combinations. While feasible, this approach is much harder to interpret than a single variable's effect on the response variable.
 

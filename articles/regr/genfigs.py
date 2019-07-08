@@ -179,6 +179,7 @@ def rent_grid():
                             min_samples_leaf_values=[5,10,30,50],
                             nbins_smoothing=20,
                             yrange=(-500,3500),
+                            isdiscrete=True,
                             marginal_alpha=0.05
                             )
 
@@ -188,13 +189,14 @@ def rent_grid():
                             min_samples_leaf_values=[5,10,30,50],
                             nbins_smoothing=20,
                             yrange=(1000,-4000),
+                            isdiscrete=True,
                             marginal_alpha=0.05
                             )
 
     savefig("longitude_meta")
 
     plot_stratpd_gridsearch(X, y, 'bathrooms', 'price',
-                            min_samples_leaf_values=[5,10,30,50],
+                            min_samples_leaf_values=[5,10,30,50,75],
                             nbins_smoothing=20,
                             yrange=(-500,4000),
                             isdiscrete=True,
@@ -692,7 +694,7 @@ def weather():
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'dayofyear', 'temperature', ax=ax,
                  yrange=(-10, 10),
-                 pdp_marker_size=2, slope_line_alpha=.5, isdiscrete=True)
+                 pdp_marker_size=2, slope_line_alpha=.5, isdiscrete=False)
 
     ax.set_title("StratPD")
     savefig(f"dayofyear_vs_temp_stratpd")
@@ -1031,7 +1033,7 @@ def additivity():
 
     fig, axes = plt.subplots(2, 2, figsize=(4, 4))  # , sharey=True)
     plot_stratpd(X, y, 'x1', 'y',
-                 min_samples_leaf=5,
+                 min_samples_leaf=20,
                  nbins=3,
                  isdiscrete=True,
                  ax=axes[0, 0], yrange=(-3, 3))
@@ -1153,14 +1155,15 @@ def bigX():
     X = df.drop('y', axis=1)
     y = df['y']
 
-    # plot_stratpd_gridsearch(X, y, 'x3', 'y',
-    #                         min_samples_leaf_values=[2,5,10,20,30],
-    #                         nbins_values=[1,3,5,6,10],
-    #                         yrange=(-4,4))
-    #
-    # plt.tight_layout()
-    # plt.show()
-    # return
+    plot_stratpd_gridsearch(X, y, 'x2', 'y',
+                            isdiscrete=True,
+                            min_samples_leaf_values=[2,5,10,20,30],
+#                            nbins_values=[1,3,5,6,10],
+                            yrange=(-4,4))
+
+    plt.tight_layout()
+    plt.show()
+    return
 
     # Partial deriv is just 0.2 so this is correct. flat deriv curve, net effect line at slope .2
     # ICE is way too shallow and not line at n=1000 even
@@ -1645,7 +1648,7 @@ if __name__ == '__main__':
     # FROM PAPER:
     # bulldozer()
     # rent()
-    # rent_grid()
+    rent_grid()
     # rent_ntrees()
     # rent_extra_cols()
     # unsup_rent()
@@ -1659,7 +1662,7 @@ if __name__ == '__main__':
     # additivity()
     # meta_additivity()
     # bigX()
-    multi_joint_distr()
+    # multi_joint_distr()
 
     # EXTRA GOODIES
     # meta_boston()
