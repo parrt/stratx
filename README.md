@@ -1,2 +1,3 @@
-# mine
-A repo for model-independent net-effect in Python
+# stratx
+
+A repo for model-independent partial dependence even in the presence of codependent variables (Python 3).
