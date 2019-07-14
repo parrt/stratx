@@ -1,0 +1,604 @@
+import numpy as np
+import pandas as pd
+from typing import Mapping, List, Tuple
+import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
+from scipy.stats import binned_statistic
+
+import time
+from dtreeviz.trees import *
+
+
+def do_my_binning(x:np.ndarray, y:np.ndarray, h:float):
+    """
+    Split x range into bins of width h from X[colname] space
+    """
+    leaf_bin_avgs = []
+
+    uniq_x = np.array(sorted(np.unique(x)))
+    # print(f"uniq x {uniq_x}")
+    for ix in uniq_x:
+        bin_x = x[(x >= ix) & (x < ix + h)]
+        bin_y = y[(x >= ix) & (x < ix + h)]
+        print()
+        print(bin_x)
+        print(bin_y)
+        if len(bin_x)==0:
+            continue
+        r = (np.min(bin_x), np.max(bin_y))
+        if np.isclose(r[0], r[1]):
+            # print(f"ignoring xleft=xright @ {r[0]}")
+            continue
+
+        leaf_bin_avgs.append(lm.coef_[0])
+
+    return leaf_bin_avgs
+
+
+def blort_plot_stratpd(X, y, colname, targetname=None,
+                 ax=None,
+                 ntrees=1,
+                 max_features = 1.0,
+                 bootstrap=False,
+                 min_samples_leaf=10,
+                 nbins=3, # this is number of bins, so number of points in linear space is nbins+1
+                          # ignored if isdiscrete; len(unique(X[colname])) used instead.
+                          # must be >= 1
+                 isdiscrete=False,
+                 use_weighted_avg=False,
+                 xrange=None,
+                 yrange=None,
+                 pdp_marker_size=2,
+                 linecolor='#2c7fb8',
+                 title=None,
+                 nlines=None,
+                 show_dx_line=False,
+                 show_xlabel=True,
+                 show_ylabel=True,
+                 show_xticks=True,
+                 connect_pdp_dots=False,
+                 show_importance=False,
+                 impcolor='#fdae61',
+                 supervised=True,
+                 alpha=.4,
+                 verbose=False
+                 ):
+
+    # print(f"Unique {colname} = {len(np.unique(X[colname]))}/{len(X)}")
+    if supervised:
+        rf = RandomForestRegressor(n_estimators=ntrees,
+                                   min_samples_leaf=min_samples_leaf,
+                                   bootstrap = bootstrap,
+                                   max_features = max_features)
+        rf.fit(X.drop(colname, axis=1), y)
+        if verbose:
+            print(f"Strat Partition RF: missing {colname} training R^2 {rf.score(X.drop(colname, axis=1), y)}")
+
+    else:
+        """
+        Wow. Breiman's trick works in most cases. Falls apart on Boston housing MEDV target vs AGE
+        """
+        if verbose: print("USING UNSUPERVISED MODE")
+        X_synth, y_synth = conjure_twoclass(X)
+        rf = RandomForestRegressor(n_estimators=ntrees,
+                                   min_samples_leaf=min_samples_leaf,
+                                   bootstrap = bootstrap,
+                                   max_features = max_features,
+                                   oob_score=False)
+        rf.fit(X_synth.drop(colname,axis=1), y_synth)
+
+    real_uniq_x = np.array(sorted(np.unique(X[colname])))
+    # print(f"\nModel wo {colname} OOB R^2 {rf.oob_score_:.5f}")
+    leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2, ignored = \
+        collect_leaf_slopes(rf, X, y, colname, nbins=nbins, isdiscrete=isdiscrete, verbose=verbose)
+    if True:
+        print(f"{'discrete ' if isdiscrete else ''}StratPD num samples ignored {ignored}/{len(X)} for {colname}")
+
+    slope_at_x = weighted_avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes, leaf_sizes, use_weighted_avg)
+    r2_at_x = weighted_avg_values_at_x(real_uniq_x, leaf_xranges, leaf_r2, leaf_sizes, use_weighted_avg)
+    # Drop any nan slopes; implies we have no reliable data for that range
+    # Make sure to drop uniq_x values too :)
+    notnan_idx = ~np.isnan(slope_at_x) # should be same for slope_at_x and r2_at_x
+    slope_at_x = slope_at_x[notnan_idx]
+    uniq_x = real_uniq_x[notnan_idx]
+    r2_at_x = r2_at_x[notnan_idx]
+    # print(f'uniq_x = [{", ".join([f"{x:4.1f}" for x in uniq_x])}]')
+    # print(f'slopes = [{", ".join([f"{s:4.1f}" for s in slope_at_x])}]')
+
+    if len(uniq_x)==0:
+        raise ValueError(f"Could not compute slopes for partial dependence curve; "
+                             f"binning granularity is likely cause: nbins={nbins}, uniq x={len(real_uniq_x)}")
+
+    if ax is None:
+        fig, ax = plt.subplots(1,1)
+
+    # print(f"diff: {np.diff(uniq_x)}")
+    dydx = slope_at_x[:-1] * np.diff(uniq_x)          # last slope is nan since no data after last x value
+    # print(f"dydx: {dydx}")
+    curve = np.cumsum(dydx)                           # we lose one value here
+    # curve = cumtrapz(slope_at_x, x=uniq_x)          # we lose one value here
+    curve = np.concatenate([np.array([0]), curve])  # add back the 0 we lost
+    # print(slope_at_x, len(slope_at_x))
+    # print(dydx)
+    # print(uniq_x, len(uniq_x))
+    # print(curve, len(curve))
+
+    if len(uniq_x) != len(curve):
+        raise AssertionError(f"len(uniq_x) = {len(uniq_x)}, but len(curve) = {len(curve)}; nbins={nbins}")
+
+    # plot partial dependence curve
+    # cmap = cm.afmhot(Normalize(vmin=0, vmax=ignored))
+    ax.scatter(uniq_x, curve, s=pdp_marker_size, c='k', alpha=1)
+
+    if connect_pdp_dots:
+        ax.plot(uniq_x, curve, ':',
+                alpha=1,
+                lw=1,
+                c='grey')
+
+    # widths = []
+    segments = []
+    for xr, slope in zip(leaf_xranges, leaf_slopes):
+        w = np.abs(xr[1] - xr[0])
+        # widths.append(w)
+        y_delta = slope * w
+        closest_x_i = np.abs(uniq_x - xr[0]).argmin() # find curve point for xr[0]
+        y = curve[closest_x_i]
+        one_line = [(xr[0],y), (xr[1], y+y_delta)]
+        segments.append( one_line )
+
+    # print(f"Avg width is {np.mean(widths):.2f} in {len(leaf_sizes)} leaves")
+
+    if verbose:
+        print(f"Found {len(segments)} lines")
+
+    if nlines is not None:
+        nlines = min(nlines, len(segments))
+        idxs = np.random.randint(low=0, high=len(segments), size=nlines)
+        segments = np.array(segments)[idxs]
+
+    lines = LineCollection(segments, alpha=alpha, color=linecolor, linewidth=.5)
+    if xrange is not None:
+        ax.set_xlim(*xrange)
+    else:
+        ax.set_xlim(min(uniq_x), max(uniq_x))
+    if yrange is not None:
+        ax.set_ylim(*yrange)
+    ax.add_collection(lines)
+
+    if show_xlabel:
+        ax.set_xlabel(colname)
+    if show_ylabel:
+        ax.set_ylabel(targetname)
+    if title is not None:
+        ax.set_title(title)
+
+    mx = np.max(uniq_x)
+    if show_dx_line:
+        r = LinearRegression()
+        r.fit(uniq_x.reshape(-1,1), curve)
+        x = np.linspace(np.min(uniq_x), mx, num=100)
+        ax.plot(x, x * r.coef_[0] + r.intercept_, linewidth=1, c='orange')
+
+    if show_importance:
+        other = ax.twinx()
+        other.set_ylim(0,1.0)
+        other.tick_params(axis='y', colors=impcolor)
+        other.set_ylabel("Feature importance", fontdict={"color":impcolor})
+        other.plot(uniq_x, r2_at_x, lw=1, c=impcolor)
+        a,b = ax.get_xlim()
+        other.plot(b - (b-a) * .03, np.mean(r2_at_x), marker='>', c=impcolor)
+        # other.plot(mx - (mx-mnx)*.02, np.mean(r2_at_x), marker='>', c=imp_color)
+
+    return uniq_x, curve, r2_at_x, ignored
+
+
+def old_piecewise_xc_space(x: np.ndarray, y: np.ndarray, colname, hires_min_samples_leaf:int, verbose):
+    start = time.time()
+    X = x.reshape(-1,1)
+
+    r2s = []
+
+    # dbg = True
+    dbg = False
+    if dbg:
+        print(f"\t{len(x)} samples")
+        plt.scatter(x, y, c='black', s=.5)
+        lm = LinearRegression()
+        lm.fit(x.reshape(-1, 1), y)
+        r2 = lm.score(x.reshape(-1, 1), y)
+        px = np.linspace(min(x), max(x), 20)
+        plt.plot(px, lm.predict(px.reshape(-1, 1)), lw=.5, c='red', label=f"R^2 {r2:.2f}")
+
+    rf = RandomForestRegressor(n_estimators=1,
+                               min_samples_leaf=hires_min_samples_leaf, # "percent" or number of samples allowed per leaf
+                               max_features=1.0,
+                               bootstrap=False)
+    rf.fit(X, y)
+    leaves = leaf_samples(rf, X)
+
+    if verbose:
+        print(f"Piecewise {colname}: {len(leaves)} leaves")
+
+    ignored = 0
+    leaf_slopes = []
+    leaf_r2 = []
+    leaf_xranges = []
+    leaf_sizes = []
+    for samples in leaves:
+        leaf_x = X[samples]
+        leaf_y = y[samples]
+        r = (np.min(leaf_x), np.max(leaf_x))
+        if np.isclose(r[0], r[1]):
+            ignored += len(samples)
+            if verbose: print(f"\tIgnoring range {r} from {leaf_x.T[0:3]}... -> {leaf_y[0:3]}...")
+            continue
+        lm = LinearRegression()
+        lm.fit(leaf_x.reshape(-1, 1), leaf_y)
+        leaf_slopes.append(lm.coef_[0])
+        r2 = lm.score(leaf_x.reshape(-1, 1), leaf_y)
+
+        r2s.append(r2)
+        if verbose:
+            print(f"\tPiece {len(leaf_x)} obs, piecewise R^2 {r2:.2f}, R^2*n {r2*len(leaf_x):.2f}")
+        if dbg:
+            px = np.linspace(r[0], r[1], 20)
+            plt.plot(px, lm.predict(px.reshape(-1,1)), lw=.5, c='blue', label=f"R^2 {r2:.2f}")
+
+        leaf_r2.append(r2)
+        leaf_xranges.append(r)
+        leaf_sizes.append(len(samples))
+        # leaf_sizes.append(1 / np.var(leaf_x))
+
+    # print(f"\tAvg leaf R^2 {np.mean(r2s):.4f}, avg x len {np.mean(r2xNs)}")
+
+    if verbose:
+        print(f"\tIgnored {ignored} piecewise leaves")
+
+    if dbg:
+        plt.legend(loc='upper left', borderpad=0, labelspacing=0)
+        plt.show()
+
+    if len(leaf_slopes)==0:
+        # looks like samples/leaf is too small and/or values are ints;
+        # If y is evenly spread across integers, we will get single x value with lots of y,
+        # which can't tell us about change in y over x as x isn't changing.
+        # Fall back onto single line for whole leaf
+        lm = LinearRegression()
+        lm.fit(X, y)
+        leaf_slopes.append(lm.coef_[0])  # better to use univariate slope it seems
+        r2 = lm.score(X, y)
+        leaf_r2.append(r2)
+        r = (np.min(x), np.max(x))
+        leaf_xranges.append(r)
+        leaf_sizes.append(len(x))
+        # leaf_sizes.append(1 / np.var(leaf_x))
+
+    stop = time.time()
+    # print(f"hires_slopes_from_one_leaf {stop - start:.3f}s")
+    return leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2, ignored
+
+
+# -------------- B I N N I N G ---------------
+
+# TODO: can we delete all this section?
+
+def hires_slopes_from_one_leaf_h(x:np.ndarray, y:np.ndarray, h:float):
+    """
+    Split x range into bins of width h and return
+    """
+    leaf_slopes = []
+    leaf_r2 = []
+    leaf_xranges = []
+
+    uniq_x = np.array(sorted(np.unique(x)))
+    # print(f"uniq x {uniq_x}")
+    for ix in uniq_x:
+        bin_x = x[(x >= ix) & (x < ix + h)]
+        bin_y = y[(x >= ix) & (x < ix + h)]
+        print()
+        print(bin_x)
+        print(bin_y)
+        if len(bin_x)==0:
+            continue
+        r = (np.min(bin_x), np.max(bin_y))
+        if np.isclose(r[0], r[1]):
+            # print(f"ignoring xleft=xright @ {r[0]}")
+            continue
+
+        lm = LinearRegression()
+        lm.fit(bin_x.reshape(-1, 1), bin_y)
+        r2 = lm.score(bin_x.reshape(-1, 1), bin_y)
+
+        leaf_slopes.append(lm.coef_[0])
+        leaf_xranges.append(r)
+        leaf_r2.append(r2)
+
+    return leaf_xranges, leaf_slopes, leaf_r2
+
+def hires_slopes_from_one_leaf_nbins(x:np.ndarray, y:np.ndarray, nbins:int):
+    """
+    Split x range into bins of width h and return
+    """
+    leaf_slopes = []
+    leaf_r2 = []
+    leaf_xranges = []
+
+    bins = np.linspace(np.min(x), np.max(x), num=nbins, endpoint=True)
+    binned_idx = np.digitize(x, bins)
+
+    for i in range(1, nbins+1):
+        bin_x = x[binned_idx == i]
+        bin_y = y[binned_idx == i]
+        if len(bin_x)==0:
+            continue
+        r = (np.min(bin_x), np.max(bin_y))
+        if np.isclose(r[0], r[1]):
+            # print(f"ignoring xleft=xright @ {r[0]}")
+            continue
+
+        lm = LinearRegression()
+        lm.fit(bin_x.reshape(-1, 1), bin_y)
+        r2 = lm.score(bin_x.reshape(-1, 1), bin_y)
+
+        leaf_slopes.append(lm.coef_[0])
+        leaf_xranges.append(r)
+        leaf_r2.append(r2)
+
+    return leaf_xranges, leaf_slopes, leaf_r2
+
+
+def weighted_avg_values_at_x(uniq_x, leaf_ranges, leaf_values, leaf_weights, use_weighted_avg):
+    """
+    Compute the weighted average of leaf_values at each uniq_x.
+
+    Value at max(x) is NaN since we have no data beyond that point.
+    """
+    start = time.time()
+    nx = len(uniq_x)
+    nslopes = len(leaf_values)
+    slopes = np.zeros(shape=(nx, nslopes))
+    weights = np.zeros(shape=(nx, nslopes))
+    i = 0  # leaf index; we get a line for each leaf
+    # collect the slope for each range (taken from a leaf) as collection of
+    # flat lines across the same x range
+    for r, slope, w in zip(leaf_ranges, leaf_values, leaf_weights):
+        if use_weighted_avg:
+            s = np.full(nx, slope*w, dtype=float) # s has value*weight at all locations (flat line)
+        else:
+            s = np.full(nx, slope, dtype=float)
+        # now trim line so it's only valid in range r;
+        # don't set slope on right edge
+        s[np.where( (uniq_x < r[0]) | (uniq_x >= r[1]) )] = np.nan
+        slopes[:, i] = s
+        # track weight (num obs in leaf) per range also so we can divide by total
+        # obs per range to get weighted average below
+        ws = np.full(nx, w, dtype=float)
+        ws[np.where( (uniq_x < r[0]) | (uniq_x >= r[1]) )] = np.nan
+        weights[:, i] = ws
+        i += 1
+    # The value could be genuinely zero so we use nan not 0 for out-of-range
+    # Now average horiz across the matrix, averaging within each range
+    # avg_value_at_x = np.nanmean(slopes, axis=1)
+    if use_weighted_avg:
+        sum_values_at_x = np.nansum(slopes, axis=1)
+        sum_weights_at_x = np.nansum(weights, axis=1)
+        avg_value_at_x = sum_values_at_x / sum_weights_at_x
+    else:
+        avg_value_at_x = np.nanmean(slopes, axis=1)
+
+    stop = time.time()
+    # print(f"avg_value_at_x {stop - start:.3f}s")
+    return avg_value_at_x
+
+
+def collect_leaf_slopes(rf, X, y, colname, nbins, isdiscrete, verbose):
+    """
+    For each leaf of each tree of the random forest rf (trained on all features
+    except colname), get the samples then isolate the column of interest X values
+    and the target y values. Perform another partition of X[colname] vs y and do
+    piecewise linear regression to get the slopes in various regions of X[colname].
+    We don't need to subtract the minimum y value before regressing because
+    the slope won't be different. (We are ignoring the intercept of the regression line).
+
+    Return for each leaf, the ranges of X[colname] partitions, num obs per leaf,
+    associated slope for each range, r^2 of line through points.
+    """
+    start = time.time()
+    leaf_slopes = []
+    leaf_r2 = []
+    leaf_xranges = []
+    leaf_sizes = []
+
+    ignored = 0
+
+    leaves = leaf_samples(rf, X.drop(colname, axis=1))
+
+    if verbose:
+        nnodes = rf.estimators_[0].tree_.node_count
+        print(f"Partitioning 'x not {colname}': {nnodes} nodes in (first) tree, "
+              f"{len(rf.estimators_)} trees, {len(leaves)} total leaves")
+
+    for samples in leaves:
+        one_leaf_samples = X.iloc[samples]
+        leaf_x = one_leaf_samples[colname].values
+        leaf_y = y.iloc[samples].values
+
+        r = (np.min(leaf_x), np.max(leaf_x))
+        if np.isclose(r[0], r[1]):
+            # print(f"ignoring xleft=xright @ {r[0]}")
+            ignored += len(leaf_x)
+            continue
+
+        if isdiscrete:
+            leaf_xranges_, leaf_sizes_, leaf_slopes_, leaf_r2_, ignored_ = \
+                discrete_xc_space(leaf_x, leaf_y, colname=colname, verbose=verbose)
+        else:
+            leaf_xranges_, leaf_sizes_, leaf_slopes_, leaf_r2_, ignored_ = \
+                piecewise_xc_space(leaf_x, leaf_y, colname=colname, nbins=nbins, verbose=verbose)
+
+        leaf_slopes.extend(leaf_slopes_)
+        leaf_r2.extend(leaf_r2_)
+        leaf_xranges.extend(leaf_xranges_)
+        leaf_sizes.extend(leaf_sizes_)
+        ignored += ignored_
+
+    leaf_xranges = np.array(leaf_xranges)
+    leaf_sizes = np.array(leaf_sizes)
+    leaf_slopes = np.array(leaf_slopes)
+    stop = time.time()
+    if verbose: print(f"collect_leaf_slopes {stop - start:.3f}s")
+    return leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2, ignored
+
+
+def piecewise_xc_space(x: np.ndarray, y: np.ndarray, colname, nbins:int, verbose):
+    start = time.time()
+
+    ignored = 0
+    leaf_slopes = []
+    leaf_r2 = []
+    leaf_xranges = []
+    leaf_sizes = []
+
+    # To get n bins, we need n+1 numbers in linear space
+    domain = (np.min(x), np.max(x))
+    bins = np.linspace(*domain, num=nbins+1, endpoint=True)
+    binned_idx = np.digitize(x, bins)
+
+    for i in range(1, len(bins)+1):
+        bin_x = x[binned_idx == i]
+        bin_y = y[binned_idx == i]
+        if len(bin_x)<2: # either no or too little data
+            # print(f"ignoring xleft=xright @ {r[0]}")
+            ignored += len(bin_x)
+            continue
+        r = (np.min(bin_x), np.max(bin_x))
+        if np.isclose(r[0], r[1]):
+            # print(f"ignoring xleft=xright @ {r[0]}")
+            ignored += len(bin_x)
+
+        lm = LinearRegression()
+        bin_x = bin_x.reshape(-1, 1)
+        lm.fit(bin_x, bin_y)
+        r2 = lm.score(bin_x, bin_y)
+
+        leaf_sizes.append(len(bin_x))
+        leaf_slopes.append(lm.coef_[0])
+        leaf_xranges.append(r)
+        leaf_r2.append(r2)
+
+    if len(leaf_slopes)==0:
+        # TODO: adjust ignored variable
+        # looks like binning was too fine and we didn't get any slopes
+        # If y is evenly spread across integers, we might get single x value with lots of y,
+        # which can't tell us about change in y over x as x isn't changing.
+        # Fall back onto single line for whole leaf
+        lm = LinearRegression()
+        lm.fit(x.reshape(-1,1), y)
+        leaf_slopes.append(lm.coef_[0])  # better to use univariate slope it seems
+        r2 = lm.score(x.reshape(-1,1), y)
+        leaf_r2.append(r2)
+        r = (np.min(x), np.max(x))
+        leaf_xranges.append(r)
+        leaf_sizes.append(len(x))
+
+    stop = time.time()
+    # print(f"piecewise_xc_space {stop - start:.3f}s")
+    return leaf_xranges, leaf_sizes, leaf_slopes, leaf_r2, ignored
+
+
+def collect_posint_betas(X, y, colname, leaves):
+    """
+    Only works for positive integers, not floats, not negatives. It's faster than generic
+    version.
+    :param X:
+    :param y:
+    :param colname:
+    :param leaves:
+    :return:
+    """
+
+    # TODO: actually am I assuming consecutive x values by storing in matrix
+    # by x start location of slope? probably.
+
+    maxx = max(X[colname])
+    leaf_slopes = []
+    leaf_xranges = []
+    bin_betas = np.full(shape=(maxx + 1, len(leaves)), fill_value=np.nan)
+    bin_counts = np.zeros(shape=(maxx + 1, len(leaves)))
+    for li, samples in enumerate(
+        leaves):  # samples is set of obs indexes that live in a single leaf
+        leaf_all_x = X.iloc[samples]
+        leaf_x = leaf_all_x[colname].values
+        leaf_y = y.iloc[samples].values
+
+        bcount = np.bincount(leaf_x)
+        bsum = np.bincount(leaf_x, weights=leaf_y)  # sum ys for each values of x
+        binavgs = bsum / bcount
+        bins = np.nonzero(bsum)[0]
+        binavgs = binavgs[bins]
+        #     print()
+        #     print('leaf_x',list(leaf_x))
+        #     print('bcount',bcount)
+        #     print('bsum',bsum)
+        #     print('bins', bins)
+        #     print('binavgs',binavgs)
+
+        bin_deltas = np.diff(bins)
+        y_deltas = np.diff(binavgs)
+        leaf_bin_slopes = y_deltas / bin_deltas  # "rise over run"
+        leaf_slopes.extend(leaf_bin_slopes)
+        leaf_bin_xranges = np.array(list(zip(bins, bins[1:])))
+        leaf_xranges.extend(leaf_bin_xranges)
+        #     print('bin_deltas',bin_deltas)
+        #     print('y_deltas', y_deltas)
+        #     print('leaf_slopes',leaf_slopes)
+        #     print(leaf_xranges)
+        leaf_betas = np.full(shape=(maxx + 1,), fill_value=np.nan)
+        leaf_betas[bins[:-1]] = leaf_bin_slopes
+        bin_betas[:, li] = leaf_betas
+        leaf_counts = np.zeros(shape=(maxx + 1,))
+        leaf_counts[bins] = bcount[bins]
+        bin_counts[:, li] = leaf_counts
+    # print('bin_betas', bin_betas)
+    # print('bin_counts', bin_counts)
+    return leaf_xranges, leaf_slopes, bin_betas, bin_counts
+
+
+def dtree_leaf_samples(dtree, X:np.ndarray):
+    leaf_ids = dtree.apply(X)
+    d = pd.DataFrame(leaf_ids, columns=['leafid'])
+    d = d.reset_index() # get 0..n-1 as column called index so we can do groupby
+    sample_idxs_in_leaf = d.groupby('leafid')['index'].apply(lambda x: x.values)
+    return sample_idxs_in_leaf
+
+
+def bin_samples(rf, X:np.ndarray):
+    """
+    Return a list of arrays where each array is the set of X sample indexes
+    residing in a single leaf of some tree in rf forest.
+    """
+    ntrees = len(rf.estimators_)
+    leaf_ids = rf.apply(X) # which leaf does each X_i go to for each tree?
+    d = pd.DataFrame(leaf_ids, columns=[f"tree{i}" for i in range(ntrees)])
+    d = d.reset_index() # get 0..n-1 as column called index so we can do groupby
+    """
+    d looks like:
+        index	tree0	tree1	tree2	tree3	tree4
+    0	0	    8	    3	    4	    4	    3
+    1	1	    8	    3	    4	    4	    3
+    """
+    leaf_samples = []
+    for i in range(ntrees):
+        """
+        Each groupby gets a list of all X indexes associated with same leaf. 4 leaves would
+        get 4 arrays of X indexes; e.g.,
+        array([array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
+               array([10, 11, 12, 13, 14, 15]), array([16, 17, 18, 19, 20]),
+               array([21, 22, 23, 24, 25, 26, 27, 28, 29]), ... )
+        """
+        sample_idxs_in_leaf = d.groupby(f'tree{i}')['index'].apply(lambda x: x.values)
+        leaf_samples.extend(sample_idxs_in_leaf) # add [...sample idxs...] for each leaf
+    return leaf_samples
