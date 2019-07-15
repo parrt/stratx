@@ -8,7 +8,59 @@ Model interpretability is important to machine learning practitioners and a key 
 
 To address these issues, we introduce a new strategy, called StratPD, that does not depend on a user's fitted model, provides accurate results in the presence codependent variables, and is applicable to high dimensional settings. The strategy works by stratifying a data set into groups of observations that are similar, except in the variable of interest, through the use of a decision tree. Any fluctuations of the response variable within a group is likely due to the variable of interest. We apply StratPD to a collection of simulations and case studies to show that StratPD is a fast, reliable, and robust method for assessing partial dependence with clear advantages over state-of-the-art methods. 
 
+## Installation
+
+```bash
+pip install stratx
+```
+
+## Usage
+
+Some simple usages for numerical and categorical target variables.
+
+### Boston
+
+```python
+from sklearn.datasets import load_boston, load_diabetes
+from stratx.partdep import *
+
+boston = load_boston()
+df = pd.DataFrame(boston.data, columns=boston.feature_names)
+df['MEDV'] = boston.target
+
+X = df.drop('MEDV', axis=1)
+y = df['MEDV']
+
+# WORKS ONLY WITH DATAFRAMES AT MOMENT
+plot_stratpd(X, y, 'AGE', 'MEDV', yrange=(-10,10))
+plt.tight_layout()
+plt.show()
+```
+
+<a href="images/boston.png"><img src="images/boston.png" width="250"></a>
+
+### Diabetes
+
+```python
+diabetes = load_diabetes()
+# WORKS ONLY WITH DATAFRAMES AT MOMENT
+df = pd.DataFrame(diabetes.data, columns=diabetes.feature_names)
+df['y'] = diabetes.target
+X = df.drop('y', axis=1)
+y = df['y']
+X.head()
+```
+<a href="images/diabetes-bmi.png"><img src="images/diabetes-bmi.png" width="250"></a>
+
+```python
+foo = plot_catstratpd(X, y, 'sex', 'y', catnames=['female','male']) # not sure which is male/female actually!
+```
+
+<a href="images/diabetes-sex.png"><img src="images/diabetes-sex.png" width="250"></a>
+
 ## Examples
+
+(*See [notebooks/examples.ipynb](notebooks/examples.ipynb) for lots more stuff.*)
 
 Kaggle [Blue book for bulldozer](https://www.kaggle.com/c/two-sigma-connect-rental-listing-inquiries) data set.
 
