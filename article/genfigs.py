@@ -64,8 +64,8 @@ def savefig(filename, pad=0):
     # plt.savefig(f"images/{filename}.pdf")
     plt.savefig(f"images/{filename}.png", dpi=150)
 
-    plt.tight_layout()
-    plt.show()
+    # plt.tight_layout()
+    # plt.show()
 
     plt.close()
 
@@ -98,9 +98,8 @@ def load_rent():
     set from Kaggle. (You must be a registered Kaggle user and must be logged in.)
     Go to the Kaggle [data page](https://www.kaggle.com/c/two-sigma-connect-rental-listing-inquiries/data)
     and save `train.json`
-    :return:
     """
-    df = pd.read_json('../../notebooks/data/train.json')
+    df = pd.read_json('../notebooks/data/train.json')
 
     # Create ideal numeric data set w/o outliers etc...
     df = df[(df.price > 1_000) & (df.price < 10_000)]
@@ -1242,7 +1241,7 @@ def lm_plot(X, y, colname, targetname, ax=None):
 
 def cars():
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_cars = pd.read_csv("../../notebooks/data/auto-mpg.csv")
+    df_cars = pd.read_csv("../notebooks/data/auto-mpg.csv")
     df_cars = df_cars[df_cars['horsepower'] != '?']  # drop the few missing values
     df_cars['horsepower'] = df_cars['horsepower'].astype(float)
 
@@ -1293,7 +1292,7 @@ def cars():
 
 def meta_cars():
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_cars = pd.read_csv("../../notebooks/data/auto-mpg.csv")
+    df_cars = pd.read_csv("../notebooks/data/auto-mpg.csv")
     df_cars = df_cars[df_cars['horsepower'] != '?']  # drop the few missing values
     df_cars['horsepower'] = df_cars['horsepower'].astype(float)
 
@@ -1339,11 +1338,22 @@ def bulldozer():  # warning: takes like 5 minutes to run
         axes[row, 1].set_xlabel(colname)  # , fontsize=12)
         axes[row, 1].set_ylim(*yrange)
 
-    # to get that file, download Train.csv from
-    # [Blue Book for Bulldozers](https://www.kaggle.com/c/bluebook-for-bulldozers/data)
+    """
+    *Data use rules prevent me from storing this data in this repo*.
+    Download the data set from Kaggle. (You must be a registered Kaggle user and
+    must be logged in.) Go to
+    
+        https://www.kaggle.com/c/bluebook-for-bulldozers/data
+        
+    save `Train.csv` (might have to uncompress).
+    
+    The raw csv is superslow to load, but feather is fast so load as csv then save
+    as feather:
+    """
+    # df = pd.read_csv("data/Train.csv", parse_dates=['saledate'], low_memory=False)
+    # df.to_feather("data/bulldozer-train.feather")
+    
     # There are 401,126 records with 52 columns
-    # (you must be logged in to get data)
-    # The raw csv is superslow to load, but feather is fast so load then save as feather
 
     df = pd.read_feather("../notebooks/data/bulldozer-train.feather")
     df['MachineHours'] = df['MachineHoursCurrentMeter']  # shorten name
@@ -1581,8 +1591,8 @@ def multi_joint_distr():
 
 if __name__ == '__main__':
     # FROM PAPER:
-    bulldozer()
-    rent()
+    # bulldozer()
+    # rent()
     rent_grid()
     rent_ntrees()
     rent_extra_cols()
