@@ -128,15 +128,16 @@ def plot_stratpd_binned(X, y, colname, targetname,
 
     leaves = leaf_samples(rf, X.drop(colname, axis=1))
     nnodes = rf.estimators_[0].tree_.node_count
-    print(f"Partitioning 'x not {colname}': {nnodes} nodes in (first) tree, "
-          f"{len(rf.estimators_)} trees, {len(leaves)} total leaves")
+    if verbose:
+        print(f"Partitioning 'x not {colname}': {nnodes} nodes in (first) tree, "
+              f"{len(rf.estimators_)} trees, {len(leaves)} total leaves")
 
     leaf_xranges, leaf_slopes, point_betas, ignored = \
         collect_point_betas(X, y, colname, leaves, nbins)
     Xbetas = np.vstack([X[colname].values, point_betas]).T # get x_c, beta matrix
     # Xbetas = Xbetas[Xbetas[:,0].argsort()] # sort by x coordinate (not needed)
 
-    print(f"StratPD num samples ignored {ignored}/{len(X)} for {colname}")
+    #print(f"StratPD num samples ignored {ignored}/{len(X)} for {colname}")
 
     x = Xbetas[:, 0]
     domain = (np.min(x), np.max(x))  # ignores any max(x) points as no slope info after that
@@ -272,8 +273,9 @@ def plot_stratpd(X, y, colname, targetname,
 
     leaves = leaf_samples(rf, X.drop(colname, axis=1))
     nnodes = rf.estimators_[0].tree_.node_count
-    print(f"Partitioning 'x not {colname}': {nnodes} nodes in (first) tree, "
-          f"{len(rf.estimators_)} trees, {len(leaves)} total leaves")
+    if verbose:
+        print(f"Partitioning 'x not {colname}': {nnodes} nodes in (first) tree, "
+              f"{len(rf.estimators_)} trees, {len(leaves)} total leaves")
 
     leaf_xranges, leaf_sizes, leaf_slopes, ignored = \
         collect_discrete_slopes(rf, X, y, colname)
@@ -284,7 +286,7 @@ def plot_stratpd(X, y, colname, targetname,
     # print('leaf_slopes', leaf_slopes)
 
     real_uniq_x = np.array(sorted(np.unique(X[colname])))
-    if True:
+    if verbose:
         print(f"discrete StratPD num samples ignored {ignored}/{len(X)} for {colname}")
 
     slope_at_x = avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes)
@@ -500,7 +502,7 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
         axes[0].set_title("Marginal", fontsize=10)
         col = 1
         for msl in min_samples_leaf_values:
-            print(f"---------- min_samples_leaf={msl} ----------- ")
+            #print(f"---------- min_samples_leaf={msl} ----------- ")
             try:
                 leaf_xranges, leaf_slopes, pdpx, pdpy, ignored = \
                     plot_stratpd(X, y, colname, targetname, ax=axes[col],
@@ -531,7 +533,7 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
                 axes[row,0].set_title("Marginal", fontsize=10)
             col = 1
             for msl in min_samples_leaf_values:
-                print(f"---------- min_samples_leaf={msl}, nbins={nbins:.2f} ----------- ")
+                #print(f"---------- min_samples_leaf={msl}, nbins={nbins:.2f} ----------- ")
                 try:
                     leaf_xranges, leaf_slopes, Xbetas, plot_x, plot_y, ignored = \
                         plot_stratpd_binned(X, y, colname, targetname, ax=axes[row, col],
@@ -595,7 +597,7 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
 
     col = 1
     for msl in min_samples_leaf_values:
-        print(f"---------- min_samples_leaf={msl} ----------- ")
+        #print(f"---------- min_samples_leaf={msl} ----------- ")
         if yrange is not None:
             axes[col].set_ylim(yrange)
         try:
@@ -731,7 +733,7 @@ def plot_catstratpd(X, y,
     leaf_histos, leaf_avgs, leaf_sizes, leaf_catcounts, ignored = \
         catwise_leaves(rf, X, y, colname, verbose=verbose)
 
-    if True:
+    if verbose:
         print(f"CatStratPD Num samples ignored {ignored} for {colname}")
 
     if use_weighted_avg:

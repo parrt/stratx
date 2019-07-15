@@ -29,6 +29,8 @@ import statsmodels.api as sm
 # There are lots of programming sins committed here; to not take this to be
 # our idea of good code. ;)
 
+# For data sources, please see notebooks/examples.ipynb
+
 def df_string_to_cat(df: pd.DataFrame) -> dict:
     catencoders = {}
     for colname in df.columns:
@@ -60,7 +62,7 @@ def fix_missing_num(df, colname):
 def savefig(filename, pad=0):
     plt.tight_layout(pad=pad, w_pad=0, h_pad=0)
     # plt.savefig(f"images/{filename}.pdf")
-    plt.savefig(f"images/{filename}.png", dpi=300)
+    plt.savefig(f"images/{filename}.png", dpi=150)
 
     plt.tight_layout()
     plt.show()
@@ -1343,7 +1345,7 @@ def bulldozer():  # warning: takes like 5 minutes to run
     # (you must be logged in to get data)
     # The raw csv is superslow to load, but feather is fast so load then save as feather
 
-    df = pd.read_feather("../../notebooks/data/bulldozer-train.feather")
+    df = pd.read_feather("../notebooks/data/bulldozer-train.feather")
     df['MachineHours'] = df['MachineHoursCurrentMeter']  # shorten name
     basefeatures = ['ModelID', 'YearMade', 'MachineHours']
 
@@ -1579,23 +1581,23 @@ def multi_joint_distr():
 
 if __name__ == '__main__':
     # FROM PAPER:
-    # bulldozer()
-    # rent()
-    # rent_grid()
-    # rent_ntrees()
-    # rent_extra_cols()
-    # unsup_rent()
-    # unsup_boston()
-    # weight()
-    # weight_ntrees()
-    # unsup_weight()
-    # meta_weight()
-    # weather()
-    # meta_weather()
+    bulldozer()
+    rent()
+    rent_grid()
+    rent_ntrees()
+    rent_extra_cols()
+    unsup_rent()
+    unsup_boston()
+    weight()
+    weight_ntrees()
+    unsup_weight()
+    meta_weight()
+    weather()
+    meta_weather()
     additivity()
-    # meta_additivity()
-    # bigX()
-    # multi_joint_distr()
+    meta_additivity()
+    bigX()
+    multi_joint_distr()
 
     # EXTRA GOODIES
     # meta_boston()
