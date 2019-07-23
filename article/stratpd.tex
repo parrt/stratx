@@ -166,7 +166,7 @@ To illustrate how variable codependencies result in misleading PD and ICE plots,
 
 \section{A stratification approach}
 
-A stratification approach to estimate the partial dependence of $y$ on $x_c$ relies on the following two steps. First, the rows of $\mathbf{X}$ are stratified into disjoint collections of observations for which \xnc{} are constant within each collection (ignoring $x_c$). Let $G_j$ be the index set of the $j$th such collection of observations. The resulting pairs $\{(x_{ic},  y_i)\}_{i \in G_j}$ describe how $x_c$ affects $y$, all else being equal. The second step is to fit a local linear regression model of $y$ on $x_c$ over each the pairs in collection $G_j$:
+A stratification approach to estimate the partial dependence of $y$ on $x_c$ relies on the following two steps. First, the rows of $\mathbf{X}$ are stratified into disjoint collections of observations for which \xnc{} are constant within each collection (ignoring $x_c$). Let $G_j$ be the index set of the $j$th such collection of observations. The resulting pairs $\{(x_{ic},  y_i)\}_{i \in G_j}$ describe how $x_c$ affects $y$, all else being equal. The second step is to fit a local linear regression model of $y$ on $x_c$ over each of the pairs in collection $G_j$:
 
 $$y_i = \beta_{0j} + \widehat{\beta}_{G_j} x_{ic} + \epsilon_i, \hskip 1pc i \in G_j.$$
 
@@ -176,7 +176,7 @@ For each collection $G_j$, the estimated coefficient $\widehat{\beta}_{G_j}$ qua
 	\widehat{\beta}_R = \dfrac{1}{\displaystyle\sum_{G_j \in \mathcal{I}} |G_j|}\displaystyle\sum_{G_j \in \mathcal{I}}|G_j|\widehat{\beta}_{G_j},
 \end{equation}
 
-\noindent where $|G|$ is the \ $G$. The collection of regions and coefficients, $\{(R_j, \widehat{\beta}_{R_j}): j = 1, \ldots, m\}$ provide a localized approximation of the partial derivative of the unknown $f(X)$ with respect to $x_c$.
+\noindent where $|G|$ is the cardinality of $G$. The collection of regions and coefficients, $\{(R_j, \widehat{\beta}_{R_j}): j = 1, \ldots, m\}$ provide a localized approximation of the partial derivative of the unknown $f(X)$ with respect to $x_c$.
 
 Unfortunately, exact stratification is only feasible for two or three variables but breaks down for more variables because it is impractical to find groups of observations that are equal across so many variables.  Nonetheless, stratification is simple, well understood, and clearly isolates the effect of $x_c$ on $y$ from the other features, even in the presence of codependent and interacting features. The only obstacle is a general and practical mechanism for stratifying observations with many variables, which leads us to the primary contribution of this paper.
 
@@ -185,7 +185,7 @@ Unfortunately, exact stratification is only feasible for two or three variables 
 \spd{} seeks to isolate the local effects of $x_c$ on the observations $\mathbf{y}$ in the presence of confounding variables by estimating its regional effect $\widehat{\beta}_R$ given in (\ref{eq:truebeta}). Due to the challenge of exact stratification in high dimensions, \spd{} instead approximates stratification via a regression tree. The key idea is to relax stratification so that it organizes observations into groups of similar rather than equal observations. To do this, \spd{} trains a decision tree regressor, $T$, as in \cite{CART}, on $(x_{\overline{c}}, {\bf y})$ to stratify observations according to the relationship between \xnc{} and $y$.\footnotetext{The \spd{} algorithm also supports the use of random forests \cite{RF} but primarily to deal with duplicated features, as in \secref{sec:dup}.} Let $L_1, \ldots, L_m$ denote the leaves of the trained tree $T$. Each leaf in the tree represents a region of \xnc{} space and $\{(x_{ic}, y_i)\}_{i \in L_j}$ are the $x_c$ and $y$ observations associated with $L_j$. \spd{} characterizes the relationship between $y$ and $x_c$ on leaf $L_j$ by following two steps:
 
 \begin{itemize}
-	\item Partitioning $\{(x_{ic}, y_i)\}_{i \in L_j}$ into disjoint collections (bins of variable width) delimited by the unique $x_c$ values in $L_j$: $B_1, \,\ldots, B_{nbins}$  where $nbins = |\text{unique}(x_c)|$. E.g., for unique $x_c$ values $(1,3,4,5)$, the bin regions are $((1,3), (3,4), (4,5))$.
+	\item Partitioning $\{(x_{ic}, y_i)\}_{i \in L_j}$ into disjoint collections (bins of variable width) delimited by the unique $x_c$ values in $L_j$: $B_1, \,\ldots, B_{nbins}$  where $nbins = |\text{unique}(x_c)|-1$. E.g., for unique $x_c$ values $(1,3,4,5)$, the bin regions are $((1,3), (3,4), (4,5))$.
 	\item Fitting a simple linear regression of $y$ on $x_c$ from bin $B_k$ to bin $B_{k+1}$ to obtain  $\widehat{\beta}_{B_k}$.
 \end{itemize}
 
