@@ -6,6 +6,7 @@ from  matplotlib.collections import LineCollection
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from scipy.stats import binned_statistic
+import warnings
 
 import time
 from dtreeviz.trees import *
@@ -476,7 +477,12 @@ def avg_values_at_x(uniq_x, leaf_ranges, leaf_values):
         i += 1
     # The value could be genuinely zero so we use nan not 0 for out-of-range
     # Now average horiz across the matrix, averaging within each range
-    avg_value_at_x = np.nanmean(slopes, axis=1)
+    # Wrap nanmean() in catcher to avoid "Mean of empty slice" warning, which
+    # comes from some rows being purely NaN; I should probably look at this sometime
+    # to decide whether that's hiding a bug (can there ever be a nan for an x range)?
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+        avg_value_at_x = np.nanmean(slopes, axis=1)
 
     stop = time.time()
     # print(f"avg_value_at_x {stop - start:.3f}s")
