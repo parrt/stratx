@@ -66,7 +66,8 @@
 
 \if0\blind
 {
-  \title{\bf A Stratification Approach to Partial Dependence for Codependent Variables}
+  \title{\bf Technical Report:\\
+  A Stratification Approach to Partial Dependence for Codependent Variables}
 
   \author{Terence Parr and James D. Wilson\\
       University of San Francisco\\
@@ -278,7 +279,7 @@ Increasing the number of trees does not improve accuracy and increases the time 
 \end{center}
 \end{figure}
 
-Decision trees choose feature space hypervolumes that minimize the variance in $y$, but $y$ is technically not needed to partition \xnc{} into similar regions. \cite{RFunsup} described how to use random forests in an unsupervised fashion by considering the original $\bf X$ matrix as class 1 and a synthesized $\bf X'$ as class 2, which works equally well for individual decision trees, at least for this stratification application. $\bf X'$ is just $\bf X$ with each $x_j$ column permuted, effectively sampling from the $x_j$'s marginal distributions. \figref{fig:rent_weight_unsup} shows typical results from three variables from the rent data set and two variables from the synthesized weight data set.  The left column shows unsupervised partitioning of $\bf X$ and the right column shows the usual supervised partitioning with $(\bf X, y)$. The results are very similar but the variance of the partial derivative estimates for the unsupervised case appears to be a bit wider. The \cspd{} unsupervised and supervised plots for categorical variable $x_{\it pregnant}$ in \figref{fig:rent_weight_unsup}(b) are virtually indistinguishable to the eye. 
+Decision trees choose feature space hypervolumes that minimize the variance in $y$, but $y$ is technically not needed to partition \xnc{} into similar regions. \cite{RFunsup} described how to use random forests in an unsupervised fashion by considering the original $\bf X$ matrix as class 1 and a synthesized $\bf X'$ as class 2, which works equally well for individual decision trees, at least for this stratification application. $\bf X'$ is just $\bf X$ with each $x'_j$ column bootstrapped (drawn randomly with replacement) from $x_j$ in $\bf X$, effectively sampling from $x_j$'s marginal distribution. \figref{fig:rent_weight_unsup} shows typical results from three variables from the rent data set and two variables from the synthesized weight data set.  The left column shows unsupervised partitioning of $\bf X$ and the right column shows the usual supervised partitioning with $(\bf X, y)$. The results are very similar but the variance of the partial derivative estimates for the unsupervised case appears to be a bit wider. The \cspd{} unsupervised and supervised plots for categorical variable $x_{\it pregnant}$ in \figref{fig:rent_weight_unsup}(b) are virtually indistinguishable to the eye. 
 
 \figref{fig:boston_unsup} illustrates a case where unsupervised partitioning is less stable and less accurate: $x_{\it AGE}$ versus $x_{\it MEDV}$ (median house value) from the well-known Boston housing data set. The figure shows a marginal plot then the unsupervised and supervised \spd{} plots (and finally the PD/ICE plot). To increased stability for the unsupervised version, we used 20 trees with bootstrapping. But, in the end, there's no reason to perform unsupervised partitioning when $y$ is always available. (Partial dependence makes no sense without $y$.) 
 
