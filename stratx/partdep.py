@@ -364,9 +364,9 @@ def plot_stratpd(X, y, colname, targetname,
     return leaf_xranges, leaf_slopes, pdpx, pdpy, ignored
 
 
-def discrete_xc_space(x: np.ndarray, y: np.ndarray, colname, verbose):
+def discrete_xc_space(x: np.ndarray, y: np.ndarray, verbose=False):
     """
-    Use the unique x values within a leaf as the bins to dynamically compute the bins,
+    Use the unique x values within a leaf to dynamically compute the bins,
     rather then using a fixed nbins hyper parameter. Group the leaf x,y by x
     and collect the average y.  The unique x and y averages are the new x and y pairs.
     The slope for each x is:
@@ -448,7 +448,7 @@ def collect_discrete_slopes(rf, X, y, colname, verbose=False):
             continue
 
         leaf_xranges_, leaf_sizes_, leaf_slopes_, ignored_ = \
-            discrete_xc_space(leaf_x, leaf_y, colname=colname, verbose=verbose)
+            discrete_xc_space(leaf_x, leaf_y, verbose=verbose)
 
         leaf_slopes.extend(leaf_slopes_)
         leaf_xranges.extend(leaf_xranges_)
