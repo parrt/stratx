@@ -357,7 +357,7 @@ def plot_stratpd(X, y, colname, targetname,
 
 def discrete_xc_space(x: np.ndarray, y: np.ndarray, colname, verbose):
     """
-    Use the categories within a leaf as the bins to dynamically change the bins,
+    Use the unique x values within a leaf as the bins to dynamically compute the bins,
     rather then using a fixed nbins hyper parameter. Group the leaf x,y by x
     and collect the average y.  The unique x and y averages are the new x and y pairs.
     The slope for each x is:
@@ -366,11 +366,11 @@ def discrete_xc_space(x: np.ndarray, y: np.ndarray, colname, verbose):
 
     If the ordinal/ints are exactly one unit part, then it's just y_{i+1} - y_i. If
     they are not consecutive, we do not ignore isolated x_i as it ignores too much data.
-    E.g., if x is [1,3,4] and y is [9,8,10] then the second x coordinate is skipped.
-    The two slopes are [(8-9)/2, (10-8)/1] and bin widths are [2,1].
+    E.g., if x is [1,3,4] and y is [9,8,10] then the x=2 coordinate is spanned as part
+    of 1 to 3. The two slopes are [(8-9)/(3-1), (10-8)/(4-3)] and bin widths are [2,1].
 
-    If there is exactly one category in the leaf, the leaf provides no information
-    about how the categories contribute to changes in y. We have to ignore this leaf.
+    If there is exactly one unique x value in the leaf, the leaf provides no information
+    about how x_c contributes to changes in y. We have to ignore this leaf.
     """
     start = time.time()
 
@@ -396,13 +396,13 @@ def discrete_xc_space(x: np.ndarray, y: np.ndarray, colname, verbose):
 
     stop = time.time()
     # print(f"discrete_xc_space {stop - start:.3f}s")
-    return leaf_xranges, leaf_sizes, leaf_slopes, [], ignored
+    return leaf_xranges, leaf_sizes, leaf_slopes, ignored
 
 
 def collect_discrete_slopes(rf, X, y, colname, verbose=False):
     """
     For each leaf of each tree of the random forest rf (trained on all features
-    except colname), get the samples then isolate the column of interest X values
+    except colname), get the leaf samples then isolate the column of interest X values
     and the target y values. Perform another partition of X[colname] vs y and do
     piecewise linear regression to get the slopes in various regions of X[colname].
     We don't need to subtract the minimum y value before regressing because
@@ -438,7 +438,7 @@ def collect_discrete_slopes(rf, X, y, colname, verbose=False):
             ignored += len(leaf_x)
             continue
 
-        leaf_xranges_, leaf_sizes_, leaf_slopes_, leaf_r2_, ignored_ = \
+        leaf_xranges_, leaf_sizes_, leaf_slopes_, ignored_ = \
             discrete_xc_space(leaf_x, leaf_y, colname=colname, verbose=verbose)
 
         leaf_slopes.extend(leaf_slopes_)
