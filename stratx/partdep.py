@@ -80,6 +80,66 @@ def collect_point_betas(X, y, colname, leaves, nbins:int):
     return leaf_xranges, leaf_slopes, point_betas, ignored
 
 
+def PD(X, y, colname,
+       ntrees=1, min_samples_leaf=10, bootstrap=False,
+       max_features=1.0,
+       supervised=True,
+       verbose=False):
+    if supervised:
+        rf = RandomForestRegressor(n_estimators=ntrees,
+                                   min_samples_leaf=min_samples_leaf,
+                                   bootstrap=bootstrap,
+                                   max_features=max_features)
+        rf.fit(X.drop(colname, axis=1), y)
+        if verbose:
+            print(f"Strat Partition RF: missing {colname} training R^2 {rf.score(X.drop(colname, axis=1), y)}")
+
+    else:
+        """
+        Wow. Breiman's trick works in most cases. Falls apart on Boston housing MEDV target vs AGE
+        """
+        if verbose: print("USING UNSUPERVISED MODE")
+        X_synth, y_synth = conjure_twoclass(X)
+        rf = RandomForestRegressor(n_estimators=ntrees,
+                                   min_samples_leaf=min_samples_leaf,
+                                   bootstrap=bootstrap,
+                                   max_features=max_features,
+                                   oob_score=False)
+        rf.fit(X_synth.drop(colname, axis=1), y_synth)
+
+    if verbose:
+        leaves = leaf_samples(rf, X.drop(colname, axis=1))
+        nnodes = rf.estimators_[0].tree_.node_count
+        print(f"Partitioning 'x not {colname}': {nnodes} nodes in (first) tree, "
+              f"{len(rf.estimators_)} trees, {len(leaves)} total leaves")
+
+    leaf_xranges, leaf_sizes, leaf_slopes, ignored = \
+        collect_discrete_slopes(rf, X, y, colname)
+
+    # print('leaf_xranges', leaf_xranges)
+    # print('leaf_slopes', leaf_slopes)
+
+    real_uniq_x = np.array(sorted(np.unique(X[colname])))
+    if verbose:
+        print(f"discrete StratPD num samples ignored {ignored}/{len(X)} for {colname}")
+
+    slope_at_x = avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes)
+    # slope_at_x = weighted_avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes, leaf_sizes, use_weighted_avg=True)
+
+    # Drop any nan slopes; implies we have no reliable data for that range
+    # Make sure to drop uniq_x values too :)
+    notnan_idx = ~np.isnan(slope_at_x) # should be same for slope_at_x
+    slope_at_x = slope_at_x[notnan_idx]
+    pdpx = real_uniq_x[notnan_idx]
+
+    dx = np.diff(pdpx)
+    y_deltas = slope_at_x[:-1] * dx  # last slope is nan since no data after last x value
+    # print(f"y_deltas: {y_deltas}")
+    pdpy = np.cumsum(y_deltas)                    # we lose one value here
+    pdpy = np.concatenate([np.array([0]), pdpy])  # add back the 0 we lost
+    return leaf_xranges, leaf_slopes, pdpx, pdpy, ignored
+
+
 def plot_stratpd_binned(X, y, colname, targetname,
                  ntrees=1, min_samples_leaf=10, bootstrap=False,
                  max_features=1.0,
@@ -230,7 +290,6 @@ def plot_stratpd_binned(X, y, colname, targetname,
 def plot_stratpd(X, y, colname, targetname,
                  ntrees=1, min_samples_leaf=10, bootstrap=False,
                  max_features=1.0,
-                 # binning of overall X[colname] space in plot
                  supervised=True,
                  ax=None,
                  xrange=None,
@@ -250,60 +309,10 @@ def plot_stratpd(X, y, colname, targetname,
                  pdp_marker_color='black',
                  verbose=False
                  ):
-    if supervised:
-        rf = RandomForestRegressor(n_estimators=ntrees,
-                                   min_samples_leaf=min_samples_leaf,
-                                   bootstrap=bootstrap,
-                                   max_features=max_features)
-        rf.fit(X.drop(colname, axis=1), y)
-        if verbose:
-            print(f"Strat Partition RF: missing {colname} training R^2 {rf.score(X.drop(colname, axis=1), y)}")
-
-    else:
-        """
-        Wow. Breiman's trick works in most cases. Falls apart on Boston housing MEDV target vs AGE
-        """
-        if verbose: print("USING UNSUPERVISED MODE")
-        X_synth, y_synth = conjure_twoclass(X)
-        rf = RandomForestRegressor(n_estimators=ntrees,
-                                   min_samples_leaf=min_samples_leaf,
-                                   bootstrap=bootstrap,
-                                   max_features=max_features,
-                                   oob_score=False)
-        rf.fit(X_synth.drop(colname, axis=1), y_synth)
-
-    if verbose:
-        leaves = leaf_samples(rf, X.drop(colname, axis=1))
-        nnodes = rf.estimators_[0].tree_.node_count
-        print(f"Partitioning 'x not {colname}': {nnodes} nodes in (first) tree, "
-              f"{len(rf.estimators_)} trees, {len(leaves)} total leaves")
-
-    leaf_xranges, leaf_sizes, leaf_slopes, ignored = \
-        collect_discrete_slopes(rf, X, y, colname)
-    # leaf_xranges, leaf_sizes, leaf_slopes, _, ignored = \
-        #collect_leaf_slopes(rf, X, y, colname, nbins=0, isdiscrete=1, verbose=0)
-
-    # print('leaf_xranges', leaf_xranges)
-    # print('leaf_slopes', leaf_slopes)
-
-    real_uniq_x = np.array(sorted(np.unique(X[colname])))
-    if verbose:
-        print(f"discrete StratPD num samples ignored {ignored}/{len(X)} for {colname}")
-
-    slope_at_x = avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes)
-    # slope_at_x = weighted_avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes, leaf_sizes, use_weighted_avg=True)
-
-    # Drop any nan slopes; implies we have no reliable data for that range
-    # Make sure to drop uniq_x values too :)
-    notnan_idx = ~np.isnan(slope_at_x) # should be same for slope_at_x and r2_at_x
-    slope_at_x = slope_at_x[notnan_idx]
-    pdpx = real_uniq_x[notnan_idx]
-
-    dx = np.diff(pdpx)
-    y_deltas = slope_at_x[:-1] * dx  # last slope is nan since no data after last x value
-    # print(f"y_deltas: {y_deltas}")
-    pdpy = np.cumsum(y_deltas)                    # we lose one value here
-    pdpy = np.concatenate([np.array([0]), pdpy])  # add back the 0 we lost
+    leaf_xranges, leaf_slopes, pdpx, pdpy, ignored = \
+        PD(X=X, y=y, colname=colname, ntrees=ntrees, min_samples_leaf=min_samples_leaf,
+           bootstrap=bootstrap, max_features=max_features, supervised=supervised,
+           verbose=verbose)
 
     # PLOT
 
@@ -455,7 +464,7 @@ def collect_discrete_slopes(rf, X, y, colname, verbose=False):
     return leaf_xranges, leaf_sizes, leaf_slopes, ignored
 
 
-def avg_values_at_x(uniq_x, leaf_ranges, leaf_values):
+def avg_values_at_x(uniq_x, leaf_ranges, leaf_slopes):
     """
     Compute the weighted average of leaf_values at each uniq_x.
 
@@ -463,16 +472,16 @@ def avg_values_at_x(uniq_x, leaf_ranges, leaf_values):
     """
     start = time.time()
     nx = len(uniq_x)
-    nslopes = len(leaf_values)
+    nslopes = len(leaf_slopes)
     slopes = np.zeros(shape=(nx, nslopes))
-    i = 0  # leaf index; we get a line for each leaf
+    i = 0  # unique x value (column in slopes matrix) index; we get a slope line for each range x_i to x_i+1
     # collect the slope for each range (taken from a leaf) as collection of
     # flat lines across the same x range
-    for r, slope in zip(leaf_ranges, leaf_values):
+    for xr, slope in zip(leaf_ranges, leaf_slopes):
         s = np.full(nx, slope, dtype=float)
-        # now trim line so it's only valid in range r;
+        # now trim line so it's only valid in range xr;
         # don't set slope on right edge
-        s[np.where( (uniq_x < r[0]) | (uniq_x >= r[1]) )] = np.nan
+        s[np.where( (uniq_x < xr[0]) | (uniq_x >= xr[1]) )] = np.nan
         slopes[:, i] = s
         i += 1
     # The value could be genuinely zero so we use nan not 0 for out-of-range
@@ -480,13 +489,14 @@ def avg_values_at_x(uniq_x, leaf_ranges, leaf_values):
     # Wrap nanmean() in catcher to avoid "Mean of empty slice" warning, which
     # comes from some rows being purely NaN; I should probably look at this sometime
     # to decide whether that's hiding a bug (can there ever be a nan for an x range)?
+    # Oh right. We might have to ignore some leaves (those with single unique x values)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
         avg_value_at_x = np.nanmean(slopes, axis=1)
 
     stop = time.time()
     # print(f"avg_value_at_x {stop - start:.3f}s")
-    return avg_value_at_x
+    return avg_value_at_x # return average slope at each unique x value
 
 
 def plot_stratpd_gridsearch(X, y, colname, targetname,
