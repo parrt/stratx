@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='stratx',
-    version='0.1.3',
+    version='0.2',  # this will be for adding imp feature
     url='https://github.com/parrt/stratx',
     license='MIT',
     py_modules=['stratx'],

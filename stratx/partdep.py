@@ -272,9 +272,9 @@ def plot_stratpd(X, y, colname, targetname,
                                    oob_score=False)
         rf.fit(X_synth.drop(colname, axis=1), y_synth)
 
-    leaves = leaf_samples(rf, X.drop(colname, axis=1))
-    nnodes = rf.estimators_[0].tree_.node_count
     if verbose:
+        leaves = leaf_samples(rf, X.drop(colname, axis=1))
+        nnodes = rf.estimators_[0].tree_.node_count
         print(f"Partitioning 'x not {colname}': {nnodes} nodes in (first) tree, "
               f"{len(rf.estimators_)} trees, {len(leaves)} total leaves")
 
