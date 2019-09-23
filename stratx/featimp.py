@@ -39,7 +39,7 @@ def importances(X:pd.DataFrame, y:pd.Series, colnames:Sequence=None,
             PD(X=X, y=y, colname=colname, ntrees=ntrees, min_samples_leaf=min_samples_leaf,
                bootstrap=bootstrap, max_features=max_features, supervised=True,
                verbose=verbose)
-        df[f"pd_{colname}"] = pdpy
+        df[f"pd_{colname}"] = np.abs(pdpy)
 
     # TODO: probably should make smallest pd value 0 to shift all up from 0 lest
     # things cancel
@@ -48,11 +48,17 @@ def importances(X:pd.DataFrame, y:pd.Series, colnames:Sequence=None,
     df['sum_pd'] = df.iloc[:,1:].sum(axis=1)
 
     # do ratios for importance
-    for colname in X.columns:
-        df[f'I_{colname}'] = df[f'pd_{colname}'] / df[f'sum_pd']
+    # for colname in X.columns:
+    #     df[f'I_{colname}'] = df[f'pd_{colname}'] / df[f'sum_pd']
+
 
     print(df)
-    # marginal_xranges, marginal_sizes, marginal_slopes, ignored = \
-    #     discrete_xc_space(X[colname], y, verbose=verbose)
-    return df
+    avgs = [np.mean(df[f"pd_{colname}"]) for colname in colnames]
+    avgs /= np.sum(avgs) # normalize to 0..1
 
+    I = pd.DataFrame(data={'Feature':colnames, 'Importance':avgs})
+    I = I.set_index('Feature')
+    I = I.sort_values('Importance', ascending=False)
+    print(I)
+
+    return I

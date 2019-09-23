@@ -1,6 +1,7 @@
 from sklearn.datasets import load_boston, load_diabetes
 from stratx.partdep import *
 from stratx.featimp import *
+from rfpimp import plot_importances
 
 PLOT = False
 
@@ -23,24 +24,17 @@ X = df.drop('y', axis=1)
 y = df['y']
 # X = standardize(X)
 
-df = importances(X, y)
-
-fig, ax = plt.subplots(1, 1)
-for colname in X.columns:
-    ax.scatter(df['x'], df[f'I_{colname}'], s=3)
-    ax.set_ylim(-1,1)
-plt.tight_layout()
-plt.show()
+I = importances(X, y)
+plot_importances(I, imp_range=(0,1))
 
 if True:
-
     fig, ax = plt.subplots(1,1)
     xc = 'x2'
     min_samples_leaf = 5
     plot_stratpd(X, y, 'x1', 'y', ax=ax, min_samples_leaf=min_samples_leaf)
     plot_stratpd(X, y, 'x2', 'y', ax=ax, min_samples_leaf=min_samples_leaf)
     plot_stratpd(X, y, 'x3', 'y', ax=ax, min_samples_leaf=min_samples_leaf)
-    ax.scatter(df['x'], df['sum_pd'], s=3, c='k')
+    # ax.scatter(df['x'], df['sum_pd'], s=3, c='k')
     # marginal_xranges, marginal_sizes, marginal_slopes, ignored = \
     #     discrete_xc_space(X['AGE'], y)
 
