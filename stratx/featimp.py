@@ -23,19 +23,36 @@ def importances(X:pd.DataFrame, y:pd.Series, colnames:Sequence=None,
     if colnames is None:
         colnames = X.columns.values
 
-    # standardize variables
-    Z = X.copy()
-    for colname in colnames:
-        Z[colname] = (Z[colname] - np.mean(Z[colname])) / np.std(Z[colname])
+    #TODO: check standardized vars
+    # # standardize variables
+    # Z = X.copy()
+    # for colname in colnames:
+    #     Z[colname] = (Z[colname] - np.mean(Z[colname])) / np.std(Z[colname])
 
+    n, p = X.shape
+    df = pd.DataFrame()
+    df['x'] = sorted(X.iloc[0:-1,0])
+    # pick any standardized variable (column) for shared x
+    # ignore last x coordinate as we have no partial derivative data at the end
     for colname in colnames:
         leaf_xranges, leaf_slopes, pdpx, pdpy, ignored = \
-            PD(X=Z, y=y, colname=colname, ntrees=ntrees, min_samples_leaf=min_samples_leaf,
+            PD(X=X, y=y, colname=colname, ntrees=ntrees, min_samples_leaf=min_samples_leaf,
                bootstrap=bootstrap, max_features=max_features, supervised=True,
                verbose=verbose)
-        print(pdpx)
-        print(pdpy)
+        df[f"pd_{colname}"] = pdpy
 
+    # TODO: probably should make smallest pd value 0 to shift all up from 0 lest
+    # things cancel
+
+
+    df['sum_pd'] = df.iloc[:,1:].sum(axis=1)
+
+    # do ratios for importance
+    for colname in X.columns:
+        df[f'I_{colname}'] = df[f'pd_{colname}'] / df[f'sum_pd']
+
+    print(df)
     # marginal_xranges, marginal_sizes, marginal_slopes, ignored = \
     #     discrete_xc_space(X[colname], y, verbose=verbose)
+    return df
 
