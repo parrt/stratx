@@ -11,7 +11,8 @@ def synthetic_poly_data(n, p, degree=1):
     coeff = np.random.random_sample(size=p)*10 # get p random coefficients
     coeff = np.array([5, 2, 10])
     for i in range(p):
-        df[f'x{i+1}'] = np.random.random_sample(size=n)*10
+        df[f'x{i+1}'] = np.round(np.random.random_sample(size=n)*10,1)
+    #df['x3'] = df['x1']  # copy x1
     # multiply coefficients x each column (var) and sum along columns
     # df['y'] = np.sum( [coeff[i]*df[f'x{i+1}'] for i in range(p)], axis=0 )
     df['y'] = 5*df['x1'] + 2*df['x2'] + 3*df['x3']**2
@@ -31,12 +32,10 @@ if True:
     fig, ax = plt.subplots(1,1)
     xc = 'x2'
     min_samples_leaf = 5
-    plot_stratpd(X, y, 'x1', 'y', ax=ax, min_samples_leaf=min_samples_leaf)
-    plot_stratpd(X, y, 'x2', 'y', ax=ax, min_samples_leaf=min_samples_leaf)
-    plot_stratpd(X, y, 'x3', 'y', ax=ax, min_samples_leaf=min_samples_leaf)
+    for colname in X.columns:
+        print(colname)
+        plot_stratpd(X, y, colname, 'y', ax=ax, min_samples_leaf=min_samples_leaf)
     # ax.scatter(df['x'], df['sum_pd'], s=3, c='k')
-    # marginal_xranges, marginal_sizes, marginal_slopes, ignored = \
-    #     discrete_xc_space(X['AGE'], y)
 
     # uniq_x = np.array(sorted(np.unique(X[xc])))
     # ax.scatter(uniq_x[:-1], marginal_slopes)
