@@ -12,7 +12,7 @@ def synthetic_poly_data(n, p, degree=1):
     coeff = np.array([5, 2, 10])
     for i in range(p):
         df[f'x{i+1}'] = np.round(np.random.random_sample(size=n)*10,1)
-    #df['x3'] = df['x1']  # copy x1
+    # df['x3'] = df['x1']  # copy x1
     # multiply coefficients x each column (var) and sum along columns
     # df['y'] = np.sum( [coeff[i]*df[f'x{i+1}'] for i in range(p)], axis=0 )
     df['y'] = 5*df['x1'] + 2*df['x2'] + 3*df['x3']**2

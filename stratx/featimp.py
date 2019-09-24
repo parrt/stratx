@@ -42,25 +42,26 @@ def importances(X:pd.DataFrame, y:pd.Series, colnames:Sequence=None,
                verbose=verbose)
         x = X[colname]
         x_filtered = x[np.isin(x, pdpx)]
-        print(len(x), len(pdpx), len(x_filtered))
         uniq_x_counts = np.unique(x_filtered, return_counts=True)[1]
+        print(len(x), len(pdpx), len(x_filtered), np.sum(uniq_x_counts))
         # print(list(zip(pdpx,uniq_x_counts)))
-        avgs[i] = np.sum(np.abs(pdpy) * uniq_x_counts) / np.sum(uniq_x_counts)
+        y_filtered = y[np.isin(x, pdpx)]
+        print(np.sum(y_filtered), np.sum(y))
+        avgs[i] = np.sum(np.abs(pdpy) * uniq_x_counts) / np.sum(uniq_x_counts) # weighted avg abs pdpy
         # df[f"pd_{colname}"] = np.abs(pdpy)
 
     # TODO: probably should make smallest pd value 0 to shift all up from 0 lest
     # things cancel
 
-
-    # df['sum_pd'] = df.iloc[:,1:].sum(axis=1)
-
-    # do ratios for importance
-    # for colname in X.columns:
-    #     df[f'I_{colname}'] = df[f'pd_{colname}'] / df[f'sum_pd']
-
-    # print(df)
-    # avgs = [np.mean(df[f"pd_{colname}"]) for colname in colnames]
     # avgs /= np.sum(avgs) # normalize to 0..1
+    print(avgs)
+    # avgs /= (np.sum(y) / len(y)) # normalize to 0..1
+    # avgs /= np.max(avgs)
+    avgs /= np.mean(y) # normalize 0..1 where 1.0 is mass of y
+    # sum(avgs) will be less than 1 if partial dep are correct
+    print('avgs sum', np.sum(avgs))
+
+    # TODO maybe mean(y) should really only count x values for which we have values
 
     I = pd.DataFrame(data={'Feature':colnames, 'Importance':avgs})
     I = I.set_index('Feature')
