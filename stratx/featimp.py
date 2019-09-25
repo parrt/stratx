@@ -43,10 +43,10 @@ def importances(X:pd.DataFrame, y:pd.Series, colnames:Sequence=None,
         x = X[colname]
         x_filtered = x[np.isin(x, pdpx)]
         uniq_x_counts = np.unique(x_filtered, return_counts=True)[1]
-        print(len(x), len(pdpx), len(x_filtered), np.sum(uniq_x_counts))
+        # print(len(x), len(pdpx), len(x_filtered), np.sum(uniq_x_counts))
         # print(list(zip(pdpx,uniq_x_counts)))
         y_filtered = y[np.isin(x, pdpx)]
-        print(np.sum(y_filtered), np.sum(y))
+        # print(np.sum(y_filtered), np.sum(y))
         avgs[i] = np.sum(np.abs(pdpy) * uniq_x_counts) / np.sum(uniq_x_counts) # weighted avg abs pdpy
         # df[f"pd_{colname}"] = np.abs(pdpy)
 
@@ -54,18 +54,18 @@ def importances(X:pd.DataFrame, y:pd.Series, colnames:Sequence=None,
     # things cancel
 
     # avgs /= np.sum(avgs) # normalize to 0..1
-    print(avgs)
+    # print(avgs)
     # avgs /= (np.sum(y) / len(y)) # normalize to 0..1
     # avgs /= np.max(avgs)
     avgs /= np.mean(y) # normalize 0..1 where 1.0 is mass of y
     # sum(avgs) will be less than 1 if partial dep are correct
-    print('avgs sum', np.sum(avgs))
+    # print('avgs sum', np.sum(avgs))
 
     # TODO maybe mean(y) should really only count x values for which we have values
 
     I = pd.DataFrame(data={'Feature':colnames, 'Importance':avgs})
     I = I.set_index('Feature')
     I = I.sort_values('Importance', ascending=False)
-    print(I)
+    # print(I)
 
     return I

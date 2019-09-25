@@ -321,7 +321,8 @@ def plot_stratpd(X, y, colname, targetname,
 
     # Draw bin left edge markers; ignore bins with no data (nan)
     ax.scatter(pdpx, pdpy,
-               s=pdp_marker_size, c=pdp_marker_color)
+               s=pdp_marker_size, c=pdp_marker_color,
+               label=colname)
 
     if show_pdp_line:
         ax.plot(pdpx, pdpy,
