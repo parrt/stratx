@@ -147,6 +147,66 @@ Proof will likely hinge on
 \overline {\bf y} \le \overline{\text{\it PD}_i(x)}\big |_{min(x_i)}^{max(x_i)} ~\forall\, i
 \]
 
+Actually, I think the key is to start with the gradient of ${\bf x}$ and how it affects $y=f({\bf x})$. Might be easiest to think about this as a finite difference. Define the change in $y$ when we shift all vars by $h$:
+
+\[
+\Delta y = f({\bf x} + \vec{h}) - f({\bf x})
+\]
+
+Now look at each var. As we shift each $x_i$ var slightly by $h$, $y$ changes by $\Delta y_i$:
+
+\[
+\Delta y_i = f([x_1, ..., x_i+h, ..., x_p]) - f({\bf x})
+\]
+
+Now, I think we need to show
+
+\[
+\Delta y = \sum_{i=1}^{p} \Delta y_i
+\]
+
+(This *looks* obvious. is it?) The argument is that it's equivalent to measure the $\Delta y$ change all at once via ${\bf x} + \vec{h}$ or by collecting and summing $\Delta y_i$, the individual contributions of shifting each variable by $h$.  
+
+If we can turn these deltas into partial derivatives then we can do cumulative sum on them to get the partial dependence curves. This gets us closer I think.
+
+
+\[
+\frac{\partial y}{\partial \bf x} = \sum_{i=1}^p \frac{\partial y}{\partial x_i}
+\]
+
+\[
+\text{\it PD}_i(x) = \int_{min(x_i)}^x \frac{\partial y}{\partial x_i} dx_i
+\]
+
+\[
+\overline{\text{\it PD}_1(x)}\big |_{min(x_1)}^{max(x_1)}
+\]
+
+\cut{
+\noindent At $x_i$ for some $h$ (maybe $h$ is instance index).
+
+Define the gradient:
+
+\[
+\nabla {\bf x} = [\frac{\partial y}{\partial x_1}, \ldots, \frac{\partial y}{\partial x_p}]
+\]
+
+When we move from ${\bf x}$ to ${\bf x}+\nabla {\bf x}$, we add some $\Delta y$ to $y$ so
+
+\[
+f({\bf x}+\nabla {\bf x}) = y + \Delta y 
+\]
+
+I think we need to show
+
+\[
+\Delta y_i = \frac{f(x_i + h) - f(x_i)}{h}
+\]
+
+\[
+\Delta y = \sum_{i=1}^{p} \Delta y_i
+\]
+}
 
 \bibliographystyle{apalike}
 
