@@ -64,26 +64,26 @@ foo = plot_catstratpd(X, y, 'sex', 'y', catnames=['female','male']) # not sure w
 
 Kaggle [Blue book for bulldozer](https://www.kaggle.com/c/two-sigma-connect-rental-listing-inquiries) data set.
 
-<a href="article/images/bulldozer.png"><img src="article/images/bulldozer.png" width="400"></a>
+<a href="articles/pd/images/bulldozer.png"><img src="articles/pd/images/bulldozer.png" width="400"></a>
 
 Kaggle [Two sigma connect: Rental listing inquiries.](https://www.kaggle.com/c/two-sigma-connect-rental-listing-inquiries) data set:
 
-<a href="article/images/latitude_meta.png"><img src="article/images/latitude_meta.png" width="500"></a>
+<a href="articles/pd/images/latitude_meta.png"><img src="articles/pd/images/latitude_meta.png" width="500"></a>
 
 Using a synthetic weather data set where temperature varies in sinusoidal fashion over the year and with different baseline temperatures per state:
 
-<a href="article/images/dayofyear_vs_temp_stratpd.png"><img src="article/images/dayofyear_vs_temp_stratpd.png" width="150"></a>
+<a href="articles/pd/images/dayofyear_vs_temp_stratpd.png"><img src="articles/pd/images/dayofyear_vs_temp_stratpd.png" width="150"></a>
 
 Here's an example of a categorical variable from the weather data set:
 
-<a href="article/images/state_vs_temp_stratpd.png"><img src="article/images/state_vs_temp_stratpd.png" width="150"></a>
+<a href="articles/pd/images/state_vs_temp_stratpd.png"><img src="articles/pd/images/state_vs_temp_stratpd.png" width="150"></a>
 
 ## Comparing to PDP / ICE plots
 
 Plots of bedrooms versus rent price using New York City apartment rent data. (a) marginal plot, (b) PD/ICE plot derived from random forest, (c) PD/ICE plot derived from SVM, and (d) StratPD plot; sample size is 10,000 observations of ~400k. The PD/ICE plots are radically different for the same data set, depending on the chosen user model.
 
-<a href="article/images/bedrooms_vs_price.png"><img src="article/images/bedrooms_vs_price.png" width="350"></a>
+<a href="articles/pd/images/bedrooms_vs_price.png"><img src="articles/pd/images/bedrooms_vs_price.png" width="350"></a>
 
 Plots of height versus weight using synthetic data body weight data (see academic paper). The PD/ICE on the left is biased by codependent features since pregnant women, who are typically shorter than men, have a jump in weight.
 
-<a href="article/images/height_vs_weight_pdp.png"><img src="article/images/height_vs_weight_pdp.png" width="150"></a><a href="article/images/height_vs_weight_stratpd.png"><img src="article/images/height_vs_weight_stratpd.png" width="150"></a>
+<a href="articles/pd/images/height_vs_weight_pdp.png"><img src="articles/pd/images/height_vs_weight_pdp.png" width="150"></a><a href="articles/pd/images/height_vs_weight_stratpd.png"><img src="articles/pd/images/height_vs_weight_stratpd.png" width="150"></a>
