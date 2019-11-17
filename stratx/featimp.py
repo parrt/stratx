@@ -47,7 +47,8 @@ def importances(X:pd.DataFrame, y:pd.Series, colnames:Sequence=None,
         # print(list(zip(pdpx,uniq_x_counts)))
         y_filtered = y[np.isin(x, pdpx)]
         # print(np.sum(y_filtered), np.sum(y))
-        avgs[i] = np.sum(np.abs(pdpy) * uniq_x_counts) / np.sum(uniq_x_counts) # weighted avg abs pdpy
+        avg_pdpy = np.mean(pdpy)
+        avgs[i] = np.sum(np.abs(pdpy-avg_pdpy) * uniq_x_counts)# / np.sum(uniq_x_counts) # weighted avg abs pdpy
         # df[f"pd_{colname}"] = np.abs(pdpy)
 
     # TODO: probably should make smallest pd value 0 to shift all up from 0 lest
@@ -57,7 +58,7 @@ def importances(X:pd.DataFrame, y:pd.Series, colnames:Sequence=None,
     # print(avgs)
     # avgs /= (np.sum(y) / len(y)) # normalize to 0..1
     # avgs /= np.max(avgs)
-    avgs /= np.mean(y) # normalize 0..1 where 1.0 is mass of y
+    avgs /= np.sum(np.abs(y-np.mean(y))) # normalize 0..1 where 1.0 is mass of y
     # sum(avgs) will be less than 1 if partial dep are correct
     # print('avgs sum', np.sum(avgs))
 
