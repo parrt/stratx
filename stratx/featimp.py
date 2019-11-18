@@ -50,7 +50,7 @@ def importances(X:pd.DataFrame, y:pd.Series, colnames:Sequence=None,
         avg_pdpy = np.mean(pdpy)
         avgs[i] = np.sum(np.abs(pdpy-avg_pdpy) * uniq_x_counts)# / np.sum(uniq_x_counts) # weighted avg abs pdpy
         # df[f"pd_{colname}"] = np.abs(pdpy)
-        print("len uniq pdpx", len(np.unique(pdpx)))
+        print("len uniq pdpx", len(np.unique(pdpx)), 'sum uniq x counts', np.sum(uniq_x_counts))
         print("len y", len(y))
         print("len uniq x", len(np.unique(x)))
         print("max pdpy", np.max(pdpy))
