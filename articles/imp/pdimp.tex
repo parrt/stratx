@@ -224,7 +224,22 @@ I think we need to show
 \]
 }
 
+\section{Notes}
+
+We have to pick an origin line, which we can assume a zero. Then we need to compute how much mass is between the origin and y. We need to subtract out the bias, such as the Y intercept in linear regression.  In discussions, we decided that if y has both negative and positive values, assuming that the data is smooth (which our data is not smooth); we can just take the absolute value and sum it up. 
+
+If all of the data is above or below the origin, we have to use these rules:
+
+\begin{itemize}
+\item regions above the origin, subtract the min(abs(y))
+\item regions below the origin, add the min(abs(y))
+\end{itemize}
+
+For the sum above and some below the origin y case, we have to break it into regions and apply these rules.
+
 Friedman's RuleFit alg has importance: see https://christophm.github.io/interpretable-ml-book/rulefit.html and https://arxiv.org/abs/0811.1679
+
+Boruta technique https://www.jstatsoft.org/article/view/v036i11 feature selection but also can give importances.
 
 \bibliographystyle{apalike}
 
