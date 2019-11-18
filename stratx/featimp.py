@@ -45,11 +45,15 @@ def importances(X:pd.DataFrame, y:pd.Series, colnames:Sequence=None,
         uniq_x_counts = np.unique(x_filtered, return_counts=True)[1]
         # print(len(x), len(pdpx), len(x_filtered), np.sum(uniq_x_counts))
         # print(list(zip(pdpx,uniq_x_counts)))
-        y_filtered = y[np.isin(x, pdpx)]
+        #y_filtered = y[np.isin(x, pdpx)]
         # print(np.sum(y_filtered), np.sum(y))
         avg_pdpy = np.mean(pdpy)
         avgs[i] = np.sum(np.abs(pdpy-avg_pdpy) * uniq_x_counts)# / np.sum(uniq_x_counts) # weighted avg abs pdpy
         # df[f"pd_{colname}"] = np.abs(pdpy)
+        print("len uniq pdpx", len(np.unique(pdpx)))
+        print("len y", len(y))
+        print("len uniq x", len(np.unique(x)))
+        print("max pdpy", np.max(pdpy))
 
     # TODO: probably should make smallest pd value 0 to shift all up from 0 lest
     # things cancel
@@ -58,9 +62,15 @@ def importances(X:pd.DataFrame, y:pd.Series, colnames:Sequence=None,
     # print(avgs)
     # avgs /= (np.sum(y) / len(y)) # normalize to 0..1
     # avgs /= np.max(avgs)
+    print("Avgs", avgs, "sum avgs", np.sum(avgs))
+
+    # don't need unique_y_counts as summing all y gives us total sum we need
     avgs /= np.sum(np.abs(y-np.mean(y))) # normalize 0..1 where 1.0 is mass of y
     # sum(avgs) will be less than 1 if partial dep are correct
-    # print('avgs sum', np.sum(avgs))
+    print("normalized avgs", avgs)
+    print("Mean y", np.mean(y))
+    print('avg abs y', np.mean(np.abs(y)))
+    print('avg abs mean-centered sum', np.sum(np.abs(y-np.mean(y))))
 
     # TODO maybe mean(y) should really only count x values for which we have values
 
