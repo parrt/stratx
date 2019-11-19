@@ -37,7 +37,7 @@ def plot_all_PD(X,y,eqn=None,min_samples_leaf=5, mean_center=False):
     #record_x = (record_x - np.mean(record_x)) / np.std(record_x)
     yplot = np.array(sorted(y))
     print("min y", np.min(y))
-    # yplot = y
+    yplot = y
     ax = axes[1]
     ax.plot(record_x, yplot, lw=.3, c='k',
             label='marginal $y$ vs $x^{(i)}$')
@@ -96,5 +96,10 @@ rf.fit(X,y)
 
 I = featimp.importances(X, y)
 plot_importances(I, imp_range=(0, 1))
+
+df = df.sort_values('x2')
+X = df.drop('y', axis=1)
+y = df['y']
+print('leftmost', y[0])
 
 plot_all_PD(X,y,eqn,mean_center=False)
