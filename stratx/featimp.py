@@ -52,9 +52,9 @@ def importances(X:pd.DataFrame, y:pd.Series, colnames:Sequence=None,
         print("weighted mean pdpy", np.sum(np.abs(pdpy) * uniq_x_counts)/np.sum(uniq_x_counts))
         avgs[i] = np.sum(np.abs(pdpy-avg_pdpy) * uniq_x_counts)# / np.sum(uniq_x_counts) # weighted avg abs pdpy
         # df[f"pd_{colname}"] = np.abs(pdpy)
-        print("len uniq pdpx", len(np.unique(pdpx)), 'sum uniq x counts', np.sum(uniq_x_counts))
-        print("len y", len(y))
-        print("len uniq x", len(np.unique(x)))
+        # print("len uniq pdpx", len(np.unique(pdpx)), 'sum uniq x counts', np.sum(uniq_x_counts))
+        # print("len y", len(y))
+        # print("len uniq x", len(np.unique(x)))
         print("min,max pdpy", np.min(pdpy), np.max(pdpy))
 
     # TODO: probably should make smallest pd value 0 to shift all up from 0 lest
@@ -73,7 +73,6 @@ def importances(X:pd.DataFrame, y:pd.Series, colnames:Sequence=None,
     print("Mean y", np.mean(y))
     print('avg abs y', np.mean(np.abs(y)))
     print('sum abs mean-centered sum', np.sum(np.abs(y-np.mean(y))))
-    print('mean abs mean-centered sum', np.mean(np.abs(y-np.mean(y))))
 
     # TODO maybe mean(y) should really only count x values for which we have values
 
