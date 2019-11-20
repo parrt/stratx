@@ -23,19 +23,10 @@ def importances(X:pd.DataFrame, y:pd.Series, colnames:Sequence=None,
     if colnames is None:
         colnames = X.columns.values
 
-    #TODO: check standardized vars
-    # # standardize variables
-    # Z = X.copy()
-    # for colname in colnames:
-    #     Z[colname] = (Z[colname] - np.mean(Z[colname])) / np.std(Z[colname])
-
     n, p = X.shape
-    df = pd.DataFrame()
-    #df['x'] = sorted(X.iloc[0:-1,0])
-    # pick any standardized variable (column) for shared x
-    # ignore last x coordinate as we have no partial derivative data at the end
     avgs = np.zeros(shape=(p,))
     for i, colname in enumerate(colnames):
+        #plot_catstratpd
         leaf_xranges, leaf_slopes, pdpx, pdpy, ignored = \
             PD(X=X, y=y, colname=colname, ntrees=ntrees, min_samples_leaf=min_samples_leaf,
                bootstrap=bootstrap, max_features=max_features, supervised=True,
@@ -43,36 +34,32 @@ def importances(X:pd.DataFrame, y:pd.Series, colnames:Sequence=None,
         x = X[colname]
         x_filtered = x[np.isin(x, pdpx)]
         uniq_x_counts = np.unique(x_filtered, return_counts=True)[1]
-        # print(len(x), len(pdpx), len(x_filtered), np.sum(uniq_x_counts))
-        # print(list(zip(pdpx,uniq_x_counts)))
-        #y_filtered = y[np.isin(x, pdpx)]
-        # print(np.sum(y_filtered), np.sum(y))
-        avg_pdpy = np.mean(pdpy)
-        print("mean pdpy", avg_pdpy)
-        print("weighted mean pdpy", np.sum(np.abs(pdpy) * uniq_x_counts)/np.sum(uniq_x_counts))
-        avgs[i] = np.sum(np.abs(pdpy-avg_pdpy) * uniq_x_counts)# / np.sum(uniq_x_counts) # weighted avg abs pdpy
-        # df[f"pd_{colname}"] = np.abs(pdpy)
-        # print("len uniq pdpx", len(np.unique(pdpx)), 'sum uniq x counts', np.sum(uniq_x_counts))
-        # print("len y", len(y))
-        # print("len uniq x", len(np.unique(x)))
+        # x_mass = np.sum(np.abs(pdpy) * uniq_x_counts) / np.sum(uniq_x_counts)
+        # weighted average was way over-counting for repeated x values
+        # maybe we want to know how much each x pushes up y, but don't count
+        # repeated values at x.
+        x_mass = np.mean(pdpy - np.min(pdpy))
+        print(f"{colname} mass", x_mass)
+        avgs[i] = x_mass
         print("min,max pdpy", np.min(pdpy), np.max(pdpy))
 
-    # TODO: probably should make smallest pd value 0 to shift all up from 0 lest
-    # things cancel
+    pdpy_mass = np.sum(avgs)
+    print("Avgs", avgs, "sum avgs", pdpy_mass)
 
-    # avgs /= np.sum(avgs) # normalize to 0..1
-    # print(avgs)
-    # avgs /= (np.sum(y) / len(y)) # normalize to 0..1
-    # avgs /= np.max(avgs)
-    print("Avgs", avgs, "sum avgs", np.sum(avgs))
+    # What is mass of y after clipping so min(y) is 0?
+    y_mass = np.mean(np.abs(y-np.min(y)))
 
+    print("### remaining mass %", 100 * (y_mass - pdpy_mass) / y_mass)
+
+    # Normalize x_i masses to be ratios of y_mass
+    avgs /= np.sum(y_mass)
+    print("normalized avgs", avgs, 'ratios', avgs[0]/avgs[1])
     # don't need unique_y_counts as summing all y gives us total sum we need
-    avgs /= np.sum(np.abs(y-np.mean(y))) # normalize 0..1 where 1.0 is mass of y
+    #avgs /= np.sum(np.abs(y-np.mean(y))) # normalize 0..1 where 1.0 is mass of y
     # sum(avgs) will be less than 1 if partial dep are correct
-    print("normalized avgs", avgs)
-    print("Mean y", np.mean(y))
-    print('avg abs y', np.mean(np.abs(y)))
-    print('sum abs mean-centered sum', np.sum(np.abs(y-np.mean(y))))
+    print('mean abs y', np.mean(np.abs(y)))
+    print('y_mass = mean abs min-clipped', y_mass)
+    print('mean abs mean-centered', np.mean(np.abs(y-np.mean(y))))
 
     # TODO maybe mean(y) should really only count x values for which we have values
 
@@ -81,4 +68,4 @@ def importances(X:pd.DataFrame, y:pd.Series, colnames:Sequence=None,
     I = I.sort_values('Importance', ascending=False)
     # print(I)
 
-    return I
+    return I, y_mass, pdpy_mass
