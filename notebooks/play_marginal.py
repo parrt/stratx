@@ -155,7 +155,7 @@ def plot_marginal_dy(df):
 
 
 p=2
-df, coeff, eqn = synthetic_poly_data(1500,p)
+df, coeff, eqn = synthetic_poly_data(5000,p)
 print(df.head(3))
 #
 # X = df.drop('y', axis=1)
