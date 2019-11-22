@@ -38,7 +38,8 @@ def importances(X:pd.DataFrame, y:pd.Series, colnames:Sequence=None,
         # weighted average was way over-counting for repeated x values
         # maybe we want to know how much each x pushes up y, but don't count
         # repeated values at x.
-        x_mass = np.mean(pdpy - np.min(pdpy))
+        # x_mass = np.mean(pdpy - np.min(pdpy))
+        x_mass = np.mean(np.abs(pdpy))
         print(f"{colname} mass", x_mass)
         avgs[i] = x_mass
         print("min,max pdpy", np.min(pdpy), np.max(pdpy))
