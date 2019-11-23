@@ -122,29 +122,36 @@ def plot_marginal_dy(df):
 
     for j in range(p):
         # axes[j+1].set_title(f"$\\overline{{\\partial y/x_{j+1}}}$")
-        axes[j+1].scatter(df[f'x{j+1}'], y, s=3)
-        axes[j+1].set_xlabel(f"$x_{j+1}$")
-        df_by_xj = df.groupby(by=f'x{j+1}').mean().reset_index()
-        axes[j+1].plot(df_by_xj[f'x{j+1}'], df_by_xj['y'], lw=.5)
-        df_sorted_by_xj = df_by_xj.sort_values(by=f'x{j+1}')
-        dy = np.diff(df_sorted_by_xj['y'])
+        varname = f'x{j+1}'
+        axes[j+1].scatter(df[varname], y, s=3) # Plot marginal y
+        axes[j+1].set_xlabel(f'$x_{j+1}$')
+        df_by_xj = df.groupby(by=varname).mean().reset_index()
+        uniq_x = df_by_xj[varname]
+        avg_y = df_by_xj['y']
+        axes[j+1].plot(uniq_x, avg_y, lw=.5) # Plot avg y vs uniq x
+        df_sorted_by_xj = df_by_xj.sort_values(by=varname)
 
         # Plot dy/dx_j
-        xj = df_sorted_by_xj[f'x{j + 1}']
+        xj = df_sorted_by_xj[varname]
+        dy = np.diff(df_sorted_by_xj['y'])
+
+        dx = np.diff(xj)
+        dydx = dy / dx
+
         segments = []
-        for i,delta in enumerate(dy):
+        for i,delta in enumerate(dy):# / np.std(y)):
             one_line = [(xj[i],0), (xj[i+1],delta)]
             segments.append( one_line )
         lines = LineCollection(segments, linewidths=.5, color='orange')
         axes[j+1].add_collection(lines)
         #axes[j+1].set_ylim(np.min(dy),np.max(y))
-        # axes[j+1].plot(df_sorted_by_xj[f'x{j+1}'][:-1], dy, lw=.5, c='orange')
+        # axes[j+1].plot(df_sorted_by_xj[varname][:-1], dy, lw=.5, c='orange')
         axes[j+1].text(max(xj), 0, f"$\\frac{{\\partial y}}{{x_{j + 1}}}$")
 
         # Draw partial derivative of partial dependence
         leaf_xranges, leaf_slopes, pdpx, pdpy, dx, y_deltas, ignored = \
-            PD(X=df.drop('y', axis=1), y=y, colname=f'x{j + 1}')
-        axes[j+1].plot(pdpx, pdpy,lw=.5, c='k')
+            PD(X=df.drop('y', axis=1), y=y, colname=varname)
+        axes[j+1].plot(pdpx, pdpy,lw=.5, c='k')  # Plot PD_j
         axes[j+1].text(max(pdpx), pdpy[-1], f"$PD_{j+1}$")
         x_mass = np.mean(np.abs(pdpy))
         dy_mass = np.mean(np.abs(y_deltas))
