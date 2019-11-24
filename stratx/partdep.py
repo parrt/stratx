@@ -335,7 +335,9 @@ def plot_stratpd(X, y, colname, targetname,
                  verbose=False
                  ):
     """
-        Returns:
+    Plot the partial dependence of X[colname] on y.
+
+    Returns:
         leaf_xranges    The ranges of X[colname] partitions
 
 
@@ -360,12 +362,9 @@ def plot_stratpd(X, y, colname, targetname,
            bootstrap=bootstrap, max_features=max_features, supervised=supervised,
            verbose=verbose)
 
-    # PLOT
-
     if ax is None:
         fig, ax = plt.subplots(1,1)
 
-    # Draw bin left edge markers; ignore bins with no data (nan)
     ax.scatter(pdpx, pdpy,
                s=pdp_marker_size, c=pdp_marker_color,
                label=colname)
@@ -392,11 +391,6 @@ def plot_stratpd(X, y, colname, targetname,
             closest_y = pdpy[closest_x_i]
             one_line = [(closest_x, closest_y), (closest_x+w, closest_y + delta_y)]
             segments.append( one_line )
-
-        # if nlines is not None:
-        #     nlines = min(nlines, len(segments))
-        #     idxs = np.random.randint(low=0, high=len(segments), size=nlines)
-        #     segments = np.array(segments)[idxs]
 
         lines = LineCollection(segments, alpha=slope_line_alpha, color=slope_line_color, linewidths=slope_line_width)
         ax.add_collection(lines)
