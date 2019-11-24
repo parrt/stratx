@@ -509,11 +509,13 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
                             xrange=None,
                             show_regr_line=False,
                             marginal_alpha=.05,
-                            slope_line_alpha=.1):
+                            slope_line_alpha=.1,
+                            cellwidth=2.5,
+                            cellheight=2.5):
     ncols = len(min_samples_leaf_values)
     if not binned:
         fig, axes = plt.subplots(1, ncols + 1,
-                                 figsize=((ncols + 1) * 2.5, 2.5))
+                                 figsize=((ncols + 1) * cellwidth, cellheight))
         marginal_plot_(X, y, colname, targetname, ax=axes[0],
                        show_regr_line=show_regr_line, alpha=marginal_alpha)
         axes[0].set_title("Marginal", fontsize=10)
@@ -604,10 +606,11 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
                                min_samples_leaf_values=(2, 5, 10, 20, 30),
                                catnames=None,
                                yrange=None,
-                               cellwidth=2.5):
+                               cellwidth=2.5, 
+                               cellheight=2.5):
     ncols = len(min_samples_leaf_values)
     fig, axes = plt.subplots(1, ncols + 1,
-                             figsize=((ncols + 1) * cellwidth, 2.5))
+                             figsize=((ncols + 1) * cellwidth, cellheight))
 
     marginal_catplot_(X, y, colname, targetname, catnames=catnames, ax=axes[0], alpha=0.05)
     axes[0].set_title("Marginal", fontsize=10)
