@@ -112,6 +112,18 @@ The partial dependence of $y$ on  $x_i$ is the isolated contribution of $x_i$ to
 Software currently relies on something like:
 
 \[
+\text{\it variation}_j = \frac{1}{N} \sum_{i=1}^N |\frac{\partial f}{\partial x_j}(x_j^{(i)})|
+\]
+
+\[
+\text{\it total\_variation} = \sum_{i=1}^N \text{\it variation}_j
+\]
+
+\[
+\text{\it importance}_j = \frac{\text{\it variation}_j}{\text{\it total\_variation}}
+\]
+
+\[
 \sum_{i=1}^{N} |y^{(i)}-\overline{y}^{(i)}| = \sum_{i=1}^{N} |\text{\it PD}_1(x_1^{(i)})-\overline{\text{\it PD}_1}| + \ldots + \sum_{i=1}^{N} |\text{\it PD}_p(x_p^{(i)})-\overline{\text{\it PD}_p}|
 \]
 

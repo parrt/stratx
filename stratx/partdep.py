@@ -86,8 +86,8 @@ def PD(X:pd.DataFrame, y:pd.Series, colname:str,
        supervised=True,
        verbose=False):
     """
-    Internal computation of partial dependence information about X[colname]'s effect
-    on y.
+    Internal computation of partial dependence information about X[colname]'s effect on y.
+    Also computes partial derivative of y with respect to X[colname].
 
     Returns:
         leaf_xranges    The ranges of X[colname] partitions
