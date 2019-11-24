@@ -80,7 +80,7 @@ def collect_point_betas(X, y, colname, leaves, nbins:int):
     return leaf_xranges, leaf_slopes, point_betas, ignored
 
 
-def PD(X, y, colname,
+def PD(X:pd.DataFrame, y:pd.Series, colname:str,
        ntrees=1, min_samples_leaf=10, bootstrap=False,
        max_features=1.0,
        supervised=True,
@@ -312,7 +312,7 @@ def plot_stratpd_binned(X, y, colname, targetname,
     return leaf_xranges, leaf_slopes, Xbetas, pdpx, pdpy, ignored
 
 
-def plot_stratpd(X, y, colname, targetname,
+def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  ntrees=1, min_samples_leaf=10, bootstrap=False,
                  max_features=1.0,
                  supervised=True,
@@ -320,7 +320,6 @@ def plot_stratpd(X, y, colname, targetname,
                  xrange=None,
                  yrange=None,
                  title=None,
-                 nlines=None,
                  show_xlabel=True,
                  show_ylabel=True,
                  show_pdp_line=False,
