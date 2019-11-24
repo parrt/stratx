@@ -44,11 +44,11 @@ def synthetic_poly_data(n, p):
     return df, coeff, eqn
 
 
-def PD(X, y, colname,
-       ntrees=1, min_samples_leaf=10, bootstrap=False,
-       max_features=1.0,
-       supervised=True,
-       verbose=False):
+def partial_derivative(X, y, colname,
+                       ntrees=1, min_samples_leaf=10, bootstrap=False,
+                       max_features=1.0,
+                       supervised=True,
+                       verbose=False):
     if supervised:
         rf = RandomForestRegressor(n_estimators=ntrees,
                                    min_samples_leaf=min_samples_leaf,
@@ -98,7 +98,18 @@ def PD(X, y, colname,
 
     dx = np.diff(pdpx)
     y_deltas = slope_at_x[:-1] * dx  # last slope is nan since no data after last x value
+
     # print(f"y_deltas: {y_deltas}")
+    return leaf_xranges, leaf_slopes, pdpx, dx, y_deltas, ignored
+
+
+def PD(X, y, colname,
+       ntrees=1, min_samples_leaf=10, bootstrap=False,
+       max_features=1.0,
+       supervised=True,
+       verbose=False):
+    leaf_xranges, leaf_slopes, pdpx, dx, y_deltas, ignored = \
+        partial_derivative(**locals())            # pass all args to other function
     pdpy = np.cumsum(y_deltas)                    # we lose one value here
     pdpy = np.concatenate([np.array([0]), pdpy])  # add back the 0 we lost
     return leaf_xranges, leaf_slopes, pdpx, pdpy, dx, y_deltas, ignored
@@ -120,6 +131,9 @@ def plot_marginal_dy(df):
     my = np.mean(np.abs(dy))
     axes[0].set_title(f"mean $|\\frac{{\\partial y}}{{i}}|$ = {my:.2f}, $\\overline{{|y|}}$ = {np.mean(np.abs(y)):.2f}, $\\overline{{y-min(y)}}$ = {np.mean(y - min(y)):.1f}")
 
+    variations = np.zeros(shape=(p,))
+    total_mean_not_xj = 0.0
+    total_dy_mass = 0.0
     for j in range(p):
         # axes[j+1].set_title(f"$\\overline{{\\partial y/x_{j+1}}}$")
         varname = f'x{j+1}'
@@ -146,7 +160,7 @@ def plot_marginal_dy(df):
         axes[j+1].add_collection(lines)
         #axes[j+1].set_ylim(np.min(dy),np.max(y))
         # axes[j+1].plot(df_sorted_by_xj[varname][:-1], dy, lw=.5, c='orange')
-        axes[j+1].text(max(xj), 0, f"$\\frac{{\\partial y}}{{x_{j + 1}}}$")
+        axes[j+1].text(max(xj), 0, f"$\\frac{{\\partial y}}{{x_{j+1}}}$")
 
         # Draw partial derivative of partial dependence
         leaf_xranges, leaf_slopes, pdpx, pdpy, dx, y_deltas, ignored = \
@@ -154,15 +168,22 @@ def plot_marginal_dy(df):
         axes[j+1].plot(pdpx, pdpy,lw=.5, c='k')  # Plot PD_j
         axes[j+1].text(max(pdpx), pdpy[-1], f"$PD_{j+1}$")
         x_mass = np.mean(np.abs(pdpy))
-        dy_mass = np.mean(np.abs(y_deltas))
+        dy_mass = np.mean(np.abs(y_deltas)) * (np.max(xj) - np.min(xj))
+        variations[j] = dy_mass
+        total_dy_mass += dy_mass
+        mean_not_xj = np.mean(np.abs(dy))# * (np.max(xj) - np.min(xj))
+        total_mean_not_xj += mean_not_xj
 
-        my = np.mean(np.abs(dy))
-        axes[j+1].set_title(f"mean $|\\frac{{\\partial y}}{{x_{j+1}}}|$ = {my:.2f}, pd mass {x_mass:.2f}, partial mass {dy_mass:.2f}")
+        not_xj = set(range(1,p+1)) - {j+1}
+        not_xj = ','.join([f"x_{j}" for j in not_xj])
+        axes[j+1].set_title(f"mean $|\\frac{{\\partial y}}{{{not_xj}}}|$ = {mean_not_xj:.2f}, pd mass {x_mass:.2f}, partial mass {dy_mass:.3f}")
         axes[j+1].set_ylabel("$y$")
 
+    print(f"Total means not x_j {total_mean_not_xj:.2f}, total dy mass {total_dy_mass:.2f}")
+    print("Variations", variations/total_dy_mass)
 
-p=2
-df, coeff, eqn = synthetic_poly_data(5000,p)
+p=3
+df, coeff, eqn = synthetic_poly_data(1000,p)
 print(df.head(3))
 #
 # X = df.drop('y', axis=1)
