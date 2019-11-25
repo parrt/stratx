@@ -80,11 +80,11 @@ def collect_point_betas(X, y, colname, leaves, nbins:int):
     return leaf_xranges, leaf_slopes, point_betas, ignored
 
 
-def PD(X:pd.DataFrame, y:pd.Series, colname:str,
-       ntrees=1, min_samples_leaf=10, bootstrap=False,
-       max_features=1.0,
-       supervised=True,
-       verbose=False):
+def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
+                       ntrees=1, min_samples_leaf=10, bootstrap=False,
+                       max_features=1.0,
+                       supervised=True,
+                       verbose=False):
     """
     Internal computation of partial dependence information about X[colname]'s effect on y.
     Also computes partial derivative of y with respect to X[colname].
@@ -357,9 +357,9 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                         values.
     """
     leaf_xranges, leaf_slopes, dx, dydx, pdpx, pdpy, ignored = \
-        PD(X=X, y=y, colname=colname, ntrees=ntrees, min_samples_leaf=min_samples_leaf,
-           bootstrap=bootstrap, max_features=max_features, supervised=supervised,
-           verbose=verbose)
+        partial_dependence(X=X, y=y, colname=colname, ntrees=ntrees, min_samples_leaf=min_samples_leaf,
+                           bootstrap=bootstrap, max_features=max_features, supervised=supervised,
+                           verbose=verbose)
 
     if ax is None:
         fig, ax = plt.subplots(1,1)
