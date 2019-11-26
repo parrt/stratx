@@ -151,19 +151,20 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
     # slope_at_x = weighted_avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes, leaf_sizes, use_weighted_avg=True)
 
     # Drop any nan slopes; implies we have no reliable data for that range
+    # Last slope is nan since no data after last x value so that will get dropped too
     # Make sure to drop uniq_x values too :)
     notnan_idx = ~np.isnan(slope_at_x) # should be same for slope_at_x
     slope_at_x = slope_at_x[notnan_idx]
     pdpx = real_uniq_x[notnan_idx]
 
     dx = np.diff(pdpx)
-    dydx = slope_at_x[:-1]
-    y_deltas = dydx * dx  # last slope is nan since no data after last x value
+    dydx = slope_at_x[:-1] # ignore last point as dx is always one smaller
+    y_deltas = dydx * dx
     # print(f"y_deltas: {y_deltas}")
     pdpy = np.cumsum(y_deltas)                    # we lose one value here
     pdpy = np.concatenate([np.array([0]), pdpy])  # add back the 0 we lost
 
-    return leaf_xranges, leaf_slopes, dx, dydx, pdpx, pdpy, ignored
+    return leaf_xranges, leaf_slopes, dx, slope_at_x, pdpx, pdpy, ignored
 
 
 def plot_stratpd_binned(X, y, colname, targetname,
