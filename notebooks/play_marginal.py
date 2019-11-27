@@ -26,49 +26,27 @@ palette = [
     "#b15928"
 ]
 
-
-def shap_importances(rf, X):
-    shap_values = shap.TreeExplainer(rf).shap_values(X)
-    shapimp = np.mean(np.abs(shap_values), axis=0)
-    print(shapimp)
-    shapI = pd.DataFrame(data={'Feature': X.columns, 'Importance': shapimp})
-    shapI = shapI.set_index('Feature')
-    shapI = shapI.sort_values('Importance', ascending=False)
-    # plot_importances(shapI)
-    return shapI
-
-
-def ginidrop_importances(rf, X):
-    ginidrop_I = rf.feature_importances_
-    ginidrop_I = pd.DataFrame(data={'Feature': X.columns, 'Importance': ginidrop_I})
-    ginidrop_I = ginidrop_I.set_index('Feature')
-    ginidrop_I = ginidrop_I.sort_values('Importance', ascending=False)
-    return ginidrop_I
-
-
-def compare_imp(rf, X, y, eqn):
-    fig, axes = plt.subplots(1, 5, figsize=(10, 2.2))
-
-    I = impact_importances(X, y)
-    plot_importances(I, imp_range=(0, 1), ax=axes[0])
-
-    shap_I = shap_importances(rf, X)
-    plot_importances(shap_I, ax=axes[1])
-
-    gini_I = ginidrop_importances(rf, X)
-    plot_importances(gini_I, ax=axes[2])
-
-    perm_I = rfpimp.importances(rf, X, y)
-    plot_importances(perm_I, ax=axes[3])
-    drop_I = rfpimp.dropcol_importances(rf, X, y)
-    plot_importances(drop_I, ax=axes[4])
-
-    axes[0].set_title("Strat Imp")
-    axes[1].set_title("SHAP Imp")
-    axes[2].set_title("ginidrop Imp")
-    axes[3].set_title("Permute column")
-    axes[4].set_title("Drop column")
-    plt.suptitle(f"${eqn}$")
+def toy_weight_data(n):
+    df = pd.DataFrame()
+    nmen = n // 2
+    nwomen = n // 2
+    df['sex'] = ['M'] * nmen + ['F'] * nwomen
+    df.loc[df['sex'] == 'F', 'pregnant'] = np.random.randint(0, 2, size=(nwomen,))
+    df.loc[df['sex'] == 'M', 'pregnant'] = 0
+    df.loc[df['sex'] == 'M', 'height'] = 5 * 12 + 8 + np.random.uniform(-7, +8,
+                                                                        size=(nmen,))
+    df.loc[df['sex'] == 'F', 'height'] = 5 * 12 + 5 + np.random.uniform(-4.5, +5,
+                                                                        size=(nwomen,))
+    df.loc[df['sex'] == 'M', 'education'] = 10 + np.random.randint(0, 8, size=nmen)
+    df.loc[df['sex'] == 'F', 'education'] = 12 + np.random.randint(0, 8, size=nwomen)
+    df['weight'] = 120 \
+                   + (df['height'] - df['height'].min()) * 10 \
+                   + df['pregnant'] * 30 \
+                   - df['education'] * 1.5
+    df['pregnant'] = df['pregnant'].astype(bool)
+    df['education'] = df['education'].astype(int)
+    eqn = "y = 120 + 10(x_{height} - min(x_{height})) + 30x_{pregnant} - 1.5x_{education}"
+    return df, eqn
 
 
 def synthetic_poly_data(n, p, noise=0):
@@ -119,6 +97,52 @@ def synthetic_poly2dup_data(n, p):
     terms = [f"{coeff[i]:.1f}x_{i+1}" for i in range(p)] + [f"{yintercept:.0f}"]
     eqn = "y = " + ' + '.join(terms)
     return df, coeff, eqn+" where x_3 = x_1"
+
+
+
+def shap_importances(rf, X):
+    shap_values = shap.TreeExplainer(rf).shap_values(X)
+    shapimp = np.mean(np.abs(shap_values), axis=0)
+    print(shapimp)
+    shapI = pd.DataFrame(data={'Feature': X.columns, 'Importance': shapimp})
+    shapI = shapI.set_index('Feature')
+    shapI = shapI.sort_values('Importance', ascending=False)
+    # plot_importances(shapI)
+    return shapI
+
+
+def ginidrop_importances(rf, X):
+    ginidrop_I = rf.feature_importances_
+    ginidrop_I = pd.DataFrame(data={'Feature': X.columns, 'Importance': ginidrop_I})
+    ginidrop_I = ginidrop_I.set_index('Feature')
+    ginidrop_I = ginidrop_I.sort_values('Importance', ascending=False)
+    return ginidrop_I
+
+
+def compare_imp(rf, X, y, eqn):
+    fig, axes = plt.subplots(1, 5, figsize=(10, 2.2))
+
+    I = impact_importances(X, y)
+    plot_importances(I, imp_range=(0, 1), ax=axes[0])
+
+    shap_I = shap_importances(rf, X)
+    plot_importances(shap_I, ax=axes[1])
+
+    gini_I = ginidrop_importances(rf, X)
+    plot_importances(gini_I, ax=axes[2])
+
+    perm_I = rfpimp.importances(rf, X, y)
+    plot_importances(perm_I, ax=axes[3])
+    drop_I = rfpimp.dropcol_importances(rf, X, y)
+    plot_importances(drop_I, ax=axes[4])
+
+    axes[0].set_title("Strat Imp")
+    axes[1].set_title("SHAP Imp")
+    axes[2].set_title("ginidrop Imp")
+    axes[3].set_title("Permute column")
+    axes[4].set_title("Drop column")
+    plt.suptitle(f"${eqn}$")
+
 
 
 def impact_importances(X: pd.DataFrame,
@@ -198,12 +222,18 @@ def plot_partials(X,y,eqn,yrange=(.5,1.5)):
 
 p=3
 #df, coeff, eqn = synthetic_poly_data(1000,p,noise=1)
-df, coeff, eqn = synthetic_poly2dup_data(2000,p)
+#df, coeff, eqn = synthetic_poly2dup_data(2000,p)
+df, eqn = toy_weight_data(100)
+X = df.drop('weight', axis=1)
+y = df['weight']
+print(df.head())
+X['pregnant'] = X['pregnant'].astype(int)
+X['sex'] = X['sex'].map({'M':0, 'F':1}).astype(int)
 
 print(eqn)
-X = df.drop('y', axis=1)
-#X['noise'] = np.random.random_sample(size=len(X))
-y = df['y']
+# X = df.drop('y', axis=1)
+# #X['noise'] = np.random.random_sample(size=len(X))
+# y = df['y']
 
 # I = impact_importances(X, y, n_samples=500, n_trials=5)
 # print(I)
@@ -213,8 +243,6 @@ y = df['y']
 #                  # bgcolor='#F1F8FE'
 #                  )
 
-X = df.drop('y', axis=1)
-y = df['y']
 #X = featimp.standardize(X)
 
 rf = RandomForestRegressor(n_estimators=10)
