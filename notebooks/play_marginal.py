@@ -45,7 +45,8 @@ def synthetic_poly_data(n, p):
 
 
 def impact_importances(X: pd.DataFrame,
-                       y: pd.Series) -> pd.DataFrame:
+                       y: pd.Series,
+                       k: int=1) -> pd.DataFrame:
     """
     Compute model-free feature importances of dataset X,y using partial
     derivatives computed by the the StratPD algorithm.[1]  The feature
@@ -98,7 +99,7 @@ def impact_importances(X: pd.DataFrame,
             partial_dependence(X=X, y=y, colname=colname)
         #         print(f"Ignored for {colname} = {ignored}")
         # record average abs of derivative divided by stddev to get z-score
-        stddevs[j] = np.std(np.abs(pdpy))
+        stddevs[j] = np.std(np.abs(pdpy)) * (np.max(pdpx) - np.min(pdpx))
         variations[j] = np.mean(np.abs(pdpy))
         # stddevs[j] = np.std(np.abs(dydx))
         # variations[j] = np.mean(np.abs(dydx))
@@ -116,6 +117,60 @@ def impact_importances(X: pd.DataFrame,
     return I
 
 
+
+
+def plot_partials(X,y,eqn,yrange=(.5,1.5)):
+    p = X.shape[1]
+    fig, axes = plt.subplots(p, 1, figsize=(7, p*2+2))
+
+    plt.suptitle('$'+eqn+'$', y=1.0)
+    for j,colname in enumerate(X.columns):
+        xj = X[colname]
+        leaf_xranges, leaf_slopes, dx, dydx, pdpx, pdpy, ignored = \
+            partial_dependence(X=X, y=y, colname=colname)
+        # Plot dydx
+        axes[j].scatter(pdpx, dydx, c='k', s=3)
+        axes[j].plot([min(xj),max(xj)], [np.mean(dydx),np.mean(dydx)], c='orange')
+
+        # Plot PD
+        axes[j].plot(pdpx, pdpy, c='blue', lw=.5)
+
+        axes[j].set_xlim(min(xj), max(xj))
+        if yrange is not None:
+            axes[j].set_ylim(*yrange)
+        axes[j].set_xlabel(colname)
+        axes[j].set_ylabel("y")
+        axes[j].set_title(#(min(xj)+max(xj))/2, 1.4,
+                     f"$\\sigma(dy)$={np.std(dydx):.3f}, $\\mu(pdpy)$={np.mean(pdpy):.3f}, $\\sigma(pdpy)$={np.std(pdpy):.3f}",
+                     horizontalalignment='center')
+
+
+p=3
+df, coeff, eqn = synthetic_poly_data(1000,p)
+print(df.head(3))
+#
+X = df.drop('y', axis=1)
+X['noise'] = np.random.random_sample(size=len(X))
+y = df['y']
+
+I = impact_importances(X, y)
+print(I)
+plot_importances(I, imp_range=(0,1.0))
+#                  #color='#FEE192', #'#5D9CD2', #'#A99EFF',
+#                  # bgcolor='#F1F8FE'
+#                  )
+
+plot_partials(X, y, eqn, yrange=None)
+
+#plot_marginal_dy(df)
+#
+plt.tight_layout()
+plt.savefig("/Users/parrt/Desktop/marginal.pdf", bbox_inches=0)
+plt.show()
+
+# JUNK
+
+'''
 def plot_marginal_dy(df):
     fig, axes = plt.subplots(p+1,1,figsize=(7,7))
 
@@ -179,53 +234,4 @@ def plot_marginal_dy(df):
 
     print(f"Total means not x_j {total_mean_not_xj:.2f}, total dy mass {total_dy_mass:.2f}")
     print("Variations", variations/total_dy_mass)
-
-
-def plot_partials(X,y,eqn,yrange=(.5,1.5)):
-    p = X.shape[1]
-    fig, axes = plt.subplots(p, 1, figsize=(7, p*2+2))
-
-    plt.suptitle('$'+eqn+'$', y=1.0)
-    for j,colname in enumerate(X.columns):
-        xj = X[colname]
-        leaf_xranges, leaf_slopes, dx, dydx, pdpx, pdpy, ignored = \
-            partial_dependence(X=X, y=y, colname=colname)
-        # Plot dydx
-        #axes[j].scatter(pdpx, dydx, c='k')
-        #axes[j].plot([min(xj),max(xj)], [np.mean(dydx),np.mean(dydx)], c='orange')
-
-        # Plot PD
-        axes[j].plot(pdpx, pdpy, c='blue', lw=.5)
-
-        axes[j].set_xlim(min(xj), max(xj))
-        if yrange is not None:
-            axes[j].set_ylim(*yrange)
-        axes[j].set_xlabel(colname)
-        axes[j].set_ylabel("y")
-        axes[j].set_title(#(min(xj)+max(xj))/2, 1.4,
-                     f"$\\sigma(dy)$={np.std(dydx):.3f}, $\\mu(pdpy)$={np.mean(pdpy):.3f}, $\\sigma(pdpy)$={np.std(pdpy):.3f}",
-                     horizontalalignment='center')
-
-
-p=3
-df, coeff, eqn = synthetic_poly_data(500,p)
-print(df.head(3))
-#
-X = df.drop('y', axis=1)
-X['noise'] = np.random.random_sample(size=len(X))
-y = df['y']
-
-I = impact_importances(X, y)
-print(I)
-plot_importances(I, imp_range=(0,1.0))
-#                  #color='#FEE192', #'#5D9CD2', #'#A99EFF',
-#                  # bgcolor='#F1F8FE'
-#                  )
-
-plot_partials(X, y, eqn, yrange=None)
-
-#plot_marginal_dy(df)
-#
-plt.tight_layout()
-plt.savefig("/Users/parrt/Desktop/marginal.pdf", bbox_inches=0)
-plt.show()
+'''
