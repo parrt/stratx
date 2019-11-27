@@ -6,10 +6,10 @@ from sklearn.linear_model import LinearRegression, Lasso
 from sklearn.utils import resample
 import matplotlib
 import time
-
 from stratx.partdep import *
 from rfpimp import plot_importances
 import rfpimp
+import shap
 
 palette = [
     "#a6cee3",
@@ -25,6 +25,51 @@ palette = [
     "#ffff99",
     "#b15928"
 ]
+
+
+def shap_importances(rf, X):
+    shap_values = shap.TreeExplainer(rf).shap_values(X)
+    shapimp = np.mean(np.abs(shap_values), axis=0)
+    print(shapimp)
+    shapI = pd.DataFrame(data={'Feature': X.columns, 'Importance': shapimp})
+    shapI = shapI.set_index('Feature')
+    shapI = shapI.sort_values('Importance', ascending=False)
+    # plot_importances(shapI)
+    return shapI
+
+
+def ginidrop_importances(rf, X):
+    ginidrop_I = rf.feature_importances_
+    ginidrop_I = pd.DataFrame(data={'Feature': X.columns, 'Importance': ginidrop_I})
+    ginidrop_I = ginidrop_I.set_index('Feature')
+    ginidrop_I = ginidrop_I.sort_values('Importance', ascending=False)
+    return ginidrop_I
+
+
+def compare_imp(rf, X, y, eqn):
+    fig, axes = plt.subplots(1, 5, figsize=(10, 2.2))
+
+    I = impact_importances(X, y)
+    plot_importances(I, imp_range=(0, 1), ax=axes[0])
+
+    shap_I = shap_importances(rf, X)
+    plot_importances(shap_I, ax=axes[1])
+
+    gini_I = ginidrop_importances(rf, X)
+    plot_importances(gini_I, ax=axes[2])
+
+    perm_I = rfpimp.importances(rf, X, y)
+    plot_importances(perm_I, ax=axes[3])
+    drop_I = rfpimp.dropcol_importances(rf, X, y)
+    plot_importances(drop_I, ax=axes[4])
+
+    axes[0].set_title("Strat Imp")
+    axes[1].set_title("SHAP Imp")
+    axes[2].set_title("ginidrop Imp")
+    axes[3].set_title("Permute column")
+    axes[4].set_title("Drop column")
+    plt.suptitle(f"${eqn}$")
+
 
 def synthetic_poly_data(n, p, noise=0):
     df = pd.DataFrame()
@@ -42,8 +87,6 @@ def synthetic_poly_data(n, p, noise=0):
     # multiply coefficients x each column (var) and sum along columns
     yintercept = 10
     df['y'] = np.sum( [coeff[i]*df[f'x{i+1}'] for i in range(p)], axis=0 ) + yintercept
-    if noise>0:
-        df['y'] += np.sum( [df[f'noise{p + j + 1}'] for j in range(noise)] )
     terms = [f"{coeff[i]:.1f}x_{i+1}" for i in range(p)] + [f"{yintercept:.0f}"]
     eqn = "y = " + '+'.join(terms)
     if noise>0:
@@ -55,7 +98,7 @@ def synthetic_poly_data(n, p, noise=0):
 def impact_importances(X: pd.DataFrame,
                        y: pd.Series,
                        n_samples=None,  # use all by default
-                       n_trials:int=3) -> pd.DataFrame:
+                       n_trials:int=1) -> pd.DataFrame:
     if not isinstance(X, pd.DataFrame):
         raise ValueError("Can only operate on dataframes at the moment")
 
@@ -135,21 +178,31 @@ def plot_partials(X,y,eqn,yrange=(.5,1.5)):
 
 
 p=3
-df, coeff, eqn = synthetic_poly_data(1000,p,noise=3)
+df, coeff, eqn = synthetic_poly_data(1000,p,noise=1)
 print(eqn)
 X = df.drop('y', axis=1)
 #X['noise'] = np.random.random_sample(size=len(X))
 y = df['y']
 
-I = impact_importances(X, y, n_samples=500, n_trials=5)
-print(I)
-plot_importances(I, imp_range=(0,1.0))
+# I = impact_importances(X, y, n_samples=500, n_trials=5)
+# print(I)
+# plot_importances(I, imp_range=(0,1.0))
+
 #                  #color='#FEE192', #'#5D9CD2', #'#A99EFF',
 #                  # bgcolor='#F1F8FE'
 #                  )
 
+X = df.drop('y', axis=1)
+y = df['y']
+#X = featimp.standardize(X)
+
+rf = RandomForestRegressor(n_estimators=10)
+rf.fit(X,y)
+
+compare_imp(rf, X, y, eqn)
+
 #plot_partials(X, y, eqn, yrange=None)
-# plt.tight_layout()
+plt.tight_layout()
 # plt.savefig("/Users/parrt/Desktop/marginal.pdf", bbox_inches=0)
 plt.show()
 
