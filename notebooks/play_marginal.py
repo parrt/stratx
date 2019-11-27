@@ -74,11 +74,12 @@ def compare_imp(rf, X, y, eqn):
 def synthetic_poly_data(n, p, noise=0):
     df = pd.DataFrame()
     # Add independent x variables in [0.0, 1.0)
-    coeff = np.random.random_sample(size=p)*1 # get p random coefficients
-    coeff = np.array([1,1,1,1,1,1,1,1,1])
-    # coeff = np.array([5,10])
+    coeff = np.random.random_sample(size=p) # get p random coefficients
+    # coeff = np.array([1,1,1,1,1,1,1,1,1])
+    coeff = np.array([1,3,5])
+    exponents = np.array([1,2,3])
     for j in range(p):
-        df[f'x{j+1}'] = np.round(np.random.random_sample(size=n)*1,1)
+        df[f'x{j+1}'] = np.round(np.random.random_sample(size=n)*5,1)
     if noise>0:
         for j in range(noise):
             df[f'noise{p+j+1}'] = np.round(np.random.random_sample(size=n)*1,1)
@@ -86,19 +87,44 @@ def synthetic_poly_data(n, p, noise=0):
     #df['x3'] = df['x1']*np.round(np.random.random_sample(size=n),1) # copy x1 + noise
     # multiply coefficients x each column (var) and sum along columns
     yintercept = 10
-    df['y'] = np.sum( [coeff[i]*df[f'x{i+1}'] for i in range(p)], axis=0 ) + yintercept
-    terms = [f"{coeff[i]:.1f}x_{i+1}" for i in range(p)] + [f"{yintercept:.0f}"]
-    eqn = "y = " + '+'.join(terms)
+    df['y'] = np.sum( [coeff[i]*df[f'x{i+1}']**exponents[i] for i in range(p)], axis=0 ) + yintercept
+    terms = [f"{coeff[i]:.1f}x_{i+1}^{exponents[i]}" for i in range(p)] + [f"{yintercept:.0f}"]
+    eqn = "y = " + ' + '.join(terms)
     if noise>0:
         eqn += ' + '
         eqn += '+'.join([f'noise{p+j+1}' for j in range(noise)])
     return df, coeff, eqn
 
 
+def synthetic_poly2dup_data(n, p):
+    """
+    SHAP seems to make x3, x1 very different despite same coeffs. over several runs,
+    it varies a lot. e.g., i see one where x1,x2,x3 are same as they should be.
+    very unstable. same with permutation. dropcol shows x1,x3 as 0.
+
+    Adding noise so x3=x1+noise seems to overcome need for RF in stratpd and we
+    get roughly equal imps.   SHAP still varies.
+    """
+    df = pd.DataFrame()
+    # Add independent x variables in [0.0, 1.0)
+    coeff = np.random.random_sample(size=p)*10 # get p random coefficients
+    coeff = np.array([5, 3, 9])
+    coeff = np.array([1,1,1])
+    for i in range(p):
+        df[f'x{i+1}'] = np.round(np.random.random_sample(size=n)*10,1)
+    df['x3'] = df['x1'] + np.random.random_sample(size=n) # copy x1 into x3
+    yintercept = 100
+    df['y'] = np.sum( [coeff[i]*df[f'x{i+1}'] for i in range(p)], axis=0 ) + yintercept
+    # df['y'] = 5*df['x1'] + 3*df['x2'] + 9*df['x3']
+    terms = [f"{coeff[i]:.1f}x_{i+1}" for i in range(p)] + [f"{yintercept:.0f}"]
+    eqn = "y = " + ' + '.join(terms)
+    return df, coeff, eqn+" where x_3 = x_1"
+
+
 def impact_importances(X: pd.DataFrame,
                        y: pd.Series,
                        n_samples=None,  # use all by default
-                       n_trials:int=1) -> pd.DataFrame:
+                       n_trials:int=3) -> pd.DataFrame:
     if not isinstance(X, pd.DataFrame):
         raise ValueError("Can only operate on dataframes at the moment")
 
@@ -142,13 +168,6 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series) -> np.ndarray:
     normalized_auc_pdp = auc_pdp / total_pdpy_mass
 
     return normalized_auc_pdp
-    # I = pd.DataFrame(data={'Feature': X.columns,
-    #                        'Importance': normalized_auc_pdp,
-    #                        'AUC PDP':auc_pdp})
-    # I = I.set_index('Feature')
-    # I = I.sort_values('Importance', ascending=False)
-    #
-    # return I
 
 
 def plot_partials(X,y,eqn,yrange=(.5,1.5)):
@@ -178,7 +197,9 @@ def plot_partials(X,y,eqn,yrange=(.5,1.5)):
 
 
 p=3
-df, coeff, eqn = synthetic_poly_data(1000,p,noise=1)
+#df, coeff, eqn = synthetic_poly_data(1000,p,noise=1)
+df, coeff, eqn = synthetic_poly2dup_data(2000,p)
+
 print(eqn)
 X = df.drop('y', axis=1)
 #X['noise'] = np.random.random_sample(size=len(X))
