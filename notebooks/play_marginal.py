@@ -44,8 +44,8 @@ def synthetic_poly_data(n, p):
     return df, coeff, eqn
 
 
-def variation_importances(X: pd.DataFrame,
-                          y: pd.Series) -> pd.DataFrame:
+def impact_importances(X: pd.DataFrame,
+                       y: pd.Series) -> pd.DataFrame:
     """
     Compute model-free feature importances of dataset X,y using partial
     derivatives computed by the the StratPD algorithm.[1]  The feature
@@ -99,7 +99,7 @@ def variation_importances(X: pd.DataFrame,
         #         print(f"Ignored for {colname} = {ignored}")
         # record average abs of derivative divided by stddev to get z-score
         stddevs[j] = np.std(np.abs(pdpy))
-        variations[j] = np.mean(np.abs(pdpy)) / stddevs[j]
+        variations[j] = np.mean(np.abs(pdpy))
         # stddevs[j] = np.std(np.abs(dydx))
         # variations[j] = np.mean(np.abs(dydx))
         total_dy_mass += variations[j]
@@ -182,7 +182,8 @@ def plot_marginal_dy(df):
 
 
 def plot_partials(X,y,eqn,yrange=(.5,1.5)):
-    fig, axes = plt.subplots(p,1,figsize=(7,7))
+    p = X.shape[1]
+    fig, axes = plt.subplots(p, 1, figsize=(7, p*2+2))
 
     plt.suptitle('$'+eqn+'$', y=1.0)
     for j,colname in enumerate(X.columns):
@@ -190,8 +191,8 @@ def plot_partials(X,y,eqn,yrange=(.5,1.5)):
         leaf_xranges, leaf_slopes, dx, dydx, pdpx, pdpy, ignored = \
             partial_dependence(X=X, y=y, colname=colname)
         # Plot dydx
-        axes[j].scatter(pdpx, dydx, c='k')
-        axes[j].plot([min(xj),max(xj)], [np.mean(dydx),np.mean(dydx)], c='orange')
+        #axes[j].scatter(pdpx, dydx, c='k')
+        #axes[j].plot([min(xj),max(xj)], [np.mean(dydx),np.mean(dydx)], c='orange')
 
         # Plot PD
         axes[j].plot(pdpx, pdpy, c='blue', lw=.5)
@@ -211,9 +212,10 @@ df, coeff, eqn = synthetic_poly_data(500,p)
 print(df.head(3))
 #
 X = df.drop('y', axis=1)
+X['noise'] = np.random.random_sample(size=len(X))
 y = df['y']
 
-I = variation_importances(X, y)
+I = impact_importances(X, y)
 print(I)
 plot_importances(I, imp_range=(0,1.0))
 #                  #color='#FEE192', #'#5D9CD2', #'#A99EFF',
