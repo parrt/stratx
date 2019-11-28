@@ -737,35 +737,16 @@ def catwise_leaves(rf, X, y, colname, verbose):
     return leaf_histos, np.array(leaf_avgs), leaf_sizes, leaf_catcounts, ignored
 
 
-# only works for ints, not floats
-def plot_catstratpd(X, y,
-                    colname,  # X[colname] expected to be numeric codes
-                    targetname,
-                    catnames=None,  # map of catcodes to catnames; converted to map if sequence passed
-                    # must pass dict or series if catcodes are not 1..n contiguous
-                    # None implies use np.unique(X[colname]) values
-                    # Must be 0-indexed list of names if list
-                    ax=None,
-                    sort='ascending',
-                    ntrees=1,
-                    min_samples_leaf=10,
-                    max_features=1.0,
-                    bootstrap=False,
-                    yrange=None,
-                    title=None,
-                    supervised=True,
-                    use_weighted_avg=False,
-                    alpha=.15,
-                    color='#2c7fb8',
-                    pdp_marker_size=.5,
-                    marker_size=5,
-                    pdp_color='black',
-                    style:('strip','scatter')='strip',
-                    show_xlabel=True,
-                    show_ylabel=True,
-                    show_xticks=True,
-                    verbose=False):
-
+def cat_partial_dependence(X, y,
+                           colname,  # X[colname] expected to be numeric codes
+                           catnames=None,  # map of catcodes to catnames; converted to map if sequence passed
+                           ntrees=1,
+                           min_samples_leaf=10,
+                           max_features=1.0,
+                           bootstrap=False,
+                           supervised=True,
+                           use_weighted_avg=False,
+                           verbose=False):
     if supervised:
         rf = RandomForestRegressor(n_estimators=ntrees,
                                    min_samples_leaf=min_samples_leaf,
@@ -803,6 +784,49 @@ def plot_catstratpd(X, y,
         avg_per_cat = weighted_sum_per_cat / total_obs_per_cat
     else:
         avg_per_cat = np.nanmean(leaf_histos, axis=1)
+
+    return leaf_histos, avg_per_cat, catcodes, catcode2name, ignored
+
+# only works for ints, not floats
+def plot_catstratpd(X, y,
+                    colname,  # X[colname] expected to be numeric codes
+                    targetname,
+                    catnames=None,  # map of catcodes to catnames; converted to map if sequence passed
+                    # must pass dict or series if catcodes are not 1..n contiguous
+                    # None implies use np.unique(X[colname]) values
+                    # Must be 0-indexed list of names if list
+                    ax=None,
+                    sort='ascending',
+                    ntrees=1,
+                    min_samples_leaf=10,
+                    max_features=1.0,
+                    bootstrap=False,
+                    yrange=None,
+                    title=None,
+                    supervised=True,
+                    use_weighted_avg=False,
+                    alpha=.15,
+                    color='#2c7fb8',
+                    pdp_marker_size=.5,
+                    marker_size=5,
+                    pdp_color='black',
+                    style:('strip','scatter')='strip',
+                    show_xlabel=True,
+                    show_ylabel=True,
+                    show_xticks=True,
+                    verbose=False):
+
+    leaf_histos, avg_per_cat, catcodes, catcode2name, ignored = \
+        cat_partial_dependence(X, y,
+                               colname=colname,
+                               catnames=catnames,
+                               ntrees=ntrees,
+                               min_samples_leaf=min_samples_leaf,
+                               max_features=max_features,
+                               bootstrap=bootstrap,
+                               supervised=supervised,
+                               use_weighted_avg=use_weighted_avg,
+                               verbose=verbose)
 
     if ax is None:
         fig, ax = plt.subplots(1, 1)
