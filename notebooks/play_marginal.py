@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -10,6 +11,7 @@ from stratx.partdep import *
 from rfpimp import plot_importances
 import rfpimp
 import shap
+from pandas.api.types import is_string_dtype, is_object_dtype, is_categorical_dtype, is_bool_dtype
 
 palette = [
     "#a6cee3",
@@ -25,6 +27,48 @@ palette = [
     "#ffff99",
     "#b15928"
 ]
+
+def df_string_to_cat(df:pd.DataFrame) -> dict:
+    catencoders = {}
+    for colname in df.columns:
+        if is_string_dtype(df[colname]) or is_object_dtype(df[colname]):
+            df[colname] = df[colname].astype('category').cat.as_ordered()
+            catencoders[colname] = df[colname].cat.categories
+    return catencoders
+
+
+def df_cat_to_catcode(df):
+    for col in df.columns:
+        if is_categorical_dtype(df[col]):
+            df[col] = df[col].cat.codes + 1
+
+
+def toy_weather_data():
+    df_yr1 = toy_weather_data_()
+    df_yr1['year'] = 1980
+    df_yr2 = toy_weather_data_()
+    df_yr2['year'] = 1981
+    df_yr3 = toy_weather_data_()
+    df_yr3['year'] = 1982
+    df_raw = pd.concat([df_yr1, df_yr2, df_yr3], axis=0)
+    df = df_raw.copy()
+    return df
+
+
+def toy_weather_data_():
+    def temp(x): return np.sin((x+365/2)*(2*np.pi)/365)
+    def noise(state): return np.random.normal(-5, 5, sum(df['state'] == state))
+
+    df = pd.DataFrame()
+    df['dayofyear'] = range(1,365+1)
+    df['state'] = np.random.choice(['CA','CO','AZ','WA'], len(df))
+    df['temperature'] = temp(df['dayofyear'])
+    df.loc[df['state']=='CA','temperature'] = 70 + df.loc[df['state']=='CA','temperature'] * noise('CA')
+    df.loc[df['state']=='CO','temperature'] = 40 + df.loc[df['state']=='CO','temperature'] * noise('CO')
+    df.loc[df['state']=='AZ','temperature'] = 90 + df.loc[df['state']=='AZ','temperature'] * noise('AZ')
+    df.loc[df['state']=='WA','temperature'] = 60 + df.loc[df['state']=='WA','temperature'] * noise('WA')
+    return df
+
 
 def toy_weight_data(n):
     df = pd.DataFrame()
@@ -136,13 +180,12 @@ def compare_imp(rf, X, y, catcolnames=set(), eqn="n/a"):
     drop_I = rfpimp.dropcol_importances(rf, X, y)
     plot_importances(drop_I, ax=axes[4])
 
-    axes[0].set_title("Strat Imp")
+    axes[0].set_title("Impact Imp")
     axes[1].set_title("SHAP Imp")
     axes[2].set_title("ginidrop Imp")
     axes[3].set_title("Permute column")
     axes[4].set_title("Drop column")
     plt.suptitle(f"${eqn}$")
-
 
 
 def impact_importances(X: pd.DataFrame,
@@ -188,12 +231,10 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set()) -> np.
             #         print(f"Ignored for {colname} = {ignored}")
             stop = time.time()
             print(f"PD time {(stop - start) * 1000:.0f}ms")
-            cats = np.unique(X[colname])
-            ncats = len(cats)
             min_avg_value = np.nanmin(avg_per_cat)
-
             avg_per_cat_from_0 = avg_per_cat - min_avg_value
-            auc_pdp[j] = np.mean(avg_per_cat_from_0)# * (ncats - 1)
+            # some cats have NaN, such as 0th which is for "missing values"
+            auc_pdp[j] = np.nanmean(avg_per_cat_from_0)# * (ncats - 1)
             total_pdpy_mass += auc_pdp[j]
         else:
             start = time.time()
@@ -236,58 +277,86 @@ def plot_partials(X,y,eqn, yrange=(.5,1.5)):
                      horizontalalignment='center')
 
 
-# def foo():
-#     df, eqn = toy_weight_data(2000)
-#     X = df.drop('weight', axis=1)
-#     y = df['weight']
-#     X['pregnant'] = X['pregnant'].astype(int)
-#     X['sex'] = X['sex'].map({'M': 0, 'F': 1}).astype(int)
-#
-#     fig, ax = plt.subplots(1, 1)
-#     plot_catstratpd(X, y, 'pregnant', 'weight', ax=ax,
-#                     # min_samples_leaf=50,
-#                     alpha=.2,
-#                     catnames={0: 'F', 1: 'T'},
-#                     #                yrange=(0, 5),
-#                     )
-#     ax.set_title("StratPD", fontsize=10)
-#
-#
-# foo()
+def weight():
+    df, eqn = toy_weight_data(2000)
+    X = df.drop('weight', axis=1)
+    y = df['weight']
+    X['pregnant'] = X['pregnant'].astype(int)
+    X['sex'] = X['sex'].map({'M': 0, 'F': 1}).astype(int)
+    print(X.head())
 
-p=3
-#df, coeff, eqn = synthetic_poly_data(1000,p,noise=1)
-#df, coeff, eqn = synthetic_poly2dup_data(2000,p)
-df, eqn = toy_weight_data(2000)
-X = df.drop('weight', axis=1)
-y = df['weight']
-X['pregnant'] = X['pregnant'].astype(int)
-X['sex'] = X['sex'].map({'M':0, 'F':1}).astype(int)
-print(X.head())
+    print(eqn)
+    # X = df.drop('y', axis=1)
+    # #X['noise'] = np.random.random_sample(size=len(X))
+    # y = df['y']
 
-print(eqn)
-# X = df.drop('y', axis=1)
-# #X['noise'] = np.random.random_sample(size=len(X))
-# y = df['y']
+    I = impact_importances(X, y, catcolnames={'sex', 'pregnant'})
+    print(X.columns)
+    print(I)
+    plot_importances(I, imp_range=(0, 1.0))
 
-I = impact_importances(X, y, catcolnames={'sex','pregnant'})
-print(X.columns)
-print(I)
-plot_importances(I, imp_range=(0,1.0))
+    rf = RandomForestRegressor(n_estimators=10)
+    rf.fit(X,y)
 
-#                  #color='#FEE192', #'#5D9CD2', #'#A99EFF',
-#                  # bgcolor='#F1F8FE'
-#                  )
+    compare_imp(rf, X, y, catcolnames={'sex','pregnant'}, eqn=eqn)
 
-#X = featimp.standardize(X)
 
-rf = RandomForestRegressor(n_estimators=10)
-rf.fit(X,y)
+def weather():
+    df = toy_weather_data()
+    df_string_to_cat(df)
+    df_cat_to_catcode(df)
 
-compare_imp(rf, X, y, catcolnames={'sex','pregnant'}, eqn=eqn)
+    X = df.drop('temperature', axis=1)
+    y = df['temperature']
+    I = impact_importances(X, y, catcolnames={'state'})
+    print(X.columns)
+    print(I)
+    plot_importances(I, imp_range=(0,1.0))
 
-#plot_partials(X, y, eqn, yrange=None)
-plt.tight_layout()
-plt.savefig("/Users/parrt/Desktop/marginal.pdf", bbox_inches=0)
+    rf = RandomForestRegressor(n_estimators=10)
+    rf.fit(X,y)
+
+    compare_imp(rf, X, y, catcolnames={'state'})
+
+
+def poly():
+    p=3
+    #df, coeff, eqn = synthetic_poly_data(1000,p,noise=1)
+    #df, coeff, eqn = synthetic_poly2dup_data(2000,p)
+    df, eqn = toy_weight_data(2000)
+    X = df.drop('weight', axis=1)
+    y = df['weight']
+    X['pregnant'] = X['pregnant'].astype(int)
+    X['sex'] = X['sex'].map({'M':0, 'F':1}).astype(int)
+    print(X.head())
+
+    print(eqn)
+    # X = df.drop('y', axis=1)
+    # #X['noise'] = np.random.random_sample(size=len(X))
+    # y = df['y']
+
+    I = impact_importances(X, y, catcolnames={'sex','pregnant'})
+    print(X.columns)
+    print(I)
+    plot_importances(I, imp_range=(0,1.0))
+
+    #                  #color='#FEE192', #'#5D9CD2', #'#A99EFF',
+    #                  # bgcolor='#F1F8FE'
+    #                  )
+
+    #X = featimp.standardize(X)
+
+    rf = RandomForestRegressor(n_estimators=10)
+    rf.fit(X,y)
+
+    compare_imp(rf, X, y, catcolnames={'sex','pregnant'}, eqn=eqn)
+
+    #plot_partials(X, y, eqn, yrange=None)
+    plt.tight_layout()
+    plt.savefig("/Users/parrt/Desktop/marginal.pdf", bbox_inches=0)
+    plt.show()
+
+
+
+weather()
 plt.show()
-
