@@ -81,8 +81,7 @@ def collect_point_betas(X, y, colname, leaves, nbins:int):
 
 
 def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
-                       ntrees=1, min_samples_leaf=10, bootstrap=False,
-                       max_features=1.0,
+                       ntrees=1, min_samples_leaf=10, bootstrap=False, max_features=1.0,
                        supervised=True,
                        verbose=False):
     """
