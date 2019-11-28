@@ -119,10 +119,10 @@ def ginidrop_importances(rf, X):
     return ginidrop_I
 
 
-def compare_imp(rf, X, y, eqn):
-    fig, axes = plt.subplots(1, 5, figsize=(10, 2.2))
+def compare_imp(rf, X, y, catcolnames=set(), eqn="n/a"):
+    fig, axes = plt.subplots(1, 5, figsize=(12, 2.2))
 
-    I = impact_importances(X, y)
+    I = impact_importances(X, y, catcolnames=catcolnames)
     plot_importances(I, imp_range=(0, 1), ax=axes[0])
 
     shap_I = shap_importances(rf, X)
@@ -147,6 +147,7 @@ def compare_imp(rf, X, y, eqn):
 
 def impact_importances(X: pd.DataFrame,
                        y: pd.Series,
+                       catcolnames=set(),
                        n_samples=None,  # use all by default
                        n_trials:int=3) -> pd.DataFrame:
     if not isinstance(X, pd.DataFrame):
@@ -157,7 +158,7 @@ def impact_importances(X: pd.DataFrame,
     for i in range(n_trials):
         bootstrap_sample_idxs = resample(range(n), n_samples=n_samples, replace=True)
         X_, y_ = X.iloc[bootstrap_sample_idxs], y.iloc[bootstrap_sample_idxs]
-        imps[:,i] = impact_importances_(X_, y_)
+        imps[:,i] = impact_importances_(X_, y_, catcolnames=catcolnames)
 
     avg_imps = np.mean(imps, axis=1)
     stddev_imps = np.std(imps, axis=1)
@@ -171,7 +172,7 @@ def impact_importances(X: pd.DataFrame,
     return I
 
 
-def impact_importances_(X: pd.DataFrame, y: pd.Series) -> np.ndarray:
+def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set()) -> np.ndarray:
     if not isinstance(X, pd.DataFrame):
         raise ValueError("Can only operate on dataframes at the moment")
 
@@ -180,21 +181,36 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series) -> np.ndarray:
     total_pdpy_mass = 0.0
     for j, colname in enumerate(X.columns):
         # Ask stratx package for the partial dependence of y with respect to X[colname]
-        start = time.time()
-        leaf_xranges, leaf_slopes, dx, dydx, pdpx, pdpy, ignored = \
-            partial_dependence(X=X, y=y, colname=colname)
+        if colname in catcolnames:
+            start = time.time()
+            leaf_histos, avg_per_cat, ignored = \
+                cat_partial_dependence(X, y, colname=colname)
+            #         print(f"Ignored for {colname} = {ignored}")
+            stop = time.time()
+            print(f"PD time {(stop - start) * 1000:.0f}ms")
+            cats = np.unique(X[colname])
+            ncats = len(cats)
+            min_avg_value = np.nanmin(avg_per_cat)
+
+            avg_per_cat_from_0 = avg_per_cat - min_avg_value
+            auc_pdp[j] = np.mean(avg_per_cat_from_0)# * (ncats - 1)
+            total_pdpy_mass += auc_pdp[j]
+        else:
+            start = time.time()
+            leaf_xranges, leaf_slopes, dx, dydx, pdpx, pdpy, ignored = \
+                partial_dependence(X=X, y=y, colname=colname)
         #         print(f"Ignored for {colname} = {ignored}")
-        stop = time.time()
-        print(f"PD time {(stop-start)*1000:.0f}ms")
-        auc_pdp[j] = np.mean(np.abs(pdpy)) * (np.max(pdpx) - np.min(pdpx))
-        total_pdpy_mass += auc_pdp[j]
+            stop = time.time()
+            print(f"PD time {(stop-start)*1000:.0f}ms")
+            auc_pdp[j] = np.mean(np.abs(pdpy))# * (np.max(pdpx) - np.min(pdpx))
+            total_pdpy_mass += auc_pdp[j]
 
     normalized_auc_pdp = auc_pdp / total_pdpy_mass
 
     return normalized_auc_pdp
 
 
-def plot_partials(X,y,eqn,yrange=(.5,1.5)):
+def plot_partials(X,y,eqn, yrange=(.5,1.5)):
     p = X.shape[1]
     fig, axes = plt.subplots(p, 1, figsize=(7, p*2+2))
 
@@ -220,24 +236,44 @@ def plot_partials(X,y,eqn,yrange=(.5,1.5)):
                      horizontalalignment='center')
 
 
+# def foo():
+#     df, eqn = toy_weight_data(2000)
+#     X = df.drop('weight', axis=1)
+#     y = df['weight']
+#     X['pregnant'] = X['pregnant'].astype(int)
+#     X['sex'] = X['sex'].map({'M': 0, 'F': 1}).astype(int)
+#
+#     fig, ax = plt.subplots(1, 1)
+#     plot_catstratpd(X, y, 'pregnant', 'weight', ax=ax,
+#                     # min_samples_leaf=50,
+#                     alpha=.2,
+#                     catnames={0: 'F', 1: 'T'},
+#                     #                yrange=(0, 5),
+#                     )
+#     ax.set_title("StratPD", fontsize=10)
+#
+#
+# foo()
+
 p=3
 #df, coeff, eqn = synthetic_poly_data(1000,p,noise=1)
 #df, coeff, eqn = synthetic_poly2dup_data(2000,p)
-df, eqn = toy_weight_data(100)
+df, eqn = toy_weight_data(2000)
 X = df.drop('weight', axis=1)
 y = df['weight']
-print(df.head())
 X['pregnant'] = X['pregnant'].astype(int)
 X['sex'] = X['sex'].map({'M':0, 'F':1}).astype(int)
+print(X.head())
 
 print(eqn)
 # X = df.drop('y', axis=1)
 # #X['noise'] = np.random.random_sample(size=len(X))
 # y = df['y']
 
-# I = impact_importances(X, y, n_samples=500, n_trials=5)
-# print(I)
-# plot_importances(I, imp_range=(0,1.0))
+I = impact_importances(X, y, catcolnames={'sex','pregnant'})
+print(X.columns)
+print(I)
+plot_importances(I, imp_range=(0,1.0))
 
 #                  #color='#FEE192', #'#5D9CD2', #'#A99EFF',
 #                  # bgcolor='#F1F8FE'
@@ -248,10 +284,10 @@ print(eqn)
 rf = RandomForestRegressor(n_estimators=10)
 rf.fit(X,y)
 
-compare_imp(rf, X, y, eqn)
+compare_imp(rf, X, y, catcolnames={'sex','pregnant'}, eqn=eqn)
 
 #plot_partials(X, y, eqn, yrange=None)
 plt.tight_layout()
-# plt.savefig("/Users/parrt/Desktop/marginal.pdf", bbox_inches=0)
+plt.savefig("/Users/parrt/Desktop/marginal.pdf", bbox_inches=0)
 plt.show()
 

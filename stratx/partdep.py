@@ -739,7 +739,6 @@ def catwise_leaves(rf, X, y, colname, verbose):
 
 def cat_partial_dependence(X, y,
                            colname,  # X[colname] expected to be numeric codes
-                           catnames=None,  # map of catcodes to catnames; converted to map if sequence passed
                            ntrees=1,
                            min_samples_leaf=10,
                            max_features=1.0,
@@ -766,8 +765,6 @@ def cat_partial_dependence(X, y,
                                    oob_score=False)
         rf.fit(X_synth.drop(colname,axis=1), y_synth)
 
-    catcodes, _, catcode2name = getcats(X, colname, catnames)
-
     # rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X.drop(colname, axis=1), y)
     # print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
@@ -785,7 +782,11 @@ def cat_partial_dependence(X, y,
     else:
         avg_per_cat = np.nanmean(leaf_histos, axis=1)
 
-    return leaf_histos, avg_per_cat, catcodes, catcode2name, ignored
+
+    print("avg_per_cat", avg_per_cat)
+
+    return leaf_histos, avg_per_cat, ignored
+
 
 # only works for ints, not floats
 def plot_catstratpd(X, y,
@@ -816,10 +817,9 @@ def plot_catstratpd(X, y,
                     show_xticks=True,
                     verbose=False):
 
-    leaf_histos, avg_per_cat, catcodes, catcode2name, ignored = \
+    leaf_histos, avg_per_cat, ignored = \
         cat_partial_dependence(X, y,
                                colname=colname,
-                               catnames=catnames,
                                ntrees=ntrees,
                                min_samples_leaf=min_samples_leaf,
                                max_features=max_features,
@@ -827,6 +827,8 @@ def plot_catstratpd(X, y,
                                supervised=supervised,
                                use_weighted_avg=use_weighted_avg,
                                verbose=verbose)
+
+    catcodes, _, catcode2name = getcats(X, colname, catnames)
 
     if ax is None:
         fig, ax = plt.subplots(1, 1)
