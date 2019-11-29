@@ -7,6 +7,8 @@ from sklearn.linear_model import LinearRegression, Lasso
 from sklearn.utils import resample
 import matplotlib
 import time
+import timeit
+from timeit import default_timer as timer
 from stratx.partdep import *
 from rfpimp import plot_importances
 import rfpimp
@@ -155,7 +157,7 @@ def shap_importances(rf, X):
     total_imp = np.sum(shapimp)
 
     normalized_shap = shapimp / total_imp
-    print("SHAP", normalized_shap)
+    # print("SHAP", normalized_shap)
     shapI = pd.DataFrame(data={'Feature': X.columns, 'Importance': normalized_shap})
     shapI = shapI.set_index('Feature')
     shapI = shapI.sort_values('Importance', ascending=False)
@@ -201,8 +203,9 @@ def impact_importances(X: pd.DataFrame,
                        catcolnames=set(),
                        n_samples=None,  # use all by default
                        bootstrap_sampling=True,
-                       n_trials:int=3,
-                       n_trees=1, min_samples_leaf=10, bootstrap=False, max_features=1.0) -> pd.DataFrame:
+                       n_trials:int=1,
+                       n_trees=1, min_samples_leaf=10, bootstrap=False, max_features=1.0,
+                       verbose=False) -> pd.DataFrame:
     if not isinstance(X, pd.DataFrame):
         raise ValueError("Can only operate on dataframes at the moment")
 
@@ -218,7 +221,8 @@ def impact_importances(X: pd.DataFrame,
                                         n_trees=n_trees,
                                         min_samples_leaf=min_samples_leaf,
                                         bootstrap=bootstrap,
-                                        max_features=max_features)
+                                        max_features=max_features,
+                                        verbose=verbose)
 
     avg_imps = np.mean(imps, axis=1)
     stddev_imps = np.std(imps, axis=1)
@@ -233,7 +237,8 @@ def impact_importances(X: pd.DataFrame,
 
 
 def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
-                        n_trees=1, min_samples_leaf=10, bootstrap=False, max_features=1.0) -> np.ndarray:
+                        n_trees=1, min_samples_leaf=10, bootstrap=False, max_features=1.0,
+                        verbose=False) -> np.ndarray:
     if not isinstance(X, pd.DataFrame):
         raise ValueError("Can only operate on dataframes at the moment")
 
@@ -250,7 +255,8 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                                        ntrees=n_trees,
                                        min_samples_leaf=min_samples_leaf,
                                        bootstrap=bootstrap,
-                                       max_features=max_features)
+                                       max_features=max_features,
+                                       verbose=verbose)
             #         print(f"Ignored for {colname} = {ignored}")
             stop = time.time()
             # print(f"PD time {(stop - start) * 1000:.0f}ms")
@@ -267,7 +273,8 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                                    ntrees=n_trees,
                                    min_samples_leaf=min_samples_leaf,
                                    bootstrap=bootstrap,
-                                   max_features=max_features)
+                                   max_features=max_features,
+                                   verbose=verbose)
         #         print(f"Ignored for {colname} = {ignored}")
             stop = time.time()
             # print(f"PD time {(stop-start)*1000:.0f}ms")
@@ -443,10 +450,76 @@ def unstable_SHAP():
     # plt.savefig("/Users/parrt/Desktop/marginal.pdf", bbox_inches=0)
 
 
+def time_SHAP(n_estimators, n_records):
+    df = pd.read_feather("../notebooks/data/bulldozer-train.feather")
+    df['MachineHours'] = df['MachineHoursCurrentMeter']  # shorten name
+    # basefeatures = ['ModelID', 'YearMade', 'MachineHours']
+    basefeatures = ['SalesID', 'MachineID', 'ModelID',
+                    'datasource', 'YearMade',
+                    # some missing values but use anyway:
+                    'auctioneerID', 'MachineHoursCurrentMeter']
+
+    # Get subsample; it's a (sorted) timeseries so get last records not random
+    df = df.iloc[-n_records:]  # take only last records
+    X, y = df[basefeatures], df['SalePrice']
+    X = X.fillna(0)  # flip missing numeric values to zeros
+    start = time.time()
+    rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=True)
+    rf.fit(X, y)
+    stop = time.time()
+    print(f"RF fit time for {n_records} = {(stop - start):.1f}s")
+    start = timer()
+    shap_I = shap_importances(rf, X)
+    stop = timer()
+    print(f"SHAP OOB $R^2$ {rf.oob_score_:.2f}, time for {n_records} = {(stop - start):.1f}s")
+    return shap_I
+
+
+def our_bulldozer():
+    df = pd.read_feather("../notebooks/data/bulldozer-train.feather")
+    df['MachineHours'] = df['MachineHoursCurrentMeter']  # shorten name
+    # basefeatures = ['ModelID', 'YearMade', 'MachineHours']
+    basefeatures = ['SalesID', 'MachineID', 'ModelID',
+                    'datasource', 'YearMade',
+                    # some missing values but use anyway:
+                    'auctioneerID', 'MachineHoursCurrentMeter']
+
+    # Get subsample; it's a (sorted) timeseries so get last records not random
+    n_records = 20_000
+    df = df.iloc[-n_records:]  # take only last records
+    X, y = df[basefeatures], df['SalePrice']
+    X = X.fillna(0)  # flip missing numeric values to zeros
+    start = timer()
+    I = impact_importances(X, y, verbose=True)#, n_samples=3000, bootstrap_sampling=False, n_trials=10)#, catcolnames={'ModelID','SalesID','auctioneerID','MachineID','datasource'})
+    print(I)
+    stop = timer()
+    print(f"Time for {n_records} = {(stop - start):.1f}s")
+    plot_importances(I, imp_range=(0, 1))
+
+
+def bulldozer():
+    n_estimators=50
+    n_records=2000
+    I = time_SHAP(n_estimators, n_records)
+    plot_importances(I, imp_range=(0, 1))
+
+
+def speed_SHAP():
+    n_estimators = 50
+    print("n_estimators",n_estimators)
+    for n_records in [1000, 3000, 5000, 8000]:
+        time_SHAP(n_estimators, n_records)
+
+
 #weather()
 #poly()
-unstable_SHAP()
+# unstable_SHAP()
 # poly_dupcol()
+# speed_SHAP()
+# bulldozer()
+
+our_bulldozer()
+
 
 #plt.tight_layout()
 #plt.subplots_adjust(top=0.85) # must be after tight_layout

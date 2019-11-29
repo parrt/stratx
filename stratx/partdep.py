@@ -115,7 +115,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
                                    max_features=max_features)
         rf.fit(X.drop(colname, axis=1), y)
         if verbose:
-            print(f"Strat Partition RF: missing {colname} training R^2 {rf.score(X.drop(colname, axis=1), y)}")
+            print(f"Strat Partition RF: dropping {colname} training R^2 {rf.score(X.drop(colname, axis=1), y):.2f}")
 
     else:
         """
@@ -146,7 +146,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
     if verbose:
         print(f"discrete StratPD num samples ignored {ignored}/{len(X)} for {colname}")
 
-    slope_at_x = avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes)
+    slope_at_x = avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes, verbose=verbose)
     # slope_at_x = weighted_avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes, leaf_sizes, use_weighted_avg=True)
 
     # Drop any nan slopes; implies we have no reliable data for that range
@@ -197,7 +197,7 @@ def plot_stratpd_binned(X, y, colname, targetname,
                                    max_features=max_features)
         rf.fit(X.drop(colname, axis=1), y)
         if verbose:
-            print(f"Strat Partition RF: missing {colname} training R^2 {rf.score(X.drop(colname, axis=1), y)}")
+            print(f"Strat Partition RF: dropping {colname} training R^2 {rf.score(X.drop(colname, axis=1), y):.2f}")
 
     else:
         """
@@ -444,7 +444,7 @@ def discrete_xc_space(x: np.ndarray, y: np.ndarray, verbose=False):
     leaf_sizes = xy['x'].value_counts().sort_index().values
 
     stop = timer()
-    # print(f"discrete_xc_space {stop - start:.3f}s")
+    if verbose: print(f"discrete_xc_space {stop - start:.3f}s")
     return leaf_xranges, leaf_sizes, leaf_slopes, ignored
 
 
@@ -504,7 +504,7 @@ def collect_discrete_slopes(rf, X, y, colname, verbose=False):
     return leaf_xranges, leaf_sizes, leaf_slopes, ignored
 
 
-def avg_values_at_x(uniq_x, leaf_ranges, leaf_slopes):
+def avg_values_at_x(uniq_x, leaf_ranges, leaf_slopes, verbose):
     """
     Compute the weighted average of leaf_values at each uniq_x.
 
@@ -535,7 +535,7 @@ def avg_values_at_x(uniq_x, leaf_ranges, leaf_slopes):
         avg_value_at_x = np.nanmean(slopes, axis=1)
 
     stop = timer()
-    # print(f"avg_value_at_x {stop - start:.3f}s")
+    if verbose: print(f"avg_value_at_x {stop - start:.3f}s")
     return avg_value_at_x # return average slope at each unique x value
 
 
@@ -753,7 +753,7 @@ def cat_partial_dependence(X, y,
                                    oob_score=False)
         rf.fit(X.drop(colname, axis=1), y)
         if verbose:
-            print(f"CatStrat Partition RF: missing {colname} training R^2 {rf.score(X.drop(colname, axis=1), y)}")
+            print(f"CatStrat Partition RF: dropping {colname} training R^2 {rf.score(X.drop(colname, axis=1), y):.2f}")
     else:
         print("USING UNSUPERVISED MODE")
         X_synth, y_synth = conjure_twoclass(X)
