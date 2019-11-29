@@ -486,7 +486,7 @@ def our_bulldozer():
                     'auctioneerID', 'MachineHoursCurrentMeter']
 
     # Get subsample; it's a (sorted) timeseries so get last records not random
-    n_records = 20_000
+    n_records = 10_000
     df = df.iloc[-n_records:]  # take only last records
     X, y = df[basefeatures], df['SalePrice']
     X = X.fillna(0)  # flip missing numeric values to zeros

@@ -1,4 +1,5 @@
 import numpy as np
+from numpy import nan, where
 import pandas as pd
 from typing import Mapping, List, Tuple
 import matplotlib.pyplot as plt
@@ -8,6 +9,7 @@ from sklearn.ensemble import RandomForestRegressor
 from scipy.stats import binned_statistic
 import warnings
 from timeit import default_timer as timer
+
 
 #from stratx.cy_partdep import *
 
@@ -139,7 +141,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
               f"{len(rf.estimators_)} trees, {len(leaves)} total leaves")
 
     leaf_xranges, leaf_sizes, leaf_slopes, ignored = \
-        collect_discrete_slopes(rf, X, y, colname)
+        collect_discrete_slopes(rf, X, y, colname, verbose=verbose)
 
     # print('leaf_xranges', leaf_xranges)
     # print('leaf_slopes', leaf_slopes)
@@ -474,7 +476,7 @@ def collect_discrete_slopes(rf, X, y, colname, verbose=False):
 
     leaves = leaf_samples(rf, X.drop(colname, axis=1))
 
-    if verbose:
+    if False:
         nnodes = rf.estimators_[0].tree_.node_count
         print(f"Partitioning 'x not {colname}': {nnodes} nodes in (first) tree, "
               f"{len(rf.estimators_)} trees, {len(leaves)} total leaves")
@@ -491,7 +493,7 @@ def collect_discrete_slopes(rf, X, y, colname, verbose=False):
             continue
 
         leaf_xranges_, leaf_sizes_, leaf_slopes_, ignored_ = \
-            discrete_xc_space(leaf_x, leaf_y, verbose=verbose)
+            discrete_xc_space(leaf_x, leaf_y)
 
         leaf_slopes.extend(leaf_slopes_)
         leaf_xranges.extend(leaf_xranges_)
@@ -517,15 +519,29 @@ def avg_values_at_x(uniq_x, leaf_ranges, leaf_slopes, verbose):
     nx = len(uniq_x)
     nslopes = len(leaf_slopes)
     slopes = np.zeros(shape=(nx, nslopes))
-    i = 0  # unique x value (column in slopes matrix) index; we get a slope line for each range x_i to x_i+1
+    #i = 0  # unique x value (column in slopes matrix) index; we get a slope line for each range x_i to x_i+1
     # collect the slope for each range (taken from a leaf) as collection of
     # flat lines across the same x range
-    for xr, slope in zip(leaf_ranges, leaf_slopes):
+
+    '''
+    # Hmm...this doesn't seem to work so back it out
+    for i, (xr, slope) in enumerate(zip(leaf_ranges, leaf_slopes)):
         # now trim line so it's only valid in range xr;
         # don't set slope on right edge
-        slopes[:, i] = np.where( (uniq_x >= xr[0]) | (uniq_x < xr[1]), slope, np.nan )
-        # s[np.where( (uniq_x < xr[0]) | (uniq_x >= xr[1]) )] = np.nan
+        slopes[:, i] = where( (uniq_x >= xr[0]) | (uniq_x < xr[1]), slope, nan )
+    '''
+
+    #'''
+    i = 0
+    for xr, slope in zip(leaf_ranges, leaf_slopes):
+        s = np.full(nx, slope, dtype=float)
+        # now trim line so it's only valid in range xr;
+        # don't set slope on right edge
+        s[np.where( (uniq_x < xr[0]) | (uniq_x >= xr[1]) )] = np.nan
+        slopes[:, i] = s
         i += 1
+    #'''
+
     # The value could be genuinely zero so we use nan not 0 for out-of-range
     # Now average horiz across the matrix, averaging within each range
     # Wrap nanmean() in catcher to avoid "Mean of empty slice" warning, which
