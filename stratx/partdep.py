@@ -7,8 +7,8 @@ from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from scipy.stats import binned_statistic
 import warnings
+from timeit import default_timer as timer
 
-import time
 from dtreeviz.trees import *
 
 
@@ -421,7 +421,7 @@ def discrete_xc_space(x: np.ndarray, y: np.ndarray, verbose=False):
     If there is exactly one unique x value in the leaf, the leaf provides no information
     about how x_c contributes to changes in y. We have to ignore this leaf.
     """
-    start = time.time()
+    start = timer()
 
     ignored = 0
     xy = pd.concat([pd.Series(x), pd.Series(y)], axis=1)
@@ -443,7 +443,7 @@ def discrete_xc_space(x: np.ndarray, y: np.ndarray, verbose=False):
     leaf_xranges = np.array(list(zip(uniq_x, uniq_x[1:])))
     leaf_sizes = xy['x'].value_counts().sort_index().values
 
-    stop = time.time()
+    stop = timer()
     # print(f"discrete_xc_space {stop - start:.3f}s")
     return leaf_xranges, leaf_sizes, leaf_slopes, ignored
 
@@ -462,7 +462,7 @@ def collect_discrete_slopes(rf, X, y, colname, verbose=False):
 
     Only does discrete now after doing pointwise continuous slopes differently.
     """
-    start = time.time()
+    start = timer()
     leaf_slopes = []  # drop or rise between discrete x values
     leaf_xranges = [] # drop is from one discrete value to next
     leaf_sizes = []
@@ -499,7 +499,7 @@ def collect_discrete_slopes(rf, X, y, colname, verbose=False):
     leaf_sizes = np.array(leaf_sizes)
     leaf_slopes = np.array(leaf_slopes)
 
-    stop = time.time()
+    stop = timer()
     if verbose: print(f"collect_leaf_slopes {stop - start:.3f}s")
     return leaf_xranges, leaf_sizes, leaf_slopes, ignored
 
@@ -510,7 +510,7 @@ def avg_values_at_x(uniq_x, leaf_ranges, leaf_slopes):
 
     Value at max(x) is NaN since we have no data beyond that point.
     """
-    start = time.time()
+    start = timer()
     nx = len(uniq_x)
     nslopes = len(leaf_slopes)
     slopes = np.zeros(shape=(nx, nslopes))
@@ -534,7 +534,7 @@ def avg_values_at_x(uniq_x, leaf_ranges, leaf_slopes):
         warnings.simplefilter("ignore", category=RuntimeWarning)
         avg_value_at_x = np.nanmean(slopes, axis=1)
 
-    stop = time.time()
+    stop = timer()
     # print(f"avg_value_at_x {stop - start:.3f}s")
     return avg_value_at_x # return average slope at each unique x value
 
@@ -688,7 +688,7 @@ def catwise_leaves(rf, X, y, colname, verbose):
         1         166.430176  186.796956
         2         219.590349  176.448626
     """
-    start = time.time()
+    start = timer()
     ignored = 0
     # catcol = X[colname].astype('category').cat.as_ordered()
     cats = np.unique(X[colname])
@@ -731,7 +731,7 @@ def catwise_leaves(rf, X, y, colname, verbose):
         ci += 1
 
     # print(f"Avg of leaf avgs is {np.mean(leaf_avgs):.2f} vs y avg {np.mean(y)}")
-    stop = time.time()
+    stop = timer()
     if verbose: print(f"catwise_leaves {stop - start:.3f}s")
     return leaf_histos, np.array(leaf_avgs), leaf_sizes, leaf_catcounts, ignored
 
