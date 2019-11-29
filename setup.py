@@ -29,8 +29,8 @@ setup(
 
     # ext_modules=cythonize("stratx/cy_partdep.pyx", annotate=True),
 
-    ext_modules=cythonize(extensions, annotate=True),
-    cmdclass={'build_ext': build_ext},
-    zip_safe=False,
-    include_dirs=[np.get_include()]
+    # ext_modules=cythonize(extensions, annotate=True),
+    # cmdclass={'build_ext': build_ext},
+    # zip_safe=False,
+    # include_dirs=[np.get_include()]
 )

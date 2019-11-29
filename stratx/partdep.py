@@ -9,7 +9,7 @@ from scipy.stats import binned_statistic
 import warnings
 from timeit import default_timer as timer
 
-from stratx.cy_partdep import *
+#from stratx.cy_partdep import *
 
 from dtreeviz.trees import *
 
@@ -521,11 +521,10 @@ def avg_values_at_x(uniq_x, leaf_ranges, leaf_slopes, verbose):
     # collect the slope for each range (taken from a leaf) as collection of
     # flat lines across the same x range
     for xr, slope in zip(leaf_ranges, leaf_slopes):
-        s = np.full(nx, slope, dtype=float)
         # now trim line so it's only valid in range xr;
         # don't set slope on right edge
-        s[np.where( (uniq_x < xr[0]) | (uniq_x >= xr[1]) )] = np.nan
-        slopes[:, i] = s
+        slopes[:, i] = np.where( (uniq_x >= xr[0]) | (uniq_x < xr[1]), slope, np.nan )
+        # s[np.where( (uniq_x < xr[0]) | (uniq_x >= xr[1]) )] = np.nan
         i += 1
     # The value could be genuinely zero so we use nan not 0 for out-of-range
     # Now average horiz across the matrix, averaging within each range
