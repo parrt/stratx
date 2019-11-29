@@ -9,6 +9,8 @@ from scipy.stats import binned_statistic
 import warnings
 from timeit import default_timer as timer
 
+from stratx.cy_partdep import *
+
 from dtreeviz.trees import *
 
 
@@ -146,6 +148,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
     if verbose:
         print(f"discrete StratPD num samples ignored {ignored}/{len(X)} for {colname}")
 
+    # slope_at_x = cy_avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes, verbose=verbose)
     slope_at_x = avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes, verbose=verbose)
     # slope_at_x = weighted_avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes, leaf_sizes, use_weighted_avg=True)
 
