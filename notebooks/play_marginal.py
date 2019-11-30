@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression, Lasso
 from sklearn.utils import resample
+from sklearn.model_selection import train_test_split
 import matplotlib
 import time
 import timeit
@@ -15,6 +16,10 @@ from rfpimp import plot_importances
 import rfpimp
 import shap
 from pandas.api.types import is_string_dtype, is_object_dtype, is_categorical_dtype, is_bool_dtype
+from sklearn import svm
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.model_selection import GridSearchCV
+
 
 palette = [
     "#a6cee3",
@@ -151,15 +156,18 @@ def synthetic_poly2dup_data(n, p):
 
 
 
-def shap_importances(rf, X):
-    shap_values = shap.TreeExplainer(rf).shap_values(X)
+def shap_importances(model, X_train, X_test):
+    if isinstance(model, RandomForestRegressor) or isinstance(model, GradientBoostingRegressor):
+        shap_values = shap.TreeExplainer(model).shap_values(X_test)
+    else:
+        shap_values = shap.KernelExplainer(model.predict, data=X_train).shap_values(X_test, l1_reg="aic")
     shapimp = np.mean(np.abs(shap_values), axis=0)
 
     total_imp = np.sum(shapimp)
 
     normalized_shap = shapimp / total_imp
     # print("SHAP", normalized_shap)
-    shapI = pd.DataFrame(data={'Feature': X.columns, 'Importance': normalized_shap})
+    shapI = pd.DataFrame(data={'Feature': X_test.columns, 'Importance': normalized_shap})
     shapI = shapI.set_index('Feature')
     shapI = shapI.sort_values('Importance', ascending=False)
     # plot_importances(shapI)
@@ -451,7 +459,7 @@ def unstable_SHAP():
     # plt.savefig("/Users/parrt/Desktop/marginal.pdf", bbox_inches=0)
 
 
-def time_SHAP(n_estimators, n_records):
+def time_SHAP(n_estimators, n_records, model=None):
     df = pd.read_feather("../notebooks/data/bulldozer-train.feather")
     df['MachineHours'] = df['MachineHoursCurrentMeter']  # shorten name
     # basefeatures = ['ModelID', 'YearMade', 'MachineHours']
@@ -465,14 +473,19 @@ def time_SHAP(n_estimators, n_records):
     X, y = df[basefeatures], df['SalePrice']
     X = X.fillna(0)  # flip missing numeric values to zeros
     start = time.time()
-    rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=True)
-    rf.fit(X, y)
+    if model is None:
+        model = RandomForestRegressor(n_estimators=n_estimators, oob_score=True)
+    model.fit(X, y)
     stop = time.time()
     print(f"RF fit time for {n_records} = {(stop - start):.1f}s")
     start = timer()
-    shap_I = shap_importances(rf, X)
+    shap_I = shap_importances(model, X)
     stop = timer()
-    print(f"SHAP OOB $R^2$ {rf.oob_score_:.2f}, time for {n_records} = {(stop - start):.1f}s")
+    if isinstance(model, RandomForestRegressor):
+        print(f"SHAP OOB $R^2$ {model.oob_score_:.2f}, time for {n_records} = {(stop - start):.1f}s")
+    else:
+        print(f"SHAP time for {n_records} = {(stop - start):.1f}s")
+
     return shap_I
 
 
@@ -486,7 +499,7 @@ def our_bulldozer():
                     'auctioneerID', 'MachineHoursCurrentMeter']
 
     # Get subsample; it's a (sorted) timeseries so get last records not random
-    n_records = 10_000
+    n_records = 2_000
     df = df.iloc[-n_records:]  # take only last records
     X, y = df[basefeatures], df['SalePrice']
     X = X.fillna(0)  # flip missing numeric values to zeros
@@ -500,13 +513,56 @@ def our_bulldozer():
 
 def bulldozer():
     n_estimators=50
-    n_records=2000
-    I = time_SHAP(n_estimators, n_records)
-    plot_importances(I, imp_range=(0, 1))
+    n_records=3000
+
+    df = pd.read_feather("../notebooks/data/bulldozer-train.feather")
+    df['MachineHours'] = df['MachineHoursCurrentMeter']  # shorten name
+    # basefeatures = ['ModelID', 'YearMade', 'MachineHours']
+    basefeatures = ['SalesID', 'MachineID', 'ModelID',
+                    'datasource', 'YearMade',
+                    # some missing values but use anyway:
+                    'auctioneerID', 'MachineHoursCurrentMeter']
+
+    # Get subsample; it's a (sorted) timeseries so get last records not random
+    df = df.iloc[-n_records:]  # take only last records
+    X, y = df[basefeatures], df['SalePrice']
+    X = X.fillna(0)  # flip missing numeric values to zeros
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
+
+    fig, axes = plt.subplots(2, 1)
+
+    # model = svm.SVR(gamma='auto')
+    model = GridSearchCV(svm.SVR(), cv=5,
+                       param_grid={"C": [1, 1000, 2000, 3000, 5000],
+                                   "gamma": [1e-5, 1e-4, 1e-3]})
+    model.fit(X_train, y_train)
+    print(model.best_params_)
+    svm_score = model.score(X_test, y_test)
+    print("svm_score", svm_score)
+
+    start = timer()
+    I = shap_importances(model, shap.kmeans(X_train, k=50), X_test)
+    stop = timer()
+    print(f"SHAP time for {n_records} = {(stop - start):.1f}s")
+    plot_importances(I, imp_range=(0, 1), ax=axes[0])
+    axes[0].set_title(f"SHAP SVM(gamma=auto), $R^2$ {svm_score:.2f},\n|backing data|={100}, |X_train|={len(X_train)}, |X_test|={len(X_test)}")
+
+
+    #model = GradientBoostingRegressor()
+    model = RandomForestRegressor(n_estimators=n_estimators, oob_score=True)
+    model.fit(X_train, y_train)
+
+    start = timer()
+    I = shap_importances(model, X_train, X_test)
+    stop = timer()
+    print(f"SHAP OOB $R^2$ {model.oob_score_:.2f}, time for {n_records} = {(stop - start):.1f}s")
+    plot_importances(I, imp_range=(0, 1), ax=axes[1])
+    axes[1].set_title(f"SHAP RF(n_estimators={n_estimators}), OOB $R^2$ {model.oob_score_:.2f}")
 
 
 def speed_SHAP():
-    n_estimators = 50
+    n_estimators = 30
     print("n_estimators",n_estimators)
     for n_records in [1000, 3000, 5000, 8000]:
         time_SHAP(n_estimators, n_records)
@@ -516,10 +572,10 @@ def speed_SHAP():
 #poly()
 # unstable_SHAP()
 # poly_dupcol()
-# speed_SHAP()
-# bulldozer()
+#speed_SHAP()
+bulldozer()
 
-our_bulldozer()
+#our_bulldozer()
 
 
 #plt.tight_layout()
