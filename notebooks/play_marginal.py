@@ -19,7 +19,8 @@ from pandas.api.types import is_string_dtype, is_object_dtype, is_categorical_dt
 from sklearn import svm
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.model_selection import GridSearchCV
-
+from sklearn.datasets import load_boston, load_iris, load_wine, load_digits, \
+    load_breast_cancer, load_diabetes, fetch_mldata
 
 palette = [
     "#a6cee3",
@@ -159,6 +160,8 @@ def synthetic_poly2dup_data(n, p):
 def shap_importances(model, X_train, X_test):
     if isinstance(model, RandomForestRegressor) or isinstance(model, GradientBoostingRegressor):
         shap_values = shap.TreeExplainer(model).shap_values(X_test)
+    elif isinstance(model, Lasso):
+        shap_values = shap.LinearExplainer(model, X_train, feature_dependence='independent').shap_values(X_test)
     else:
         shap_values = shap.KernelExplainer(model.predict, data=X_train).shap_values(X_test, l1_reg="aic")
     shapimp = np.mean(np.abs(shap_values), axis=0)
@@ -511,6 +514,61 @@ def our_bulldozer():
     plot_importances(I, imp_range=(0, 1))
 
 
+def boston():
+    n_estimators=50
+    n_records=3000
+
+    boston = load_boston()
+    df = pd.DataFrame(boston.data, columns=boston.feature_names)
+    df['MEDV'] = boston.target
+
+    X = df.drop('MEDV', axis=1)
+    y = df['MEDV']
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
+
+    fig, axes = plt.subplots(3, 1, figsize=(5,8))
+
+    model = Lasso(alpha=0.1)
+    model.fit(X_train, y_train)
+    score = model.score(X_test, y_test)
+    print(f"SHAP Lasso $R^2$ {score:.2f}")
+
+    start = timer()
+    I = shap_importances(model, X_train, X_test)
+    stop = timer()
+    print(f"SHAP time for {n_records} = {(stop - start):.1f}s")
+    plot_importances(I, imp_range=(0, 1), ax=axes[0])
+    axes[0].set_title(f"SHAP Lasso(.1), $R^2$ {score :.2f}")
+
+    # model = svm.SVR(gamma='auto')
+    # model = GridSearchCV(svm.SVR(), cv=5,
+    #                    param_grid={"C": [1, 1000, 2000, 3000, 5000],
+    #                                "gamma": [1e-5, 1e-4, 1e-3]})
+    model = svm.SVR(gamma='auto')
+    model.fit(X_train, y_train)
+    # print(model.best_params_)
+    svm_score = model.score(X_test, y_test)
+    print("svm_score", svm_score)
+
+    start = timer()
+    I = shap_importances(model, shap.kmeans(X_train, k=10), X_test)
+    stop = timer()
+    print(f"SHAP time for {n_records} = {(stop - start):.1f}s")
+    plot_importances(I, imp_range=(0, 1), ax=axes[1])
+    axes[1].set_title(f"SHAP SVM(gamma=auto), $R^2$ {svm_score:.2f},\n|backing data|={100}, |X_train|={len(X_train)}, |X_test|={len(X_test)}")
+
+
+    #model = GradientBoostingRegressor()
+    model = RandomForestRegressor(n_estimators=n_estimators, oob_score=True)
+    model.fit(X_train, y_train)
+
+    start = timer()
+    I = shap_importances(model, X_train, X_test)
+    stop = timer()
+    print(f"SHAP OOB $R^2$ {model.oob_score_:.2f}, time for {n_records} = {(stop - start):.1f}s")
+    plot_importances(I, imp_range=(0, 1), ax=axes[2])
+    axes[2].set_title(f"SHAP RF(n_estimators={n_estimators}), OOB $R^2$ {model.oob_score_:.2f}")
+
 def bulldozer():
     n_estimators=50
     n_records=3000
@@ -530,7 +588,19 @@ def bulldozer():
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
 
-    fig, axes = plt.subplots(2, 1)
+    fig, axes = plt.subplots(3, 1)
+
+    model = Lasso(alpha=1e4)
+    model.fit(X_train, y_train)
+    score = model.score(X_test, y_test)
+    print(f"SHAP Lasso $R^2$ {score:.2f}")
+
+    start = timer()
+    I = shap_importances(model, X_train, X_test)
+    stop = timer()
+    print(f"SHAP time for {n_records} = {(stop - start):.1f}s")
+    plot_importances(I, imp_range=(0, 1), ax=axes[0])
+    axes[0].set_title(f"SHAP Lasso(), $R^2$ {score :.2f}")
 
     # model = svm.SVR(gamma='auto')
     model = GridSearchCV(svm.SVR(), cv=5,
@@ -542,11 +612,11 @@ def bulldozer():
     print("svm_score", svm_score)
 
     start = timer()
-    I = shap_importances(model, shap.kmeans(X_train, k=50), X_test)
+    I = shap_importances(model, shap.kmeans(X_train, k=10), X_test)
     stop = timer()
     print(f"SHAP time for {n_records} = {(stop - start):.1f}s")
-    plot_importances(I, imp_range=(0, 1), ax=axes[0])
-    axes[0].set_title(f"SHAP SVM(gamma=auto), $R^2$ {svm_score:.2f},\n|backing data|={100}, |X_train|={len(X_train)}, |X_test|={len(X_test)}")
+    plot_importances(I, imp_range=(0, 1), ax=axes[1])
+    axes[1].set_title(f"SHAP SVM(gamma=auto), $R^2$ {svm_score:.2f},\n|backing data|={100}, |X_train|={len(X_train)}, |X_test|={len(X_test)}")
 
 
     #model = GradientBoostingRegressor()
@@ -557,8 +627,9 @@ def bulldozer():
     I = shap_importances(model, X_train, X_test)
     stop = timer()
     print(f"SHAP OOB $R^2$ {model.oob_score_:.2f}, time for {n_records} = {(stop - start):.1f}s")
-    plot_importances(I, imp_range=(0, 1), ax=axes[1])
-    axes[1].set_title(f"SHAP RF(n_estimators={n_estimators}), OOB $R^2$ {model.oob_score_:.2f}")
+    plot_importances(I, imp_range=(0, 1), ax=axes[2])
+    axes[2].set_title(f"SHAP RF(n_estimators={n_estimators}), OOB $R^2$ {model.oob_score_:.2f}")
+
 
 
 def speed_SHAP():
@@ -573,7 +644,8 @@ def speed_SHAP():
 # unstable_SHAP()
 # poly_dupcol()
 #speed_SHAP()
-bulldozer()
+# bulldozer()
+boston()
 
 #our_bulldozer()
 
