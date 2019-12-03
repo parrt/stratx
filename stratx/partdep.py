@@ -920,6 +920,7 @@ def scramble(X : np.ndarray) -> np.ndarray:
     X_rand = X.copy()
     ncols = X.shape[1]
     for col in range(ncols):
+        # TODO: whoa. shouldn't be unique() should it?
         X_rand[:,col] = np.random.choice(np.unique(X[:,col]), len(X), replace=True)
     return X_rand
 
@@ -932,6 +933,7 @@ def df_scramble(X : pd.DataFrame) -> pd.DataFrame:
     """
     X_rand = X.copy()
     for colname in X:
+        # TODO: whoa. shouldn't be unique() should it?
         X_rand[colname] = np.random.choice(X[colname].unique(), len(X), replace=True)
     return X_rand
 
