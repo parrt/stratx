@@ -627,6 +627,60 @@ def boston_multicollinearity():
     viz.save("/Users/parrt/Desktop/codep.pdf")
 
 
+def boston_drop_features():
+    boston = load_boston()
+    df = pd.DataFrame(normalize(boston.data), columns=boston.feature_names)
+    df['MEDV'] = boston.target
+    n_estimators=200
+    n_records=len(df)
+
+    X = df.drop('MEDV', axis=1)
+    y = df['MEDV']
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+
+    SHAP_RF_features = ['LSTAT','RM','CRIM','DIS','PTRATIO']
+    our_features = ['LSTAT','INDUS','RAD','TAX','RM']
+    ols_features = ['RM','LSTAT','B','PTRATIO','DIS']
+
+    features_set = [SHAP_RF_features, our_features, ols_features]
+    features_names = ['SHAP', 'our', 'ols']
+
+    for name,features in zip(features_names,features_set):
+        X_train_ = X_train[features]
+        X_test_ = X_test[features]
+        rf = RandomForestRegressor(n_estimators=n_estimators, min_samples_leaf=1, oob_score=True)
+        rf.fit(X_train_, y_train)
+        s = rf.score(X_test_, y_test)
+        print(f"{name:4s} top 5 OOB R^2 {rf.oob_score_:.3f}, valid R^2 {s:.3f}")
+
+    print()
+
+    SHAP_drop = ['ZN','CHAS','NOX','RAD','AGE']
+    our_drop = ['ZN','NOX','PTRATIO','CRIM','CHAS']
+    ols_drop = ['INDUS','AGE','ZN','TAX','CRIM']
+    features_drop_set = [SHAP_RF_features, our_features, ols_features]
+
+    for name,features in zip(features_names,features_drop_set):
+        X_train_ = X_train.drop(features,axis=1)
+        X_test_ = X_test.drop(features,axis=1)
+        rf = RandomForestRegressor(n_estimators=n_estimators, min_samples_leaf=1, oob_score=True)
+        rf.fit(X_train_, y_train)
+        s = rf.score(X_test_, y_test)
+        print(f"{name:4s} drop 5 OOB R^2 {rf.oob_score_:.3f}, valid R^2 {s:.3f}")
+
+    # X_our = X[our_features]
+    # rf = RandomForestRegressor(n_estimators=n_estimators, min_samples_leaf=1, oob_score=True)
+    # rf.fit(X_train, y_train)
+    # s = rf.score(X_test, y_test)
+    # print(f"Our top 5 OOB R^2 {rf.oob_score_:.3f}, valid R^2 {s:.3f}")
+    #
+    # X_ols = X[ols_features]
+    # rf = RandomForestRegressor(n_estimators=n_estimators, min_samples_leaf=1, oob_score=True)
+    # rf.fit(X_train, y_train)
+    # s = rf.score(X_test, y_test)
+    # print(f"OLS top 5 OOB R^2 {rf.oob_score_:.3f}, valid R^2 {s:.3f}")
+
+
 def linear_model_importance(model, X_test, X_train, y_test, y_train):
     model.fit(X_train, y_train)
     score = model.score(X_test, y_test)
@@ -722,8 +776,9 @@ def speed_SHAP():
 # poly_dupcol()
 #speed_SHAP()
 # bulldozer()
-# boston()
-boston_multicollinearity()
+boston_drop_features()
+#boston()
+#boston_multicollinearity()
 
 #our_bulldozer()
 
