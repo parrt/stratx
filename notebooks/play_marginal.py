@@ -6,6 +6,11 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression, Lasso
 from sklearn.utils import resample
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import normalize
+import statsmodels.api as sm
+
+from rfpimp import *
+
 import matplotlib
 import time
 import timeit
@@ -160,7 +165,7 @@ def synthetic_poly2dup_data(n, p):
 def shap_importances(model, X_train, X_test):
     if isinstance(model, RandomForestRegressor) or isinstance(model, GradientBoostingRegressor):
         shap_values = shap.TreeExplainer(model).shap_values(X_test)
-    elif isinstance(model, Lasso):
+    elif isinstance(model, Lasso) or isinstance(model, LinearRegression):
         shap_values = shap.LinearExplainer(model, X_train, feature_dependence='independent').shap_values(X_test)
     else:
         shap_values = shap.KernelExplainer(model.predict, data=X_train).shap_values(X_test, l1_reg="aic")
@@ -515,47 +520,74 @@ def our_bulldozer():
 
 
 def boston():
-    n_estimators=50
-    n_records=3000
-
     boston = load_boston()
-    df = pd.DataFrame(boston.data, columns=boston.feature_names)
+    df = pd.DataFrame(normalize(boston.data), columns=boston.feature_names)
     df['MEDV'] = boston.target
+
+    n_estimators=50
+    n_records=len(df)
 
     X = df.drop('MEDV', axis=1)
     y = df['MEDV']
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
-    fig, axes = plt.subplots(3, 1, figsize=(5,8))
+    fig, axes = plt.subplots(6, 1, figsize=(5,12.5))
 
-    model = Lasso(alpha=0.1)
-    model.fit(X_train, y_train)
-    score = model.score(X_test, y_test)
-    print(f"SHAP Lasso $R^2$ {score:.2f}")
+    lm = LinearRegression()
+    I, score = linear_model_importance(lm, X_test, X_train, y_test, y_train)
+    print(I)
+    plot_importances(I, imp_range=(0, 1), ax=axes[0])
+    axes[0].set_title(f"OLS $\\beta_i$, $R^2$ {score :.2f}")
+
+    lm.fit(X_train, y_train)
+    score = lm.score(X_test, y_test)
+    print(f"SHAP OLS $R^2$ {score:.2f}")
 
     start = timer()
-    I = shap_importances(model, X_train, X_test)
+    I = shap_importances(lm, X_train, X_test)
     stop = timer()
     print(f"SHAP time for {n_records} = {(stop - start):.1f}s")
-    plot_importances(I, imp_range=(0, 1), ax=axes[0])
-    axes[0].set_title(f"SHAP Lasso(.1), $R^2$ {score :.2f}")
+    plot_importances(I, imp_range=(0, 1), ax=axes[1])
+    axes[1].set_title(f"SHAP OLS, $R^2$ {score :.2f}")
+
+    alpha = .001 # found via CV=5
+    lm = Lasso(alpha=alpha)
+    # model = GridSearchCV(lm, cv=5,
+    #                    param_grid={"alpha": [.2, .1, .05, .01, .005, .001]})
+    # model.fit(X, y)
+    # print(model.best_params_)
+    I, score = linear_model_importance(lm, X_test, X_train, y_test, y_train)
+    plot_importances(I, imp_range=(0, 1), ax=axes[2])
+    axes[2].set_title(f"Lasso($\\alpha={alpha}$) $\\beta_i$, $R^2$ {score :.2f}")
+
+    lm.fit(X_train, y_train)
+    score = lm.score(X_test, y_test)
+    print(f"SHAP Lasso($\\alpha={alpha}$) $R^2$ {score:.2f}")
+
+    start = timer()
+    I = shap_importances(lm, X_train, X_test)
+    stop = timer()
+    print(f"SHAP time for {n_records} = {(stop - start):.1f}s")
+    plot_importances(I, imp_range=(0, 1), ax=axes[3])
+    axes[3].set_title(f"SHAP Lasso($\\alpha={alpha}$), $R^2$ {score :.2f}")
 
     # model = svm.SVR(gamma='auto')
     # model = GridSearchCV(svm.SVR(), cv=5,
     #                    param_grid={"C": [1, 1000, 2000, 3000, 5000],
     #                                "gamma": [1e-5, 1e-4, 1e-3]})
-    model = svm.SVR(gamma='auto')
-    model.fit(X_train, y_train)
-    # print(model.best_params_)
-    svm_score = model.score(X_test, y_test)
-    print("svm_score", svm_score)
+    if False:
+        model = svm.SVR(gamma='auto')
+        model.fit(X_train, y_train)
+        # print(model.best_params_)
+        svm_score = model.score(X_test, y_test)
+        print("svm_score", svm_score)
 
-    start = timer()
-    I = shap_importances(model, shap.kmeans(X_train, k=10), X_test)
-    stop = timer()
-    print(f"SHAP time for {n_records} = {(stop - start):.1f}s")
-    plot_importances(I, imp_range=(0, 1), ax=axes[1])
-    axes[1].set_title(f"SHAP SVM(gamma=auto), $R^2$ {svm_score:.2f},\n|backing data|={100}, |X_train|={len(X_train)}, |X_test|={len(X_test)}")
+        start = timer()
+        I = shap_importances(model, shap.kmeans(X_train, k=10), X_test)
+        stop = timer()
+        print(f"SHAP time for {n_records} = {(stop - start):.1f}s")
+        plot_importances(I, imp_range=(0, 1), ax=axes[1])
+        axes[1].set_title(f"SHAP SVM(gamma=auto), $R^2$ {svm_score:.2f},\n|backing data|={100}, |X_train|={len(X_train)}, |X_test|={len(X_test)}")
 
 
     #model = GradientBoostingRegressor()
@@ -566,8 +598,53 @@ def boston():
     I = shap_importances(model, X_train, X_test)
     stop = timer()
     print(f"SHAP OOB $R^2$ {model.oob_score_:.2f}, time for {n_records} = {(stop - start):.1f}s")
-    plot_importances(I, imp_range=(0, 1), ax=axes[2])
-    axes[2].set_title(f"SHAP RF(n_estimators={n_estimators}), OOB $R^2$ {model.oob_score_:.2f}")
+    plot_importances(I, imp_range=(0, 1), ax=axes[4])
+    axes[4].set_title(f"SHAP RF(n_estimators={n_estimators}), OOB $R^2$ {model.oob_score_:.2f}")
+
+    # Do ours
+    I = impact_importances(X, y, verbose=True)
+    plot_importances(I, imp_range=(0, 1), ax=axes[5])
+    axes[5].set_title(f"Model-Free Impact Importance")
+
+    plt.savefig("/Users/parrt/Desktop/shap_compare.pdf")
+
+
+def boston_multicollinearity():
+    boston = load_boston()
+    df = pd.DataFrame(normalize(boston.data), columns=boston.feature_names)
+    df['MEDV'] = boston.target
+    n_estimators=50
+    n_records=len(df)
+
+    X = df.drop('MEDV', axis=1)
+    y = df['MEDV']
+
+    rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=True)
+    rf.fit(X, y)
+
+    DM = feature_dependence_matrix(X, rf, sort_by_dependence=True)
+    viz = plot_dependence_heatmap(DM, figsize=(12, 12))
+    viz.save("/Users/parrt/Desktop/codep.pdf")
+
+
+def linear_model_importance(model, X_test, X_train, y_test, y_train):
+    model.fit(X_train, y_train)
+    score = model.score(X_test, y_test)
+
+    imp = np.abs(model.coef_)
+
+    # use statsmodels to get stderr for betas
+    if isinstance(model, LinearRegression):
+        beta_stderr = sm.OLS(y_train, X_train).fit().bse
+        imp /= beta_stderr
+    # stderr for betas makes no sense in Lasso
+
+    imp /= np.sum(imp) # normalize
+    I = pd.DataFrame(data={'Feature': X_train.columns, 'Importance': imp})
+    I = I.set_index('Feature')
+    I = I.sort_values('Importance', ascending=False)
+    return I, score
+
 
 def bulldozer():
     n_estimators=50
@@ -645,7 +722,8 @@ def speed_SHAP():
 # poly_dupcol()
 #speed_SHAP()
 # bulldozer()
-boston()
+# boston()
+boston_multicollinearity()
 
 #our_bulldozer()
 
