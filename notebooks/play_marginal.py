@@ -901,7 +901,7 @@ def rent_top():
     n_estimators = 50
     trials = 15
     X, y = load_rent(n=5_000)
-    ols_I, rf_I, our_I = get_multiple_imps(X, y, min_samples_leaf=10)
+    ols_I, rf_I, our_I = get_multiple_imps(X, y, min_samples_leaf=5)
     print("OLS\n", ols_I)
     print("RF\n",rf_I)
     print("OURS\n",our_I)
