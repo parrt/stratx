@@ -897,20 +897,21 @@ def rent_drop():
 
 
 def rent_top():
-    n_top = 3
+    n_top = 5
     n_estimators = 50
     trials = 15
     X, y = load_rent(n=5_000)
-    ols_I, rf_I, our_I = get_multiple_imps(X, y, min_samples_leaf=5)
+    ols_I, rf_I, our_I = get_multiple_imps(X, y, min_samples_leaf=20)
     print("OLS\n", ols_I)
     print("RF\n",rf_I)
     print("OURS\n",our_I)
 
     ols_top = ols_I.iloc[:n_top,0].index.values
     rf_top = rf_I.iloc[:n_top,0].index.values
-    our_top = our_I.iloc[-n_top:,0].index.values
+    our_top = our_I.iloc[:n_top,0].index.values
     features_names = ['OLS', 'RF', 'OUR']
     features_set = [ols_top, rf_top, our_top]
+    print("OUR FEATURES", our_top)
 
     all = []
     for i in range(trials):
@@ -918,15 +919,16 @@ def rent_top():
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
         results = []
         for name, features in zip(features_names, features_set):
-            X_train_ = X_train.drop(features, axis=1)
-            X_test_ = X_test.drop(features, axis=1)
-            rf = RandomForestRegressor(n_estimators=n_estimators,
-                                       min_samples_leaf=1)
+            print(f"Train with {features} from {name}")
+            X_train_ = X_train[features]
+            X_test_ = X_test[features]
+            rf = RandomForestRegressor(n_estimators=n_estimators, min_samples_leaf=1)
             rf.fit(X_train_, y_train)
             s = rf.score(X_test_, y_test)
             results.append(s)
             # print(f"{name} valid R^2 {s:.3f}")
         all.append(results)
+    print()
     print(pd.DataFrame(data=all, columns=['OLS','RF','Ours']))
     print(f"Avg top-{n_top} valid R^2 {np.mean(all,axis=0)}, stddev {np.std(all,axis=0)}")
 
