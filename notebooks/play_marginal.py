@@ -11,6 +11,8 @@ import statsmodels.api as sm
 
 from rfpimp import *
 
+import xgboost as xgb
+
 import matplotlib
 import time
 import timeit
@@ -614,7 +616,7 @@ def boston():
     plt.savefig("/Users/parrt/Desktop/shap_compare.pdf")
 
 
-def get_multiple_imps(X, y, test_size=0.2, n_estimators=50, min_samples_leaf=10):
+def get_multiple_imps(X, y, test_size=0.2, n_shap=3000, n_estimators=50, min_samples_leaf=10):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
 
     lm = LinearRegression()
@@ -623,9 +625,9 @@ def get_multiple_imps(X, y, test_size=0.2, n_estimators=50, min_samples_leaf=10)
 
     rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=True)
     rf.fit(X_train, y_train)
-    rf_I = shap_importances(rf, X_train, X_test, n=3000)
+    rf_I = shap_importances(rf, X_train, X_test, n=n_shap)
 
-    ours_I = impact_importances(X, y, verbose=True, min_samples_leaf=min_samples_leaf)
+    ours_I = impact_importances(X, y, verbose=False, min_samples_leaf=min_samples_leaf)
     return ols_I, rf_I, ours_I
 
 
@@ -855,7 +857,7 @@ def load_rent(n=3_000):
                   'interest_level']+
                  hoodfeatures+
                  ['num_photos', 'num_desc_words', 'num_features']]
-    print(df_rent.head(3))
+    # print(df_rent.head(3))
 
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
@@ -896,44 +898,110 @@ def rent_drop():
     print(f"Avg drop-{n_drop} valid R^2 {np.mean(all,axis=0)}, stddev {np.std(all,axis=0)}")
 
 
-def rent_top():
-    n_top = 5
-    n_estimators = 50
-    trials = 15
-    X, y = load_rent(n=5_000)
-    ols_I, rf_I, our_I = get_multiple_imps(X, y, min_samples_leaf=20)
-    print("OLS\n", ols_I)
-    print("RF\n",rf_I)
-    print("OURS\n",our_I)
+def avg_model_for_top_features(name:('OLS', 'RF', 'OUR'), X_test, X_train, y_test, y_train):
+    scores = []
 
-    ols_top = ols_I.iloc[:n_top,0].index.values
-    rf_top = rf_I.iloc[:n_top,0].index.values
-    our_top = our_I.iloc[:n_top,0].index.values
-    features_names = ['OLS', 'RF', 'OUR']
-    features_set = [ols_top, rf_top, our_top]
-    print("OUR FEATURES", our_top)
+    # OLS
+    lm = LinearRegression()
+    lm.fit(X_train, y_train)
+    s = lm.score(X_test, y_test)
+    scores.append(s)
 
-    all = []
-    for i in range(trials):
-        print(i, end=' ')
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-        results = []
-        for name, features in zip(features_names, features_set):
-            print(f"Train with {features} from {name}")
-            X_train_ = X_train[features]
-            X_test_ = X_test[features]
-            rf = RandomForestRegressor(n_estimators=n_estimators, min_samples_leaf=1)
-            rf.fit(X_train_, y_train)
-            s = rf.score(X_test_, y_test)
-            results.append(s)
-            # print(f"{name} valid R^2 {s:.3f}")
-        all.append(results)
-    print()
-    print(pd.DataFrame(data=all, columns=['OLS','RF','Ours']))
-    print(f"Avg top-{n_top} valid R^2 {np.mean(all,axis=0)}, stddev {np.std(all,axis=0)}")
+    # Lasso
+    lm = Lasso(alpha=.1)
+    lm.fit(X_train, y_train)
+    s = lm.score(X_test, y_test)
+    scores.append(s)
+
+    # SVM
+    model = svm.SVR(gamma=0.001, C=5000)
+    # model = GridSearchCV(svm.SVR(), cv=5,
+    #                    param_grid={"C": [1, 1000, 2000, 3000, 5000],
+    #                                "gamma": [1e-5, 1e-4, 1e-3]})
+    model.fit(X_train, y_train)
+    #print("SVM best:",model.best_params_)
+    s = model.score(X_test, y_test)
+    scores.append(s)
+
+    # GBM
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        x = xgb.XGBRegressor(objective ='reg:squarederror')
+        x.fit(X_train, y_train)
+        y_pred = x.predict(X_test)
+        s = r2_score(y_test, y_pred)
+    # param = {'max_depth': 2, 'eta': 1, 'silent': 1, 'objective': 'binary:logistic'}
+    # num_round = 2
+    # watchlist = [(X_test, 'eval'), (X_train, 'train')]
+    # dtrain = xgb.DMatrix(X_train, label=y_train)
+    # bst = xgb.train(param, dtrain, num_round, watchlist)
+    scores.append(s)
+
+    # RF
+    n_estimators = 40
+    rf = RandomForestRegressor(n_estimators=n_estimators, min_samples_leaf=1)
+    rf.fit(X_train, y_train)
+    s = rf.score(X_test, y_test)
+    scores.append(s)
+
+    # print(scores)
+
+    # If we use OLS or RF to get recommended top features, not fair to use those
+    # models to measure fitness of recommendation; drop those scores from avg.
+    # if name == 'OLS':
+    #     del scores[0]
+    # elif name == 'RF': # SHAP RF
+    #     del scores[4]
+
+    return np.mean(scores)
+    # for now, return just RF
+    # return s
 
 
-rent_top()
+def rent_top(top_range=(1, 7),
+             n_estimators=40,
+             trials=7,
+             n=3_000,
+             min_samples_leaf=10):
+    n_shap = n
+    X, y = load_rent(n=n)
+    ols_I, rf_I, our_I = get_multiple_imps(X, y, min_samples_leaf=min_samples_leaf, n_estimators=n_estimators, n_shap=n_shap)
+    # print("OLS\n", ols_I)
+    # print("RF\n",rf_I)
+    # print("OURS\n",our_I)
+
+    top = top_range[1]
+
+    print("OUR FEATURES", our_I.index.values)
+
+    for top in range(top_range[0], top+1):
+        ols_top = ols_I.iloc[:top, 0].index.values
+        rf_top = rf_I.iloc[:top, 0].index.values
+        our_top = our_I.iloc[:top, 0].index.values
+        features_names = ['OLS', 'RF', 'OUR']
+        features_set = [ols_top, rf_top, our_top]
+        all = []
+        for i in range(trials):
+            # print(i, end=' ')
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+            results = []
+            for name, features in zip(features_names, features_set):
+                # print(f"Train with {features} from {name}")
+                X_train_ = X_train[features]
+                X_test_ = X_test[features]
+                s = avg_model_for_top_features(name, X_test_, X_train_, y_test, y_train)
+                results.append(s)
+                # print(f"{name} valid R^2 {s:.3f}")
+            all.append(results)
+        print()
+        # print(pd.DataFrame(data=all, columns=['OLS','RF','Ours']))
+        # print()
+        print("n_top, n_estimators, n, n_shap, min_samples_leaf", top, n_estimators, n, n_shap, min_samples_leaf)
+        print(f"Avg top-{top} valid R^2 {np.mean(all, axis=0)}")#, stddev {np.std(all, axis=0)}")
+        print
+
+
+rent_top(min_samples_leaf=10)
 
 #weather()
 #poly()
