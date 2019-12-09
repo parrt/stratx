@@ -588,6 +588,7 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
                                  ntrees=1,
                                  show_ylabel=False,
                                  slope_line_alpha=slope_line_alpha)
+                print(f"leafsz {msl} avg abs curve value: {np.mean(np.abs(pdpy)):.2f}, mean {np.mean(pdpy):.2f}, min {np.min(pdpy):.2f}, max {np.max(pdpy)}")
             except ValueError:
                 axes[col].set_title(
                     f"Can't gen: leafsz={msl}",

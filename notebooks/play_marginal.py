@@ -962,7 +962,7 @@ def rent_top(top_range=(1, 7),
              n_estimators=40,
              trials=7,
              n=3_000,
-             min_samples_leaf=10):
+             min_samples_leaf=20):
     n_shap = n
     X, y = load_rent(n=n)
     ols_I, rf_I, our_I = get_multiple_imps(X, y, min_samples_leaf=min_samples_leaf, n_estimators=n_estimators, n_shap=n_shap)
@@ -1001,7 +1001,18 @@ def rent_top(top_range=(1, 7),
         print
 
 
-rent_top(min_samples_leaf=10)
+def rent_pdp():
+    X, y = load_rent(n=8_000)
+    plot_stratpd_gridsearch(X, y, 'bedrooms', 'price')
+    plot_stratpd_gridsearch(X, y, 'bathrooms', 'price')
+    plot_stratpd_gridsearch(X, y, 'Wvillage', 'price')
+    plot_stratpd_gridsearch(X, y, 'latitude', 'price')
+    plot_stratpd_gridsearch(X, y, 'longitude', 'price')
+
+
+rent_pdp()
+
+#rent_top(min_samples_leaf=10)
 
 #weather()
 #poly()
