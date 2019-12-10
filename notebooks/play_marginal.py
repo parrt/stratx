@@ -425,56 +425,6 @@ def poly_dupcol():
     plot_importances(I, imp_range=(0,1.0))
 
 
-def unstable_SHAP():
-    p=2 # p=2 and we're pretty stable and about even; p=2 implies don't add noisy x3 to y; hmm... shap seems stable but not even
-        # damn, tried again and p=2 is the most unstable
-        # bumping trees to 20 made shap more stable. both of us get x2 right but x1,x3
-        # pair bounces quite a bit in shap, less so in ours but some. x3 is stealing importance
-        # from x1 but x1 is more important as it's in the y equation.
-    #p=3 # p=3 and x3 not added to y; ours has stairstep but stable, shap same order but can vary alot
-
-    nplots=7
-    fig, axes = plt.subplots(nplots, 2, figsize=(6, nplots+3))
-
-    imps = np.zeros(shape=(p+1, nplots))
-    shap_imps = np.zeros(shape=(p+1, nplots))
-
-    for i in range(nplots):
-        # make new data set each time
-        df, coeff, eqn = synthetic_poly2dup_data(1000, p)
-        X = df.drop('y', axis=1)
-        y = df['y']
-
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-
-        print(eqn)
-        # pass copies to ensure we don't alter them, giving fresh stuff to SHAP
-        I = impact_importances(X.copy(), y.copy(), n_trials=1)
-                               # ntrees=10, min_samples_leaf=10, bootstrap=False, max_features=1)
-        imps[:,i] = I['Importance'].values
-        plot_importances(I, imp_range=(0,1.0), ax=axes[i][0])
-        axes[i][0].set_title("Impact", fontsize=9)
-
-        rf = RandomForestRegressor(n_estimators=20, oob_score=True)
-        rf.fit(X_train, y_train)
-        shap_I = shap_importances(rf, X_train, X_test)
-        shap_imps[:,i] = shap_I['Importance'].values
-        plot_importances(shap_I, ax=axes[i][1], imp_range=(0, 1))
-        axes[i][1].set_title(f"SHAP (OOB $R^2$ {rf.oob_score_:.2f})", fontsize=9)
-
-    plt.suptitle(f"${eqn}$", y=1.0)
-
-    stds = np.std(imps, axis=1)
-    shap_stds = np.std(shap_imps, axis=1)
-    print(stds)
-    print(shap_stds)
-
-    #compare_imp(rf, X, y, catcolnames={'sex','pregnant'}, eqn=eqn)
-
-    #plot_partials(X, y, eqn, yrange=None)
-    # plt.savefig("/Users/parrt/Desktop/marginal.pdf", bbox_inches=0)
-
-
 def time_SHAP(n_estimators, n_records, model=None):
     df = pd.read_feather("../notebooks/data/bulldozer-train.feather")
     df['MachineHours'] = df['MachineHoursCurrentMeter']  # shorten name
@@ -901,7 +851,7 @@ def rent_drop():
 
 
 def avg_model_for_top_features(name:('OLS', 'RF', 'OUR'), X_test, X_train, y_test, y_train,
-                               models={'OLS','LASSO','SVM','GBM','RF'}):
+                               models={'RF'}):
     scores = []
 
     # OLS
@@ -913,24 +863,26 @@ def avg_model_for_top_features(name:('OLS', 'RF', 'OUR'), X_test, X_train, y_tes
 
     # Lasso
     if 'LASSO' in models:
-        # lm = Lasso(alpha=.1)
-        model = GridSearchCV(Lasso(), cv=5,
-                           param_grid={"alpha": [1, .5, .1, .01, .001]})
-        model.fit(X_train, y_train)
-        lm = model.best_estimator_
-        print("LASSO best:",model.best_params_)
+        lm = Lasso(alpha=.1)
+        # model = GridSearchCV(Lasso(), cv=5,
+        #                    param_grid={"alpha": [1, .5, .1, .01, .001]})
+        # model.fit(X_train, y_train)
+        # lm = model.best_estimator_
+        # print("LASSO best:",model.best_params_)
+        lm.fit(X_train, y_train)
         s = lm.score(X_test, y_test)
         scores.append(s)
 
     # SVM
     if 'SVM' in models:
-        # svr = svm.SVR(gamma=0.001, C=5000)
-        model = GridSearchCV(svm.SVR(), cv=5,
-                           param_grid={"C": [1, 1000, 2000, 3000, 5000],
-                                       "gamma": [1e-5, 1e-4, 1e-3]})
-        model.fit(X_train, y_train)
-        svr = model.best_estimator_
-        print("SVM best:",model.best_params_)
+        svr = svm.SVR(gamma=0.001, C=5000)
+        # model = GridSearchCV(svm.SVR(), cv=5,
+        #                    param_grid={"C": [1, 1000, 2000, 3000, 5000],
+        #                                "gamma": [1e-5, 1e-4, 1e-3]})
+        # model.fit(X_train, y_train)
+        # svr = model.best_estimator_
+        # print("SVM best:",model.best_params_)
+        svr.fit(X_train, y_train)
         s = svr.score(X_test, y_test)
         scores.append(s)
 
@@ -973,8 +925,8 @@ def avg_model_for_top_features(name:('OLS', 'RF', 'OUR'), X_test, X_train, y_tes
 
 def rent_top(top_range=(1, 7),
              n_estimators=40,
-             trials=7,
-             n=3_000,
+             trials=3,
+             n=5_000,
              min_samples_leaf=20):
     n_shap = n
     X, y = load_rent(n=n)
@@ -987,6 +939,7 @@ def rent_top(top_range=(1, 7),
 
     print("OUR FEATURES", our_I.index.values)
 
+    print("n_top, n_estimators, n, n_shap, min_samples_leaf", top, n_estimators, n, n_shap, min_samples_leaf)
     for top in range(top_range[0], top+1):
         ols_top = ols_I.iloc[:top, 0].index.values
         rf_top = rf_I.iloc[:top, 0].index.values
@@ -1006,10 +959,8 @@ def rent_top(top_range=(1, 7),
                 results.append(s)
                 # print(f"{name} valid R^2 {s:.3f}")
             all.append(results)
-        print()
         # print(pd.DataFrame(data=all, columns=['OLS','RF','Ours']))
         # print()
-        print("n_top, n_estimators, n, n_shap, min_samples_leaf", top, n_estimators, n, n_shap, min_samples_leaf)
         print(f"Avg top-{top} valid R^2 {np.mean(all, axis=0)}")#, stddev {np.std(all, axis=0)}")
         print
 
@@ -1025,7 +976,7 @@ def rent_pdp():
 
 def bulldozer_top(top_range=(1, 7),
                   n_estimators=40,
-                  trials=7,
+                  trials=3,
                   n=5_000,
                   min_samples_leaf=20):
     n_shap = n
@@ -1072,21 +1023,18 @@ def bulldozer_top(top_range=(1, 7),
                 results.append(s)
                 # print(f"{name} valid R^2 {s:.3f}")
             all.append(results)
-        print()
         # print(pd.DataFrame(data=all, columns=['OLS','RF','Ours']))
         # print()
         print(f"Avg top-{top} valid R^2 {np.mean(all, axis=0)}")#, stddev {np.std(all, axis=0)}")
-        print
 
 
 # rent_pdp()
 
-# rent_top(min_samples_leaf=10)
+rent_top(min_samples_leaf=10)
 #bulldozer_top(min_samples_leaf=10)
 
 #weather()
 #poly()
-unstable_SHAP()
 # poly_dupcol()
 #speed_SHAP()
 # bulldozer()
