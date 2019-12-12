@@ -286,26 +286,6 @@ def poly():
     # plt.savefig("/Users/parrt/Desktop/marginal.pdf", bbox_inches=0)
 
 
-def poly_dupcol():
-    p=3
-    df, coeff, eqn = synthetic_poly2dup_data(1500,p)
-    X = df.drop('y', axis=1)
-    y = df['y']
-    print(X.head())
-
-    print(eqn)
-    # X = df.drop('y', axis=1)
-    # #X['noise'] = np.random.random_sample(size=len(X))
-    # y = df['y']
-
-    I = impact_importances(X, y)
-                           # ntrees=5, min_samples_leaf=10, bootstrap=False, max_features=1)
-    print(I)
-    # I = impact_importances(X, y, n_samples=100, bootstrap=False, n_trials=25)
-    # print(I)
-    plot_importances(I, imp_range=(0,1.0))
-
-
 def time_SHAP(n_estimators, n_records, model=None):
     df = pd.read_feather("../notebooks/data/bulldozer-train.feather")
     df['MachineHours'] = df['MachineHoursCurrentMeter']  # shorten name
@@ -337,19 +317,7 @@ def time_SHAP(n_estimators, n_records, model=None):
 
 
 def our_bulldozer():
-    df = pd.read_feather("../notebooks/data/bulldozer-train.feather")
-    df['MachineHours'] = df['MachineHoursCurrentMeter']  # shorten name
-    # basefeatures = ['ModelID', 'YearMade', 'MachineHours']
-    basefeatures = ['SalesID', 'MachineID', 'ModelID',
-                    'datasource', 'YearMade',
-                    # some missing values but use anyway:
-                    'auctioneerID', 'MachineHoursCurrentMeter']
-
-    # Get subsample; it's a (sorted) timeseries so get last records not random
-    n_records = 2_000
-    df = df.iloc[-n_records:]  # take only last records
-    X, y = df[basefeatures], df['SalePrice']
-    X = X.fillna(0)  # flip missing numeric values to zeros
+    X, n_records, y = load_bulldozer()
     start = timer()
     I = impact_importances(X, y, verbose=True)#, n_samples=3000, bootstrap_sampling=False, n_trials=10)#, catcolnames={'ModelID','SalesID','auctioneerID','MachineID','datasource'})
     print(I)
@@ -448,20 +416,6 @@ def boston():
 
     plt.savefig("/Users/parrt/Desktop/shap_compare.pdf")
 
-
-def get_multiple_imps(X, y, test_size=0.2, n_shap=3000, n_estimators=50, min_samples_leaf=10):
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
-
-    lm = LinearRegression()
-    lm.fit(X_train, y_train)
-    ols_I, score = linear_model_importance(lm, X_test, X_train, y_test, y_train)
-
-    rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=True)
-    rf.fit(X_train, y_train)
-    rf_I = shap_importances(rf, X_train[:n_shap])
-
-    ours_I = impact_importances(X, y, verbose=False, min_samples_leaf=min_samples_leaf)
-    return ols_I, rf_I, ours_I
 
 
 def boston_multicollinearity():
@@ -712,77 +666,6 @@ def rent_drop():
     print(f"Avg drop-{n_drop} valid R^2 {np.mean(all,axis=0)}, stddev {np.std(all,axis=0)}")
 
 
-def avg_model_for_top_features(name:('OLS', 'RF', 'OUR'), X_test, X_train, y_test, y_train,
-                               models={'RF'}):
-    scores = []
-
-    # OLS
-    if 'OLS' in models:
-        lm = LinearRegression()
-        lm.fit(X_train, y_train)
-        s = lm.score(X_test, y_test)
-        scores.append(s)
-
-    # Lasso
-    if 'LASSO' in models:
-        lm = Lasso(alpha=.1)
-        # model = GridSearchCV(Lasso(), cv=5,
-        #                    param_grid={"alpha": [1, .5, .1, .01, .001]})
-        # model.fit(X_train, y_train)
-        # lm = model.best_estimator_
-        # print("LASSO best:",model.best_params_)
-        lm.fit(X_train, y_train)
-        s = lm.score(X_test, y_test)
-        scores.append(s)
-
-    # SVM
-    if 'SVM' in models:
-        svr = svm.SVR(gamma=0.001, C=5000)
-        # model = GridSearchCV(svm.SVR(), cv=5,
-        #                    param_grid={"C": [1, 1000, 2000, 3000, 5000],
-        #                                "gamma": [1e-5, 1e-4, 1e-3]})
-        # model.fit(X_train, y_train)
-        # svr = model.best_estimator_
-        # print("SVM best:",model.best_params_)
-        svr.fit(X_train, y_train)
-        s = svr.score(X_test, y_test)
-        scores.append(s)
-
-    # GBM
-    if 'GBM' in models:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            x = xgb.XGBRegressor(objective ='reg:squarederror')
-            x.fit(X_train, y_train)
-            y_pred = x.predict(X_test)
-            s = r2_score(y_test, y_pred)
-        # param = {'max_depth': 2, 'eta': 1, 'silent': 1, 'objective': 'binary:logistic'}
-        # num_round = 2
-        # watchlist = [(X_test, 'eval'), (X_train, 'train')]
-        # dtrain = xgb.DMatrix(X_train, label=y_train)
-        # bst = xgb.train(param, dtrain, num_round, watchlist)
-        scores.append(s)
-
-    # RF
-    if 'RF' in models:
-        n_estimators = 40
-        rf = RandomForestRegressor(n_estimators=n_estimators, min_samples_leaf=1)
-        rf.fit(X_train, y_train)
-        s = rf.score(X_test, y_test)
-        scores.append(s)
-
-    # print(scores)
-
-    # If we use OLS or RF to get recommended top features, not fair to use those
-    # models to measure fitness of recommendation; drop those scores from avg.
-    # if name == 'OLS':
-    #     del scores[0]
-    # elif name == 'RF': # SHAP RF
-    #     del scores[4]
-
-    return np.mean(scores)
-    # for now, return just RF
-    # return s
 
 
 def rent_top(top_range=(1, 7),
@@ -836,64 +719,11 @@ def rent_pdp():
     plot_stratpd_gridsearch(X, y, 'longitude', 'price')
 
 
-def bulldozer_top(top_range=(1, 7),
-                  n_estimators=40,
-                  trials=3,
-                  n=8_000,
-                  min_samples_leaf=20):
-    n_shap = n
-
-    df = pd.read_feather("../notebooks/data/bulldozer-train.feather")
-    df['MachineHours'] = df['MachineHoursCurrentMeter']  # shorten name
-    # basefeatures = ['ModelID', 'YearMade', 'MachineHours']
-    basefeatures = ['SalesID', 'MachineID', 'ModelID',
-                    'datasource', 'YearMade',
-                    # some missing values but use anyway:
-                    'auctioneerID', 'MachineHoursCurrentMeter']
-
-    # Get subsample; it's a (sorted) timeseries so get last records not random
-    df = df.iloc[-n:]  # take only last records
-    X, y = df[basefeatures], df['SalePrice']
-    X = X.fillna(0)  # flip missing numeric values to zeros
-
-    ols_I, rf_I, our_I = get_multiple_imps(X, y, min_samples_leaf=min_samples_leaf, n_estimators=n_estimators, n_shap=n_shap)
-    # print("OLS\n", ols_I)
-    # print("RF\n",rf_I)
-    # print("OURS\n",our_I)
-
-    top = top_range[1]
-
-    print("OUR FEATURES", our_I.index.values)
-
-    print("n_top, n_estimators, n, n_shap, min_samples_leaf", top, n_estimators, n, n_shap, min_samples_leaf)
-    for top in range(top_range[0], top+1):
-        ols_top = ols_I.iloc[:top, 0].index.values
-        rf_top = rf_I.iloc[:top, 0].index.values
-        our_top = our_I.iloc[:top, 0].index.values
-        features_names = ['OLS', 'RF', 'OUR']
-        features_set = [ols_top, rf_top, our_top]
-        all = []
-        for i in range(trials):
-            # print(i, end=' ')
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-            results = []
-            for name, features in zip(features_names, features_set):
-                # print(f"Train with {features} from {name}")
-                X_train_ = X_train[features]
-                X_test_ = X_test[features]
-                s = avg_model_for_top_features(name, X_test_, X_train_, y_test, y_train)
-                results.append(s)
-                # print(f"{name} valid R^2 {s:.3f}")
-            all.append(results)
-        # print(pd.DataFrame(data=all, columns=['OLS','RF','Ours']))
-        # print()
-        print(f"Avg top-{top} valid R^2 {np.mean(all, axis=0)}")#, stddev {np.std(all, axis=0)}")
 
 
 #rent_pdp()
 
-rent_top(min_samples_leaf=10)
-#bulldozer_top(min_samples_leaf=10)
+#rent_top(min_samples_leaf=10)
 
 #weather()
 #poly()
