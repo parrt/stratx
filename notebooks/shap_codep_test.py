@@ -49,13 +49,14 @@ def shap_importances(model, X, normalize=True):
 
 def SHAP_trials():
     print("SHAP version", shap.__version__)
-    ntrials=8
+    ntrials=4
     fig, axes = plt.subplots(ntrials, 3, figsize=(8, ntrials+3))
 
     for i in range(ntrials):
         # print(i, end=' ')
         # make new data set each trial
         df, coeff, eqn = synthetic_poly_dup_data(1000)
+        # print(eqn)
         X = df.drop('y', axis=1)
         y = df['y']
 

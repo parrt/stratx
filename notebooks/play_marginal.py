@@ -15,6 +15,8 @@ from impimp import *
 
 import xgboost as xgb
 
+from support import *
+
 import matplotlib
 import time
 import timeit
@@ -163,39 +165,6 @@ def synthetic_poly2dup_data(n, p):
     terms = [f"{coeff[i]:.1f}x_{i+1}" for i in range(p)] + [f"{yintercept:.0f}"]
     eqn = "y = " + ' + '.join(terms)
     return df, coeff, eqn+" where x_3 = x_1 + noise"
-
-
-def shap_importances(model, X_train, X_test, n=20_000):
-    X_train = X_train[-n:]
-    X_test = X_test[-n:]
-    start = time.time()
-    if isinstance(model, RandomForestRegressor) or isinstance(model, GradientBoostingRegressor):
-        shap_values = shap.TreeExplainer(model).shap_values(X_test)
-    elif isinstance(model, Lasso) or isinstance(model, LinearRegression):
-        shap_values = shap.LinearExplainer(model, X_train, feature_dependence='independent').shap_values(X_test)
-    else:
-        shap_values = shap.KernelExplainer(model.predict, data=X_train).shap_values(X_test, l1_reg="aic")
-    shapimp = np.mean(np.abs(shap_values), axis=0)
-    stop = time.time()
-    print(f"SHAP time for {len(X_train)} = {(stop - start):.1f}s")
-
-    total_imp = np.sum(shapimp)
-
-    normalized_shap = shapimp / total_imp
-    # print("SHAP", normalized_shap)
-    shapI = pd.DataFrame(data={'Feature': X_test.columns, 'Importance': normalized_shap})
-    shapI = shapI.set_index('Feature')
-    shapI = shapI.sort_values('Importance', ascending=False)
-    # plot_importances(shapI)
-    return shapI
-
-
-def ginidrop_importances(rf, X):
-    ginidrop_I = rf.feature_importances_
-    ginidrop_I = pd.DataFrame(data={'Feature': X.columns, 'Importance': ginidrop_I})
-    ginidrop_I = ginidrop_I.set_index('Feature')
-    ginidrop_I = ginidrop_I.sort_values('Importance', ascending=False)
-    return ginidrop_I
 
 
 def compare_imp(rf, X, y, catcolnames=set(), eqn="n/a"):
@@ -489,7 +458,7 @@ def get_multiple_imps(X, y, test_size=0.2, n_shap=3000, n_estimators=50, min_sam
 
     rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=True)
     rf.fit(X_train, y_train)
-    rf_I = shap_importances(rf, X_train, X_test, n=n_shap)
+    rf_I = shap_importances(rf, X_train[:n_shap])
 
     ours_I = impact_importances(X, y, verbose=False, min_samples_leaf=min_samples_leaf)
     return ols_I, rf_I, ours_I
@@ -592,25 +561,6 @@ def boston_drop_features():
     # rf.fit(X_train, y_train)
     # s = rf.score(X_test, y_test)
     # print(f"OLS top 5 OOB R^2 {rf.oob_score_:.3f}, valid R^2 {s:.3f}")
-
-
-def linear_model_importance(model, X_test, X_train, y_test, y_train):
-    model.fit(X_train, y_train)
-    score = model.score(X_test, y_test)
-
-    imp = np.abs(model.coef_)
-
-    # use statsmodels to get stderr for betas
-    if isinstance(model, LinearRegression):
-        beta_stderr = sm.OLS(y_train, X_train).fit().bse
-        imp /= beta_stderr
-    # stderr for betas makes no sense in Lasso
-
-    imp /= np.sum(imp) # normalize
-    I = pd.DataFrame(data={'Feature': X_train.columns, 'Importance': imp})
-    I = I.set_index('Feature')
-    I = I.sort_values('Importance', ascending=False)
-    return I, score
 
 
 def bulldozer():
@@ -940,14 +890,14 @@ def bulldozer_top(top_range=(1, 7),
         print(f"Avg top-{top} valid R^2 {np.mean(all, axis=0)}")#, stddev {np.std(all, axis=0)}")
 
 
-rent_pdp()
+#rent_pdp()
 
-#rent_top(min_samples_leaf=10)
+rent_top(min_samples_leaf=10)
 #bulldozer_top(min_samples_leaf=10)
 
 #weather()
 #poly()
-poly_dupcol()
+#poly_dupcol()
 #speed_SHAP()
 # bulldozer()
 #boston_pdp()

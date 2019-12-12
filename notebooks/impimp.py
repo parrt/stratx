@@ -71,14 +71,17 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
         # Ask stratx package for the partial dependence of y with respect to X[colname]
         if colname in catcolnames:
             start = timer()
-            leaf_histos, avg_per_cat, ignored = \
-                cat_partial_dependence(X, y, colname=colname,
-                                       ntrees=n_trees,
-                                       min_samples_leaf=min_samples_leaf,
-                                       bootstrap=bootstrap,
-                                       max_features=max_features,
-                                       verbose=verbose)
-            #         print(f"Ignored for {colname} = {ignored}")
+            if pdp=='stratpd':
+                leaf_histos, avg_per_cat, ignored = \
+                    cat_partial_dependence(X, y, colname=colname,
+                                           ntrees=n_trees,
+                                           min_samples_leaf=min_samples_leaf,
+                                           bootstrap=bootstrap,
+                                           max_features=max_features,
+                                           verbose=verbose)
+                #         print(f"Ignored for {colname} = {ignored}")
+            elif pdp=='ice':
+                pdpy = original_catpdp(rf, X=X, colname=colname)
             stop = timer()
             # print(f"PD time {(stop - start) * 1000:.0f}ms")
             min_avg_value = np.nanmin(avg_per_cat)
@@ -97,9 +100,9 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                                        bootstrap=bootstrap,
                                        max_features=max_features,
                                        verbose=verbose)
+                #         print(f"Ignored for {colname} = {ignored}")
             elif pdp=='ice':
                 pdpy = original_pdp(rf, X=X, colname=colname)
-        #         print(f"Ignored for {colname} = {ignored}")
             stop = timer()
             # print(f"PD time {(stop-start)*1000:.0f}ms")
             avg_abs_pdp[j] = np.mean(np.abs(pdpy))# * (np.max(pdpx) - np.min(pdpx))
