@@ -11,7 +11,45 @@ We just hacked it together.
 
 from stratx.partdep import getcats
 
-def predict_catice(model, X:pd.DataFrame, colname:str, targetname, cats=None, ncats=None):
+
+def original_pdp(model, X, colname):
+    """
+    Return an ndarray with relative partial dependence line (average of ICE lines).
+    Attempt is made to get first pdp y to 0.
+    """
+    ice = predict_ice(model, X, colname)
+    #  Row 0 is actually the sorted unique X[colname] values used to get predictions.
+    pdp_curve = np.mean(ice[1:], axis=0)
+    min_pdp_y = pdp_curve[0]
+    # if 0 is in x feature and not on left/right edge, get y at 0
+    # and shift so that is x,y 0 point.
+    linex = ice.iloc[0, :]  # get unique x values from first row
+    nx = len(linex)
+    if linex[int(nx * 0.05)] < 0 or linex[-int(nx * 0.05)] > 0:
+        closest_x_to_0 = np.argmin(
+            np.abs(np.array(linex - 0.0)))  # do argmin w/o depr warning
+        min_pdp_y = pdp_curve[closest_x_to_0]
+
+    pdp_curve -= min_pdp_y
+    return pdp_curve.values
+
+
+def original_catpdp(model, X, colname):
+    """
+    Return an ndarray with relative partial dependence line (average of ICE lines).
+    Attempt is made to get first pdp y to 0.
+    """
+    ice = predict_catice(model, X, colname)
+    #  Row 0 is actually the sorted unique X[colname] values used to get predictions.
+    pdp_curve = np.mean(ice[1:], axis=0)
+
+    # find lowest value for any category and shift by that
+    min_pdp_y = np.min(pdp_curve)
+    pdp_curve -= min_pdp_y
+    return pdp_curve.values
+
+
+def predict_catice(model, X:pd.DataFrame, colname:str, targetname="target", cats=None, ncats=None):
     if cats is None:
         cats = np.unique(X[colname]) # get unique codes
     return predict_ice(model=model, X=X, colname=colname, targetname=targetname,
@@ -109,7 +147,7 @@ def plot_ice(ice, colname, targetname="target", ax=None, linewidth=.5, linecolor
     linex = ice.iloc[0,:] # get unique x values from first row
     nx = len(linex)
     if linex[int(nx*0.05)]<0 or linex[-int(nx*0.05)]>0:
-        closest_x_to_0 = np.abs(linex - 0.0).argmin()
+        closest_x_to_0 = np.argmin(np.abs(np.array(linex - 0.0))) # do argmin w/o depr warning
         min_pdp_y = avg_y[closest_x_to_0]
 
     lines = ice2lines(ice)
