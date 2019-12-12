@@ -123,7 +123,8 @@ def shap_importances(model, X, normalize=True):
     return shapI
 
 
-def get_multiple_imps(X, y, test_size=0.2, n_shap=100, n_estimators=50, min_samples_leaf=10):
+def get_multiple_imps(X, y, test_size=0.2, n_shap=100, n_estimators=50, min_samples_leaf=10,
+                      catcolnames=set()):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
 
     lm = LinearRegression()
@@ -134,7 +135,8 @@ def get_multiple_imps(X, y, test_size=0.2, n_shap=100, n_estimators=50, min_samp
     rf.fit(X_train, y_train)
     rf_I = shap_importances(rf, X_train[:n_shap])
 
-    ours_I = impact_importances(X, y, verbose=False, min_samples_leaf=min_samples_leaf)
+    ours_I = impact_importances(X, y, verbose=False, min_samples_leaf=min_samples_leaf,
+                                catcolnames=catcolnames)
     return ols_I, rf_I, ours_I
 
 

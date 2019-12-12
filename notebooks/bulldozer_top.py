@@ -16,10 +16,10 @@ import matplotlib.pyplot as plt
 
 from rfpimp import plot_importances, dropcol_importances, importances
 
-def bulldozer_top(top_range=(1, 7),
+def bulldozer_top(top_range=(1, 9),
                   n_estimators=40,
                   trials=3,
-                  n=10_000,
+                  n=5_000,
                   min_samples_leaf=10):
     n_shap = 300
 
@@ -33,7 +33,9 @@ def bulldozer_top(top_range=(1, 7),
     print(f"Sanity check: R^2 OOB on {X.shape[0]} records: {rf.oob_score_:.3f}")
 
 
-    ols_I, rf_I, our_I = get_multiple_imps(X, y, min_samples_leaf=min_samples_leaf, n_estimators=n_estimators, n_shap=n_shap)
+    ols_I, rf_I, our_I = get_multiple_imps(X, y, min_samples_leaf=min_samples_leaf,
+                                           n_estimators=n_estimators, n_shap=n_shap,
+                                           catcolnames={'AC'})
     # print("OLS\n", ols_I)
     # print("RF\n",rf_I)
     # print("OURS\n",our_I)
