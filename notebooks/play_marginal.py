@@ -265,6 +265,7 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
     if not isinstance(X, pd.DataFrame):
         raise ValueError("Can only operate on dataframes at the moment")
 
+    all_start = time.time()
     p = X.shape[1]
     avg_pdp = np.zeros(shape=(p,)) # track avg pdp, not magnitude
     avg_abs_pdp = np.zeros(shape=(p,)) # like area under PDP curve but not including width
@@ -307,6 +308,9 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
 
     # print("avg_pdp", avg_pdp, "sum", np.sum(avg_pdp), "avg y", np.mean(y), "avg y-min(y)", np.mean(y)-np.min(y))
     normalized_importances = avg_abs_pdp / total_avg_pdpy
+
+    all_stop = time.time()
+    print(f"Impact importance time {(all_stop-all_start):.0f}s")
 
     return normalized_importances
 
@@ -407,7 +411,7 @@ def poly():
 
 def poly_dupcol():
     p=3
-    df, coeff, eqn = synthetic_poly2dup_data(1000,p)
+    df, coeff, eqn = synthetic_poly2dup_data(1500,p)
     X = df.drop('y', axis=1)
     y = df['y']
     print(X.head())
@@ -977,7 +981,7 @@ def rent_pdp():
 def bulldozer_top(top_range=(1, 7),
                   n_estimators=40,
                   trials=3,
-                  n=5_000,
+                  n=8_000,
                   min_samples_leaf=20):
     n_shap = n
 
@@ -1028,14 +1032,14 @@ def bulldozer_top(top_range=(1, 7),
         print(f"Avg top-{top} valid R^2 {np.mean(all, axis=0)}")#, stddev {np.std(all, axis=0)}")
 
 
-# rent_pdp()
+rent_pdp()
 
-rent_top(min_samples_leaf=10)
+#rent_top(min_samples_leaf=10)
 #bulldozer_top(min_samples_leaf=10)
 
 #weather()
 #poly()
-# poly_dupcol()
+#poly_dupcol()
 #speed_SHAP()
 # bulldozer()
 #boston_pdp()
