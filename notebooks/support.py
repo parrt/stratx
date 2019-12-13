@@ -61,7 +61,9 @@ def load_bulldozer():
     basefeatures = ['SalesID', 'MachineID', 'ModelID',
                     'datasource', 'YearMade',
                     # some missing values but use anyway:
-                    'auctioneerID', 'MachineHours']
+                    'auctioneerID',
+                    'MachineHours'
+                    ]
     X = df[basefeatures+
            ['age',
             'YearMade_na',
@@ -74,20 +76,20 @@ def load_bulldozer():
     return X, y
 
 
-def linear_model_importance(model, X_test, X_train, y_test, y_train):
-    model.fit(X_train, y_train)
-    score = model.score(X_test, y_test)
+def linear_model_importance(model, X, y):
+    model.fit(X, y)
+    score = model.score(X, y)
 
     imp = np.abs(model.coef_)
 
     # use statsmodels to get stderr for betas
     if isinstance(model, LinearRegression):
-        beta_stderr = sm.OLS(y_train, X_train).fit().bse
+        beta_stderr = sm.OLS(y, X).fit().bse
         imp /= beta_stderr
     # stderr for betas makes no sense in Lasso
 
     imp /= np.sum(imp) # normalize
-    I = pd.DataFrame(data={'Feature': X_train.columns, 'Importance': imp})
+    I = pd.DataFrame(data={'Feature': X.columns, 'Importance': imp})
     I = I.set_index('Feature')
     I = I.sort_values('Importance', ascending=False)
     return I, score
@@ -101,8 +103,10 @@ def ginidrop_importances(rf, X):
     return ginidrop_I
 
 
-def shap_importances(model, X, normalize=True):
+def shap_importances(model, X, n_shap, normalize=True):
     start = timer()
+    #X = shap.kmeans(X, k=n_shap)
+    X = X.sample(n=n_shap, replace=False)
     if isinstance(model, RandomForestRegressor) or isinstance(model, GradientBoostingRegressor):
         explainer = shap.TreeExplainer(model, data=X, feature_perturbation='interventional')
         shap_values = explainer.shap_values(X, check_additivity=True)
@@ -110,7 +114,7 @@ def shap_importances(model, X, normalize=True):
         shap_values = shap.LinearExplainer(model, X, feature_dependence='independent').shap_values(X)
     shapimp = np.mean(np.abs(shap_values), axis=0)
     stop = timer()
-    print(f"SHAP time for {len(X)} records = {(stop - start):.1f}s")
+    print(f"SHAP time for {len(X)} records using {model.__class__.__name__} = {(stop - start):.1f}s")
 
     total_imp = np.sum(shapimp)
     normalized_shap = shapimp
@@ -125,18 +129,17 @@ def shap_importances(model, X, normalize=True):
     return shapI
 
 
-def get_multiple_imps(X, y, test_size=0.2, n_shap=100, n_estimators=50, min_samples_leaf=10,
+def get_multiple_imps(X, y, n_shap=300, n_estimators=50, min_samples_leaf=10,
                       catcolnames=set()):
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
 
     lm = LinearRegression()
-    lm.fit(X_train, y_train)
-    ols_I, score = linear_model_importance(lm, X_test, X_train, y_test, y_train)
-    ols_shap_I = shap_importances(lm, X_test)
+    lm.fit(X, y)
+    ols_I, score = linear_model_importance(lm, X, y)
+    ols_shap_I = shap_importances(lm, X, n_shap)
 
     rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=True)
-    rf.fit(X_train, y_train)
-    rf_I = shap_importances(rf, X_train[:n_shap])
+    rf.fit(X, y)
+    rf_I = shap_importances(rf, X, n_shap)
 
     ours_I = impact_importances(X, y, verbose=False, min_samples_leaf=min_samples_leaf,
                                 catcolnames=catcolnames)
@@ -147,17 +150,20 @@ def rmse(y_true, y_pred):
     return np.sqrt( mean_squared_error(y_true, y_pred) )
 
 
-def avg_model_for_top_features(name:('OLS', 'RF', 'OUR'), X_test, X_train, y_test, y_train,
+def avg_model_for_top_features(X, y,
                                models={'RF'},
-                               metric=mean_absolute_error):
+                               metric=mean_absolute_error,
+                               use_oob=False):
+    if use_oob and metric!=r2_score:
+        print("Warning: use_oob can only give R^2; flipping metric to r2_score")
     scores = []
 
     # OLS
     if 'OLS' in models:
         lm = LinearRegression()
-        lm.fit(X_train, y_train)
-        y_pred = lm.predict(X_test)
-        s = metric(y_test, y_pred)
+        lm.fit(X, y)
+        y_pred = lm.predict(X)
+        s = metric(y, y_pred)
         scores.append(s)
 
     # Lasso
@@ -168,9 +174,9 @@ def avg_model_for_top_features(name:('OLS', 'RF', 'OUR'), X_test, X_train, y_tes
         # model.fit(X_train, y_train)
         # lm = model.best_estimator_
         # print("LASSO best:",model.best_params_)
-        lm.fit(X_train, y_train)
-        y_pred = lm.predict(X_test)
-        s = metric(y_test, y_pred)
+        lm.fit(X, y)
+        y_pred = lm.predict(X)
+        s = metric(y, y_pred)
         scores.append(s)
 
     # SVM
@@ -179,12 +185,12 @@ def avg_model_for_top_features(name:('OLS', 'RF', 'OUR'), X_test, X_train, y_tes
         # model = GridSearchCV(svm.SVR(), cv=5,
         #                    param_grid={"C": [1, 1000, 2000, 3000, 5000],
         #                                "gamma": [1e-5, 1e-4, 1e-3]})
-        # model.fit(X_train, y_train)
+        # model.fit(X, y)
         # svr = model.best_estimator_
         # print("SVM best:",model.best_params_)
-        svr.fit(X_train, y_train)
-        y_pred = svr.predict(X_test)
-        s = metric(y_test, y_pred)
+        svr.fit(X, y)
+        y_pred = svr.predict(X)
+        s = metric(y, y_pred)
         scores.append(s)
 
     # GBM
@@ -192,23 +198,26 @@ def avg_model_for_top_features(name:('OLS', 'RF', 'OUR'), X_test, X_train, y_tes
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             x = xgb.XGBRegressor(objective ='reg:squarederror')
-            x.fit(X_train, y_train)
-            y_pred = x.predict(X_test)
-            s = metric(y_test, y_pred)
+            x.fit(X, y)
+            y_pred = x.predict(X)
+            s = metric(y, y_pred)
         # param = {'max_depth': 2, 'eta': 1, 'silent': 1, 'objective': 'binary:logistic'}
         # num_round = 2
-        # watchlist = [(X_test, 'eval'), (X_train, 'train')]
-        # dtrain = xgb.DMatrix(X_train, label=y_train)
+        # watchlist = [(X, 'eval'), (X, 'train')]
+        # dtrain = xgb.DMatrix(X, label=y)
         # bst = xgb.train(param, dtrain, num_round, watchlist)
         scores.append(s)
 
     # RF
     if 'RF' in models:
         n_estimators = 40
-        rf = RandomForestRegressor(n_estimators=n_estimators, min_samples_leaf=1, n_jobs=-1)
-        rf.fit(X_train, y_train)
-        y_pred = rf.predict(X_test)
-        s = metric(y_test, y_pred)
+        rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=use_oob, min_samples_leaf=1, n_jobs=-1)
+        rf.fit(X, y)
+        if use_oob:
+            s = rf.oob_score_
+        else:
+            y_pred = rf.predict(X)
+            s = metric(y, y_pred)
         scores.append(s)
 
     # print(scores)

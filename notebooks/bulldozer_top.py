@@ -19,7 +19,7 @@ from rfpimp import plot_importances, dropcol_importances, importances
 def bulldozer_top(top_range=(1, 9),
                   n_estimators=40,
                   trials=1,
-                  n=5_000,
+                  n=10_000,
                   min_samples_leaf=10):
     n_shap = 300
 
@@ -28,8 +28,9 @@ def bulldozer_top(top_range=(1, 9),
     X = X.iloc[-n:]
     y = y.iloc[-n:]
 
-    #metric = mean_absolute_error # or rmse or mean_squared_error or r2_score
+    metric = mean_absolute_error # or rmse or mean_squared_error or r2_score
     metric = r2_score
+    use_oob = True
 
     rf = RandomForestRegressor(n_estimators=40, oob_score=True, n_jobs=-1)
     rf.fit(X, y)
@@ -61,13 +62,10 @@ def bulldozer_top(top_range=(1, 9),
         all = []
         for i in range(trials):
             # print(i, end=' ')
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
             results = []
             for name, features in zip(features_names, features_set):
                 # print(f"Train with {features} from {name}")
-                X_train_ = X_train[features]
-                X_test_ = X_test[features]
-                s = avg_model_for_top_features(name, X_test_, X_train_, y_test, y_train, metric=metric)
+                s = avg_model_for_top_features(X[features], y, metric=metric, use_oob=use_oob)
                 results.append(s)
                 # print(f"{name} valid R^2 {s:.3f}")
             all.append(results)
@@ -79,7 +77,7 @@ def bulldozer_top(top_range=(1, 9),
         # print(f"Avg top-{top} valid {metric.__name__} {', '.join(avg)}")
 
     A = pd.DataFrame(data=topscores, columns=features_names)
-    A.index = [f"top-{top} validation {metric.__name__}" for top in range(top_range[0], top_range[1]+1)]
+    A.index = [f"top-{top} {'OOB' if use_oob else 'training'} {metric.__name__}" for top in range(top_range[0], top_range[1]+1)]
     print(A)
 
 
