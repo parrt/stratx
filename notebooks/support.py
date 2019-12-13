@@ -4,10 +4,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression, Lasso
+from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.utils import resample
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import normalize
 import statsmodels.api as sm
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 from timeit import default_timer as timer
 
@@ -130,6 +132,7 @@ def get_multiple_imps(X, y, test_size=0.2, n_shap=100, n_estimators=50, min_samp
     lm = LinearRegression()
     lm.fit(X_train, y_train)
     ols_I, score = linear_model_importance(lm, X_test, X_train, y_test, y_train)
+    ols_shap_I = shap_importances(lm, X_test)
 
     rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=True)
     rf.fit(X_train, y_train)
@@ -137,18 +140,24 @@ def get_multiple_imps(X, y, test_size=0.2, n_shap=100, n_estimators=50, min_samp
 
     ours_I = impact_importances(X, y, verbose=False, min_samples_leaf=min_samples_leaf,
                                 catcolnames=catcolnames)
-    return ols_I, rf_I, ours_I
+    return ols_I, ols_shap_I, rf_I, ours_I
+
+
+def rmse(y_true, y_pred):
+    return np.sqrt( mean_squared_error(y_true, y_pred) )
 
 
 def avg_model_for_top_features(name:('OLS', 'RF', 'OUR'), X_test, X_train, y_test, y_train,
-                               models={'RF'}):
+                               models={'RF'},
+                               metric=mean_absolute_error):
     scores = []
 
     # OLS
     if 'OLS' in models:
         lm = LinearRegression()
         lm.fit(X_train, y_train)
-        s = lm.score(X_test, y_test)
+        y_pred = lm.predict(X_test)
+        s = metric(y_test, y_pred)
         scores.append(s)
 
     # Lasso
@@ -160,7 +169,8 @@ def avg_model_for_top_features(name:('OLS', 'RF', 'OUR'), X_test, X_train, y_tes
         # lm = model.best_estimator_
         # print("LASSO best:",model.best_params_)
         lm.fit(X_train, y_train)
-        s = lm.score(X_test, y_test)
+        y_pred = lm.predict(X_test)
+        s = metric(y_test, y_pred)
         scores.append(s)
 
     # SVM
@@ -173,7 +183,8 @@ def avg_model_for_top_features(name:('OLS', 'RF', 'OUR'), X_test, X_train, y_tes
         # svr = model.best_estimator_
         # print("SVM best:",model.best_params_)
         svr.fit(X_train, y_train)
-        s = svr.score(X_test, y_test)
+        y_pred = svr.predict(X_test)
+        s = metric(y_test, y_pred)
         scores.append(s)
 
     # GBM
@@ -183,7 +194,7 @@ def avg_model_for_top_features(name:('OLS', 'RF', 'OUR'), X_test, X_train, y_tes
             x = xgb.XGBRegressor(objective ='reg:squarederror')
             x.fit(X_train, y_train)
             y_pred = x.predict(X_test)
-            s = r2_score(y_test, y_pred)
+            s = metric(y_test, y_pred)
         # param = {'max_depth': 2, 'eta': 1, 'silent': 1, 'objective': 'binary:logistic'}
         # num_round = 2
         # watchlist = [(X_test, 'eval'), (X_train, 'train')]
@@ -196,7 +207,8 @@ def avg_model_for_top_features(name:('OLS', 'RF', 'OUR'), X_test, X_train, y_tes
         n_estimators = 40
         rf = RandomForestRegressor(n_estimators=n_estimators, min_samples_leaf=1, n_jobs=-1)
         rf.fit(X_train, y_train)
-        s = rf.score(X_test, y_test)
+        y_pred = rf.predict(X_test)
+        s = metric(y_test, y_pred)
         scores.append(s)
 
     # print(scores)

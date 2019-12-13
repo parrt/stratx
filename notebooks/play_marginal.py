@@ -8,6 +8,7 @@ from sklearn.utils import resample
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import normalize
 import statsmodels.api as sm
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 from rfpimp import *
 
@@ -637,9 +638,10 @@ def rent_drop():
     n_estimators = 50
     trials = 10
     X, y = load_rent(n=2_000)
-    ols_I, rf_I, our_I = get_multiple_imps(X, y, min_samples_leaf=10)
+    ols_I, shap_ols_I, rf_I, our_I = get_multiple_imps(X, y, min_samples_leaf=10)
     print("OLS\n", ols_I)
-    print("RF\n",rf_I)
+    print("OLS SHAP\n", shap_ols_I)
+    print("RF SHAP\n",rf_I)
     print("OURS\n",our_I)
 
     ols_drop = ols_I.iloc[-n_drop:,0].index.values
@@ -675,11 +677,12 @@ def rent_top(top_range=(1, 7),
              min_samples_leaf=20):
     n_shap = n
     X, y = load_rent(n=n)
-    ols_I, rf_I, our_I = get_multiple_imps(X, y, min_samples_leaf=min_samples_leaf, n_estimators=n_estimators, n_shap=n_shap)
+    ols_I, shap_ols_I, rf_I, our_I = get_multiple_imps(X, y, min_samples_leaf=min_samples_leaf, n_estimators=n_estimators, n_shap=n_shap)
     # print("OLS\n", ols_I)
     # print("RF\n",rf_I)
     # print("OURS\n",our_I)
 
+    metric = mean_absolute_error # or rmse or mean_squared_error or r2_score
     top = top_range[1]
 
     print("OUR FEATURES", our_I.index.values)
@@ -700,13 +703,14 @@ def rent_top(top_range=(1, 7),
                 # print(f"Train with {features} from {name}")
                 X_train_ = X_train[features]
                 X_test_ = X_test[features]
-                s = avg_model_for_top_features(name, X_test_, X_train_, y_test, y_train)
+                s = avg_model_for_top_features(name, X_test_, X_train_, y_test, y_train, metric=metric)
                 results.append(s)
                 # print(f"{name} valid R^2 {s:.3f}")
             all.append(results)
         # print(pd.DataFrame(data=all, columns=['OLS','RF','Ours']))
         # print()
-        print(f"Avg top-{top} valid R^2 {np.mean(all, axis=0)}")#, stddev {np.std(all, axis=0)}")
+        avg = [f"{round(m,2):9.3f}" for m in np.mean(all, axis=0)]
+        print(f"Avg top-{top} valid {metric.__name__} {', '.join(avg)}")#, stddev {np.std(all, axis=0)}")
         print
 
 
