@@ -8,6 +8,7 @@ from sklearn.utils import resample
 import shap
 
 from impimp import *
+from stratx import *
 
 import numpy as np
 import pandas as pd
@@ -21,7 +22,7 @@ def synthetic_poly_dup_data(n):
     coeff = np.array([1,1,1])
     for i in range(p):
         df[f'x{i + 1}'] = np.random.random_sample(size=n) * 10
-    df['x3'] = df['x1'] + np.random.random_sample(size=n) # copy x1 into x3 with noise
+    df['x3'] = df['x1'] + np.random.random_sample(size=n)-0.5 # copy x1 into x3 with noise
     yintercept = 100
     df['y'] = np.sum( [coeff[i]*df[f'x{i+1}'] for i in range(p)], axis=0 ) + yintercept
     terms = [f"{coeff[i]:.1f}x_{i+1}" for i in range(p)] + [f"{yintercept:.0f}"]
@@ -36,7 +37,7 @@ def dupcol():
 
     print(eqn)
 
-    ntrials=8
+    ntrials=3
     fig, axes = plt.subplots(ntrials, 2, figsize=(4.5, ntrials))
 
     for i in range(ntrials):
@@ -49,6 +50,11 @@ def dupcol():
         # ntrees=5, min_samples_leaf=10, bootstrap=False, max_features=1)
         print(I)
     plt.suptitle('$'+eqn+'$', y=1.0)
+
+# df, coeff, eqn = synthetic_poly_dup_data(1000)
+# X = df.drop('y', axis=1)
+# y = df['y']
+# plot_stratpd(X, y, colname='x3', targetname='y')
 
 dupcol()
 plt.tight_layout()
