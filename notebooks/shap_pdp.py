@@ -29,35 +29,29 @@ def synthetic_poly_dup_data(n):
     eqn = "y = " + ' + '.join(terms) + " \\,\\,where\\,\\, x_3 = x_1 + noise"
     return df, coeff, eqn
 
-def dupcol():
-    df, coeff, eqn = synthetic_poly_dup_data(1000)
-    X = df.drop('y', axis=1)
-    y = df['y']
-    print(X.head())
 
-    print(eqn)
-
-    ntrials=3
-    fig, axes = plt.subplots(ntrials, 2, figsize=(4.5, ntrials))
-
-    for i in range(ntrials):
-        I = impact_importances(X, y, min_samples_leaf=5, pdp='stratpd')
-        plot_importances(I, imp_range=(0, 1.0), ax=axes[i][0])
-        axes[i][0].set_title(f"StratPD impact", fontsize=8)
-        I = impact_importances(X, y, pdp='ice')
-        plot_importances(I, imp_range=(0, 1.0), ax=axes[i][1])
-        axes[i][1].set_title(f"ICE/PDP impact", fontsize=8)
-        # ntrees=5, min_samples_leaf=10, bootstrap=False, max_features=1)
-        print(I)
-    plt.suptitle('$'+eqn+'$', y=1.0)
-
-
-# df, coeff, eqn = synthetic_poly_dup_data(1000)
-# X = df.drop('y', axis=1)
-# y = df['y']
+df, coeff, eqn = synthetic_poly_dup_data(500)
+X = df.drop('y', axis=1)
+y = df['y']
 # plot_stratpd(X, y, colname='x3', targetname='y')
 
-dupcol()
-# plt.tight_layout()
+rf = RandomForestRegressor(n_estimators=40, oob_score=True)
+rf.fit(X, y)
+explainer = shap.TreeExplainer(rf, data=X, feature_perturbation='interventional')
+shap_values = explainer.shap_values(X, check_additivity=True)
+
+#fig, axes = plt.subplots(3, 1, figsize=(3, 5))
+
+"""
+def partial_dependence_plot(ind, model, features, xmin="percentile(0)", xmax="percentile(100)",
+                            npoints=None, nsamples=100, feature_names=None, hist=True,
+                            ylabel=None, ice=False, opacity=None, linewidth=None, show=True):
+                            """
+
+shap.partial_dependence_plot(2, rf.predict, X, feature_names=X.columns)
+# shap.partial_dependence_plot("x2", shap_values, X, ax=axes[1])
+# shap.partial_dependence_plot("x3", shap_values, X, ax=axes[2])
+
+#plt.tight_layout()
 # plt.savefig("/Users/parrt/Desktop/polydup_strat_vs_ice.pdf", bbox_inches=0)
-plt.show()
+#plt.show()
