@@ -1,4 +1,4 @@
-# Notes about stratimpact
+# Notes about StratImpact
 
 ## Dec 15, 2019
 
@@ -22,3 +22,4 @@ StratImpact w/min_samples_leaf=10, 15 trials of 5000 records: [0.95981299 0.9972
 StratImpact w/min_samples_leaf=12, 15 trials of 5000 records: [0.99068302 0.99735248 0.98498582] with stddev [0.02276007 0.00063022 0.02374084]
 StratImpact w/min_samples_leaf=14, 15 trials of 5000 records: [1.02976418 0.99641839 1.01149308] with stddev [0.02290239 0.00067753 0.0220821 ]
 
+James pointed out [Cook's distance](https://en.wikipedia.org/wiki/Cook%27s_distance). Looks simple enough and "Cook's distance measures the effect of deleting a given observation."

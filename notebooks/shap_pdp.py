@@ -4,6 +4,7 @@ from sklearn.preprocessing import normalize
 from sklearn.ensemble import RandomForestRegressor
 from timeit import default_timer as timer
 from sklearn.utils import resample
+import statsmodels.api as sm
 
 import shap
 
@@ -113,24 +114,55 @@ def our_slope_expectation(newdata=True):
         print(f"StratImpact w/min_samples_leaf={min_samples_leaf:2d}, {ntrials} trials of {n} records: {np.mean(results, axis=0)} with stddev {np.std(results, axis=0)}")
 
 
-df, coeff, eqn = synthetic_poly_dup_data(n=1000)
-X = df.drop('y', axis=1)
-y = df['y']
-lm = LinearRegression().fit(X, y)
-print("OLS coeff", lm.coef_)
+def shap_pdp_plots(n=1000, feature_perturbation='interventional'):
+    min_samples_leaf = 3
+    backgroundsize = 1000
+    df, coeff, eqn = synthetic_poly_dup_data(n=n)
+    X = df.drop('y', axis=1)
+    y = df['y']
+    rf = RandomForestRegressor(n_estimators=30, min_samples_leaf=min_samples_leaf,
+                               oob_score=True)
+    rf.fit(X, y)
+    if feature_perturbation=='interventional':
+        explainer = shap.TreeExplainer(rf, data=X.iloc[:backgroundsize],
+                                       feature_perturbation=feature_perturbation)
+    else:
+        explainer = shap.TreeExplainer(rf, feature_perturbation=feature_perturbation)
+    shap_values = explainer.shap_values(X, check_additivity=True)
+    shap.dependence_plot("x1", shap_values, X, interaction_index=None)
+    shap.dependence_plot("x2", shap_values, X, interaction_index=None)  # , ax=axes[1])
+    shap.dependence_plot("x3", shap_values, X, interaction_index=None)  # , ax=axes[2])
+
+
+def OLS():
+    df, coeff, eqn = synthetic_poly_dup_data(n=1000)
+    X = df.drop('y', axis=1)
+    y = df['y']
+    lm = LinearRegression().fit(X, y)
+    print("OLS coeff", lm.coef_)
+    y_pred = lm.predict(X)
+    print(f"Training MSE {np.mean((y-y_pred)**2):.5f}")
+
+    beta_stderr = sm.OLS(y, X).fit().bse
+    print(f"beta stderr {beta_stderr.values}")
+    imp = lm.coef_
+    imp /= beta_stderr
+    print(f"Adjusted betas {imp.values}")
+
+
+OLS()
 
 #our_slope_expectation()
-shap_slope_expectation()
+#shap_slope_expectation()
 
 #fig, axes = plt.subplots(1, 3, figsize=(8, 3))
 
 # OH! partial_dependence_plot really is just plain PDP so don't use
 #shap.partial_dependence_plot(0, rf.predict, X, feature_names=X.columns)
 
-if False:
-    shap.dependence_plot("x1", shap_values, X, interaction_index=None)
-    shap.dependence_plot("x2", shap_values, X, interaction_index=None)#, ax=axes[1])
-    shap.dependence_plot("x3", shap_values, X, interaction_index=None)#, ax=axes[2])
+
+#shap_pdp_plots()
+#shap_pdp_plots(feature_perturbation='tree_path_dependent')
 
 #plot_stratpd(X, y, colname='x1', targetname='y', min_samples_leaf=5, ax=axes[0])
 # plot_stratpd(X, y, colname='x2', targetname='y', min_samples_leaf=5, ax=axes[1])

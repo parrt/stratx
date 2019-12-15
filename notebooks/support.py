@@ -84,9 +84,9 @@ def linear_model_importance(model, X, y):
 
     # use statsmodels to get stderr for betas
     if isinstance(model, LinearRegression):
+        # stderr for betas makes no sense in Lasso
         beta_stderr = sm.OLS(y, X).fit().bse
         imp /= beta_stderr
-    # stderr for betas makes no sense in Lasso
 
     imp /= np.sum(imp) # normalize
     I = pd.DataFrame(data={'Feature': X.columns, 'Importance': imp})
