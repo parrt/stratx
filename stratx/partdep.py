@@ -140,7 +140,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
         print(f"Partitioning 'x not {colname}': {nnodes} nodes in (first) tree, "
               f"{len(rf.estimators_)} trees, {len(leaves)} total leaves")
 
-    leaf_xranges, leaf_sizes, leaf_slopes, ignored = \
+    leaf_xranges, xbin_counts, leaf_slopes, ignored = \
         collect_discrete_slopes(rf, X, y, colname, verbose=verbose)
 
     # print('leaf_xranges', leaf_xranges)
@@ -152,7 +152,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
 
     # slope_at_x = cy_avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes, verbose=verbose)
     slope_at_x = avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes, verbose=verbose)
-    # slope_at_x = weighted_avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes, leaf_sizes, use_weighted_avg=True)
+    # slope_at_x = weighted_avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes, xbin_counts, use_weighted_avg=True)
 
     # Drop any nan slopes; implies we have no reliable data for that range
     # Last slope is nan since no data after last x value so that will get dropped too
@@ -446,11 +446,11 @@ def discrete_xc_space(x: np.ndarray, y: np.ndarray, verbose=False):
     y_deltas = np.diff(y)
     leaf_slopes = y_deltas / bin_deltas  # "rise over run"
     leaf_xranges = np.array(list(zip(uniq_x, uniq_x[1:])))
-    leaf_sizes = xy['x'].value_counts().sort_index().values
+    xbin_counts = xy['x'].value_counts().sort_index().values
 
     stop = timer()
     if verbose: print(f"discrete_xc_space {stop - start:.3f}s")
-    return leaf_xranges, leaf_sizes, leaf_slopes, ignored
+    return leaf_xranges, xbin_counts, leaf_slopes, ignored
 
 
 def collect_discrete_slopes(rf, X, y, colname, verbose=False):
@@ -462,7 +462,7 @@ def collect_discrete_slopes(rf, X, y, colname, verbose=False):
     We don't need to subtract the minimum y value before regressing because
     the slope won't be different. (We are ignoring the intercept of the regression line).
 
-    Return for each leaf, the ranges of X[colname] partitions, num obs per leaf,
+    Return for each leaf, the ranges of X[colname] partitions, num obs per x range,
     associated slope for each range
 
     Only does discrete now after doing pointwise continuous slopes differently.
@@ -470,7 +470,7 @@ def collect_discrete_slopes(rf, X, y, colname, verbose=False):
     start = timer()
     leaf_slopes = []  # drop or rise between discrete x values
     leaf_xranges = [] # drop is from one discrete value to next
-    leaf_sizes = []
+    xbin_counts = []
 
     ignored = 0
 
@@ -492,21 +492,21 @@ def collect_discrete_slopes(rf, X, y, colname, verbose=False):
             ignored += len(leaf_x)
             continue
 
-        leaf_xranges_, leaf_sizes_, leaf_slopes_, ignored_ = \
+        leaf_xranges_, xbin_counts_, leaf_slopes_, ignored_ = \
             discrete_xc_space(leaf_x, leaf_y)
 
         leaf_slopes.extend(leaf_slopes_)
         leaf_xranges.extend(leaf_xranges_)
-        leaf_sizes.extend(leaf_sizes_)
+        xbin_counts.extend(xbin_counts_)
         ignored += ignored_
 
     leaf_xranges = np.array(leaf_xranges)
-    leaf_sizes = np.array(leaf_sizes)
+    xbin_counts = np.array(xbin_counts)
     leaf_slopes = np.array(leaf_slopes)
 
     stop = timer()
     if verbose: print(f"collect_leaf_slopes {stop - start:.3f}s")
-    return leaf_xranges, leaf_sizes, leaf_slopes, ignored
+    return leaf_xranges, xbin_counts, leaf_slopes, ignored
 
 
 def avg_values_at_x(uniq_x, leaf_ranges, leaf_slopes, verbose):
