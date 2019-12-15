@@ -34,9 +34,11 @@ def synthetic_poly_dup_data(n):
 # plot_stratpd(X, y, colname='x3', targetname='y')
 
 def shap_slope_expectation(newdata=True):
-    ntrials = 10
+    ntrials = 100
+    min_samples_leaf = 3
+    backgroundsize = 300
 
-    n = 1000
+    n = 2000
     if not newdata:
         df, coeff, eqn = synthetic_poly_dup_data(n)
         X = df.drop('y', axis=1)
@@ -48,9 +50,9 @@ def shap_slope_expectation(newdata=True):
             df, coeff, eqn = synthetic_poly_dup_data(n)
             X = df.drop('y', axis=1)
             y = df['y']
-        rf = RandomForestRegressor(n_estimators=30, oob_score=True)
+        rf = RandomForestRegressor(n_estimators=30, min_samples_leaf=min_samples_leaf, oob_score=True)
         rf.fit(X, y)
-        explainer = shap.TreeExplainer(rf, data=X.iloc[:100], feature_perturbation='interventional')
+        explainer = shap.TreeExplainer(rf, data=X.iloc[:backgroundsize], feature_perturbation='interventional')
         #explainer = shap.TreeExplainer(rf)
         shap_values = explainer.shap_values(X, check_additivity=True)
         #abs_shap_values = np.abs(shap_values)
@@ -70,57 +72,55 @@ def shap_slope_expectation(newdata=True):
         lm = LinearRegression().fit(x3, shap_x3)
         slopes.append(lm.coef_[0])
         # print(np.mean(np.abs(shap_values),axis=0))
-        print("Coeffs ", slopes)
+        #print("Coeffs ", slopes)
         results.append(slopes)
 
-    print(f"{ntrials} trials of {n} records: {np.mean(results, axis=0)} with stddev {np.std(results, axis=0)}")
+    print(f"RF min_samples_leaf={min_samples_leaf}, backgroundsize={backgroundsize}, {ntrials} trials of {n} records: {np.mean(results, axis=0)} with stddev {np.std(results, axis=0)}")
 
 
 def our_slope_expectation(newdata=True):
-    ntrials = 10
-
-    n = 1000
-    if not newdata:
-        df, coeff, eqn = synthetic_poly_dup_data(n)
-        X = df.drop('y', axis=1)
-        y = df['y']
-
-    results = []
-    for i in range(ntrials):
-        if newdata:
+    ntrials = 15
+    n = 5000
+    for min_samples_leaf in [3,5,7,8,10,12,14]:
+        if not newdata:
             df, coeff, eqn = synthetic_poly_dup_data(n)
             X = df.drop('y', axis=1)
             y = df['y']
-        rf = RandomForestRegressor(n_estimators=30, oob_score=True)
-        rf.fit(X, y)
 
-        leaf_xranges, leaf_slopes, dx, dydx, pdpx, pdpy1, ignored = \
-            partial_dependence(X=X, y=y, colname='x1', min_samples_leaf=5)
-        leaf_xranges, leaf_slopes, dx, dydx, pdpx, pdpy2, ignored = \
-            partial_dependence(X=X, y=y, colname='x1', min_samples_leaf=5)
-        leaf_xranges, leaf_slopes, dx, dydx, pdpx, pdpy3, ignored = \
-            partial_dependence(X=X, y=y, colname='x1', min_samples_leaf=5)
+        results = []
+        for i in range(ntrials):
+            if newdata:
+                df, coeff, eqn = synthetic_poly_dup_data(n)
+                X = df.drop('y', axis=1)
+                y = df['y']
 
-        x1 = np.array(sorted(np.unique(X['x1'].values[:-1])))
-        x2 = np.array(sorted(np.unique(X['x2'].values[:-1])))
-        x3 = np.array(sorted(np.unique(X['x3'].values[:-1])))
+            leaf_xranges, leaf_slopes, dx, dydx, pdpx1, pdpy1, ignored = \
+                partial_dependence(X=X, y=y, colname='x1', min_samples_leaf=min_samples_leaf)
+            leaf_xranges, leaf_slopes, dx, dydx, pdpx2, pdpy2, ignored = \
+                partial_dependence(X=X, y=y, colname='x2', min_samples_leaf=min_samples_leaf)
+            leaf_xranges, leaf_slopes, dx, dydx, pdpx3, pdpy3, ignored = \
+                partial_dependence(X=X, y=y, colname='x3', min_samples_leaf=min_samples_leaf)
 
-        slopes = []
-        lm = LinearRegression().fit(x1.reshape(-1,1), pdpy1)
-        slopes.append(lm.coef_[0])
-        lm = LinearRegression().fit(x2.reshape(-1,1), pdpy2)
-        slopes.append(lm.coef_[0])
-        lm = LinearRegression().fit(x3.reshape(-1,1), pdpy3)
-        slopes.append(lm.coef_[0])
-        # print(np.mean(np.abs(shap_values),axis=0))
-        print("Coeffs ", slopes)
-        results.append(slopes)
-
-    print(f"StratImpact {ntrials} trials of {n} records: {np.mean(results, axis=0)} with stddev {np.std(results, axis=0)}")
+            slopes = []
+            lm = LinearRegression().fit(pdpx1.reshape(-1,1), pdpy1)
+            slopes.append(lm.coef_[0])
+            lm = LinearRegression().fit(pdpx2.reshape(-1,1), pdpy2)
+            slopes.append(lm.coef_[0])
+            lm = LinearRegression().fit(pdpx3.reshape(-1,1), pdpy3)
+            slopes.append(lm.coef_[0])
+            # print("Coeffs ", slopes)
+            results.append(slopes)
+        print(f"StratImpact w/min_samples_leaf={min_samples_leaf:2d}, {ntrials} trials of {n} records: {np.mean(results, axis=0)} with stddev {np.std(results, axis=0)}")
 
 
-our_slope_expectation()
-#shap_slope_expectation()
+df, coeff, eqn = synthetic_poly_dup_data(n=1000)
+X = df.drop('y', axis=1)
+y = df['y']
+lm = LinearRegression().fit(X, y)
+print("OLS coeff", lm.coef_)
+
+#our_slope_expectation()
+shap_slope_expectation()
 
 #fig, axes = plt.subplots(1, 3, figsize=(8, 3))
 
