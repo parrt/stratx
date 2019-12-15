@@ -15,18 +15,18 @@ def slopes(X, y, colname, min_samples_leaf=10):
     return collect_discrete_slopes(rf, X, y, colname)
 
 
-def check(data, expected, colname):
+def check(data, expected, colname, min_samples_leaf=10):
     """
     @param data: the X,y data, with y as last column
     @param expected: the left/right xranges and last column is slope
     """
     columns = [f'x{i}' for i in range(1,np.array(data).shape[1])]+['y']
     df = pd.DataFrame(data=data, columns=columns)
-    df['y'] = np.sum(df[x] for x in columns)
+    df['y'] = sum(df[x] for x in columns)
     X = df.drop('y', axis=1)
     y = df['y']
-    leaf_xranges, leaf_sizes, leaf_slopes, ignored = \
-        slopes(X, y, colname=colname)
+    leaf_xranges, xbin_counts, leaf_slopes, ignored = \
+        slopes(X, y, colname=colname, min_samples_leaf=min_samples_leaf)
 
     expected = np.array(expected)
     expected_xranges = expected[:,0:1+1]
@@ -35,9 +35,9 @@ def check(data, expected, colname):
     print(leaf_xranges)
     print(leaf_slopes)
     assert len(leaf_xranges)==len(expected_slopes), f"Expected ranges {expected_xranges}"
-    assert np.isclose(leaf_xranges, np.array(expected_xranges)).all()
+    assert np.isclose(leaf_xranges, np.array(expected_xranges)).all(), f"Expected ranges {expected_xranges} got {leaf_xranges}"
     assert len(leaf_slopes)==len(expected_slopes), f"Expected slopes {expected_slopes}"
-    assert np.isclose(leaf_slopes, np.array(expected_slopes)).all()
+    assert np.isclose(leaf_slopes, np.array(expected_slopes)).all(), f"Expected slopes {expected_slopes} got {leaf_slopes}"
 
     # print(X.sort_values('x1').iloc[:8, :])
     # s = pd.DataFrame()
@@ -60,7 +60,7 @@ def test_1_record_edge_case():
     check(data, expected, colname='x2')
 
 
-def test_random_floating_point():
+def test_random_floating_point_all_in_one_leaf():
     data = \
         [[0.008386, 3.724396, 0.123684],
          [0.012942, 8.592633, 0.973965],
@@ -78,4 +78,18 @@ def test_random_floating_point():
          [6.022741, 6.678219, 1.01291424],
          [6.678219, 8.365492, 1.01701918],
          [8.365492, 8.592633, 0.57507892]]
-    check(data, expected, colname='x2')
+    # Put all into one leaf
+    check(data, expected, colname='x2', min_samples_leaf=10)
+
+
+def test_random_floating_point_in_2_leaves():
+    data = \
+        [[0.008386, 3.724396, 0.123684],
+         [0.012942, 8.592633, 0.973965],
+         [0.048403, 4.945038, 0.373470],
+         [0.072278, 6.022741, 0.767953]]
+    expected = \
+        [[3.724396, 8.592633, 1.17559478],
+         [4.945038, 6.022741, 1.38819415]]
+    # Put all into one leaf
+    check(data, expected, colname='x2', min_samples_leaf=2)
