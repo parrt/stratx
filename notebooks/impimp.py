@@ -93,7 +93,7 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
         else:
             start = timer()
             if pdp=='stratpd':
-                leaf_xranges, leaf_slopes, dx, dydx, pdpx, pdpy, ignored = \
+                leaf_xranges, leaf_slopes, slope_counts_at_x, dx, dydx, pdpx, pdpy, ignored = \
                     partial_dependence(X=X, y=y, colname=colname,
                                        ntrees=n_trees,
                                        min_samples_leaf=min_samples_leaf,

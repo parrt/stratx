@@ -95,11 +95,11 @@ def our_slope_expectation(newdata=True):
                 X = df.drop('y', axis=1)
                 y = df['y']
 
-            leaf_xranges, leaf_slopes, dx, dydx, pdpx1, pdpy1, ignored = \
+            leaf_xranges, leaf_slopes, slope_counts_at_x, dx, dydx, pdpx1, pdpy1, ignored = \
                 partial_dependence(X=X, y=y, colname='x1', min_samples_leaf=min_samples_leaf)
-            leaf_xranges, leaf_slopes, dx, dydx, pdpx2, pdpy2, ignored = \
+            leaf_xranges, leaf_slopes, slope_counts_at_x, dx, dydx, pdpx2, pdpy2, ignored = \
                 partial_dependence(X=X, y=y, colname='x2', min_samples_leaf=min_samples_leaf)
-            leaf_xranges, leaf_slopes, dx, dydx, pdpx3, pdpy3, ignored = \
+            leaf_xranges, leaf_slopes, slope_counts_at_x, dx, dydx, pdpx3, pdpy3, ignored = \
                 partial_dependence(X=X, y=y, colname='x3', min_samples_leaf=min_samples_leaf)
 
             slopes = []

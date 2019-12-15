@@ -25,7 +25,7 @@ def check(data, expected, colname, min_samples_leaf=10):
     df['y'] = sum(df[x] for x in columns)
     X = df.drop('y', axis=1)
     y = df['y']
-    leaf_xranges, xbin_counts, leaf_slopes, ignored = \
+    leaf_xranges, leaf_slopes, ignored = \
         slopes(X, y, colname=colname, min_samples_leaf=min_samples_leaf)
 
     expected = np.array(expected)
