@@ -426,7 +426,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         ax.text(pdpx[max_i], max(bar_heights) + min_y - offset,
                 f"max {slope_counts_at_x[max_i]} slopes",
                 verticalalignment='bottom',
-                horizontalalignment="center",
+                horizontalalignment="left",
                 fontsize=9)
 
     if show_xlabel:
@@ -613,7 +613,7 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
         for msl in min_samples_leaf_values:
             #print(f"---------- min_samples_leaf={msl} ----------- ")
             try:
-                leaf_xranges, leaf_slopes, pdpx, pdpy, ignored = \
+                leaf_xranges, leaf_slopes, slope_counts_at_x, pdpx, pdpy, ignored = \
                     plot_stratpd(X, y, colname, targetname, ax=axes[col],
                                  min_samples_leaf=msl,
                                  xrange=xrange,
@@ -622,7 +622,8 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
                                  show_ylabel=False,
                                  slope_line_alpha=slope_line_alpha)
                 # print(f"leafsz {msl} avg abs curve value: {np.mean(np.abs(pdpy)):.2f}, mean {np.mean(pdpy):.2f}, min {np.min(pdpy):.2f}, max {np.max(pdpy)}")
-            except ValueError:
+            except ValueError as e:
+                print(e)
                 axes[col].set_title(
                     f"Can't gen: leafsz={msl}",
                     fontsize=8)

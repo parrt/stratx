@@ -36,12 +36,11 @@ def bulldozer_top(top_range=(1, 9),
     rf.fit(X, y)
     print(f"Sanity check: R^2 OOB on {X.shape[0]} records: {rf.oob_score_:.3f}, training {metric.__name__}={metric(y, rf.predict(X))}")
 
-
     ols_I, shap_ols_I, rf_I, our_I = get_multiple_imps(X, y,
                                                        min_samples_leaf=min_samples_leaf,
                                                        n_estimators=n_estimators,
                                                        n_shap=n_shap,
-                                                       catcolnames={'AC'})
+                                                       catcolnames={'AC','ModelID'})
     print("OLS\n", ols_I)
     print("OLS SHAP\n", shap_ols_I)
     print("RF SHAP\n",rf_I)

@@ -104,7 +104,10 @@ def load_bulldozer():
     df['AC'] = df['AC'].astype(int)
     # print(df.columns)
 
-    basefeatures = ['SalesID', 'MachineID', 'ModelID',
+    # del df['SalesID']  # unique sales ID so not generalizer
+    # delete MachineID as it has inconsistencies and errors per Kaggle
+
+    basefeatures = ['SalesID', 'ModelID',
                     'datasource', 'YearMade',
                     # some missing values but use anyway:
                     'auctioneerID',
