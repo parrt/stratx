@@ -104,10 +104,10 @@ def load_bulldozer():
     df['AC'] = df['AC'].astype(int)
     # print(df.columns)
 
-    # del df['SalesID']  # unique sales ID so not generalizer
+    # del df['SalesID']  # unique sales ID so not generalizer (OLS clearly overfits)
     # delete MachineID as it has inconsistencies and errors per Kaggle
 
-    basefeatures = ['SalesID', 'ModelID',
+    basefeatures = ['ModelID',
                     'datasource', 'YearMade',
                     # some missing values but use anyway:
                     'auctioneerID',
@@ -284,3 +284,59 @@ def avg_model_for_top_features(X, y,
     return np.mean(scores)
     # for now, return just RF
     # return s
+
+
+def compare_top_features(X, y, top_features_range=(1, 9),
+                         n_shap=300,
+                         metric = mean_absolute_error,
+                         use_oob = False,
+                         n_estimators=40,
+                         trials=1,
+                         min_samples_leaf=10):
+
+    rf = RandomForestRegressor(n_estimators=40, oob_score=True, n_jobs=-1)
+    rf.fit(X, y)
+    print(f"Sanity check: R^2 OOB on {X.shape[0]} records: {rf.oob_score_:.3f}, training {metric.__name__}={metric(y, rf.predict(X))}")
+
+    ols_I, shap_ols_I, rf_I, our_I = get_multiple_imps(X, y,
+                                                       min_samples_leaf=min_samples_leaf,
+                                                       n_estimators=n_estimators,
+                                                       n_shap=n_shap,
+                                                       catcolnames={'AC','ModelID'})
+    print("OLS\n", ols_I)
+    print("OLS SHAP\n", shap_ols_I)
+    print("RF SHAP\n",rf_I)
+    print("OURS\n",our_I)
+
+    features_names = ['OLS', 'OLS SHAP', 'RF SHAP', 'OUR']
+
+    print("OUR FEATURES", our_I.index.values)
+
+    print("n_top, n_estimators, n_shap, min_samples_leaf", top_features_range[1], n_estimators, n_shap, min_samples_leaf)
+    topscores = []
+    for top in range(top_features_range[0], top_features_range[1] + 1):
+        ols_top = ols_I.iloc[:top, 0].index.values
+        shap_ols_top = shap_ols_I.iloc[:top, 0].index.values
+        rf_top = rf_I.iloc[:top, 0].index.values
+        our_top = our_I.iloc[:top, 0].index.values
+        features_set = [ols_top, shap_ols_top, rf_top, our_top]
+        all = []
+        for i in range(trials):
+            # print(i, end=' ')
+            results = []
+            for name, features in zip(features_names, features_set):
+                # print(f"Train with {features} from {name}")
+                s = avg_model_for_top_features(X[features], y, metric=metric, use_oob=use_oob)
+                results.append(s)
+                # print(f"{name} valid R^2 {s:.3f}")
+            all.append(results)
+        # print(pd.DataFrame(data=all, columns=['OLS','RF','Ours']))
+        # print()
+        topscores.append( [round(m,2) for m in np.mean(all, axis=0)] )
+
+        # avg = [f"{round(m,2):9.3f}" for m in np.mean(all, axis=0)]
+        # print(f"Avg top-{top} valid {metric.__name__} {', '.join(avg)}")
+
+    R = pd.DataFrame(data=topscores, columns=features_names)
+    R.index = [f"top-{top} {'OOB' if use_oob else 'training'} {metric.__name__}" for top in range(top_features_range[0], top_features_range[1] + 1)]
+    return R

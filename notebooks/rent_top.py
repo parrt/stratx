@@ -16,12 +16,8 @@ import matplotlib.pyplot as plt
 
 from rfpimp import plot_importances, dropcol_importances, importances
 
-n = 10_000
-
-X, y = load_bulldozer()
-
-X = X.iloc[-n:]
-y = y.iloc[-n:]
+n = 3_000
+X, y = load_rent(n=n)
 
 R = compare_top_features(X, y, n_shap=300, min_samples_leaf=10)
 print(R)
