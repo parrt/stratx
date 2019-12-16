@@ -32,7 +32,11 @@ np.random.seed(999)
 
 X, y = load_rent(n=2_000)
 leaf_xranges, leaf_slopes, slope_counts_at_x, pdpx, pdpy, ignored = \
-    plot_stratpd(X, y, 'Wvillage', 'price', min_samples_leaf=2)
+    plot_stratpd(X, y, 'num_desc_words', 'price',
+                 min_slopes_per_x=5,
+                 min_samples_leaf=10,
+                 show_slope_lines=True)
 
 # rent_pdp()
+plt.savefig("/Users/parrt/Desktop/james.png", dpi=200)
 plt.show()

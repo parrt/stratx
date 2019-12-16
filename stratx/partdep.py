@@ -85,6 +85,7 @@ def collect_point_betas(X, y, colname, leaves, nbins:int):
 
 
 def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
+                       min_slopes_per_x=5, # ignore pdp y values derived from too few slopes
                        ntrees=1, min_samples_leaf=10, bootstrap=False, max_features=1.0,
                        supervised=True,
                        verbose=False):
@@ -150,17 +151,19 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
     if verbose:
         print(f"discrete StratPD num samples ignored {ignored}/{len(X)} for {colname}")
 
-    # slope_at_x = cy_avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes, verbose=verbose)
     slope_at_x, slope_counts_at_x = \
         avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes, verbose=verbose)
-    # slope_at_x = weighted_avg_values_at_x(real_uniq_x, leaf_xranges, leaf_slopes, xbin_counts, use_weighted_avg=True)
 
     # Drop any nan slopes; implies we have no reliable data for that range
     # Last slope is nan since no data after last x value so that will get dropped too
-    # Make sure to drop uniq_x values too :)
-    notnan_idx = ~np.isnan(slope_at_x) # should be same for slope_at_x
-    slope_at_x = slope_at_x[notnan_idx]
-    pdpx = real_uniq_x[notnan_idx]
+    # Also cut out any pdp x for which we don't have enough support (num slopes avg'd together)
+    # Make sure to drop slope_counts_at_x, uniq_x values too :)
+    notnan_idx = ~np.isnan(slope_at_x)
+    relevant_slopes = slope_counts_at_x >= min_slopes_per_x
+    idx = notnan_idx & relevant_slopes
+    slope_at_x = slope_at_x[idx]
+    slope_counts_at_x = slope_counts_at_x[idx]
+    pdpx = real_uniq_x[idx]
 
     dx = np.diff(pdpx)
     dydx = slope_at_x[:-1] # ignore last point as dx is always one smaller
@@ -319,6 +322,7 @@ def plot_stratpd_binned(X, y, colname, targetname,
 
 
 def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
+                 min_slopes_per_x=5,  # ignore pdp y values derived from too few slopes
                  ntrees=1, min_samples_leaf=10, bootstrap=False,
                  max_features=1.0,
                  supervised=True,
@@ -330,6 +334,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  show_ylabel=True,
                  show_pdp_line=False,
                  show_slope_lines=True,
+                 show_slope_counts=True,
                  pdp_marker_size=5,
                  pdp_line_width=.5,
                  slope_line_color='#2c7fb8',
@@ -363,20 +368,18 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                         values.
     """
     leaf_xranges, leaf_slopes, slope_counts_at_x, dx, dydx, pdpx, pdpy, ignored = \
-        partial_dependence(X=X, y=y, colname=colname, ntrees=ntrees, min_samples_leaf=min_samples_leaf,
+        partial_dependence(X=X, y=y, colname=colname, min_slopes_per_x=min_slopes_per_x,
+                           ntrees=ntrees, min_samples_leaf=min_samples_leaf,
                            bootstrap=bootstrap, max_features=max_features, supervised=supervised,
                            verbose=verbose)
 
     if ax is None:
         fig, ax = plt.subplots(1,1)
 
-    ax.scatter(pdpx, pdpy,
-               s=pdp_marker_size, c=pdp_marker_color,
-               label=colname)
+    ax.scatter(pdpx, pdpy, s=pdp_marker_size, c=pdp_marker_color, label=colname)
 
     if show_pdp_line:
-        ax.plot(pdpx, pdpy,
-                lw=pdp_line_width, c=pdp_line_color)
+        ax.plot(pdpx, pdpy, lw=pdp_line_width, c=pdp_line_color)
 
     domain = (np.min(X[colname]), np.max(X[colname]))  # ignores any max(x) points as no slope info after that
     if xrange is not None:
@@ -386,6 +389,8 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
     if yrange is not None:
         ax.set_ylim(*yrange)
 
+    min_y = min(pdpy)
+    max_y = max(pdpy)
     if show_slope_lines:
         segments = []
         for xr, slope in zip(leaf_xranges, leaf_slopes):
@@ -394,11 +399,35 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
             closest_x_i = np.abs(pdpx - xr[0]).argmin() # find curve point for xr[0]
             closest_x = pdpx[closest_x_i]
             closest_y = pdpy[closest_x_i]
-            one_line = [(closest_x, closest_y), (closest_x+w, closest_y + delta_y)]
+            slope_line_endpoint_y = closest_y + delta_y
+            one_line = [(closest_x, closest_y), (closest_x + w, slope_line_endpoint_y)]
             segments.append( one_line )
+            if slope_line_endpoint_y < min_y:
+                min_y = slope_line_endpoint_y
+            elif slope_line_endpoint_y > max_y:
+                max_y = slope_line_endpoint_y
 
         lines = LineCollection(segments, alpha=slope_line_alpha, color=slope_line_color, linewidths=slope_line_width)
         ax.add_collection(lines)
+
+    if show_slope_counts:
+        # scale counts so the max height is 10% of overall chart
+        max_slope = max(slope_counts_at_x)
+        r = max_y - min_y
+        scale = r * 0.1
+        bar_heights = slope_counts_at_x / max_slope * scale
+        # make space at bottom of real plot for barchart (like 10%) if not slope lines
+        offset = 0 if show_slope_lines else scale
+        ax.bar(x=pdpx, height=bar_heights, bottom=min_y - offset,
+               width=(max(pdpx)-min(pdpx)+1)/len(pdpx),
+               facecolor='#BABABA', align='edge')
+        max_i = np.argmax(bar_heights)
+        ax.scatter(pdpx[max_i], max(bar_heights) + min_y - offset, s=80, marker='_', c='k')
+        ax.text(pdpx[max_i], max(bar_heights) + min_y - offset,
+                f"max {slope_counts_at_x[max_i]} slopes",
+                verticalalignment='bottom',
+                horizontalalignment="center",
+                fontsize=9)
 
     if show_xlabel:
         ax.set_xlabel(colname)
@@ -512,7 +541,7 @@ def collect_discrete_slopes(rf, X, y, colname, verbose=False):
 
 def avg_values_at_x(uniq_x, leaf_ranges, leaf_slopes, verbose):
     """
-    Compute the weighted average of leaf_values at each uniq_x.
+    Compute the weighted average of leaf_slopes at each uniq_x.
 
     Value at max(x) is NaN since we have no data beyond that point.
     """
@@ -552,6 +581,7 @@ def avg_values_at_x(uniq_x, leaf_ranges, leaf_slopes, verbose):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
         avg_value_at_x = np.nanmean(slopes, axis=1)
+        # how many slopes avg'd together to get avg
         slope_counts_at_x = nslopes - np.isnan(slopes).sum(axis=1)
 
     stop = timer()

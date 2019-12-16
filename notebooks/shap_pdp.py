@@ -150,7 +150,7 @@ def OLS():
     print(f"Adjusted betas {imp.values}")
 
 
-OLS()
+#OLS()
 
 #our_slope_expectation()
 #shap_slope_expectation()
@@ -161,7 +161,7 @@ OLS()
 #shap.partial_dependence_plot(0, rf.predict, X, feature_names=X.columns)
 
 
-#shap_pdp_plots()
+shap_pdp_plots()
 #shap_pdp_plots(feature_perturbation='tree_path_dependent')
 
 #plot_stratpd(X, y, colname='x1', targetname='y', min_samples_leaf=5, ax=axes[0])
