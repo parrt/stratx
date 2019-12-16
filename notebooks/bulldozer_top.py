@@ -29,8 +29,8 @@ def bulldozer_top(top_range=(1, 9),
     y = y.iloc[-n:]
 
     metric = mean_absolute_error # or rmse or mean_squared_error or r2_score
-    metric = r2_score
-    use_oob = True
+    #metric = r2_score
+    use_oob = False
 
     rf = RandomForestRegressor(n_estimators=40, oob_score=True, n_jobs=-1)
     rf.fit(X, y)
@@ -42,10 +42,10 @@ def bulldozer_top(top_range=(1, 9),
                                                        n_estimators=n_estimators,
                                                        n_shap=n_shap,
                                                        catcolnames={'AC'})
-    # print("OLS\n", ols_I)
-    # print("OLS SHAP\n", shap_ols_I)
-    # print("RF SHAP\n",rf_I)
-    # print("OURS\n",our_I)
+    print("OLS\n", ols_I)
+    print("OLS SHAP\n", shap_ols_I)
+    print("RF SHAP\n",rf_I)
+    print("OURS\n",our_I)
 
     features_names = ['OLS', 'OLS SHAP', 'RF SHAP', 'OUR']
 

@@ -68,8 +68,10 @@ def load_bulldozer():
            ['age',
             'YearMade_na',
             'AC',
-            'saleyear', 'salemonth', 'saleday', 'saledayofweek', 'saledayofyear']+
-           ['ProductSize']]
+            'ProductSize',
+            'MachineHours_na',
+            'saleyear', 'salemonth', 'saleday', 'saledayofweek', 'saledayofyear']
+           ]
 
     X = X.fillna(0)  # flip missing numeric values to zeros
     y = df['SalePrice']
@@ -134,8 +136,9 @@ def get_multiple_imps(X, y, n_shap=300, n_estimators=50, min_samples_leaf=10,
 
     lm = LinearRegression()
     lm.fit(X, y)
-    ols_I, score = linear_model_importance(lm, X, y)
-    ols_shap_I = shap_importances(lm, X, n_shap)
+    X_ = pd.DataFrame(normalize(X), columns=X.columns)
+    ols_I, score = linear_model_importance(lm, X_, y.values)
+    ols_shap_I = shap_importances(lm, X_, n_shap)
 
     rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=True)
     rf.fit(X, y)
