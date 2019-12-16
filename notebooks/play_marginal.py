@@ -200,7 +200,7 @@ def plot_partials(X,y,eqn, yrange=(.5,1.5)):
     plt.suptitle('$'+eqn+'$', y=1.02)
     for j,colname in enumerate(X.columns):
         xj = X[colname]
-        leaf_xranges, leaf_slopes, dx, dydx, pdpx, pdpy, ignored = \
+        leaf_xranges, leaf_slopes, slope_counts_at_x, dx, dydx, pdpx, pdpy, ignored = \
             partial_dependence(X=X, y=y, colname=colname)
         # Plot dydx
         axes[j].scatter(pdpx, dydx, c='k', s=3)
@@ -588,51 +588,6 @@ def speed_SHAP():
         time_SHAP(n_estimators, n_records)
 
 
-def load_rent(n=3_000):
-    df = pd.read_json('data/train.json')
-
-    # Create ideal numeric data set w/o outliers etc...
-    df = df[(df.price > 1_000) & (df.price < 10_000)]
-    df = df[df.bathrooms <= 6]  # There's almost no data for 6 and above with small sample
-    df = df[(df.longitude != 0) | (df.latitude != 0)]
-    df = df[(df['latitude'] > 40.55) & (df['latitude'] < 40.94) &
-            (df['longitude'] > -74.1) & (df['longitude'] < -73.67)]
-    df['interest_level'] = df['interest_level'].map({'low': 1, 'medium': 2, 'high': 3})
-    df["num_desc_words"] = df["description"].apply(lambda x: len(x.split()))
-    df["num_features"] = df["features"].apply(lambda x: len(x))
-    df["num_photos"] = df["photos"].apply(lambda x: len(x))
-
-    hoods = {
-        "hells": [40.7622, -73.9924],
-        "astoria": [40.7796684, -73.9215888],
-        "Evillage": [40.723163774, -73.984829394],
-        "Wvillage": [40.73578, -74.00357],
-        "LowerEast": [40.715033, -73.9842724],
-        "UpperEast": [40.768163594, -73.959329496],
-        "ParkSlope": [40.672404, -73.977063],
-        "Prospect Park": [40.93704, -74.17431],
-        "Crown Heights": [40.657830702, -73.940162906],
-        "financial": [40.703830518, -74.005666644],
-        "brooklynheights": [40.7022621909, -73.9871760513],
-        "gowanus": [40.673, -73.997]
-    }
-    for hood, loc in hoods.items():
-        # compute manhattan distance
-        df[hood] = np.abs(df.latitude - loc[0]) + np.abs(df.longitude - loc[1])
-    hoodfeatures = list(hoods.keys())
-
-    df = df.sort_values(by='created')[-n:]  # get a small subsample
-    df_rent = df[['bedrooms', 'bathrooms', 'latitude', 'longitude', 'price',
-                  'interest_level']+
-                 hoodfeatures+
-                 ['num_photos', 'num_desc_words', 'num_features']]
-    # print(df_rent.head(3))
-
-    X = df_rent.drop('price', axis=1)
-    y = df_rent['price']
-    return X, y
-
-
 def rent_drop():
     n_drop = 1
     n_estimators = 50
@@ -666,8 +621,6 @@ def rent_drop():
         all.append(results)
     print(pd.DataFrame(data=all, columns=['OLS','RF','Ours']))
     print(f"Avg drop-{n_drop} valid R^2 {np.mean(all,axis=0)}, stddev {np.std(all,axis=0)}")
-
-
 
 
 def rent_top(top_range=(1, 7),
@@ -713,19 +666,6 @@ def rent_top(top_range=(1, 7),
         print(f"Avg top-{top} valid {metric.__name__} {', '.join(avg)}")#, stddev {np.std(all, axis=0)}")
         print
 
-
-def rent_pdp():
-    X, y = load_rent(n=5_000)
-    plot_stratpd_gridsearch(X, y, 'bedrooms', 'price')
-    plot_stratpd_gridsearch(X, y, 'bathrooms', 'price')
-    plot_stratpd_gridsearch(X, y, 'Wvillage', 'price')
-    plot_stratpd_gridsearch(X, y, 'latitude', 'price')
-    plot_stratpd_gridsearch(X, y, 'longitude', 'price')
-
-
-
-
-#rent_pdp()
 
 #rent_top(min_samples_leaf=10)
 

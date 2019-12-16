@@ -35,6 +35,52 @@ def df_split_dates(df,colname):
     df[colname] = df[colname].astype(np.int64) # convert to seconds since 1970
 
 
+def load_rent(n=3_000):
+    df = pd.read_json('data/train.json')
+
+    # Create ideal numeric data set w/o outliers etc...
+    df = df[(df.price > 1_000) & (df.price < 10_000)]
+    df = df[df.bathrooms <= 6]  # There's almost no data for 6 and above with small sample
+    df = df[(df.longitude != 0) | (df.latitude != 0)]
+    df = df[(df['latitude'] > 40.55) & (df['latitude'] < 40.94) &
+            (df['longitude'] > -74.1) & (df['longitude'] < -73.67)]
+    df['interest_level'] = df['interest_level'].map({'low': 1, 'medium': 2, 'high': 3})
+    df["num_desc_words"] = df["description"].apply(lambda x: len(x.split()))
+    df["num_features"] = df["features"].apply(lambda x: len(x))
+    df["num_photos"] = df["photos"].apply(lambda x: len(x))
+
+    hoods = {
+        "hells": [40.7622, -73.9924],
+        "astoria": [40.7796684, -73.9215888],
+        "Evillage": [40.723163774, -73.984829394],
+        "Wvillage": [40.73578, -74.00357],
+        "LowerEast": [40.715033, -73.9842724],
+        "UpperEast": [40.768163594, -73.959329496],
+        "ParkSlope": [40.672404, -73.977063],
+        "Prospect Park": [40.93704, -74.17431],
+        "Crown Heights": [40.657830702, -73.940162906],
+        "financial": [40.703830518, -74.005666644],
+        "brooklynheights": [40.7022621909, -73.9871760513],
+        "gowanus": [40.673, -73.997]
+    }
+    for hood, loc in hoods.items():
+        # compute manhattan distance
+        df[hood] = np.abs(df.latitude - loc[0]) + np.abs(df.longitude - loc[1])
+        df[hood] *= 1000 # GPS range is very tight so distances are very small. bump up
+    hoodfeatures = list(hoods.keys())
+
+    df = df.sort_values(by='created')[-n:]  # get a small subsample
+    df_rent = df[['bedrooms', 'bathrooms', 'latitude', 'longitude', 'price',
+                  'interest_level']+
+                 hoodfeatures+
+                 ['num_photos', 'num_desc_words', 'num_features']]
+    # print(df_rent.head(3))
+
+    X = df_rent.drop('price', axis=1)
+    y = df_rent['price']
+    return X, y
+
+
 def load_bulldozer():
     df = pd.read_feather("../notebooks/data/bulldozer-train.feather")
 
@@ -86,9 +132,9 @@ def linear_model_importance(model, X, y):
 
     # use statsmodels to get stderr for betas
     if isinstance(model, LinearRegression):
+        # stderr for betas makes no sense in Lasso
         beta_stderr = sm.OLS(y, X).fit().bse
         imp /= beta_stderr
-    # stderr for betas makes no sense in Lasso
 
     imp /= np.sum(imp) # normalize
     I = pd.DataFrame(data={'Feature': X.columns, 'Importance': imp})
