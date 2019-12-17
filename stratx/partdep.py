@@ -10,6 +10,8 @@ from scipy.stats import binned_statistic
 import warnings
 from timeit import default_timer as timer
 
+import numba
+from numba import jit
 
 #from stratx.cy_partdep import *
 
@@ -455,13 +457,10 @@ def discrete_xc_space(x: np.ndarray, y: np.ndarray, verbose=False):
     start = timer()
 
     ignored = 0
-    xy = pd.concat([pd.Series(x), pd.Series(y)], axis=1)
-    xy.columns = ['x', 'y']
-    xy = xy.sort_values('x')
-    df_avg = xy.groupby('x').mean().reset_index()
-    x = df_avg['x'].values
-    y = df_avg['y'].values
-    uniq_x = x
+
+    # Group by x, take mean of all y with same x value (make sure sorted too)
+    uniq_x = np.sort(np.unique(x))
+    y = [y[x==ux].mean() for ux in uniq_x]
 
     if len(uniq_x)==1:
         # print(f"ignore {len(x)} in discrete_xc_space")
@@ -472,7 +471,6 @@ def discrete_xc_space(x: np.ndarray, y: np.ndarray, verbose=False):
     y_deltas = np.diff(y)
     leaf_slopes = y_deltas / bin_deltas  # "rise over run"
     leaf_xranges = np.array(list(zip(uniq_x, uniq_x[1:])))
-    # xbin_counts = xy['x'].value_counts().sort_index().values
 
     stop = timer()
     if verbose: print(f"discrete_xc_space {stop - start:.3f}s")
@@ -496,7 +494,6 @@ def collect_discrete_slopes(rf, X, y, colname, verbose=False):
     start = timer()
     leaf_slopes = []  # drop or rise between discrete x values
     leaf_xranges = [] # drop is from one discrete value to next
-    xbin_counts = []
 
     ignored = 0
 
@@ -580,6 +577,59 @@ def avg_values_at_x(uniq_x, leaf_ranges, leaf_slopes, verbose):
 
     stop = timer()
     if verbose: print(f"avg_value_at_x {stop - start:.3f}s")
+    # return average slope at each unique x value and how many slopes included in avg at each x
+    return avg_value_at_x, slope_counts_at_x
+
+
+@jit(nopython=True)
+def avg_values_at_x_jit(uniq_x, leaf_ranges, leaf_slopes, verbose):
+    """
+    Compute the weighted average of leaf_slopes at each uniq_x.
+
+    Value at max(x) is NaN since we have no data beyond that point.
+    """
+    nx = len(uniq_x)
+    nslopes = len(leaf_slopes)
+    slopes = np.zeros(shape=(nx, nslopes))
+    #i = 0  # unique x value (column in slopes matrix) index; we get a slope line for each range x_i to x_i+1
+    # collect the slope for each range (taken from a leaf) as collection of
+    # flat lines across the same x range
+
+    '''
+    # Hmm...this doesn't seem to work so back it out
+    for i, (xr, slope) in enumerate(zip(leaf_ranges, leaf_slopes)):
+        # now trim line so it's only valid in range xr;
+        # don't set slope on right edge
+        slopes[:, i] = where( (uniq_x >= xr[0]) | (uniq_x < xr[1]), slope, nan )
+    '''
+
+    i = 0
+    # for xr, slope in zip(leaf_ranges, leaf_slopes):
+    for i in range(len(leaf_ranges)):
+        xr = leaf_ranges[i]
+        slope = leaf_slopes[i]
+        s = np.full(nx, slope)
+        # now trim line so it's only valid in range xr;
+        # don't set slope on right edge
+        s[np.where( (uniq_x < xr[0]) | (uniq_x >= xr[1]) )] = np.nan
+        slopes[:, i] = s
+        i += 1
+
+    # The value could be genuinely zero so we use nan not 0 for out-of-range
+    # Now average horiz across the matrix, averaging within each range
+    # Wrap nanmean() in catcher to avoid "Mean of empty slice" warning, which
+    # comes from some rows being purely NaN; I should probably look at this sometime
+    # to decide whether that's hiding a bug (can there ever be a nan for an x range)?
+    # Oh right. We might have to ignore some leaves (those with single unique x values)
+
+    #avg_value_at_x = np.nanmean(slopes, axis=1)
+    avg_value_at_x = np.empty(slopes.shape[0])
+    for i in range(len(avg_value_at_x)):
+        avg_value_at_x[i] = np.nanmean(slopes[i, :])
+
+    # how many slopes avg'd together to get avg
+    slope_counts_at_x = nslopes - np.isnan(slopes).sum(axis=1)
+
     # return average slope at each unique x value and how many slopes included in avg at each x
     return avg_value_at_x, slope_counts_at_x
 

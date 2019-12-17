@@ -30,7 +30,7 @@ from rfpimp import plot_importances, dropcol_importances, importances
 
 np.random.seed(999)
 
-X, y = load_rent(n=20_000)
+X, y = load_rent(n=5_000)
 leaf_xranges, leaf_slopes, slope_counts_at_x, pdpx, pdpy, ignored = \
     plot_stratpd(X, y, 'brooklynheights', 'price',
                  show_slope_counts=True,
