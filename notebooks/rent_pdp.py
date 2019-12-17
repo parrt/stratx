@@ -32,7 +32,7 @@ np.random.seed(999)
 
 X, y = load_rent(n=2000)
 leaf_xranges, leaf_slopes, slope_counts_at_x, pdpx, pdpy, ignored = \
-    plot_stratpd(X, y, 'latitude', 'price',
+    plot_stratpd(X, y, 'Evillage', 'price',
                  show_slope_counts=True,
                  min_slopes_per_x=5,
                  min_samples_leaf=10,
