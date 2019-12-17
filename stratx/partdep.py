@@ -335,6 +335,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  show_pdp_line=False,
                  show_slope_lines=True,
                  show_slope_counts=True,
+                 show_slope_counts2=False,
                  pdp_marker_size=5,
                  pdp_line_width=.5,
                  slope_line_color='#2c7fb8',
@@ -342,6 +343,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  slope_line_alpha=.3,
                  pdp_line_color='black',
                  pdp_marker_color='black',
+                 barchart_size = 0.1,  # if show_slope_counts, what ratio of vertical space should barchart use at bottom?
                  verbose=False
                  ):
     """
@@ -382,12 +384,6 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         ax.plot(pdpx, pdpy, lw=pdp_line_width, c=pdp_line_color)
 
     domain = (np.min(X[colname]), np.max(X[colname]))  # ignores any max(x) points as no slope info after that
-    if xrange is not None:
-        ax.set_xlim(*xrange)
-    else:
-        ax.set_xlim(*domain)
-    if yrange is not None:
-        ax.set_ylim(*yrange)
 
     min_y = min(pdpy)
     max_y = max(pdpy)
@@ -410,24 +406,24 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         lines = LineCollection(segments, alpha=slope_line_alpha, color=slope_line_color, linewidths=slope_line_width)
         ax.add_collection(lines)
 
+    if xrange is not None:
+        ax.set_xlim(*xrange)
+    else:
+        ax.set_xlim(*domain)
+    if yrange is not None:
+        ax.set_ylim(*yrange)
+    else:
+        ax.set_ylim(min_y, max_y)
+
     if show_slope_counts:
         # scale counts so the max height is 10% of overall chart
-        max_slope = max(slope_counts_at_x)
-        r = max_y - min_y
-        scale = r * 0.1
-        bar_heights = slope_counts_at_x / max_slope * scale
-        # make space at bottom of real plot for barchart (like 10%) if not slope lines
-        offset = 0 if show_slope_lines else scale
-        ax.bar(x=pdpx, height=bar_heights, bottom=min_y - offset,
-               width=(max(pdpx)-min(pdpx)+1)/len(pdpx),
-               facecolor='#BABABA', align='edge')
-        max_i = np.argmax(bar_heights)
-        ax.scatter(pdpx[max_i], max(bar_heights) + min_y - offset, s=80, marker='_', c='k')
-        ax.text(pdpx[max_i], max(bar_heights) + min_y - offset,
-                f"max {slope_counts_at_x[max_i]} slopes",
-                verticalalignment='bottom',
-                horizontalalignment="left",
-                fontsize=9)
+        ax2 = ax.twinx()
+        ax.set_ylim(min_y, max_y)
+        ax2.set_ylim(0, max(slope_counts_at_x) * 1/barchart_size)
+        ax2.yaxis.set_major_locator(plt.FixedLocator([0, max(slope_counts_at_x)]))
+        ax2.bar(x=pdpx, height=slope_counts_at_x, width=(max(pdpx)-min(pdpx)+1)/len(pdpx),
+                facecolor='#BABABA', align='edge')
+        ax2.set_ylabel(f"Slope count per {colname} point", labelpad=-12)
 
     if show_xlabel:
         ax.set_xlabel(colname)
