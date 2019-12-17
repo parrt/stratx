@@ -69,7 +69,7 @@ def load_rent(n=3_000):
         df[hood] *= 1000 # GPS range is very tight so distances are very small. bump up
     hoodfeatures = list(hoods.keys())
 
-    df = df.sort_values(by='created')[-n:]  # get a small subsample
+    df = df.sort_values(by='created').sample(n, replace=False)  # get a small subsample
     df_rent = df[['bedrooms', 'bathrooms', 'latitude', 'longitude', 'price',
                   'interest_level']+
                  hoodfeatures+
@@ -160,7 +160,7 @@ def shap_importances(model, X, n_shap, normalize=True):
     X = X.sample(n=n_shap, replace=False)
     if isinstance(model, RandomForestRegressor) or isinstance(model, GradientBoostingRegressor):
         explainer = shap.TreeExplainer(model, data=X, feature_perturbation='interventional')
-        shap_values = explainer.shap_values(X, check_additivity=True)
+        shap_values = explainer.shap_values(X, check_additivity=False)
     elif isinstance(model, Lasso) or isinstance(model, LinearRegression):
         shap_values = shap.LinearExplainer(model, X, feature_dependence='independent').shap_values(X)
     shapimp = np.mean(np.abs(shap_values), axis=0)
@@ -181,7 +181,8 @@ def shap_importances(model, X, n_shap, normalize=True):
 
 
 def get_multiple_imps(X, y, n_shap=300, n_estimators=50, min_samples_leaf=10,
-                      catcolnames=set()):
+                      catcolnames=set(),
+                      min_slopes_per_x=10):
 
     lm = LinearRegression()
     lm.fit(X, y)
@@ -194,7 +195,8 @@ def get_multiple_imps(X, y, n_shap=300, n_estimators=50, min_samples_leaf=10,
     rf_I = shap_importances(rf, X, n_shap)
 
     ours_I = impact_importances(X, y, verbose=False, min_samples_leaf=min_samples_leaf,
-                                catcolnames=catcolnames)
+                                catcolnames=catcolnames,
+                                min_slopes_per_x=min_slopes_per_x)
     return ols_I, ols_shap_I, rf_I, ours_I
 
 
@@ -286,13 +288,14 @@ def avg_model_for_top_features(X, y,
     # return s
 
 
-def compare_top_features(X, y, top_features_range=(1, 9),
+def compare_top_features(X, y, top_features_range=None,
                          n_shap=300,
                          metric = mean_absolute_error,
                          use_oob = False,
                          n_estimators=40,
                          trials=1,
-                         min_samples_leaf=10):
+                         min_samples_leaf=10,
+                         min_slopes_per_x=5):
 
     rf = RandomForestRegressor(n_estimators=40, oob_score=True, n_jobs=-1)
     rf.fit(X, y)
@@ -302,17 +305,22 @@ def compare_top_features(X, y, top_features_range=(1, 9),
                                                        min_samples_leaf=min_samples_leaf,
                                                        n_estimators=n_estimators,
                                                        n_shap=n_shap,
-                                                       catcolnames={'AC','ModelID'})
+                                                       catcolnames={'AC','ModelID'},
+                                                       min_slopes_per_x=min_slopes_per_x)
     print("OLS\n", ols_I)
     print("OLS SHAP\n", shap_ols_I)
     print("RF SHAP\n",rf_I)
     print("OURS\n",our_I)
 
+    if top_features_range is None:
+        top_features_range = (1, X.shape[1])
+
     features_names = ['OLS', 'OLS SHAP', 'RF SHAP', 'OUR']
 
     print("OUR FEATURES", our_I.index.values)
 
-    print("n_top, n_estimators, n_shap, min_samples_leaf", top_features_range[1], n_estimators, n_shap, min_samples_leaf)
+    print("n, n_top, n_estimators, n_shap, min_samples_leaf",
+          len(X), top_features_range[1], n_estimators, n_shap, min_samples_leaf)
     topscores = []
     for top in range(top_features_range[0], top_features_range[1] + 1):
         ols_top = ols_I.iloc[:top, 0].index.values

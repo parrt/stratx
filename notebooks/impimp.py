@@ -11,8 +11,9 @@ def impact_importances(X: pd.DataFrame,
                        y: pd.Series,
                        catcolnames=set(),
                        n_samples=None,  # use all by default
+                       min_slopes_per_x=10,
                        bootstrap_sampling=True,
-                       n_trials:int=1,
+                       n_trials: int = 1,
                        n_trees=1, min_samples_leaf=10, bootstrap=False, max_features=1.0,
                        verbose=False,
                        pdp:('stratpd','ice')='stratpd') -> pd.DataFrame:
@@ -30,6 +31,7 @@ def impact_importances(X: pd.DataFrame,
         imps[:,i] = impact_importances_(X_, y_, catcolnames=catcolnames,
                                         n_trees=n_trees,
                                         min_samples_leaf=min_samples_leaf,
+                                        min_slopes_per_x=min_slopes_per_x,
                                         bootstrap=bootstrap,
                                         max_features=max_features,
                                         verbose=verbose,
@@ -48,7 +50,9 @@ def impact_importances(X: pd.DataFrame,
 
 
 def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
-                        n_trees=1, min_samples_leaf=10, bootstrap=False, max_features=1.0,
+                        n_trees=1, min_samples_leaf=10,
+                        min_slopes_per_x=10,
+                        bootstrap=False, max_features=1.0,
                         verbose=False,
                         pdp:('stratpd','ice')='stratpd') -> np.ndarray:
     if not isinstance(X, pd.DataFrame):
@@ -83,7 +87,7 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
             elif pdp=='ice':
                 pdpy = original_catpdp(rf, X=X, colname=colname)
             stop = timer()
-            # print(f"PD time {(stop - start) * 1000:.0f}ms")
+            # print(f"{colname} CatStratPD time for {len(X)} records = {(stop - start) * 1000:.0f}ms")
             min_avg_value = np.nanmin(avg_per_cat)
             avg_per_cat_from_0 = avg_per_cat - min_avg_value # all positive now, relative to 0 for lowest cat
             # some cats have NaN, such as 0th which is for "missing values"
@@ -97,6 +101,7 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                     partial_dependence(X=X, y=y, colname=colname,
                                        ntrees=n_trees,
                                        min_samples_leaf=min_samples_leaf,
+                                       min_slopes_per_x=min_slopes_per_x,
                                        bootstrap=bootstrap,
                                        max_features=max_features,
                                        verbose=verbose)
@@ -104,7 +109,7 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
             elif pdp=='ice':
                 pdpy = original_pdp(rf, X=X, colname=colname)
             stop = timer()
-            # print(f"PD time {(stop-start)*1000:.0f}ms")
+            # print(f"{colname} StratPD time for {len(X)} records = {(stop-start)*1000:.0f}ms")
             avg_abs_pdp[j] = np.mean(np.abs(pdpy))# * (np.max(pdpx) - np.min(pdpx))
             avg_pdp[j] = np.mean(pdpy)
             total_avg_pdpy += avg_abs_pdp[j]

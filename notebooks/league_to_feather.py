@@ -6,7 +6,7 @@ import shap
 import matplotlib.pyplot as pl
 
 # read in the data
-prefix = "data/league-of-legends-ranked-matches/"
+prefix = "/Users/parrt/data/league-of-legends-ranked-matches/"
 matches = pd.read_csv(prefix+"matches.csv")
 participants = pd.read_csv(prefix+"participants.csv")
 stats1 = pd.read_csv(prefix+"stats1.csv", low_memory=False)
@@ -98,7 +98,3 @@ df = pd.DataFrame(data=X, columns=X.columns)
 df['win'] = y
 
 df.reset_index().to_feather("data/league.feather")
-
-# create train/validation split
-#Xt, Xv, yt, yv = train_test_split(X,y, test_size=0.2, random_state=10)
-

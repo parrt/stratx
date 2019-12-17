@@ -16,8 +16,10 @@ import matplotlib.pyplot as plt
 
 from rfpimp import plot_importances, dropcol_importances, importances
 
-n = 3_000 # 5_000, 10_000 cause Additivity check error
+n = 5000
 X, y = load_rent(n=n)
 
-R = compare_top_features(X, y, n_shap=300, min_samples_leaf=10)
+R = compare_top_features(X, y, n_shap=300, min_samples_leaf=5, min_slopes_per_x=n*3.5/1000,
+                         top_features_range=(1,9))
+
 print(R)

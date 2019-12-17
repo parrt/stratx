@@ -557,7 +557,6 @@ def avg_values_at_x(uniq_x, leaf_ranges, leaf_slopes, verbose):
         slopes[:, i] = where( (uniq_x >= xr[0]) | (uniq_x < xr[1]), slope, nan )
     '''
 
-    #'''
     i = 0
     for xr, slope in zip(leaf_ranges, leaf_slopes):
         s = np.full(nx, slope, dtype=float)
@@ -566,7 +565,6 @@ def avg_values_at_x(uniq_x, leaf_ranges, leaf_slopes, verbose):
         s[np.where( (uniq_x < xr[0]) | (uniq_x >= xr[1]) )] = np.nan
         slopes[:, i] = s
         i += 1
-    #'''
 
     # The value could be genuinely zero so we use nan not 0 for out-of-range
     # Now average horiz across the matrix, averaging within each range
