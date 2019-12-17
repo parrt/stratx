@@ -5,8 +5,6 @@ from sklearn.ensemble import RandomForestRegressor
 from timeit import default_timer as timer
 from sklearn.utils import resample
 
-import shap
-
 from impimp import *
 from support import *
 
@@ -16,7 +14,7 @@ import matplotlib.pyplot as plt
 
 from rfpimp import plot_importances, dropcol_importances, importances
 
-n = 5000
+n = 10_000
 X, y = load_rent(n=n)
 
 R = compare_top_features(X, y, n_shap=300, min_samples_leaf=10, min_slopes_per_x=n*3.5/1000,

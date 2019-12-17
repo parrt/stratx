@@ -10,11 +10,6 @@ from scipy.stats import binned_statistic
 import warnings
 from timeit import default_timer as timer
 
-import numba
-from numba import jit, njit, autojit
-
-#from stratx.cy_partdep import *
-
 from dtreeviz.trees import *
 
 
@@ -437,7 +432,6 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
     return leaf_xranges, leaf_slopes, slope_counts_at_x, pdpx, pdpy, ignored
 
 
-#@njit(nopython=True, locals=dict(ignored=np.int))
 def discrete_xc_space(x: np.ndarray, y: np.ndarray):
     """
     Use the unique x values within a leaf to dynamically compute the bins,
@@ -574,59 +568,6 @@ def avg_values_at_x(uniq_x, leaf_ranges, leaf_slopes, verbose):
 
     stop = timer()
     if verbose: print(f"avg_value_at_x {stop - start:.3f}s")
-    # return average slope at each unique x value and how many slopes included in avg at each x
-    return avg_value_at_x, slope_counts_at_x
-
-
-@jit(nopython=True)
-def avg_values_at_x_jit(uniq_x, leaf_ranges, leaf_slopes, verbose):
-    """
-    Compute the weighted average of leaf_slopes at each uniq_x.
-
-    Value at max(x) is NaN since we have no data beyond that point.
-    """
-    nx = len(uniq_x)
-    nslopes = len(leaf_slopes)
-    slopes = np.zeros(shape=(nx, nslopes))
-    #i = 0  # unique x value (column in slopes matrix) index; we get a slope line for each range x_i to x_i+1
-    # collect the slope for each range (taken from a leaf) as collection of
-    # flat lines across the same x range
-
-    '''
-    # Hmm...this doesn't seem to work so back it out
-    for i, (xr, slope) in enumerate(zip(leaf_ranges, leaf_slopes)):
-        # now trim line so it's only valid in range xr;
-        # don't set slope on right edge
-        slopes[:, i] = where( (uniq_x >= xr[0]) | (uniq_x < xr[1]), slope, nan )
-    '''
-
-    i = 0
-    # for xr, slope in zip(leaf_ranges, leaf_slopes):
-    for i in range(len(leaf_ranges)):
-        xr = leaf_ranges[i]
-        slope = leaf_slopes[i]
-        s = np.full(nx, slope)
-        # now trim line so it's only valid in range xr;
-        # don't set slope on right edge
-        s[np.where( (uniq_x < xr[0]) | (uniq_x >= xr[1]) )] = np.nan
-        slopes[:, i] = s
-        i += 1
-
-    # The value could be genuinely zero so we use nan not 0 for out-of-range
-    # Now average horiz across the matrix, averaging within each range
-    # Wrap nanmean() in catcher to avoid "Mean of empty slice" warning, which
-    # comes from some rows being purely NaN; I should probably look at this sometime
-    # to decide whether that's hiding a bug (can there ever be a nan for an x range)?
-    # Oh right. We might have to ignore some leaves (those with single unique x values)
-
-    #avg_value_at_x = np.nanmean(slopes, axis=1)
-    avg_value_at_x = np.empty(slopes.shape[0])
-    for i in range(len(avg_value_at_x)):
-        avg_value_at_x[i] = np.nanmean(slopes[i, :])
-
-    # how many slopes avg'd together to get avg
-    slope_counts_at_x = nslopes - np.isnan(slopes).sum(axis=1)
-
     # return average slope at each unique x value and how many slopes included in avg at each x
     return avg_value_at_x, slope_counts_at_x
 
