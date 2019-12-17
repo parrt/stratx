@@ -16,12 +16,17 @@ import matplotlib.pyplot as plt
 
 from rfpimp import plot_importances, dropcol_importances, importances
 
-n = 20_000
+n = 10_000
 
 X, y = load_bulldozer()
 
 X = X.iloc[-n:]
 y = y.iloc[-n:]
 
-R = compare_top_features(X, y, n_shap=500, min_samples_leaf=10, min_slopes_per_x=n*3/1000)
-print(R)
+plot_catstratpd(X, y, 'ModelID', 'SalePrice', min_samples_leaf=5, sort=None)
+
+# plot_stratpd_gridsearch(X, y, 'Wvillage', 'price')
+plt.tight_layout()
+# rent_pdp()
+plt.savefig("/Users/parrt/Desktop/james.png", pad_inches=0, dpi=150)
+plt.show()
