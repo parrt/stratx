@@ -3,7 +3,7 @@ from timeit import default_timer as timer
 from support import load_rent
 from impimp import partial_dependence
 
-n = 20000
+n = 60000
 min_samples_leaf = 5
 min_slopes_per_x = n*3.5/1000
 

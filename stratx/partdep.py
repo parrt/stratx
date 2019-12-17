@@ -11,7 +11,7 @@ import warnings
 from timeit import default_timer as timer
 
 import numba
-from numba import jit
+from numba import jit, njit, autojit
 
 #from stratx.cy_partdep import *
 
@@ -437,7 +437,8 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
     return leaf_xranges, leaf_slopes, slope_counts_at_x, pdpx, pdpy, ignored
 
 
-def discrete_xc_space(x: np.ndarray, y: np.ndarray, verbose=False):
+#@njit(nopython=True, locals=dict(ignored=np.int))
+def discrete_xc_space(x: np.ndarray, y: np.ndarray):
     """
     Use the unique x values within a leaf to dynamically compute the bins,
     rather then using a fixed nbins hyper parameter. Group the leaf x,y by x
@@ -454,13 +455,11 @@ def discrete_xc_space(x: np.ndarray, y: np.ndarray, verbose=False):
     If there is exactly one unique x value in the leaf, the leaf provides no information
     about how x_c contributes to changes in y. We have to ignore this leaf.
     """
-    start = timer()
-
     ignored = 0
 
-    # Group by x, take mean of all y with same x value (make sure sorted too)
-    uniq_x = np.sort(np.unique(x))
-    y = [y[x==ux].mean() for ux in uniq_x]
+    # Group by x, take mean of all y with same x value (they come back sorted too)
+    uniq_x = np.unique(x)
+    avg_y = [y[x==ux].mean() for ux in uniq_x]
 
     if len(uniq_x)==1:
         # print(f"ignore {len(x)} in discrete_xc_space")
@@ -468,12 +467,10 @@ def discrete_xc_space(x: np.ndarray, y: np.ndarray, verbose=False):
         return np.array([]), np.array([]), np.array([]), np.array([]), ignored
 
     bin_deltas = np.diff(uniq_x)
-    y_deltas = np.diff(y)
+    y_deltas = np.diff(avg_y)
     leaf_slopes = y_deltas / bin_deltas  # "rise over run"
     leaf_xranges = np.array(list(zip(uniq_x, uniq_x[1:])))
 
-    stop = timer()
-    if verbose: print(f"discrete_xc_space {stop - start:.3f}s")
     return leaf_xranges, leaf_slopes, ignored
 
 
@@ -497,7 +494,10 @@ def collect_discrete_slopes(rf, X, y, colname, verbose=False):
 
     ignored = 0
 
+    colname_i = X.columns.get_loc(colname)
     leaves = leaf_samples(rf, X.drop(colname, axis=1))
+    X = X.values
+    y = y.values
 
     if False:
         nnodes = rf.estimators_[0].tree_.node_count
@@ -505,12 +505,11 @@ def collect_discrete_slopes(rf, X, y, colname, verbose=False):
               f"{len(rf.estimators_)} trees, {len(leaves)} total leaves")
 
     for samples in leaves:
-        one_leaf_samples = X.iloc[samples]
-        leaf_x = one_leaf_samples[colname].values
-        leaf_y = y.iloc[samples].values
+        leaf_x = X[samples,colname_i]
+        # leaf_x = one_leaf_samples[]#.reshape(-1,1)
+        leaf_y = y[samples]
 
-        r = (np.min(leaf_x), np.max(leaf_x))
-        if np.isclose(r[0], r[1]):
+        if np.isclose(np.min(leaf_x), np.max(leaf_x)):
             # print(f"ignoring xleft=xright @ {r[0]}")
             ignored += len(leaf_x)
             continue
@@ -520,11 +519,9 @@ def collect_discrete_slopes(rf, X, y, colname, verbose=False):
 
         leaf_slopes.extend(leaf_slopes_)
         leaf_xranges.extend(leaf_xranges_)
-        # xbin_counts.extend(xbin_counts_)
         ignored += ignored_
 
     leaf_xranges = np.array(leaf_xranges)
-    # xbin_counts = np.array(xbin_counts)
     leaf_slopes = np.array(leaf_slopes)
 
     stop = timer()

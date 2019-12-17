@@ -69,7 +69,7 @@ def load_rent(n=3_000):
         df[hood] *= 1000 # GPS range is very tight so distances are very small. bump up
     hoodfeatures = list(hoods.keys())
 
-    df = df.sort_values(by='created').sample(n, replace=False)  # get a small subsample
+    df = df.sort_values(by='created').sample(min(n,len(df)), replace=False)  # get a small subsample
     df_rent = df[['bedrooms', 'bathrooms', 'latitude', 'longitude', 'price',
                   'interest_level']+
                  hoodfeatures+
