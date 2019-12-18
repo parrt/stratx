@@ -24,5 +24,6 @@ X = X.iloc[-n:]
 y = y.iloc[-n:]
 
 R = compare_top_features(X, y, n_shap=500, min_samples_leaf=10, min_slopes_per_x=n*3/1000,
-                         catcolnames={'AC','ModelID'})
+                         catcolnames={'AC','ModelID'},
+                         use_oob=True)
 print(R)

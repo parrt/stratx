@@ -858,7 +858,7 @@ def cat_partial_dependence(X, y,
         warnings.simplefilter("ignore", category=RuntimeWarning)
         avg_per_cat = np.nanmean(leaf_histos, axis=1)
 
-    print("avg_per_cat", avg_per_cat)
+    # print("avg_per_cat", avg_per_cat)
 
     return leaf_histos, avg_per_cat, ignored
 

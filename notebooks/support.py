@@ -194,10 +194,12 @@ def get_multiple_imps(X, y, n_shap=300, n_estimators=50, min_samples_leaf=10,
     rf.fit(X, y)
     rf_I = shap_importances(rf, X, n_shap)
 
+    perm_I = importances(rf, X, y)
+
     ours_I = impact_importances(X, y, verbose=False, min_samples_leaf=min_samples_leaf,
                                 catcolnames=catcolnames,
                                 min_slopes_per_x=min_slopes_per_x)
-    return ols_I, ols_shap_I, rf_I, ours_I
+    return ols_I, ols_shap_I, rf_I, perm_I, ours_I
 
 
 def rmse(y_true, y_pred):
@@ -209,7 +211,8 @@ def avg_model_for_top_features(X, y,
                                metric=mean_absolute_error,
                                use_oob=False):
     if use_oob and metric!=r2_score:
-        print("Warning: use_oob can only give R^2; flipping metric to r2_score")
+        #     print("Warning: use_oob can only give R^2; flipping metric to r2_score")
+        metric=r2_score
     scores = []
 
     # OLS
@@ -302,21 +305,22 @@ def compare_top_features(X, y, top_features_range=None,
     rf.fit(X, y)
     print(f"Sanity check: R^2 OOB on {X.shape[0]} records: {rf.oob_score_:.3f}, training {metric.__name__}={metric(y, rf.predict(X))}")
 
-    ols_I, shap_ols_I, rf_I, our_I = get_multiple_imps(X, y,
-                                                       min_samples_leaf=min_samples_leaf,
-                                                       n_estimators=n_estimators,
-                                                       n_shap=n_shap,
-                                                       catcolnames=catcolnames,
-                                                       min_slopes_per_x=min_slopes_per_x)
+    ols_I, shap_ols_I, rf_I, perm_I, our_I = get_multiple_imps(X, y,
+                                                               min_samples_leaf=min_samples_leaf,
+                                                               n_estimators=n_estimators,
+                                                               n_shap=n_shap,
+                                                               catcolnames=catcolnames,
+                                                               min_slopes_per_x=min_slopes_per_x)
     print("OLS\n", ols_I)
     print("OLS SHAP\n", shap_ols_I)
-    print("RF SHAP\n",rf_I)
+    print("RF SHAP\n", rf_I)
+    print("RF perm\n", perm_I)
     print("OURS\n",our_I)
 
     if top_features_range is None:
         top_features_range = (1, X.shape[1])
 
-    features_names = ['OLS', 'OLS SHAP', 'RF SHAP', 'OUR']
+    features_names = ['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'OUR']
 
     print("OUR FEATURES", our_I.index.values)
 
@@ -327,8 +331,9 @@ def compare_top_features(X, y, top_features_range=None,
         ols_top = ols_I.iloc[:top, 0].index.values
         shap_ols_top = shap_ols_I.iloc[:top, 0].index.values
         rf_top = rf_I.iloc[:top, 0].index.values
+        perm_top = perm_I.iloc[:top, 0].index.values
         our_top = our_I.iloc[:top, 0].index.values
-        features_set = [ols_top, shap_ols_top, rf_top, our_top]
+        features_set = [ols_top, shap_ols_top, rf_top, perm_top, our_top]
         all = []
         for i in range(trials):
             # print(i, end=' ')
@@ -341,7 +346,7 @@ def compare_top_features(X, y, top_features_range=None,
             all.append(results)
         # print(pd.DataFrame(data=all, columns=['OLS','RF','Ours']))
         # print()
-        topscores.append( [round(m,2) for m in np.mean(all, axis=0)] )
+        topscores.append( [round(m,3) for m in np.mean(all, axis=0)] )
 
         # avg = [f"{round(m,2):9.3f}" for m in np.mean(all, axis=0)]
         # print(f"Avg top-{top} valid {metric.__name__} {', '.join(avg)}")
