@@ -23,7 +23,7 @@ X, y = load_bulldozer()
 X = X.iloc[-n:]
 y = y.iloc[-n:]
 
-plot_catstratpd(X, y, 'ModelID', 'SalePrice', min_samples_leaf=5, sort=None)
+plot_catstratpd(X, y, 'ModelID', 'SalePrice', min_samples_leaf=10, sort=None)
 
 # plot_stratpd_gridsearch(X, y, 'Wvillage', 'price')
 plt.tight_layout()

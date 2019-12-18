@@ -295,7 +295,8 @@ def compare_top_features(X, y, top_features_range=None,
                          n_estimators=40,
                          trials=1,
                          min_samples_leaf=10,
-                         min_slopes_per_x=5):
+                         min_slopes_per_x=5,
+                         catcolnames=set()):
 
     rf = RandomForestRegressor(n_estimators=40, oob_score=True, n_jobs=-1)
     rf.fit(X, y)
@@ -305,7 +306,7 @@ def compare_top_features(X, y, top_features_range=None,
                                                        min_samples_leaf=min_samples_leaf,
                                                        n_estimators=n_estimators,
                                                        n_shap=n_shap,
-                                                       catcolnames={'AC','ModelID'},
+                                                       catcolnames=catcolnames,
                                                        min_slopes_per_x=min_slopes_per_x)
     print("OLS\n", ols_I)
     print("OLS SHAP\n", shap_ols_I)

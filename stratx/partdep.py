@@ -8,6 +8,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from scipy.stats import binned_statistic
 import warnings
+import collections
 from timeit import default_timer as timer
 
 from dtreeviz.trees import *
@@ -710,6 +711,47 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
             axes[col].set_title(f"leafsz={msl}, ign'd={ignored / len(X):.1f}%", fontsize=9)
         col += 1
 
+def catwise_leaves_new(rf, X, y, colname, index, verbose):
+    """
+    Return a 2D array with the average y value for each category in each leaf
+    normalized by subtracting min avg y value from all categories.
+    The index has the complete category list. The columns are the y avg value changes
+    found in a single leaf. Each row represents a category level. E.g.,
+
+    row           leaf0       leaf1
+     0       166.430176  186.796956
+     1       219.590349  176.448626
+    """
+    leaves = leaf_samples(rf, X.drop(colname, axis=1))
+
+    colname_i = X.columns.get_loc(colname)
+    cats = np.unique(X[colname])
+    leaf_histos = np.full(shape=(max(cats)+1, len(leaves)), fill_value=np.nan)
+    # leaf_histos = pd.DataFrame(index=range(0,maxcat+1), columns=[f'leaf {i}' for i in range(len(leaves))])
+    # leaf_histos.index.name = 'category'
+
+    X = X.values
+    y = y.values
+
+    ignored = 0
+    for leaf_i, sample in enumerate(leaves):
+        leaf_cats = X[sample, colname_i]
+        leaf_y = y[sample]
+        uniq_cats = np.unique(leaf_cats).astype(int)
+        avg_y_per_cat = [leaf_y[leaf_cats==cat].mean() for cat in uniq_cats]
+        if len(avg_y_per_cat) < 2:
+            # print(f"ignoring {len(sample)} obs for {len(avg_y_per_cat)} cat(s) in leaf")
+            ignored += len(sample)
+            continue
+
+        # record avg y value per cat above avg y in this leaf
+        # leave cats w/o representation as nan
+        avg_leaf_y = np.mean(leaf_y)
+        delta_y_per_cat = avg_y_per_cat - avg_leaf_y
+        leaf_histos[[index[cat] for cat in uniq_cats], leaf_i] = delta_y_per_cat
+
+    return leaf_histos, ignored
+
 
 def catwise_leaves(rf, X, y, colname, verbose):
     """
@@ -773,6 +815,7 @@ def catwise_leaves(rf, X, y, colname, verbose):
 
 def cat_partial_dependence(X, y,
                            colname,  # X[colname] expected to be numeric codes
+                           index,
                            ntrees=1,
                            min_samples_leaf=10,
                            max_features=1.0,
@@ -802,20 +845,18 @@ def cat_partial_dependence(X, y,
     # rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X.drop(colname, axis=1), y)
     # print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
-    leaf_histos, leaf_avgs, leaf_sizes, leaf_catcounts, ignored = \
-        catwise_leaves(rf, X, y, colname, verbose=verbose)
+    # leaf_histos, leaf_avgs, leaf_sizes, leaf_catcounts, ignored = \
+    #     catwise_leaves(rf, X, y, colname, verbose=verbose)
+
+    leaf_histos, ignored = \
+        catwise_leaves_new(rf, X, y, colname, index=index, verbose=verbose)
 
     if verbose:
         print(f"CatStratPD Num samples ignored {ignored} for {colname}")
 
-    if use_weighted_avg:
-        weighted_histos = leaf_histos * leaf_catcounts
-        weighted_sum_per_cat = np.nansum(weighted_histos, axis=1)  # sum across columns
-        total_obs_per_cat = np.nansum(leaf_catcounts, axis=1)
-        avg_per_cat = weighted_sum_per_cat / total_obs_per_cat
-    else:
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=RuntimeWarning)
         avg_per_cat = np.nanmean(leaf_histos, axis=1)
-
 
     print("avg_per_cat", avg_per_cat)
 
@@ -851,9 +892,12 @@ def plot_catstratpd(X, y,
                     show_xticks=True,
                     verbose=False):
 
+    catcodes, _, catcode2name = getcats(X, colname, catnames)
+
     leaf_histos, avg_per_cat, ignored = \
         cat_partial_dependence(X, y,
                                colname=colname,
+                               index=catcode2name,
                                ntrees=ntrees,
                                min_samples_leaf=min_samples_leaf,
                                max_features=max_features,
@@ -862,13 +906,11 @@ def plot_catstratpd(X, y,
                                use_weighted_avg=use_weighted_avg,
                                verbose=verbose)
 
-    catcodes, _, catcode2name = getcats(X, colname, catnames)
-
     if ax is None:
         fig, ax = plt.subplots(1, 1)
 
     ncats = len(catcodes)
-    nleaves = len(leaf_histos.columns)
+    nleaves = leaf_histos.shape[1]
 
     sorted_catcodes = catcodes
     if sort == 'ascending':
@@ -902,14 +944,14 @@ def plot_catstratpd(X, y,
         x_noise = np.zeros(shape=(nleaves,))
     for cat in sorted_catcodes:
         if catcode2name[cat] is None: continue
-        ax.scatter(x_noise + xloc, leaf_histos.iloc[cat] - min_avg_value,
+        ax.scatter(x_noise + xloc, leaf_histos[catcode2name[cat]] - min_avg_value,
                    alpha=alpha, marker='o', s=marker_size,
                    c=color)
         if style == 'strip':
-            ax.plot([xloc - .1, xloc + .1], [avg_per_cat[cat]-min_avg_value] * 2,
+            ax.plot([xloc - .1, xloc + .1], [avg_per_cat[catcode2name[cat]]-min_avg_value] * 2,
                     c='black', linewidth=2)
         else:
-            ax.scatter(xloc, avg_per_cat[cat]-min_avg_value, c=pdp_color, s=pdp_marker_size)
+            ax.scatter(xloc, avg_per_cat[catcode2name[cat]]-min_avg_value, c=pdp_color, s=pdp_marker_size)
         xloc += 1
 
     ax.set_xticks(range(0, ncats))

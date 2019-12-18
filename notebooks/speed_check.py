@@ -2,6 +2,7 @@ from timeit import default_timer as timer
 
 from support import load_rent, load_bulldozer
 from impimp import partial_dependence, cat_partial_dependence
+from stratx.partdep import getcats
 
 n = 10000
 min_samples_leaf = 5
@@ -22,8 +23,11 @@ start = timer()
 #                        min_samples_leaf=min_samples_leaf,
 #                        min_slopes_per_x=min_slopes_per_x)
 
+catcodes, _, catcode2name = getcats(X, "ModelID", None)
+
 leaf_histos, avg_per_cat, ignored = \
     cat_partial_dependence(X, y, colname="ModelID",
+                           index=catcode2name,
                            min_samples_leaf=min_samples_leaf)
 
 stop = timer()
