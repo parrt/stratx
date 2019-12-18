@@ -575,6 +575,7 @@ def avg_values_at_x(uniq_x, leaf_ranges, leaf_slopes, verbose):
 
 def plot_stratpd_gridsearch(X, y, colname, targetname,
                             min_samples_leaf_values=(2,5,10,20,30),
+                            min_slopes_per_x=5,
                             nbins_values=(1,2,3,4,5),
                             nbins_smoothing=None,
                             binned=False,
@@ -599,6 +600,7 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
                 leaf_xranges, leaf_slopes, slope_counts_at_x, pdpx, pdpy, ignored = \
                     plot_stratpd(X, y, colname, targetname, ax=axes[col],
                                  min_samples_leaf=msl,
+                                 min_slopes_per_x=min_slopes_per_x,
                                  xrange=xrange,
                                  yrange=yrange,
                                  ntrees=1,

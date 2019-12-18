@@ -3,13 +3,15 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.linear_model import LinearRegression, Lasso
+from sklearn.linear_model import LinearRegression, Lasso, LogisticRegression
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.utils import resample
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import normalize
 import statsmodels.api as sm
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.datasets import load_boston, load_iris, load_wine, load_digits, \
+    load_breast_cancer, load_diabetes, fetch_mldata
 
 from timeit import default_timer as timer
 
@@ -33,6 +35,19 @@ def df_split_dates(df,colname):
     df["saledayofweek"] = df[colname].dt.dayofweek
     df["saledayofyear"] = df[colname].dt.dayofyear
     df[colname] = df[colname].astype(np.int64) # convert to seconds since 1970
+
+
+def load_cancer_regr():
+    cancer = load_breast_cancer()
+    X = pd.DataFrame(data=cancer.data, columns=cancer.feature_names)
+
+    # convert classification to regression by converting cancer/benign to
+    # probability of being cancer. 0=malignant, 1=benign (notcancer)
+    lm = LogisticRegression(penalty='none', solver='lbfgs', max_iter=10000)
+    lm.fit(cancer.data,cancer.target)
+    y_proba = lm.predict_proba(cancer.data)
+    y = pd.Series(y_proba[:,0])
+    return X, y
 
 
 def load_rent(n=3_000):
@@ -187,7 +202,7 @@ def get_multiple_imps(X, y, n_shap=300, n_estimators=50, min_samples_leaf=10,
     lm = LinearRegression()
     lm.fit(X, y)
     X_ = pd.DataFrame(normalize(X), columns=X.columns)
-    ols_I, score = linear_model_importance(lm, X_, y.values)
+    ols_I, score = linear_model_importance(lm, X_, y)
     ols_shap_I = shap_importances(lm, X_, n_shap)
 
     rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=True)
@@ -300,6 +315,9 @@ def compare_top_features(X, y, top_features_range=None,
                          min_samples_leaf=10,
                          min_slopes_per_x=5,
                          catcolnames=set()):
+    if use_oob and metric!=r2_score:
+        #     print("Warning: use_oob can only give R^2; flipping metric to r2_score")
+        metric=r2_score
 
     rf = RandomForestRegressor(n_estimators=40, oob_score=True, n_jobs=-1)
     rf.fit(X, y)
@@ -315,14 +333,14 @@ def compare_top_features(X, y, top_features_range=None,
     print("OLS SHAP\n", shap_ols_I)
     print("RF SHAP\n", rf_I)
     print("RF perm\n", perm_I)
-    print("OURS\n",our_I)
+    print("StratImpact\n",our_I)
 
     if top_features_range is None:
         top_features_range = (1, X.shape[1])
 
-    features_names = ['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'OUR']
+    features_names = ['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']
 
-    print("OUR FEATURES", our_I.index.values)
+    print("StratImpact FEATURES", our_I.index.values)
 
     print("n, n_top, n_estimators, n_shap, min_samples_leaf",
           len(X), top_features_range[1], n_estimators, n_shap, min_samples_leaf)
@@ -354,3 +372,22 @@ def compare_top_features(X, y, top_features_range=None,
     R = pd.DataFrame(data=topscores, columns=features_names)
     R.index = [f"top-{top} {'OOB' if use_oob else 'training'} {metric.__name__}" for top in range(top_features_range[0], top_features_range[1] + 1)]
     return R
+
+
+def plot_topN(R, ax):
+    feature_counts = range(1, R.shape[0] + 1)
+    for technique in R.columns:
+        print(technique)
+        if technique == 'StratImpact':
+            color = '#EF5535'  # '#415BA3'
+            lw = 2.0
+        else:
+            color = '#415BA3'  # '#8E8E8F'
+            lw = .5
+        # ax.plot(feature_counts, np.sqrt(R[technique]), lw=lw, label=technique)
+        ax.plot(feature_counts, R[technique], lw=lw, label=technique)
+
+    plt.legend()
+    ax.set_xlabel("Top $n$ most important features")
+    ax.xaxis.set_ticks(feature_counts)
+
