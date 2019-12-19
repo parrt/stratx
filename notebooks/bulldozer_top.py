@@ -19,8 +19,8 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from rfpimp import plot_importances, dropcol_importances, importances
 
 use_oob=False
-metric = mean_squared_error
-compute=False
+metric = mean_absolute_error
+compute=True
 if compute:
     n = 20_000
 
@@ -29,9 +29,9 @@ if compute:
     X = X.iloc[-n:]
     y = y.iloc[-n:]
 
-    R = compare_top_features(X, y, n_shap=500, min_samples_leaf=10, min_slopes_per_x=n*3/1000,
+    R = compare_top_features(X, y, n_shap=300, min_samples_leaf=10, min_slopes_per_x=n*3/1000,
                              catcolnames={'AC','ModelID'},
-                             metric=mean_squared_error,
+                             metric=metric,
                              use_oob=use_oob)
 
     R = R.reset_index(drop=True)
@@ -42,8 +42,8 @@ if compute:
     else:
         R.to_feather("/tmp/sample-importances-MAE.feather")
 else:
-    R=pd.read_feather("/tmp/sample-importances-oob.feather")
-    # R=pd.read_feather("/tmp/sample-importances-MAE.feather")
+    # R=pd.read_feather("/tmp/sample-importances-oob.feather")
+    R=pd.read_feather("/tmp/sample-importances-MAE.feather")
     # R=pd.read_feather("/tmp/sample-importances-MSE.feather")
 
 print(R)
@@ -51,9 +51,9 @@ print(R)
 fig, ax = plt.subplots(1,1,figsize=(4,3.5))
 
 plot_topN(R, ax)
-ax.set_ylabel("OOB $R^2$")
+# ax.set_ylabel("OOB $R^2$")
 # ax.set_ylabel("Training RMSE (dollars)")
-# ax.set_ylabel("Training MAE (dollars)")
+ax.set_ylabel("Training MAE (dollars)")
 plt.tight_layout()
 # plt.savefig("/Users/parrt/Desktop/imp-RMSE.png", dpi=150)
 # plt.savefig("/Users/parrt/Desktop/imp-MAE.png", dpi=150)

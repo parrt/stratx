@@ -43,9 +43,6 @@ def original_catpdp(model, X, colname):
     #  Row 0 is actually the sorted unique X[colname] values used to get predictions.
     pdp_curve = np.mean(ice[1:], axis=0)
 
-    # find lowest value for any category and shift by that
-    min_pdp_y = np.min(pdp_curve)
-    pdp_curve -= min_pdp_y
     return pdp_curve.values
 
 

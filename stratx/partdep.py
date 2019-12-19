@@ -861,8 +861,8 @@ def cat_partial_dependence(X, y,
         avg_per_cat = np.nanmean(leaf_histos, axis=1)
         slope_counts_at_cat = leaf_histos.shape[1] - np.isnan(leaf_histos).sum(axis=1)
 
-    print("slope_counts_at_cat", list(slope_counts_at_cat))
-    print("avg_per_cat", list(avg_per_cat))
+    # print("slope_counts_at_cat", colname, list(slope_counts_at_cat)[:100])
+    # print("avg_per_cat", colname, list(avg_per_cat)[:100])
 
     return leaf_histos, avg_per_cat, ignored
 
@@ -891,6 +891,7 @@ def plot_catstratpd(X, y,
                     marker_size=5,
                     pdp_color='black',
                     style:('strip','scatter')='strip',
+                    min_y_shifted_to_zero=True, # easier to read if values are relative to 0 (usually)
                     show_xlabel=True,
                     show_ylabel=True,
                     show_xticks=True,
@@ -924,10 +925,11 @@ def plot_catstratpd(X, y,
         sorted_indexes = avg_per_cat.argsort()[::-1]  # reversed
         sorted_catcodes = catcodes[sorted_indexes]
 
-
+    min_avg_value = 0
     # The category y deltas straddle 0 but it's easier to understand if we normalize
     # so lowest y delta is 0
-    min_avg_value = np.nanmin(avg_per_cat)
+    if min_y_shifted_to_zero:
+        min_avg_value = np.nanmin(avg_per_cat)
 
     # print(leaf_histos.iloc[np.nonzero(catcounts)])
     # # print(leaf_histos.notna().multiply(leaf_sizes, axis=1))

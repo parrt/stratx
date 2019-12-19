@@ -81,7 +81,7 @@ def load_flights(n):
 
     X, y = df_flights.drop('ARRIVAL_DELAY', axis=1), df_flights['ARRIVAL_DELAY']
 
-    return X, y
+    return X, y, df_flights
 
 
 def load_cancer_regr():
@@ -424,7 +424,6 @@ def compare_top_features(X, y, top_features_range=None,
 def plot_topN(R, ax):
     feature_counts = range(1, R.shape[0] + 1)
     for technique in R.columns:
-        print(technique)
         if technique == 'StratImpact':
             color = '#EF5535'  # '#415BA3'
             lw = 2.0

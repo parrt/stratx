@@ -28,8 +28,17 @@ from rfpimp import plot_importances, dropcol_importances, importances
 #     # plot_stratpd_gridsearch(X, y, 'longitude', 'price')
 
 
-n=5_000
-X, y = load_flights(n=n)
+np.random.seed(999)
+
+n=10_000
+r = (500,600)
+# r = (0,500)
+_, _, df_flights = load_flights(n=n)
+df_flights = df_flights[df_flights['FLIGHT_NUMBER']>r[0]] # look at subset of flight numbers
+df_flights = df_flights[df_flights['FLIGHT_NUMBER']<r[1]] # look at subset of flight numbers
+X, y = df_flights.drop('ARRIVAL_DELAY', axis=1), df_flights['ARRIVAL_DELAY']
+
+print(f"Avg arrival delay {df_flights['ARRIVAL_DELAY'].mean()}")
 
 # plot_stratpd(X, y, 'FLIGHT_NUMBER', 'ARRIVAL_DELAY',
 #              show_slope_counts=True,
@@ -37,12 +46,17 @@ X, y = load_flights(n=n)
 #              min_samples_leaf=5,
 #              show_slope_lines=True)
 #
-plot_catstratpd(X, y, 'dayofyear', 'ARRIVAL_DELAY',
+plot_catstratpd(X, y, 'FLIGHT_NUMBER', 'ARRIVAL_DELAY',
                 min_samples_leaf=10,
-                sort=None)
+                # sort=None,
+                yrange=(-110,250),
+                show_xticks=False,
+                style='scatter')
+plt.title(f"X range {r[0]}..{r[1]} with {n} records")
 
-# plot_catstratpd_gridsearch(X, y, 'FLIGHT_NUMBER', 'ARRIVAL_DELAY')
+# plot_catstratpd_gridsearch(X, y, 'ORIGIN_AIRPORT', 'ARRIVAL_DELAY',
+#                            yrange=(-100,500))
 plt.tight_layout()
 # rent_pdp()
-#plt.savefig("/Users/parrt/Desktop/james.png", pad_inches=0, dpi=150)
+plt.savefig("/Users/parrt/Desktop/james.svg", pad_inches=0, dpi=150)
 plt.show()

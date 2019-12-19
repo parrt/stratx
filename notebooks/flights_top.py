@@ -24,13 +24,13 @@ compute=True
 if compute:
     n = 20_000
 
-    X, y = load_flights(n=n)
+    X, y, _ = load_flights(n=n)
 
     R = compare_top_features(X, y, n_shap=300, min_samples_leaf=10, min_slopes_per_x=n*3.5/1000,
                              n_estimators=40,
                              catcolnames={'AIRLINE',
-                                          #'ORIGIN_AIRPORT','DESTINATION_AIRPORT',
-                                          # 'FLIGHT_NUMBER',
+                                          'ORIGIN_AIRPORT','DESTINATION_AIRPORT',
+                                          'FLIGHT_NUMBER',
                                           'DAY_OF_WEEK', 'dayofyear'},
                              metric=mean_squared_error,
                              use_oob=use_oob)

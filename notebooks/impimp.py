@@ -90,11 +90,11 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                 pdpy = original_catpdp(rf, X=X, colname=colname)
             stop = timer()
             # print(f"{colname} CatStratPD time for {len(X)} records = {(stop - start) * 1000:.0f}ms")
-            min_avg_value = np.nanmin(avg_per_cat)
-            avg_per_cat_from_0 = avg_per_cat - min_avg_value # all positive now, relative to 0 for lowest cat
+            # no need to shift as abs(avg_per_cat) deals with negatives. The avg per cat
+            # values will straddle 0, some above, some below.
             # some cats have NaN, such as 0th which is for "missing values"
-            avg_abs_pdp[j] = np.nanmean(avg_per_cat_from_0)# * (ncats - 1)
-            avg_pdp[j] = np.mean(avg_per_cat_from_0)
+            avg_abs_pdp[j] = np.nanmean(np.abs(avg_per_cat))# * (ncats - 1)
+            avg_pdp[j] = np.mean(avg_per_cat)
             total_avg_pdpy += avg_abs_pdp[j]
         else:
             start = timer()
