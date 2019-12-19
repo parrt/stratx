@@ -63,7 +63,7 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
 
     all_start = timer()
     p = X.shape[1]
-    avg_pdp = np.zeros(shape=(p,)) # track avg pdp, not magnitude
+    # avg_pdp = np.zeros(shape=(p,)) # track avg pdp, not magnitude
     avg_abs_pdp = np.zeros(shape=(p,)) # like area under PDP curve but not including width
     total_avg_pdpy = 0.0
 
@@ -94,7 +94,7 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
             # values will straddle 0, some above, some below.
             # some cats have NaN, such as 0th which is for "missing values"
             avg_abs_pdp[j] = np.nanmean(np.abs(avg_per_cat))# * (ncats - 1)
-            avg_pdp[j] = np.mean(avg_per_cat)
+            # avg_pdp[j] = np.mean(avg_per_cat)
             total_avg_pdpy += avg_abs_pdp[j]
         else:
             start = timer()
@@ -113,7 +113,7 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
             stop = timer()
             # print(f"{colname} StratPD time for {len(X)} records = {(stop-start)*1000:.0f}ms")
             avg_abs_pdp[j] = np.mean(np.abs(pdpy))# * (np.max(pdpx) - np.min(pdpx))
-            avg_pdp[j] = np.mean(pdpy)
+            # avg_pdp[j] = np.mean(pdpy)
             total_avg_pdpy += avg_abs_pdp[j]
 
     # print("avg_pdp", avg_pdp, "sum", np.sum(avg_pdp), "avg y", np.mean(y), "avg y-min(y)", np.mean(y)-np.min(y))

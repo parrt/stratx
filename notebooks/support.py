@@ -13,6 +13,8 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.datasets import load_boston, load_iris, load_wine, load_digits, \
     load_breast_cancer, load_diabetes, fetch_mldata
 from pandas.api.types import is_string_dtype, is_object_dtype, is_categorical_dtype, is_bool_dtype
+pd.set_option('display.max_columns', 10)
+pd.set_option('display.width', 300)
 
 from timeit import default_timer as timer
 
