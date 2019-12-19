@@ -26,13 +26,13 @@ def synthetic_poly_dup_data(n, p=2):
     return df, eqn
 
 
-n = 3000
+n = 1500
 df, eqn = synthetic_poly_dup_data(n, p=3)
 X = df.drop('y', axis=1)
 y = df['y']
 # plot_stratpd(X, y, colname='x1', targetname='y', min_samples_leaf=10)
 # plot_stratpd(X, y, colname='x2', targetname='y', min_samples_leaf=10)
-#plot_stratpd(X, y, colname='x3', targetname='y', min_samples_leaf=25)
+plot_stratpd(X, y, colname='x3', targetname='y', min_samples_leaf=25)
 
 # plot_stratpd_gridsearch(X, y, 'x3', 'y')
 
