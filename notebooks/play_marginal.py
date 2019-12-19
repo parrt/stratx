@@ -111,7 +111,13 @@ def toy_weight_data(n):
     df['pregnant'] = df['pregnant'].astype(bool)
     df['education'] = df['education'].astype(int)
     eqn = "y = 120 + 10(x_{height} - min(x_{height})) + 30x_{pregnant} - 1.5x_{education}"
-    return df, eqn
+
+    df['pregnant'] = df['pregnant'].astype(int)
+    df['sex'] = df['sex'].map({'M': 0, 'F': 1}).astype(int)
+    X = df.drop('weight', axis=1)
+    y = df['weight']
+
+    return X, y, df, eqn
 
 
 def synthetic_poly_data(n, p, noise=0):

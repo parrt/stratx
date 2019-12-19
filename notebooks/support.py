@@ -250,7 +250,7 @@ def get_multiple_imps(X, y, n_shap=300, n_estimators=50, min_samples_leaf=10,
     lm.fit(X, y)
     X_ = pd.DataFrame(normalize(X), columns=X.columns)
     ols_I, score = linear_model_importance(lm, X_, y)
-    ols_shap_I = shap_importances(lm, X_, n_shap)
+    ols_shap_I = shap_importances(lm, X_, n_shap=len(X_)) # fast enough so use all data
 
     rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=True)
     rf.fit(X, y)
