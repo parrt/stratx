@@ -717,8 +717,8 @@ def catwise_leaves_new(rf, X, y, colname, index, verbose):
     """
     Return a 2D array with the average y value for each category in each leaf
     normalized by subtracting min avg y value from all categories.
-    The index has the complete category list. The columns are the y avg value changes
-    found in a single leaf. Each row represents a category level. E.g.,
+    The columns are the y avg value changes found in a single leaf.
+    Each row represents a category level. E.g.,
 
     row           leaf0       leaf1
      0       166.430176  186.796956
@@ -859,8 +859,10 @@ def cat_partial_dependence(X, y,
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
         avg_per_cat = np.nanmean(leaf_histos, axis=1)
+        slope_counts_at_cat = leaf_histos.shape[1] - np.isnan(leaf_histos).sum(axis=1)
 
-    # print("avg_per_cat", avg_per_cat)
+    print("slope_counts_at_cat", list(slope_counts_at_cat))
+    print("avg_per_cat", list(avg_per_cat))
 
     return leaf_histos, avg_per_cat, ignored
 

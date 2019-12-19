@@ -12,6 +12,7 @@ import statsmodels.api as sm
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.datasets import load_boston, load_iris, load_wine, load_digits, \
     load_breast_cancer, load_diabetes, fetch_mldata
+from pandas.api.types import is_string_dtype, is_object_dtype, is_categorical_dtype, is_bool_dtype
 
 from timeit import default_timer as timer
 
@@ -21,6 +22,21 @@ from impimp import *
 import shap
 
 import xgboost as xgb
+
+
+def df_string_to_cat(df:pd.DataFrame) -> dict:
+    catencoders = {}
+    for colname in df.columns:
+        if is_string_dtype(df[colname]) or is_object_dtype(df[colname]):
+            df[colname] = df[colname].astype('category').cat.as_ordered()
+            catencoders[colname] = df[colname].cat.categories
+    return catencoders
+
+
+def df_cat_to_catcode(df):
+    for col in df.columns:
+        if is_categorical_dtype(df[col]):
+            df[col] = df[col].cat.codes + 1
 
 
 def fix_missing_num(df, colname):
@@ -35,6 +51,37 @@ def df_split_dates(df,colname):
     df["saledayofweek"] = df[colname].dt.dayofweek
     df["saledayofyear"] = df[colname].dt.dayofyear
     df[colname] = df[colname].astype(np.int64) # convert to seconds since 1970
+
+
+def load_flights(n):
+    dir = "/Users/parrt/data/flight-delays"
+    df_flights = pd.read_feather(dir+"/flights.feather")
+
+    df_flights['dayofyear'] = pd.to_datetime(
+        df_flights[['YEAR', 'MONTH', 'DAY']]).dt.dayofyear
+    df_flights = df_flights[
+        (df_flights['CANCELLED'] == 0) & (df_flights['DIVERTED'] == 0)]
+
+    features = ['YEAR', 'MONTH', 'DAY', 'DAY_OF_WEEK', 'dayofyear',
+                'AIRLINE', 'ORIGIN_AIRPORT', 'DESTINATION_AIRPORT',
+                'SCHEDULED_DEPARTURE', 'FLIGHT_NUMBER', 'TAIL_NUMBER',
+                'AIR_TIME', 'DISTANCE',
+                'TAXI_IN', 'TAXI_OUT',
+                'DEPARTURE_TIME',
+                'SCHEDULED_ARRIVAL',
+                'SCHEDULED_TIME',
+                'ARRIVAL_DELAY']  # target
+
+
+    df_flights = df_flights[features]
+    df_flights = df_flights.dropna()  # ignore missing stuff for ease and reduce size
+    df_flights = df_flights.sample(n)
+    df_string_to_cat(df_flights)
+    df_cat_to_catcode(df_flights)
+
+    X, y = df_flights.drop('ARRIVAL_DELAY', axis=1), df_flights['ARRIVAL_DELAY']
+
+    return X, y
 
 
 def load_cancer_regr():
@@ -151,7 +198,7 @@ def linear_model_importance(model, X, y):
     # use statsmodels to get stderr for betas
     if isinstance(model, LinearRegression):
         # stderr for betas makes no sense in Lasso
-        beta_stderr = sm.OLS(y, X).fit().bse
+        beta_stderr = sm.OLS(y.values, X).fit().bse
         imp /= beta_stderr
 
     imp /= np.sum(imp) # normalize
