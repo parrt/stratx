@@ -28,7 +28,7 @@ from rfpimp import plot_importances, dropcol_importances, importances
 #     # plot_stratpd_gridsearch(X, y, 'longitude', 'price')
 
 
-n=15_000
+n=5_000
 X, y = load_flights(n=n)
 
 # plot_stratpd(X, y, 'FLIGHT_NUMBER', 'ARRIVAL_DELAY',
@@ -37,7 +37,7 @@ X, y = load_flights(n=n)
 #              min_samples_leaf=5,
 #              show_slope_lines=True)
 #
-plot_catstratpd(X, y, 'FLIGHT_NUMBER', 'ARRIVAL_DELAY',
+plot_catstratpd(X, y, 'dayofyear', 'ARRIVAL_DELAY',
                 min_samples_leaf=10,
                 sort=None)
 
