@@ -42,7 +42,7 @@ print(f"Avg arrival delay {df_flights['ARRIVAL_DELAY'].mean()}")
 
 # plot_stratpd(X, y, 'FLIGHT_NUMBER', 'ARRIVAL_DELAY',
 #              show_slope_counts=True,
-#              min_slopes_percentile_x=n*3.5/1000,
+#              min_slopes_per_x=n*3.5/1000,
 #              min_samples_leaf=5,
 #              show_slope_lines=True)
 #

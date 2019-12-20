@@ -26,8 +26,8 @@ if compute:
 
     X, y, _ = load_flights(n=n)
 
-    R = compare_top_features(X, y, n_shap=300, min_samples_leaf=10,
-                             min_slopes_percentile_x=0.003,
+    R = compare_top_features(X, y, n_shap=300, min_samples_leaf=15,
+                             min_slopes_per_x=15,
                              n_estimators=40,
                              catcolnames={'AIRLINE',
                                           'ORIGIN_AIRPORT','DESTINATION_AIRPORT',

@@ -48,34 +48,36 @@ rf = RandomForestRegressor(n_estimators=100, oob_score=True, n_jobs=-1)
 rf.fit(X,y)
 print("OOB", rf.oob_score_)
 
-R = compare_top_features(X, pd.Series(y), n_shap=300, min_samples_leaf=15,
-                         min_slopes_percentile_x=0.001,
-                         catcolnames={'Sex', 'Race'})
+shap_test_size = 200
+
+R = compare_top_features(X, pd.Series(y), n_shap=shap_test_size, min_samples_leaf=15,
+                         min_slopes_per_x=15,
+                         catcolnames={'Sex', 'Race'},
+                         top_features_range=(1,3))
 print(R)
 
 # From https://slundberg.github.io/shap/notebooks/NHANES%20I%20Survival%20Model.html
 # see how well we can order people by survival
 #c_statistic_harrell(rf.predict(X), y)
 
-shap_test_size = 200
 # shap_values = shap.TreeExplainer(rf).shap_values(X[:shap_test_size])
 #
 # shap.summary_plot(shap_values, X[:shap_test_size])
 
 # I = impact_importances(X, pd.Series(y), min_samples_leaf=10,
 #                             catcolnames={'Sex','Race'},
-#                             min_slopes_percentile_x=0.01)
+#                             min_slopes_per_x=0.01)
 # plot_importances(I)
 #
 # min_samples_leaf = 5
-# min_slopes_percentile_x = 0.001
+# min_slopes_per_x = 0.001
 # plot_stratpd(X, pd.Series(y), 'TS', 'y',
 #              show_slope_counts=True,
-#              min_slopes_percentile_x=min_slopes_percentile_x,
+#              min_slopes_per_x=min_slopes_per_x,
 #              min_samples_leaf=min_samples_leaf,
 #              show_slope_lines=False)
 #
-# plt.title(f"min_slopes_percentile_x={min_slopes_percentile_x}, min_samples_leaf={min_samples_leaf}")
+# plt.title(f"min_slopes_per_x={min_slopes_per_x}, min_samples_leaf={min_samples_leaf}")
 
 # plt.savefig("/Users/parrt/Desktop/nhanes-MAE.svg", dpi=150)
 

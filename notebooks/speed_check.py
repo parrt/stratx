@@ -6,7 +6,7 @@ from stratx.partdep import getcats
 
 n = 10000
 min_samples_leaf = 5
-min_slopes_percentile_x = n*3/1000
+min_slopes_per_x = n*3/1000
 
 #X, y = load_rent(n=n)
 
@@ -21,7 +21,7 @@ start = timer()
 # leaf_xranges, leaf_slopes, slope_counts_at_x, dx, dydx, pdpx, pdpy, ignored = \
 #     partial_dependence(X=X, y=y, colname="latitude",
 #                        min_samples_leaf=min_samples_leaf,
-#                        min_slopes_percentile_x=min_slopes_percentile_x)
+#                        min_slopes_per_x=min_slopes_per_x)
 
 catcodes, _, catcode2name = getcats(X, "ModelID", None)
 

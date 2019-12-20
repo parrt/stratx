@@ -83,7 +83,7 @@ def collect_point_betas(X, y, colname, leaves, nbins:int):
 
 
 def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
-                       min_slopes_percentile_x=0.003,
+                       min_slopes_per_x=15,
                        ntrees=1, min_samples_leaf=10, bootstrap=False, max_features=1.0,
                        supervised=True,
                        verbose=False):
@@ -94,7 +94,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
     :param X: 
     :param y: 
     :param colname: 
-    :param min_slopes_percentile_x:   ignore pdp y values derived from too few slopes (less than .3% of num records)
+    :param min_slopes_per_x:   ignore pdp y values derived from too few slopes (less than .3% of num records)
                             tried percentage of max slope count but was too variable; this is same count across all features
     :param ntrees: 
     :param min_samples_leaf: 
@@ -169,7 +169,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
     # Also cut out any pdp x for which we don't have enough support (num slopes avg'd together)
     # Make sure to drop slope_counts_at_x, uniq_x values too :)
     notnan_idx = ~np.isnan(slope_at_x)
-    relevant_slopes = slope_counts_at_x >= len(X) * min_slopes_percentile_x
+    relevant_slopes = slope_counts_at_x >= min_slopes_per_x
     idx = notnan_idx & relevant_slopes
     slope_at_x = slope_at_x[idx]
     slope_counts_at_x = slope_counts_at_x[idx]
@@ -332,7 +332,7 @@ def plot_stratpd_binned(X, y, colname, targetname,
 
 
 def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
-                 min_slopes_percentile_x=0.003,  # ignore pdp y values derived from too few slopes (drop 0.003 of n, 0.3th percentile)
+                 min_slopes_per_x=15,  # ignore pdp y values derived from too few slopes (drop 0.003 of n, 0.3th percentile)
                  ntrees=1, min_samples_leaf=10, bootstrap=False,
                  max_features=1.0,
                  supervised=True,
@@ -380,7 +380,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                         values.
     """
     leaf_xranges, leaf_slopes, slope_counts_at_x, dx, dydx, pdpx, pdpy, ignored = \
-        partial_dependence(X=X, y=y, colname=colname, min_slopes_percentile_x=min_slopes_percentile_x,
+        partial_dependence(X=X, y=y, colname=colname, min_slopes_per_x=min_slopes_per_x,
                            ntrees=ntrees, min_samples_leaf=min_samples_leaf,
                            bootstrap=bootstrap, max_features=max_features, supervised=supervised,
                            verbose=verbose)
@@ -587,7 +587,7 @@ def avg_values_at_x(uniq_x, leaf_ranges, leaf_slopes, verbose):
 
 def plot_stratpd_gridsearch(X, y, colname, targetname,
                             min_samples_leaf_values=(2,5,10,20,30),
-                            min_slopes_percentile_x=0.003,
+                            min_slopes_per_x=15,
                             nbins_values=(1,2,3,4,5),
                             nbins_smoothing=None,
                             binned=False,
@@ -612,7 +612,7 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
                 leaf_xranges, leaf_slopes, slope_counts_at_x, pdpx, pdpy, ignored = \
                     plot_stratpd(X, y, colname, targetname, ax=axes[col],
                                  min_samples_leaf=msl,
-                                 min_slopes_percentile_x=min_slopes_percentile_x,
+                                 min_slopes_per_x=min_slopes_per_x,
                                  xrange=xrange,
                                  yrange=yrange,
                                  ntrees=1,

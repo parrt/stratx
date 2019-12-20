@@ -37,8 +37,8 @@ plot_stratpd(X, y, colname='x3', targetname='y', min_samples_leaf=25)
 # plot_stratpd_gridsearch(X, y, 'x3', 'y')
 
 #
-R = compare_top_features(X, y, n_shap=500, min_samples_leaf=25,
-                         min_slopes_percentile_x=0.003,
+R = compare_top_features(X, y, n_shap=500, min_samples_leaf=10,
+                         min_slopes_per_x=15,
                          n_estimators=40,
                          metric=mean_squared_error,
                          use_oob=False)

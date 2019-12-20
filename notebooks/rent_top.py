@@ -25,7 +25,7 @@ if compute:
     R = compare_top_features(X, y, n_shap=300, min_samples_leaf=10,
                              metric=metric,
                              use_oob=use_oob,
-                             min_slopes_percentile_x=0.003)
+                             min_slopes_per_x=15)
 
     R = R.reset_index(drop=True)
     if use_oob:

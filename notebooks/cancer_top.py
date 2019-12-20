@@ -27,5 +27,5 @@ metric = mean_absolute_error
 R = compare_top_features(X, y, n_shap=n, min_samples_leaf=5,
                          metric=metric,
                          use_oob=use_oob,
-                         min_slopes_percentile_x=0)
+                         min_slopes_per_x=0)
 print(R)
