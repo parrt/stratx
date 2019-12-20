@@ -83,13 +83,25 @@ def collect_point_betas(X, y, colname, leaves, nbins:int):
 
 
 def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
-                       min_slopes_per_x=5, # ignore pdp y values derived from too few slopes
+                       min_slopes_percentile_x=0.003,
                        ntrees=1, min_samples_leaf=10, bootstrap=False, max_features=1.0,
                        supervised=True,
                        verbose=False):
     """
     Internal computation of partial dependence information about X[colname]'s effect on y.
     Also computes partial derivative of y with respect to X[colname].
+
+    :param X: 
+    :param y: 
+    :param colname: 
+    :param min_slopes_percentile_x:   ignore pdp y values derived from too few slopes (less than .3% of num records)
+                            tried percentage of max slope count but was too variable; this is same count across all features
+    :param ntrees: 
+    :param min_samples_leaf: 
+    :param bootstrap: 
+    :param max_features: 
+    :param supervised: 
+    :param verbose: 
 
     Returns:
         leaf_xranges    The ranges of X[colname] partitions
@@ -157,7 +169,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
     # Also cut out any pdp x for which we don't have enough support (num slopes avg'd together)
     # Make sure to drop slope_counts_at_x, uniq_x values too :)
     notnan_idx = ~np.isnan(slope_at_x)
-    relevant_slopes = slope_counts_at_x >= min_slopes_per_x
+    relevant_slopes = slope_counts_at_x >= len(X) * min_slopes_percentile_x
     idx = notnan_idx & relevant_slopes
     slope_at_x = slope_at_x[idx]
     slope_counts_at_x = slope_counts_at_x[idx]
@@ -320,7 +332,7 @@ def plot_stratpd_binned(X, y, colname, targetname,
 
 
 def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
-                 min_slopes_per_x=5,  # ignore pdp y values derived from too few slopes
+                 min_slopes_percentile_x=0.003,  # ignore pdp y values derived from too few slopes (drop 0.003 of n, 0.3th percentile)
                  ntrees=1, min_samples_leaf=10, bootstrap=False,
                  max_features=1.0,
                  supervised=True,
@@ -333,7 +345,6 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  show_pdp_line=False,
                  show_slope_lines=True,
                  show_slope_counts=True,
-                 show_slope_counts2=False,
                  pdp_marker_size=5,
                  pdp_line_width=.5,
                  slope_line_color='#2c7fb8',
@@ -342,6 +353,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  pdp_line_color='black',
                  pdp_marker_color='black',
                  barchart_size = 0.1,  # if show_slope_counts, what ratio of vertical space should barchart use at bottom?
+                 barchar_alpha = 0.7,
                  verbose=False
                  ):
     """
@@ -368,7 +380,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                         values.
     """
     leaf_xranges, leaf_slopes, slope_counts_at_x, dx, dydx, pdpx, pdpy, ignored = \
-        partial_dependence(X=X, y=y, colname=colname, min_slopes_per_x=min_slopes_per_x,
+        partial_dependence(X=X, y=y, colname=colname, min_slopes_percentile_x=min_slopes_percentile_x,
                            ntrees=ntrees, min_samples_leaf=min_samples_leaf,
                            bootstrap=bootstrap, max_features=max_features, supervised=supervised,
                            verbose=verbose)
@@ -420,7 +432,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         ax2.set_ylim(0, max(slope_counts_at_x) * 1/barchart_size)
         ax2.yaxis.set_major_locator(plt.FixedLocator([0, max(slope_counts_at_x)]))
         ax2.bar(x=pdpx, height=slope_counts_at_x, width=(max(pdpx)-min(pdpx)+1)/len(pdpx),
-                facecolor='#BABABA', align='edge')
+                facecolor='#BABABA', align='edge', alpha=barchar_alpha)
         ax2.set_ylabel(f"Slope count per {colname} point", labelpad=-12)
 
     if show_xlabel:
@@ -575,7 +587,7 @@ def avg_values_at_x(uniq_x, leaf_ranges, leaf_slopes, verbose):
 
 def plot_stratpd_gridsearch(X, y, colname, targetname,
                             min_samples_leaf_values=(2,5,10,20,30),
-                            min_slopes_per_x=5,
+                            min_slopes_percentile_x=0.003,
                             nbins_values=(1,2,3,4,5),
                             nbins_smoothing=None,
                             binned=False,
@@ -600,7 +612,7 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
                 leaf_xranges, leaf_slopes, slope_counts_at_x, pdpx, pdpy, ignored = \
                     plot_stratpd(X, y, colname, targetname, ax=axes[col],
                                  min_samples_leaf=msl,
-                                 min_slopes_per_x=min_slopes_per_x,
+                                 min_slopes_percentile_x=min_slopes_percentile_x,
                                  xrange=xrange,
                                  yrange=yrange,
                                  ntrees=1,
@@ -891,7 +903,7 @@ def plot_catstratpd(X, y,
                     marker_size=5,
                     pdp_color='black',
                     style:('strip','scatter')='strip',
-                    min_y_shifted_to_zero=True, # easier to read if values are relative to 0 (usually)
+                    min_y_shifted_to_zero=True, # easier to read if values are relative to 0 (usually); do this for high cardinality cat vars
                     show_xlabel=True,
                     show_ylabel=True,
                     show_xticks=True,

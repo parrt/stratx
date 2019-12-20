@@ -50,7 +50,7 @@ def toy_weight_data(n):
 n = 1500
 X, y, df, eqn = toy_weight_data(n=n)
 
-R = compare_top_features(X, y, n_shap=n//3, min_samples_leaf=10, min_slopes_per_x=n*3.5/1000,
+R = compare_top_features(X, y, n_shap=n//3, min_samples_leaf=10, min_slopes_percentile_x=0.003,
                          n_estimators=20,
                          catcolnames={'sex', 'pregnant'},
                          metric=mean_squared_error)

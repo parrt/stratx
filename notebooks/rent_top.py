@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 from rfpimp import plot_importances, dropcol_importances, importances
 
 n = 20_000 # more and shap gets bus error it seems
-use_oob=True
+use_oob=False
 metric = mean_absolute_error
 compute=True
 if compute:
@@ -25,7 +25,7 @@ if compute:
     R = compare_top_features(X, y, n_shap=300, min_samples_leaf=10,
                              metric=metric,
                              use_oob=use_oob,
-                             min_slopes_per_x=5)
+                             min_slopes_percentile_x=0.003)
 
     R = R.reset_index(drop=True)
     if use_oob:
@@ -40,6 +40,8 @@ else:
     # R=pd.read_feather("/tmp/rent-importances-MSE.feather")
 
 fig, ax = plt.subplots(1,1,figsize=(5,3.5))
+
+print(R)
 
 plot_topN(R, ax)
 ax.set_ylabel("OOB $R^2$")

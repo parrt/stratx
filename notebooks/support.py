@@ -246,7 +246,7 @@ def shap_importances(model, X, n_shap, normalize=True):
 
 def get_multiple_imps(X, y, n_shap=300, n_estimators=50, min_samples_leaf=10,
                       catcolnames=set(),
-                      min_slopes_per_x=10):
+                      min_slopes_percentile_x=0.003):
 
     lm = LinearRegression()
     lm.fit(X, y)
@@ -262,7 +262,7 @@ def get_multiple_imps(X, y, n_shap=300, n_estimators=50, min_samples_leaf=10,
 
     ours_I = impact_importances(X, y, verbose=False, min_samples_leaf=min_samples_leaf,
                                 catcolnames=catcolnames,
-                                min_slopes_per_x=min_slopes_per_x)
+                                min_slopes_percentile_x=min_slopes_percentile_x)
     return ols_I, ols_shap_I, rf_I, perm_I, ours_I
 
 
@@ -362,7 +362,7 @@ def compare_top_features(X, y, top_features_range=None,
                          n_estimators=40,
                          trials=1,
                          min_samples_leaf=10,
-                         min_slopes_per_x=5,
+                         min_slopes_percentile_x=0.003,
                          catcolnames=set()):
     if use_oob and metric!=r2_score:
         #     print("Warning: use_oob can only give R^2; flipping metric to r2_score")
@@ -377,7 +377,7 @@ def compare_top_features(X, y, top_features_range=None,
                                                                n_estimators=n_estimators,
                                                                n_shap=n_shap,
                                                                catcolnames=catcolnames,
-                                                               min_slopes_per_x=min_slopes_per_x)
+                                                               min_slopes_percentile_x=min_slopes_percentile_x)
     print("OLS\n", ols_I)
     print("OLS SHAP\n", shap_ols_I)
     print("RF SHAP\n", rf_I)

@@ -23,9 +23,20 @@ X, y = load_bulldozer()
 X = X.iloc[-n:]
 y = y.iloc[-n:]
 
-plot_catstratpd(X, y, 'ModelID', 'SalePrice', min_samples_leaf=10, sort=None)
+min_slopes_percentile_x = 0.003
+min_samples_leaf = 10
+# plot_stratpd(X, y, colname='age', targetname='SalePrice',
+#              min_slopes_percentile_x=min_slopes_percentile_x,
+#              show_slope_lines=False,
+#              min_samples_leaf=min_samples_leaf)
+
+plot_catstratpd(X, y, 'ModelID', 'SalePrice',
+                min_samples_leaf=min_samples_leaf, sort=None,
+                show_xticks=False,
+                min_y_shifted_to_zero=False)
 
 # plot_stratpd_gridsearch(X, y, 'Wvillage', 'price')
+plt.title(f"min_slopes_percentile_x={min_slopes_percentile_x}, min_samples_leaf={min_samples_leaf}")
 plt.tight_layout()
 # rent_pdp()
 plt.savefig("/Users/parrt/Desktop/james.png", pad_inches=0, dpi=150)

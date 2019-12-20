@@ -55,7 +55,7 @@ def dupcol():
 df, coeff, eqn = synthetic_poly_dup_data(1000)
 X = df.drop('y', axis=1)
 y = df['y']
-leaf_xranges, leaf_slopes, pdpx, pdpy, ignored = \
+leaf_xranges, leaf_slopes, slope_counts_at_x, pdpx, pdpy, ignored = \
     plot_stratpd(X, y, colname='x3', targetname='y', min_samples_leaf=5)
 
 print("ignored", ignored)

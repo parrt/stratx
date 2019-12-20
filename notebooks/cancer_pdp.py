@@ -21,13 +21,13 @@ X, y = load_cancer_regr()
 
 # plot_stratpd(X, y, 'worst concave points', 'cancer proba',
 #              show_slope_counts=True,
-#              min_slopes_per_x=0,
+#              min_slopes_percentile_x=0,
 #              min_samples_leaf=5,
 #              show_slope_lines=True)
 
 plot_stratpd_gridsearch(X, y, 'worst concave points', 'cancer proba',
                         min_samples_leaf_values=(2, 3, 4, 5, 8, 10, 15),
-                        min_slopes_per_x=0)
+                        min_slopes_percentile_x=0)
 
 plt.tight_layout()
 # rent_pdp()

@@ -19,14 +19,15 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from rfpimp import plot_importances, dropcol_importances, importances
 
 use_oob=False
-metric = mean_squared_error
+metric = mean_absolute_error
 compute=True
 if compute:
-    n = 20_000
+    n = 10_000
 
     X, y, _ = load_flights(n=n)
 
-    R = compare_top_features(X, y, n_shap=300, min_samples_leaf=10, min_slopes_per_x=n*3.5/1000,
+    R = compare_top_features(X, y, n_shap=300, min_samples_leaf=10,
+                             min_slopes_percentile_x=0.003,
                              n_estimators=40,
                              catcolnames={'AIRLINE',
                                           'ORIGIN_AIRPORT','DESTINATION_AIRPORT',
@@ -43,8 +44,8 @@ if compute:
     else:
         R.to_feather("/tmp/flights-importances-MAE.feather")
 else:
-    R=pd.read_feather("/tmp/flights-importances-oob.feather")
-    # R=pd.read_feather("/tmp/sample-importances-MAE.feather")
+    # R=pd.read_feather("/tmp/flights-importances-oob.feather")
+    R=pd.read_feather("/tmp/sample-importances-MAE.feather")
     # R=pd.read_feather("/tmp/sample-importances-MSE.feather")
 
 print(R)

@@ -34,7 +34,7 @@ X, y = load_rent(n=5_000)
 leaf_xranges, leaf_slopes, slope_counts_at_x, pdpx, pdpy, ignored = \
     plot_stratpd(X, y, 'brooklynheights', 'price',
                  show_slope_counts=True,
-                 min_slopes_per_x=30,
+                 min_slopes_percentile_x=0.003,
                  min_samples_leaf=5,
                  show_slope_lines=True)
 

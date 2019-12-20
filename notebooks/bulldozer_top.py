@@ -22,14 +22,15 @@ use_oob=False
 metric = mean_absolute_error
 compute=True
 if compute:
-    n = 20_000
+    n = 30_000 # shap crashes above this
 
     X, y = load_bulldozer()
 
     X = X.iloc[-n:]
     y = y.iloc[-n:]
 
-    R = compare_top_features(X, y, n_shap=300, min_samples_leaf=10, min_slopes_per_x=n*3/1000,
+    R = compare_top_features(X, y, n_shap=300, min_samples_leaf=10,
+                             min_slopes_percentile_x=0.003,
                              catcolnames={'AC','ModelID'},
                              metric=metric,
                              use_oob=use_oob)
