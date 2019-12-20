@@ -21,8 +21,8 @@ def synthetic_poly_dup_data(n, p=2):
     for i in range(p):
         df[f'x{i + 1}'] = np.random.random_sample(size=n) * 3
     yintercept = 100
-    df['y'] = df['x1']**2 + df['x2'] + yintercept
-    eqn = "y = x1^2 + x2"
+    df['y'] = 4*df['x1']**2 + df['x2'] + yintercept
+    eqn = "y = 4*x1^2 + x2"
     return df, eqn
 
 
