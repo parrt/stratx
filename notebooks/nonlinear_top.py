@@ -46,6 +46,6 @@ plot_stratpd_gridsearch(X, y, 'x1', 'price')
 #
 # print(R)
 #dupcol()
-# plt.tight_layout()
-# plt.savefig("/Users/parrt/Desktop/polydup_strat_vs_ice.pdf", bbox_inches=0)
+plt.tight_layout()
+plt.savefig("/Users/parrt/Desktop/foo.png", bbox_inches=0, dpi=150)
 plt.show()

@@ -120,7 +120,7 @@ def shap_pdp_plots(n=1000, feature_perturbation='interventional'):
     df, coeff, eqn = synthetic_poly_dup_data(n=n)
     X = df.drop('y', axis=1)
     y = df['y']
-    rf = RandomForestRegressor(n_estimators=30, min_samples_leaf=min_samples_leaf,
+    rf = RandomForestRegressor(n_estimators=20, min_samples_leaf=min_samples_leaf,
                                oob_score=True)
     rf.fit(X, y)
     if feature_perturbation=='interventional':

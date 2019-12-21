@@ -426,13 +426,19 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         ax.set_ylim(min_y, max_y)
 
     if show_slope_counts:
-        # scale counts so the max height is 10% of overall chart
         ax2 = ax.twinx()
+        # scale y axis so the max count height is 10% of overall chart
         ax2.set_ylim(0, max(slope_counts_at_x) * 1/barchart_size)
+        # draw just 0 and max count
         ax2.yaxis.set_major_locator(plt.FixedLocator([0, max(slope_counts_at_x)]))
         ax2.bar(x=pdpx, height=slope_counts_at_x, width=(max(pdpx)-min(pdpx)+1)/len(pdpx),
                 facecolor='#BABABA', align='edge', alpha=barchar_alpha)
         ax2.set_ylabel(f"{colname} slope count", labelpad=-12)
+        # shift other y axis down 10% to make room
+        if yrange is not None:
+            ax.set_ylim(yrange[0]-(yrange[1]-yrange[0])*.1, yrange[1])
+        else:
+            ax.set_ylim(min_y-(max_y-min_y)*.1, max_y)
 
     if show_xlabel:
         ax.set_xlabel(colname)
@@ -586,7 +592,7 @@ def avg_values_at_x(uniq_x, leaf_ranges, leaf_slopes, verbose):
 
 def plot_stratpd_gridsearch(X, y, colname, targetname,
                             min_samples_leaf_values=(2,5,10,20,30),
-                            min_slopes_per_x_values=(5,10,15,20),
+                            min_slopes_per_x_values=(15,), # Show default count only by default
                             nbins_values=(1,2,3,4,5),
                             nbins_smoothing=None,
                             binned=False,
@@ -601,6 +607,8 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
     if not binned:
         fig, axes = plt.subplots(len(min_slopes_per_x_values), ncols + 1,
                                  figsize=((ncols + 1) * cellwidth, len(min_slopes_per_x_values)*cellheight))
+        if len(min_slopes_per_x_values)==1:
+            axes = axes.reshape(1,-1)
         for row,min_slopes_per_x in enumerate(min_slopes_per_x_values):
             marginal_plot_(X, y, colname, targetname, ax=axes[row][0],
                            show_regr_line=show_regr_line, alpha=marginal_alpha)
