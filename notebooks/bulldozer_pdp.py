@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 
 from rfpimp import plot_importances, dropcol_importances, importances
 
-n = 10_000
+n = 15_000
 
 X, y = load_bulldozer()
 
@@ -30,9 +30,13 @@ min_samples_leaf = 10
 #              show_slope_lines=False,
 #              min_samples_leaf=min_samples_leaf)
 
-plot_catstratpd_gridsearch(X, y, 'ModelID', 'SalePrice',
-                           sort=None,
-                           show_xticks=False, min_y_shifted_to_zero=False)
+plot_stratpd_gridsearch(X, y, colname='age', targetname='SalePrice',
+                        min_samples_leaf_values=(5,10,40,50,80),
+                        yrange=(-30000,30000))
+
+# plot_catstratpd_gridsearch(X, y, 'ModelID', 'SalePrice',
+#                            sort=None,
+#                            show_xticks=False, min_y_shifted_to_zero=False)
 
 # plot_catstratpd(X, y, 'ModelID', 'SalePrice',
 #                 min_samples_leaf=min_samples_leaf, sort=None,

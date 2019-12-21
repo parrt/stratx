@@ -428,7 +428,6 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
     if show_slope_counts:
         # scale counts so the max height is 10% of overall chart
         ax2 = ax.twinx()
-        ax.set_ylim(min_y, max_y)
         ax2.set_ylim(0, max(slope_counts_at_x) * 1/barchart_size)
         ax2.yaxis.set_major_locator(plt.FixedLocator([0, max(slope_counts_at_x)]))
         ax2.bar(x=pdpx, height=slope_counts_at_x, width=(max(pdpx)-min(pdpx)+1)/len(pdpx),
@@ -622,12 +621,12 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
                     # print(f"leafsz {msl} avg abs curve value: {np.mean(np.abs(pdpy)):.2f}, mean {np.mean(pdpy):.2f}, min {np.min(pdpy):.2f}, max {np.max(pdpy)}")
                 except ValueError as e:
                     print(e)
-                    axes[row][col].set_title(
-                        f"Can't gen: leafsz={msl}",
-                        fontsize=8)
+                    axes[row][col].set_title(f"Can't gen: leafsz={msl}", fontsize=8)
                 else:
-                    axes[row][col].set_title(
-                        f"leafsz={msl}, ignored={100*ignored / len(X):.2f}%",fontsize=9)
+                    title = f"leafsz={msl}, min_slopes={min_slopes_per_x}"
+                    if ignored>0:
+                        title = f"leafsz={msl}, min_slopes={min_slopes_per_x},\nignored={100 * ignored / len(X):.2f}%"
+                    axes[row][col].set_title(title, fontsize=9)
                 col += 1
 
     else:
