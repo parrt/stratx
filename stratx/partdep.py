@@ -433,7 +433,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         ax2.yaxis.set_major_locator(plt.FixedLocator([0, max(slope_counts_at_x)]))
         ax2.bar(x=pdpx, height=slope_counts_at_x, width=(max(pdpx)-min(pdpx)+1)/len(pdpx),
                 facecolor='#BABABA', align='edge', alpha=barchar_alpha)
-        ax2.set_ylabel(f"Slope count per {colname} point", labelpad=-12)
+        ax2.set_ylabel(f"{colname} slope count", labelpad=-12)
 
     if show_xlabel:
         ax.set_xlabel(colname)
@@ -587,7 +587,7 @@ def avg_values_at_x(uniq_x, leaf_ranges, leaf_slopes, verbose):
 
 def plot_stratpd_gridsearch(X, y, colname, targetname,
                             min_samples_leaf_values=(2,5,10,20,30),
-                            min_slopes_per_x=15,
+                            min_slopes_per_x_values=(5,10,15,20),
                             nbins_values=(1,2,3,4,5),
                             nbins_smoothing=None,
                             binned=False,
@@ -600,36 +600,38 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
                             cellheight=2.5):
     ncols = len(min_samples_leaf_values)
     if not binned:
-        fig, axes = plt.subplots(1, ncols + 1,
-                                 figsize=((ncols + 1) * cellwidth, cellheight))
-        marginal_plot_(X, y, colname, targetname, ax=axes[0],
-                       show_regr_line=show_regr_line, alpha=marginal_alpha)
-        axes[0].set_title("Marginal", fontsize=10)
-        col = 1
-        for msl in min_samples_leaf_values:
-            #print(f"---------- min_samples_leaf={msl} ----------- ")
-            try:
-                leaf_xranges, leaf_slopes, slope_counts_at_x, pdpx, pdpy, ignored = \
-                    plot_stratpd(X, y, colname, targetname, ax=axes[col],
-                                 min_samples_leaf=msl,
-                                 min_slopes_per_x=min_slopes_per_x,
-                                 xrange=xrange,
-                                 yrange=yrange,
-                                 ntrees=1,
-                                 show_ylabel=False,
-                                 slope_line_alpha=slope_line_alpha)
-                # print(f"leafsz {msl} avg abs curve value: {np.mean(np.abs(pdpy)):.2f}, mean {np.mean(pdpy):.2f}, min {np.min(pdpy):.2f}, max {np.max(pdpy)}")
-            except ValueError as e:
-                print(e)
-                axes[col].set_title(
-                    f"Can't gen: leafsz={msl}",
-                    fontsize=8)
-            else:
-                axes[col].set_title(
-                    f"leafsz={msl}, ignored={100*ignored / len(X):.2f}%",fontsize=9)
-            col += 1
+        fig, axes = plt.subplots(len(min_slopes_per_x_values), ncols + 1,
+                                 figsize=((ncols + 1) * cellwidth, len(min_slopes_per_x_values)*cellheight))
+        for row,min_slopes_per_x in enumerate(min_slopes_per_x_values):
+            marginal_plot_(X, y, colname, targetname, ax=axes[row][0],
+                           show_regr_line=show_regr_line, alpha=marginal_alpha)
+            col = 1
+            axes[row][0].set_title("Marginal", fontsize=10)
+            for msl in min_samples_leaf_values:
+                #print(f"---------- min_samples_leaf={msl} ----------- ")
+                try:
+                    leaf_xranges, leaf_slopes, slope_counts_at_x, pdpx, pdpy, ignored = \
+                        plot_stratpd(X, y, colname, targetname, ax=axes[row][col],
+                                     min_samples_leaf=msl,
+                                     min_slopes_per_x=min_slopes_per_x,
+                                     xrange=xrange,
+                                     yrange=yrange,
+                                     ntrees=1,
+                                     show_ylabel=False,
+                                     slope_line_alpha=slope_line_alpha)
+                    # print(f"leafsz {msl} avg abs curve value: {np.mean(np.abs(pdpy)):.2f}, mean {np.mean(pdpy):.2f}, min {np.min(pdpy):.2f}, max {np.max(pdpy)}")
+                except ValueError as e:
+                    print(e)
+                    axes[row][col].set_title(
+                        f"Can't gen: leafsz={msl}",
+                        fontsize=8)
+                else:
+                    axes[row][col].set_title(
+                        f"leafsz={msl}, ignored={100*ignored / len(X):.2f}%",fontsize=9)
+                col += 1
 
     else:
+        # more or less ignoring this branch these days
         nrows = len(nbins_values)
         fig, axes = plt.subplots(nrows, ncols + 1,
                                  figsize=((ncols + 1) * 2.5, nrows * 2.5))
@@ -678,7 +680,7 @@ def marginal_plot_(X, y, colname, targetname, ax, alpha=.1, show_regr_line=True)
         ax.text(min(xcol) * 1.02, max(y) * .95, f"$\\beta_{{{colname}}}$={r.coef_[0]:.3f}")
 
 
-def marginal_catplot_(X, y, colname, targetname, ax, catnames, alpha=.1):
+def marginal_catplot_(X, y, colname, targetname, ax, catnames, alpha=.1, show_xticks=True):
     catcodes, catnames_, catcode2name = getcats(X, colname, catnames)
 
     ax.scatter(X[colname].values, y.values, alpha=alpha, label=None, s=10)
@@ -687,21 +689,27 @@ def marginal_catplot_(X, y, colname, targetname, ax, catnames, alpha=.1):
     # col = X[colname]
     # cats = np.unique(col)
 
-    ax.set_xticks(catcodes)
-    ax.set_xticklabels(catnames_)
-
+    if show_xticks:
+        ax.set_xticks(catcodes)
+        ax.set_xticklabels(catnames_)
+    else:
+        ax.set_xticks([])
 
 def plot_catstratpd_gridsearch(X, y, colname, targetname,
                                min_samples_leaf_values=(2, 5, 10, 20, 30),
+                               min_y_shifted_to_zero=True, # easier to read if values are relative to 0 (usually); do this for high cardinality cat vars
+                               show_xticks=True,
                                catnames=None,
                                yrange=None,
+                               sort='ascending',
                                cellwidth=2.5, 
                                cellheight=2.5):
     ncols = len(min_samples_leaf_values)
     fig, axes = plt.subplots(1, ncols + 1,
                              figsize=((ncols + 1) * cellwidth, cellheight))
 
-    marginal_catplot_(X, y, colname, targetname, catnames=catnames, ax=axes[0], alpha=0.05)
+    marginal_catplot_(X, y, colname, targetname, catnames=catnames, ax=axes[0], alpha=0.05,
+                      show_xticks=show_xticks)
     axes[0].set_title("Marginal", fontsize=10)
 
     col = 1
@@ -716,9 +724,10 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
                                 catnames=catnames,
                                 yrange=yrange,
                                 ntrees=1,
-                                show_xticks=True,
+                                show_xticks=show_xticks,
                                 show_ylabel=False,
-                                sort=None)
+                                sort=sort,
+                                min_y_shifted_to_zero=min_y_shifted_to_zero)
         except ValueError:
             axes[col].set_title(f"Can't gen: leafsz={msl}", fontsize=8)
         else:

@@ -37,13 +37,13 @@ plot_stratpd(X, y, colname='x3', targetname='y', min_samples_leaf=25)
 # plot_stratpd_gridsearch(X, y, 'x3', 'y')
 
 #
-R = compare_top_features(X, y, n_shap=500, min_samples_leaf=10,
-                         min_slopes_per_x=15,
-                         n_estimators=40,
-                         metric=mean_squared_error,
-                         use_oob=False)
-
-print(R)
+# R = compare_top_features(X, y, n_shap=500, min_samples_leaf=10,
+#                          min_slopes_per_x=15,
+#                          n_estimators=40,
+#                          metric=mean_squared_error,
+#                          use_oob=False)
+#
+# print(R)
 #dupcol()
 # plt.tight_layout()
 # plt.savefig("/Users/parrt/Desktop/polydup_strat_vs_ice.pdf", bbox_inches=0)
