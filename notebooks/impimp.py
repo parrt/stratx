@@ -10,6 +10,7 @@ from stratx.ice import *
 def impact_importances(X: pd.DataFrame,
                        y: pd.Series,
                        catcolnames=set(),
+                       normalize=True, # make imp values 0..1
                        n_samples=None,  # use all by default
                        min_slopes_per_x=10,
                        bootstrap_sampling=True,
@@ -29,6 +30,7 @@ def impact_importances(X: pd.DataFrame,
         bootstrap_sample_idxs = resample(range(n), n_samples=n_samples, replace=bootstrap_sampling)
         X_, y_ = X.iloc[bootstrap_sample_idxs], y.iloc[bootstrap_sample_idxs]
         imps[:,i] = impact_importances_(X_, y_, catcolnames=catcolnames,
+                                        normalize=normalize,
                                         n_trees=n_trees,
                                         min_samples_leaf=min_samples_leaf,
                                         min_slopes_per_x=min_slopes_per_x,
@@ -43,6 +45,8 @@ def impact_importances(X: pd.DataFrame,
     I = pd.DataFrame(data={'Feature': X.columns,
                            'Importance': avg_imps,
                            "Sigma":stddev_imps})
+    if n_trials==1:
+        I = I.drop('Sigma', axis=1)
     I = I.set_index('Feature')
     I = I.sort_values('Importance', ascending=False)
 
@@ -50,6 +54,7 @@ def impact_importances(X: pd.DataFrame,
 
 
 def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
+                        normalize=True,
                         n_trees=1, min_samples_leaf=10,
                         min_slopes_per_x=10,
                         bootstrap=False, max_features=1.0,
@@ -86,6 +91,7 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                                            max_features=max_features,
                                            verbose=verbose)
                 #         print(f"Ignored for {colname} = {ignored}")
+                print()
             elif pdp=='ice':
                 pdpy = original_catpdp(rf, X=X, colname=colname)
             stop = timer()
@@ -117,7 +123,9 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
             total_avg_pdpy += avg_abs_pdp[j]
 
     # print("avg_pdp", avg_pdp, "sum", np.sum(avg_pdp), "avg y", np.mean(y), "avg y-min(y)", np.mean(y)-np.min(y))
-    normalized_importances = avg_abs_pdp / total_avg_pdpy
+    normalized_importances = avg_abs_pdp
+    if normalize:
+        normalized_importances = avg_abs_pdp / total_avg_pdpy
 
     all_stop = timer()
     print(f"Impact importance time {(all_stop-all_start):.0f}s")

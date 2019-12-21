@@ -44,41 +44,95 @@ X = X[shap_paper_features].copy()
 for feature in ['Sedimentation rate', 'Systolic BP', 'White blood cells', 'Pulse pressure']:
     fix_missing_num(X, feature)
 
-rf = RandomForestRegressor(n_estimators=100, oob_score=True, n_jobs=-1)
-rf.fit(X,y)
-print("OOB", rf.oob_score_)
 
-shap_test_size = 200
+def compare():
+    rf = RandomForestRegressor(n_estimators=100, oob_score=True, n_jobs=-1)
+    rf.fit(X,y)
+    print("OOB", rf.oob_score_)
 
-R = compare_top_features(X, pd.Series(y), n_shap=shap_test_size, min_samples_leaf=15,
-                         min_slopes_per_x=15,
-                         catcolnames={'Sex', 'Race'},
-                         top_features_range=(1,3))
-print(R)
+    I = impact_importances(X, pd.Series(y), min_samples_leaf=40,
+                           catcolnames={'Sex', 'Race'})
+    plot_importances(I)
 
-# From https://slundberg.github.io/shap/notebooks/NHANES%20I%20Survival%20Model.html
-# see how well we can order people by survival
-#c_statistic_harrell(rf.predict(X), y)
+    shap_test_size = 200
+    R = compare_top_features(X, pd.Series(y), n_shap=shap_test_size,
+                             min_samples_leaf=30,
+                             min_slopes_per_x=15,
+                             catcolnames={'Sex', 'Race'},
+                             top_features_range=(1, 3))
+    print(R)
 
-# shap_values = shap.TreeExplainer(rf).shap_values(X[:shap_test_size])
+
+def harrell(shap_test_size=200):
+    # From https://slundberg.github.io/shap/notebooks/NHANES%20I%20Survival%20Model.html
+    # see how well we can order people by survival
+    rf = RandomForestRegressor(n_estimators=100, oob_score=True, n_jobs=-1)
+    rf.fit(X,y)
+    print("OOB", rf.oob_score_)
+    c_statistic_harrell(rf.predict(X), y)
+
+    shap_values = shap.TreeExplainer(rf).shap_values(X[:shap_test_size])
+
+    shap.summary_plot(shap_values, X[:shap_test_size])
+
+
+def examine_sex_feature(shap_test_size=200):
+    # rf = RandomForestRegressor(n_estimators=100, oob_score=True, n_jobs=-1)
+    # rf.fit(X,y)
+    # print("OOB", rf.oob_score_)
+    #
+    # explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100), feature_perturbation='interventional')
+    # shap_values = explainer.shap_values(X[:shap_test_size], check_additivity=False)
+    # shapimp = np.mean(np.abs(shap_values), axis=0)
+    # print("\nRF SHAP importances", list(shapimp))
+    #shap.summary_plot(shap_values, X[:shap_test_size])
+    # shap.dependence_plot("Sex", shap_values, X[:shap_test_size], interaction_index=None)
+    # plot_catstratpd(X, pd.Series(y), 'Sex', 'y', yrange=(-3,5), min_y_shifted_to_zero=False,
+    #                 sort=None)
+    I = impact_importances(X, pd.Series(y), catcolnames={'Sex','Race'},
+                           min_samples_leaf=40,
+                           normalize=False)
+    print(I)
+
+
+def examine_Poverty_index_feature(shap_test_size=200):
+    # rf = RandomForestRegressor(n_estimators=100, oob_score=True, n_jobs=-1)
+    # rf.fit(X,y)
+    # print("OOB", rf.oob_score_)
+    #
+    # explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100), feature_perturbation='interventional')
+    # shap_values = explainer.shap_values(X[:shap_test_size], check_additivity=False)
+    # shap.dependence_plot("Poverty index", shap_values, X[:shap_test_size], interaction_index=None)
+    plot_stratpd_gridsearch(X, pd.Series(y), 'Poverty index', 'y',
+                            min_samples_leaf_values=(20,30,40))
+    # plot_stratpd(X, pd.Series(y), 'Poverty index', 'y', min_samples_leaf=40,
+    #              min_slopes_per_x=15,
+    #              show_slope_lines=False,
+    #              show_mean_line=False)
+
+# min_samples_leaf = 10
+# min_slopes_per_x = 0
 #
-# shap.summary_plot(shap_values, X[:shap_test_size])
+# plot_stratpd_gridsearch(X, pd.Series(y), 'Age', 'y',
+#                         min_samples_leaf_values=(20,40,60,70,80,90,100),
+#                         min_slopes_per_x_values=(0,))
 
-# I = impact_importances(X, pd.Series(y), min_samples_leaf=10,
-#                             catcolnames={'Sex','Race'},
-#                             min_slopes_per_x=0.01)
-# plot_importances(I)
-#
-# min_samples_leaf = 5
-# min_slopes_per_x = 0.001
-# plot_stratpd(X, pd.Series(y), 'TS', 'y',
+# plot_stratpd(X, pd.Series(y), 'Age', 'y',
 #              show_slope_counts=True,
 #              min_slopes_per_x=min_slopes_per_x,
 #              min_samples_leaf=min_samples_leaf,
 #              show_slope_lines=False)
-#
-# plt.title(f"min_slopes_per_x={min_slopes_per_x}, min_samples_leaf={min_samples_leaf}")
 
-# plt.savefig("/Users/parrt/Desktop/nhanes-MAE.svg", dpi=150)
+#plt.title(f"min_slopes_per_x={min_slopes_per_x}, min_samples_leaf={min_samples_leaf}")
+
+#examine_Poverty_index_feature()
+
+#examine_sex_feature()
+
+compare()
+
+plt.tight_layout()
+
+plt.savefig("/Users/parrt/Desktop/nhanes-MAE.png", dpi=150)
 
 plt.show()
