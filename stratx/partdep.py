@@ -12,6 +12,7 @@ import collections
 from timeit import default_timer as timer
 
 from dtreeviz.trees import *
+from snowballstemmer.dutch_stemmer import lab0
 
 
 def leaf_samples(rf, X:np.ndarray):
@@ -345,6 +346,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  show_pdp_line=False,
                  show_slope_lines=True,
                  show_slope_counts=True,
+                 show_mean_line=True,
                  pdp_marker_size=5,
                  pdp_line_width=.5,
                  slope_line_color='#2c7fb8',
@@ -352,6 +354,9 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  slope_line_alpha=.3,
                  pdp_line_color='black',
                  pdp_marker_color='black',
+                 title_fontsize=8,
+                 label_fontsize=7,
+                 ticklabel_fontsize=7,
                  barchart_size = 0.1,  # if show_slope_counts, what ratio of vertical space should barchart use at bottom?
                  barchar_alpha = 0.7,
                  verbose=False
@@ -433,19 +438,28 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         ax2.yaxis.set_major_locator(plt.FixedLocator([0, max(slope_counts_at_x)]))
         ax2.bar(x=pdpx, height=slope_counts_at_x, width=(max(pdpx)-min(pdpx)+1)/len(pdpx),
                 facecolor='#BABABA', align='edge', alpha=barchar_alpha)
-        ax2.set_ylabel(f"{colname} slope count", labelpad=-12)
+        ax2.set_ylabel(f"{colname} slope count", labelpad=-12, fontsize=label_fontsize)
         # shift other y axis down 10% to make room
         if yrange is not None:
             ax.set_ylim(yrange[0]-(yrange[1]-yrange[0])*.1, yrange[1])
         else:
             ax.set_ylim(min_y-(max_y-min_y)*.1, max_y)
+        ax2.tick_params(axis='both', which='major', labelsize=ticklabel_fontsize)
+
+    if show_mean_line:
+        m = np.mean(np.abs(pdpy))
+        ax.plot(domain, [m,m], '--', lw=.5, c='black')
+        # add a tick for the mean in y axis
+        ax.set_yticks(list(ax.get_yticks()) + [m])
 
     if show_xlabel:
-        ax.set_xlabel(colname)
+        ax.set_xlabel(colname, fontsize=label_fontsize)
     if show_ylabel:
-        ax.set_ylabel(targetname)
+        ax.set_ylabel(targetname, fontsize=label_fontsize)
     if title is not None:
-        ax.set_title(title)
+        ax.set_title(title, fontsize=title_fontsize)
+
+    ax.tick_params(axis='both', which='major', labelsize=ticklabel_fontsize)
 
     return leaf_xranges, leaf_slopes, slope_counts_at_x, pdpx, pdpy, ignored
 
@@ -601,6 +615,9 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
                             show_regr_line=False,
                             marginal_alpha=.05,
                             slope_line_alpha=.1,
+                            title_fontsize=8,
+                            label_fontsize=7,
+                            ticklabel_fontsize=7,
                             cellwidth=2.5,
                             cellheight=2.5):
     ncols = len(min_samples_leaf_values)
@@ -611,9 +628,11 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
             axes = axes.reshape(1,-1)
         for row,min_slopes_per_x in enumerate(min_slopes_per_x_values):
             marginal_plot_(X, y, colname, targetname, ax=axes[row][0],
-                           show_regr_line=show_regr_line, alpha=marginal_alpha)
+                           show_regr_line=show_regr_line, alpha=marginal_alpha,
+                           label_fontsize=label_fontsize,
+                           ticklabel_fontsize=ticklabel_fontsize)
             col = 1
-            axes[row][0].set_title("Marginal", fontsize=10)
+            axes[row][0].set_title("Marginal", fontsize=title_fontsize)
             for msl in min_samples_leaf_values:
                 #print(f"---------- min_samples_leaf={msl} ----------- ")
                 try:
@@ -625,7 +644,9 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
                                      yrange=yrange,
                                      ntrees=1,
                                      show_ylabel=False,
-                                     slope_line_alpha=slope_line_alpha)
+                                     slope_line_alpha=slope_line_alpha,
+                                     label_fontsize=label_fontsize,
+                                     ticklabel_fontsize=ticklabel_fontsize)
                     # print(f"leafsz {msl} avg abs curve value: {np.mean(np.abs(pdpy)):.2f}, mean {np.mean(pdpy):.2f}, min {np.min(pdpy):.2f}, max {np.max(pdpy)}")
                 except ValueError as e:
                     print(e)
@@ -634,7 +655,7 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
                     title = f"leafsz={msl}, min_slopes={min_slopes_per_x}"
                     if ignored>0:
                         title = f"leafsz={msl}, min_slopes={min_slopes_per_x},\nignored={100 * ignored / len(X):.2f}%"
-                    axes[row][col].set_title(title, fontsize=9)
+                    axes[row][col].set_title(title, fontsize=title_fontsize)
                 col += 1
 
     else:
@@ -672,11 +693,15 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
             row += 1
 
 
-def marginal_plot_(X, y, colname, targetname, ax, alpha=.1, show_regr_line=True):
+def marginal_plot_(X, y, colname, targetname, ax, alpha=.1, show_regr_line=True,
+                   label_fontsize=7,
+                   ticklabel_fontsize=7):
     ax.scatter(X[colname], y, alpha=alpha, label=None, s=10)
-    ax.set_xlabel(colname)
-    ax.set_ylabel(targetname)
+    ax.set_xlabel(colname, fontsize=label_fontsize)
+    ax.set_ylabel(targetname, fontsize=label_fontsize)
     col = X[colname]
+
+    ax.tick_params(axis='both', which='major', labelsize=ticklabel_fontsize)
 
     if show_regr_line:
         r = LinearRegression()

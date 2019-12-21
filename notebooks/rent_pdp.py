@@ -30,15 +30,16 @@ from rfpimp import plot_importances, dropcol_importances, importances
 
 np.random.seed(999)
 
-X, y = load_rent(n=5_000)
-leaf_xranges, leaf_slopes, slope_counts_at_x, pdpx, pdpy, ignored = \
-    plot_stratpd(X, y, 'brooklynheights', 'price',
-                 show_slope_counts=True,
-                 min_slopes_per_x=15,
-                 min_samples_leaf=10,
-                 show_slope_lines=True)
+X, y = load_rent(n=3_000)
+# leaf_xranges, leaf_slopes, slope_counts_at_x, pdpx, pdpy, ignored = \
+#     plot_stratpd(X, y, 'brooklynheights', 'price',
+#                  show_slope_counts=True,
+#                  min_slopes_per_x=15,
+#                  min_samples_leaf=10,
+#                  show_slope_lines=True)
 
-# plot_stratpd_gridsearch(X, y, 'Wvillage', 'price')
+plot_stratpd_gridsearch(X, y, 'bedrooms', 'price',
+                        min_slopes_per_x_values=(0,5))
 plt.tight_layout()
 # rent_pdp()
 plt.savefig("/Users/parrt/Desktop/james.png", pad_inches=0, dpi=150)
