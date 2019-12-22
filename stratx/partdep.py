@@ -522,9 +522,9 @@ def collect_discrete_slopes(rf, X, y, colname, verbose=False):
 
     ignored = 0
 
-    colname_i = X.columns.get_loc(colname)
-    leaves = leaf_samples(rf, X.drop(colname, axis=1))
-    X = X.values
+    X_col = X[colname].values
+    X_not_col = X.drop(colname, axis=1)
+    leaves = leaf_samples(rf, X_not_col)
     y = y.values
 
     if False:
@@ -533,7 +533,7 @@ def collect_discrete_slopes(rf, X, y, colname, verbose=False):
               f"{len(rf.estimators_)} trees, {len(leaves)} total leaves")
 
     for samples in leaves:
-        leaf_x = X[samples,colname_i]
+        leaf_x = X_col[samples]
         # leaf_x = one_leaf_samples[]#.reshape(-1,1)
         leaf_y = y[samples]
 
@@ -553,10 +553,11 @@ def collect_discrete_slopes(rf, X, y, colname, verbose=False):
     leaf_slopes = np.array(leaf_slopes)
 
     stop = timer()
-    if verbose: print(f"collect_leaf_slopes {stop - start:.3f}s")
+    if verbose: print(f"collect_discrete_slopes {stop - start:.3f}s")
     return leaf_xranges, leaf_slopes, ignored
 
-def avg_values_at_x_orig(uniq_x, leaf_ranges, leaf_slopes, verbose):
+
+def avg_values_at_x_nojit(uniq_x, leaf_ranges, leaf_slopes, verbose):
     """
     Compute the weighted average of leaf_slopes at each uniq_x.
 
