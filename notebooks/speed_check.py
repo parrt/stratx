@@ -16,7 +16,7 @@ X = X.iloc[-n:]
 y = y.iloc[-n:]
 
 
-for i in range(1):
+for i in range(3):
     start = timer()
 
     # I = impact_importances(X, y, n_jobs=1)
@@ -29,8 +29,8 @@ for i in range(1):
     print(f"Time {i+1}: {stop-start:.1f}s")
 
 
-# plot_stratpd(X, y, "latitude", "price")
-# plt.show()
+plot_stratpd(X, y, "latitude", "price")
+plt.show()
 
 # catcodes, _, catcode2name = getcats(X, "ModelID", None)
 #

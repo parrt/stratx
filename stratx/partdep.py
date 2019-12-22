@@ -501,7 +501,6 @@ def discrete_xc_space(x: np.ndarray, y: np.ndarray):
     return leaf_xranges, leaf_slopes, ignored
 
 
-#@jit(nopython=True, parallel=True)
 def collect_discrete_slopes(rf, X, y, colname, verbose=False):
     """
     For each leaf of each tree of the random forest rf (trained on all features
@@ -537,7 +536,7 @@ def collect_discrete_slopes(rf, X, y, colname, verbose=False):
         # leaf_x = one_leaf_samples[]#.reshape(-1,1)
         leaf_y = y[samples]
 
-        if np.isclose(np.min(leaf_x), np.max(leaf_x)):
+        if np.abs(np.min(leaf_x) - np.max(leaf_x)) < 1.e-8: # faster than np.isclose()
             # print(f"ignoring xleft=xright @ {r[0]}")
             ignored += len(leaf_x)
             continue
