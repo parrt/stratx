@@ -4,6 +4,8 @@ from support import load_rent, load_bulldozer
 from impimp import *
 from stratx.partdep import *
 
+np.random.seed(999)
+
 n = 50_000
 min_samples_leaf = 5
 min_slopes_per_x = n*3/1000

@@ -15,7 +15,8 @@ from dtreeviz.trees import *
 from snowballstemmer.dutch_stemmer import lab0
 from numba import jit, prange
 
-def leaf_samples(rf, X:np.ndarray):
+
+def leaf_samples_general(rf, X:np.ndarray):
     """
     Return a list of arrays where each array is the set of X sample indexes
     residing in a single leaf of some tree in rf forest.
@@ -42,6 +43,26 @@ def leaf_samples(rf, X:np.ndarray):
         sample_idxs_in_leaf = d.groupby(f'tree{i}')['index'].apply(lambda x: x.values)
         leaf_samples.extend(sample_idxs_in_leaf) # add [...sample idxs...] for each leaf
     return leaf_samples
+
+
+def leaf_samples(rf, X:np.ndarray):
+    """
+    Return a list of arrays where each array is the set of X sample indexes
+    residing in a single leaf of some tree in rf forest. For example, if there
+    are 4 leaves (in one or multiple trees), we might return:
+
+        array([array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
+           array([10, 11, 12, 13, 14, 15]), array([16, 17, 18, 19, 20]),
+           array([21, 22, 23, 24, 25, 26, 27, 28, 29]))
+    """
+    ntrees = len(rf.estimators_)
+    if ntrees==1:
+        leaf_ids = rf.estimators_[0].apply(X)  # which leaf does each X_i go to for sole tree?
+        # Group by id and return sample indexes
+        uniq_ids = np.unique(leaf_ids)
+        return [np.where(leaf_ids==id) for id in uniq_ids]
+
+    return leaf_samples_general(rf, X)
 
 
 def collect_point_betas(X, y, colname, leaves, nbins:int):
@@ -515,7 +536,7 @@ def collect_discrete_slopes(rf, X, y, colname, verbose=False):
 
     Only does discrete now after doing pointwise continuous slopes differently.
     """
-    start = timer()
+    # start = timer()
     leaf_slopes = []  # drop or rise between discrete x values
     leaf_xranges = [] # drop is from one discrete value to next
 
@@ -551,8 +572,8 @@ def collect_discrete_slopes(rf, X, y, colname, verbose=False):
     leaf_xranges = np.array(leaf_xranges)
     leaf_slopes = np.array(leaf_slopes)
 
-    stop = timer()
-    if verbose: print(f"collect_discrete_slopes {stop - start:.3f}s")
+    # stop = timer()
+    # if verbose: print(f"collect_discrete_slopes {stop - start:.3f}s")
     return leaf_xranges, leaf_slopes, ignored
 
 
