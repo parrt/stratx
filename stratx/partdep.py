@@ -46,7 +46,7 @@ def leaf_samples_general(rf, X:np.ndarray):
     return leaf_samples
 '''
 
-#@jit(nopython=True)
+#@jit(forceobj=True)
 def leaf_samples(rf, X:np.ndarray):
     """
     Return a list of arrays where each array is the set of X sample indexes
@@ -59,8 +59,8 @@ def leaf_samples(rf, X:np.ndarray):
     """
     ntrees = len(rf.estimators_)
     leaf_samples = []
+    leaf_ids = rf.apply(X)  # which leaf does each X_i go to for sole tree?
     for t in range(ntrees):
-        leaf_ids = rf.apply(X)  # which leaf does each X_i go to for sole tree?
         # Group by id and return sample indexes
         uniq_ids = np.unique(leaf_ids)
         sample_idxs_in_leaves = [np.where(leaf_ids[:, t] == id) for id in uniq_ids]
