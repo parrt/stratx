@@ -77,10 +77,8 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
         # print(f"Start {colname}")
         if colname in catcolnames:
             if pdp=='stratpd':
-                catcodes, _, catcode2name = getcats(X, colname, incoming_cats=None)
                 leaf_histos, avg_per_cat, ignored = \
                     cat_partial_dependence(X, y, colname=colname,
-                                           index=catcode2name,
                                            ntrees=n_trees,
                                            min_samples_leaf=min_samples_leaf,
                                            bootstrap=bootstrap,

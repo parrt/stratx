@@ -14,6 +14,7 @@ from timeit import default_timer as timer
 from dtreeviz.trees import *
 from snowballstemmer.dutch_stemmer import lab0
 from numba import jit, prange
+import numba
 
 
 '''
@@ -46,8 +47,7 @@ def leaf_samples_general(rf, X:np.ndarray):
     return leaf_samples
 '''
 
-#@jit(forceobj=True)
-def leaf_samples(rf, X:np.ndarray):
+def leaf_samples(rf, X_not_col:np.ndarray):
     """
     Return a list of arrays where each array is the set of X sample indexes
     residing in a single leaf of some tree in rf forest. For example, if there
@@ -59,13 +59,12 @@ def leaf_samples(rf, X:np.ndarray):
     """
     ntrees = len(rf.estimators_)
     leaf_samples = []
-    leaf_ids = rf.apply(X)  # which leaf does each X_i go to for sole tree?
+    leaf_ids = rf.apply(X_not_col)  # which leaf does each X_i go to for sole tree?
     for t in range(ntrees):
         # Group by id and return sample indexes
-        uniq_ids = np.unique(leaf_ids)
+        uniq_ids = np.unique(leaf_ids[:,t])
         sample_idxs_in_leaves = [np.where(leaf_ids[:, t] == id) for id in uniq_ids]
         leaf_samples.extend(sample_idxs_in_leaves)
-
     return leaf_samples
 
 
@@ -149,14 +148,16 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
                         ignore because of samples in leaves with identical X[colname]
                         values.
     """
+    X_not_col = X.drop(colname, axis=1).values
+    X_col = X[colname]
     if supervised:
         rf = RandomForestRegressor(n_estimators=ntrees,
                                    min_samples_leaf=min_samples_leaf,
                                    bootstrap=bootstrap,
                                    max_features=max_features)
-        rf.fit(X.drop(colname, axis=1), y)
+        rf.fit(X_not_col, y)
         if verbose:
-            print(f"Strat Partition RF: dropping {colname} training R^2 {rf.score(X.drop(colname, axis=1), y):.2f}")
+            print(f"Strat Partition RF: dropping {colname} training R^2 {rf.score(X_not_col, y):.2f}")
 
     else:
         """
@@ -172,7 +173,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
         rf.fit(X_synth.drop(colname, axis=1), y_synth)
 
     if verbose:
-        leaves = leaf_samples(rf, X.drop(colname, axis=1))
+        leaves = leaf_samples(rf, X_not_col)
         nnodes = rf.estimators_[0].tree_.node_count
         print(f"Partitioning 'x not {colname}': {nnodes} nodes in (first) tree, "
               f"{len(rf.estimators_)} trees, {len(leaves)} total leaves")
@@ -183,7 +184,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
     # print('leaf_xranges', leaf_xranges)
     # print('leaf_slopes', leaf_slopes)
 
-    real_uniq_x = np.array(sorted(np.unique(X[colname])))
+    real_uniq_x = np.array(sorted(np.unique(X_col)))
     if verbose:
         print(f"discrete StratPD num samples ignored {ignored}/{len(X)} for {colname}")
 
@@ -838,8 +839,8 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
         col += 1
 
 
-#@jit(nopython=True)
-def catwise_leaves(rf, X, y, colname, index, verbose):
+#@jit(forceobj=True, parallel=True)
+def catwise_leaves(rf, X, y, colname):
     """
     Return a 2D array with the average y value for each category in each leaf
     normalized by subtracting min avg y value from all categories.
@@ -857,11 +858,12 @@ def catwise_leaves(rf, X, y, colname, index, verbose):
     y = y.values
 
     ignored = 0
-    for leaf_i, sample in enumerate(leaves):
+    for leaf_i in range(len(leaves)):
+        sample = leaves[leaf_i]
         leaf_cats = X_col[sample]
         leaf_y = y[sample]
-        uniq_cats = np.unique(leaf_cats).astype(int)
-        avg_y_per_cat = [leaf_y[leaf_cats==cat].mean() for cat in uniq_cats]
+        uniq_cats = np.unique(leaf_cats)
+        avg_y_per_cat = np.array([leaf_y[leaf_cats==cat].mean() for cat in uniq_cats])
         if len(avg_y_per_cat) < 2:
             # print(f"ignoring {len(sample)} obs for {len(avg_y_per_cat)} cat(s) in leaf")
             ignored += len(sample)
@@ -871,30 +873,31 @@ def catwise_leaves(rf, X, y, colname, index, verbose):
         # leave cats w/o representation as nan
         avg_leaf_y = np.mean(leaf_y)
         delta_y_per_cat = avg_y_per_cat - avg_leaf_y
-        leaf_histos[[index[cat] for cat in uniq_cats], leaf_i] = delta_y_per_cat
+        leaf_histos[uniq_cats, leaf_i] = delta_y_per_cat
 
     return leaf_histos, ignored
 
 
 def cat_partial_dependence(X, y,
                            colname,  # X[colname] expected to be numeric codes
-                           index,
                            ntrees=1,
                            min_samples_leaf=10,
                            max_features=1.0,
                            bootstrap=False,
                            supervised=True,
-                           use_weighted_avg=False,
+                           use_weighted_avg=False, # not implemented
                            verbose=False):
+    X_not_col = X.drop(colname, axis=1).values
+    X_col = X[colname].values
     if supervised:
         rf = RandomForestRegressor(n_estimators=ntrees,
                                    min_samples_leaf=min_samples_leaf,
                                    bootstrap = bootstrap,
                                    max_features = max_features,
                                    oob_score=False)
-        rf.fit(X.drop(colname, axis=1), y)
+        rf.fit(X_not_col, y)
         if verbose:
-            print(f"CatStrat Partition RF: dropping {colname} training R^2 {rf.score(X.drop(colname, axis=1), y):.2f}")
+            print(f"CatStrat Partition RF: dropping {colname} training R^2 {rf.score(X_not_col, y):.2f}")
     else:
         print("USING UNSUPERVISED MODE")
         X_synth, y_synth = conjure_twoclass(X)
@@ -906,13 +909,13 @@ def cat_partial_dependence(X, y,
         rf.fit(X_synth.drop(colname,axis=1), y_synth)
 
     # rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
-    rf.fit(X.drop(colname, axis=1), y)
+    rf.fit(X_not_col, y)
     # print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     # leaf_histos, leaf_avgs, leaf_sizes, leaf_catcounts, ignored = \
     #     catwise_leaves(rf, X, y, colname, verbose=verbose)
 
     leaf_histos, ignored = \
-        catwise_leaves(rf, X, y, colname, index=index, verbose=verbose)
+        catwise_leaves(rf, X, y, colname)
 
     if verbose:
         print(f"CatStratPD Num samples ignored {ignored} for {colname}")
@@ -920,7 +923,7 @@ def cat_partial_dependence(X, y,
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
         avg_per_cat = np.nanmean(leaf_histos, axis=1)
-        slope_counts_at_cat = leaf_histos.shape[1] - np.isnan(leaf_histos).sum(axis=1)
+        # slope_counts_at_cat = leaf_histos.shape[1] - np.isnan(leaf_histos).sum(axis=1)
 
     # print("slope_counts_at_cat", colname, list(slope_counts_at_cat)[:100])
     # print("avg_per_cat", colname, list(avg_per_cat)[:100])
@@ -957,13 +960,45 @@ def plot_catstratpd(X, y,
                     show_ylabel=True,
                     show_xticks=True,
                     verbose=False):
+    """
+    Warning: cat columns are assumed to be label encoded as unique integers. This
+    function uses the cat code as a raw index internally. So if you have two cat
+    codes 1 and 1000, this function allocates internal arrays of size 1000+1.
+
+    :param X:
+    :param y:
+    :param colname:
+    :param targetname:
+    :param catnames:
+    :param ax:
+    :param sort:
+    :param ntrees:
+    :param min_samples_leaf:
+    :param max_features:
+    :param bootstrap:
+    :param yrange:
+    :param title:
+    :param supervised:
+    :param use_weighted_avg:
+    :param alpha:
+    :param color:
+    :param pdp_marker_size:
+    :param marker_size:
+    :param pdp_color:
+    :param style:
+    :param min_y_shifted_to_zero:
+    :param show_xlabel:
+    :param show_ylabel:
+    :param show_xticks:
+    :param verbose:
+    :return:
+    """
 
     catcodes, _, catcode2name = getcats(X, colname, catnames)
 
     leaf_histos, avg_per_cat, ignored = \
         cat_partial_dependence(X, y,
                                colname=colname,
-                               index=catcode2name,
                                ntrees=ntrees,
                                min_samples_leaf=min_samples_leaf,
                                max_features=max_features,
