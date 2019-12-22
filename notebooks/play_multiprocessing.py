@@ -2,10 +2,11 @@ from multiprocessing import  Pool
 from functools import partial
 import numpy as np
 import pandas as pd
+from joblib import parallel_backend, Parallel, delayed
 
 def doit(df):
     print(id(df)) # gets diff id so must be in diff process and sharing?
-    print()
+    return np.sum(df)
 
 def parallelize(df, func, num_of_processes=8):
     pool = Pool(num_of_processes)
@@ -14,15 +15,13 @@ def parallelize(df, func, num_of_processes=8):
     pool.join()
     return data
 
-def run_on_subset(func, data_subset):
-    return data_subset.apply(func, axis=1)
-
-def parallelize_on_rows(data, func, num_of_processes=8):
-    return parallelize(data, partial(run_on_subset, func), num_of_processes)
-
 
 def go():
     df = pd.DataFrame([[1, 2],[3, 4]])
-    parallelize(df, doit, 8)
+    print(df)
+    #parallelize(df, doit, 8)
+
+    with parallel_backend('threading', n_jobs=2):
+        print(Parallel()(delayed(doit)(df.iloc[i]) for i in range(2)))
 
 go()
