@@ -464,6 +464,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
     return leaf_xranges, leaf_slopes, slope_counts_at_x, pdpx, pdpy, ignored
 
 
+@jit(nopython=True)
 def discrete_xc_space(x: np.ndarray, y: np.ndarray):
     """
     Use the unique x values within a leaf to dynamically compute the bins,
@@ -485,12 +486,12 @@ def discrete_xc_space(x: np.ndarray, y: np.ndarray):
 
     # Group by x, take mean of all y with same x value (they come back sorted too)
     uniq_x = np.unique(x)
-    avg_y = [y[x==ux].mean() for ux in uniq_x]
+    avg_y = np.array([y[x==ux].mean() for ux in uniq_x])
 
     if len(uniq_x)==1:
         # print(f"ignore {len(x)} in discrete_xc_space")
         ignored += len(x)
-        return np.array([]), np.array([]), np.array([]), np.array([]), ignored
+        return np.array([[0.0]]), np.array([0.0]), ignored
 
     bin_deltas = np.diff(uniq_x)
     y_deltas = np.diff(avg_y)
@@ -500,6 +501,7 @@ def discrete_xc_space(x: np.ndarray, y: np.ndarray):
     return leaf_xranges, leaf_slopes, ignored
 
 
+#@jit(nopython=True, parallel=True)
 def collect_discrete_slopes(rf, X, y, colname, verbose=False):
     """
     For each leaf of each tree of the random forest rf (trained on all features
