@@ -32,6 +32,7 @@ def impact_importances(X: pd.DataFrame,
         X_, y_ = X.iloc[bootstrap_sample_idxs], y.iloc[bootstrap_sample_idxs]
         imps[:,i] = impact_importances_(X_, y_, catcolnames=catcolnames,
                                         normalize=normalize,
+                                        n_jobs=n_jobs,
                                         n_trees=n_trees,
                                         min_samples_leaf=min_samples_leaf,
                                         min_slopes_per_x=min_slopes_per_x,
@@ -68,15 +69,13 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
         raise ValueError("pdp must be 'stratpd' or 'ice'")
 
     all_start = timer()
-    p = X.shape[1]
-    avg_abs_pdp = np.zeros(shape=(p,)) # like area under PDP curve but not including width
-    total_avg_pdpy = 0.0
 
     if pdp=='ice':
         rf = RandomForestRegressor(n_estimators=30)
         rf.fit(X, y)
 
     def single_feature_importance(colname):
+        # print(f"Start {colname}")
         if colname in catcolnames:
             if pdp=='stratpd':
                 catcodes, _, catcode2name = getcats(X, colname, incoming_cats=None)
@@ -95,7 +94,7 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
             # no need to shift as abs(avg_per_cat) deals with negatives. The avg per cat
             # values will straddle 0, some above, some below.
             # some cats have NaN, such as 0th which is for "missing values"
-            avg_abs_pdp[j] = np.nanmean(np.abs(avg_per_cat))# * (ncats - 1)
+            avg_abs_pdp = np.nanmean(np.abs(avg_per_cat))# * (ncats - 1)
         else:
             if pdp=='stratpd':
                 leaf_xranges, leaf_slopes, slope_counts_at_x, dx, dydx, pdpx, pdpy, ignored = \
@@ -109,12 +108,25 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                 #         print(f"Ignored for {colname} = {ignored}")
             elif pdp=='ice':
                 pdpy = original_pdp(rf, X=X, colname=colname)
-            avg_abs_pdp[j] = np.mean(np.abs(pdpy))# * (np.max(pdpx) - np.min(pdpx))
+            avg_abs_pdp = np.mean(np.abs(pdpy))# * (np.max(pdpx) - np.min(pdpx))
+        # print(f"Stop {colname}")
+        return avg_abs_pdp
 
-    for j, colname in enumerate(X.columns):
-        # Ask stratx package for the partial dependence of y with respect to X[colname]
-        single_feature_importance(colname)
-        total_avg_pdpy += avg_abs_pdp[j]
+    # if n_jobs>1 or n_jobs==-1:
+    #     print("n_jobs=",n_jobs)
+    #     # with parallel_backend('threading', n_jobs=n_jobs):
+    #     avg_abs_pdp = Parallel(verbose=10, n_jobs=n_jobs)\
+    #         (delayed(single_feature_importance)(colname) for colname in X.columns)
+    # else:
+
+    avg_abs_pdp = [single_feature_importance(colname) for colname in X.columns]
+    total_avg_pdpy = np.sum(avg_abs_pdp)
+
+    # for j, colname in enumerate(X.columns):
+    #     # Ask stratx package for the partial dependence of y with respect to X[colname]
+    #     avg_abs_pdp[j] = single_feature_importance(colname)
+    #     total_avg_pdpy += avg_abs_pdp[j]
+
 
     # print("avg_pdp", avg_pdp, "sum", np.sum(avg_pdp), "avg y", np.mean(y), "avg y-min(y)", np.mean(y)-np.min(y))
     normalized_importances = avg_abs_pdp
