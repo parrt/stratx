@@ -51,16 +51,17 @@ def compare():
     print("OOB", rf.oob_score_)
 
     I = impact_importances(X, pd.Series(y), min_samples_leaf=40,
+                           n_jobs=-1,
                            catcolnames={'Sex', 'Race'})
     plot_importances(I)
-
-    shap_test_size = 200
-    R = compare_top_features(X, pd.Series(y), n_shap=shap_test_size,
-                             min_samples_leaf=30,
-                             min_slopes_per_x=15,
-                             catcolnames={'Sex', 'Race'},
-                             top_features_range=(1, 3))
-    print(R)
+    #
+    # shap_test_size = 200
+    # R = compare_top_features(X, pd.Series(y), n_shap=shap_test_size,
+    #                          min_samples_leaf=30,
+    #                          min_slopes_per_x=15,
+    #                          catcolnames={'Sex', 'Race'},
+    #                          top_features_range=(1, 3))
+    # print(R)
 
 
 def harrell(shap_test_size=200):
