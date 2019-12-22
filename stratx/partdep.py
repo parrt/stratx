@@ -840,7 +840,7 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
 
 
 #@jit(forceobj=True, parallel=True)
-def catwise_leaves(rf, X, y, colname):
+def catwise_leaves(rf, X_not_col, X_col, y):
     """
     Return a 2D array with the average y value for each category in each leaf
     normalized by subtracting min avg y value from all categories.
@@ -851,9 +851,8 @@ def catwise_leaves(rf, X, y, colname):
      0       166.430176  186.796956
      1       219.590349  176.448626
     """
-    leaves = leaf_samples(rf, X.drop(colname, axis=1).values)
+    leaves = leaf_samples(rf, X_not_col)
 
-    X_col = X[colname].values
     leaf_histos = np.full(shape=(max(X_col)+1, len(leaves)), fill_value=np.nan)
     y = y.values
 
@@ -915,7 +914,7 @@ def cat_partial_dependence(X, y,
     #     catwise_leaves(rf, X, y, colname, verbose=verbose)
 
     leaf_histos, ignored = \
-        catwise_leaves(rf, X, y, colname)
+        catwise_leaves(rf, X_not_col, X_col, y)
 
     if verbose:
         print(f"CatStratPD Num samples ignored {ignored} for {colname}")

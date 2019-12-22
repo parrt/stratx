@@ -21,7 +21,10 @@ y = y.iloc[-n:]
 for i in range(2):
     start = timer()
 
+    # I = impact_importances(X, y)
+
     I = impact_importances(X, y, catcolnames={'ModelID'})
+
     # leaf_xranges, leaf_slopes, slope_counts_at_x, dx, dydx, pdpx, pdpy, ignored = \
     #     partial_dependence(X=X, y=y, colname="Wvillage",
     #                        min_samples_leaf=min_samples_leaf,
