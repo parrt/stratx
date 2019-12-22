@@ -16,6 +16,7 @@ from snowballstemmer.dutch_stemmer import lab0
 from numba import jit, prange
 
 
+'''
 def leaf_samples_general(rf, X:np.ndarray):
     """
     Return a list of arrays where each array is the set of X sample indexes
@@ -43,8 +44,9 @@ def leaf_samples_general(rf, X:np.ndarray):
         sample_idxs_in_leaf = d.groupby(f'tree{i}')['index'].apply(lambda x: x.values)
         leaf_samples.extend(sample_idxs_in_leaf) # add [...sample idxs...] for each leaf
     return leaf_samples
+'''
 
-
+#@jit(nopython=True)
 def leaf_samples(rf, X:np.ndarray):
     """
     Return a list of arrays where each array is the set of X sample indexes
@@ -56,13 +58,15 @@ def leaf_samples(rf, X:np.ndarray):
            array([21, 22, 23, 24, 25, 26, 27, 28, 29]))
     """
     ntrees = len(rf.estimators_)
-    if ntrees==1:
-        leaf_ids = rf.estimators_[0].apply(X)  # which leaf does each X_i go to for sole tree?
+    leaf_samples = []
+    for t in range(ntrees):
+        leaf_ids = rf.apply(X)  # which leaf does each X_i go to for sole tree?
         # Group by id and return sample indexes
         uniq_ids = np.unique(leaf_ids)
-        return [np.where(leaf_ids==id) for id in uniq_ids]
+        sample_idxs_in_leaves = [np.where(leaf_ids[:, t] == id) for id in uniq_ids]
+        leaf_samples.extend(sample_idxs_in_leaves)
 
-    return leaf_samples_general(rf, X)
+    return leaf_samples
 
 
 def collect_point_betas(X, y, colname, leaves, nbins:int):
@@ -833,7 +837,9 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
             axes[col].set_title(f"leafsz={msl}, ign'd={ignored / len(X):.1f}%", fontsize=9)
         col += 1
 
-def catwise_leaves_new(rf, X, y, colname, index, verbose):
+
+#@jit(nopython=True)
+def catwise_leaves(rf, X, y, colname, index, verbose):
     """
     Return a 2D array with the average y value for each category in each leaf
     normalized by subtracting min avg y value from all categories.
@@ -844,20 +850,15 @@ def catwise_leaves_new(rf, X, y, colname, index, verbose):
      0       166.430176  186.796956
      1       219.590349  176.448626
     """
-    leaves = leaf_samples(rf, X.drop(colname, axis=1))
+    leaves = leaf_samples(rf, X.drop(colname, axis=1).values)
 
-    colname_i = X.columns.get_loc(colname)
-    cats = np.unique(X[colname])
-    leaf_histos = np.full(shape=(max(cats)+1, len(leaves)), fill_value=np.nan)
-    # leaf_histos = pd.DataFrame(index=range(0,maxcat+1), columns=[f'leaf {i}' for i in range(len(leaves))])
-    # leaf_histos.index.name = 'category'
-
-    X = X.values
+    X_col = X[colname].values
+    leaf_histos = np.full(shape=(max(X_col)+1, len(leaves)), fill_value=np.nan)
     y = y.values
 
     ignored = 0
     for leaf_i, sample in enumerate(leaves):
-        leaf_cats = X[sample, colname_i]
+        leaf_cats = X_col[sample]
         leaf_y = y[sample]
         uniq_cats = np.unique(leaf_cats).astype(int)
         avg_y_per_cat = [leaf_y[leaf_cats==cat].mean() for cat in uniq_cats]
@@ -873,66 +874,6 @@ def catwise_leaves_new(rf, X, y, colname, index, verbose):
         leaf_histos[[index[cat] for cat in uniq_cats], leaf_i] = delta_y_per_cat
 
     return leaf_histos, ignored
-
-
-def catwise_leaves(rf, X, y, colname, verbose):
-    """
-    Return a dataframe with the average y value for each category in each leaf
-    normalized by subtracting min avg y value from all categories.
-    The index has the complete category list. The columns are the y avg value changes
-    found in a single leaf. Each row represents a category level. E.g.,
-
-                       leaf0       leaf1
-        category
-        1         166.430176  186.796956
-        2         219.590349  176.448626
-    """
-    start = timer()
-    ignored = 0
-    # catcol = X[colname].astype('category').cat.as_ordered()
-    cats = np.unique(X[colname])
-    # catcounts = np.zeros(max(cats)+1, dtype=int)
-    leaf_sizes = []
-    leaf_avgs = []
-    maxcat = max(cats)
-    leaf_histos = pd.DataFrame(index=range(0,maxcat+1))
-    leaf_histos.index.name = 'category'
-    leaf_catcounts = pd.DataFrame(index=range(0,maxcat+1))
-    leaf_catcounts.index.name = 'category'
-    ci = 0
-    Xy = pd.concat([X, y], axis=1)
-    leaves = leaf_samples(rf, X.drop(colname, axis=1))
-    # print(f"{len(leaves)} leaves")
-    for sample in leaves:
-        combined = Xy.iloc[sample]
-        # print("\n", combined)
-        groupby = combined.groupby(colname)
-        avg_y_per_cat = groupby.mean()
-        avg_y_per_cat = avg_y_per_cat[y.name]#.iloc[:,-1]
-        if len(avg_y_per_cat) < 2:
-            # print(f"ignoring {len(sample)} obs for {len(avg_y_per_cat)} cat(s) in leaf")
-            ignored += len(sample)
-            continue
-
-        # we'll weight by count per cat later so must track
-        count_y_per_cat = combined[colname].value_counts()
-        leaf_catcounts['leaf' + str(ci)] = count_y_per_cat
-
-        # record avg y value per cat above avg y in this leaf
-        # This assignment copies cat y avgs to appropriate cat row using index
-        # leaving cats w/o representation as nan
-        avg_y = np.mean(combined[y.name])
-        leaf_avgs.append(avg_y)
-        delta_y_per_cat = avg_y_per_cat - avg_y
-        leaf_histos['leaf' + str(ci)] = delta_y_per_cat
-        leaf_sizes.append(len(sample))
-        # print(f"L avg {avg_y:.2f}:\n\t{delta_y_per_cat}")
-        ci += 1
-
-    # print(f"Avg of leaf avgs is {np.mean(leaf_avgs):.2f} vs y avg {np.mean(y)}")
-    stop = timer()
-    if verbose: print(f"catwise_leaves {stop - start:.3f}s")
-    return leaf_histos, np.array(leaf_avgs), leaf_sizes, leaf_catcounts, ignored
 
 
 def cat_partial_dependence(X, y,
@@ -971,7 +912,7 @@ def cat_partial_dependence(X, y,
     #     catwise_leaves(rf, X, y, colname, verbose=verbose)
 
     leaf_histos, ignored = \
-        catwise_leaves_new(rf, X, y, colname, index=index, verbose=verbose)
+        catwise_leaves(rf, X, y, colname, index=index, verbose=verbose)
 
     if verbose:
         print(f"CatStratPD Num samples ignored {ignored} for {colname}")
