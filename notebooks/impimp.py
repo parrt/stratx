@@ -32,7 +32,6 @@ def impact_importances(X: pd.DataFrame,
         X_, y_ = X.iloc[bootstrap_sample_idxs], y.iloc[bootstrap_sample_idxs]
         imps[:,i] = impact_importances_(X_, y_, catcolnames=catcolnames,
                                         normalize=normalize,
-                                        n_jobs=n_jobs,
                                         n_trees=n_trees,
                                         min_samples_leaf=min_samples_leaf,
                                         min_slopes_per_x=min_slopes_per_x,

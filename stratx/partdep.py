@@ -512,7 +512,7 @@ def discrete_xc_space(x: np.ndarray, y: np.ndarray):
     if len(uniq_x)==1:
         # print(f"ignore {len(x)} in discrete_xc_space")
         ignored += len(x)
-        return np.array([[0.0]]), np.array([0.0]), ignored
+        return np.array([[0]],dtype=x.dtype), np.array([0.0]), ignored
 
     bin_deltas = np.diff(uniq_x)
     y_deltas = np.diff(avg_y)
