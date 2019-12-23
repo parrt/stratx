@@ -32,7 +32,7 @@ X = df.drop('y', axis=1)
 y = df['y']
 # plot_stratpd(X, y, colname='x1', targetname='y', min_samples_leaf=10)
 # plot_stratpd(X, y, colname='x2', targetname='y', min_samples_leaf=10)
-plot_stratpd(X, y, colname='x3', targetname='y', min_samples_leaf=25)
+plot_stratpd(X, y, colname='x3', targetname='y', min_samples_leaf=25, min_slopes_per_x=15)
 
 # plot_stratpd_gridsearch(X, y, 'x3', 'y')
 
