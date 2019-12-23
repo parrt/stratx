@@ -179,7 +179,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
               f"{len(rf.estimators_)} trees, {len(leaves)} total leaves")
 
     leaf_xranges, leaf_slopes, ignored = \
-        collect_discrete_slopes(rf, X, y, colname, verbose=verbose)
+        collect_discrete_slopes(rf, X, y, colname)
 
     # print('leaf_xranges', leaf_xranges)
     # print('leaf_slopes', leaf_slopes)
@@ -189,7 +189,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
         print(f"discrete StratPD num samples ignored {ignored}/{len(X)} for {colname}")
 
     slope_at_x, slope_counts_at_x = \
-        avg_values_at_x_jit(real_uniq_x, leaf_xranges, leaf_slopes, verbose=verbose)
+        avg_values_at_x_jit(real_uniq_x, leaf_xranges, leaf_slopes)
 
     # Drop any nan slopes; implies we have no reliable data for that range
     # Last slope is nan since no data after last x value so that will get dropped too
@@ -526,8 +526,7 @@ def discrete_xc_space(x: np.ndarray, y: np.ndarray):
 
     return leaf_xranges, leaf_slopes, ignored
 
-
-def collect_discrete_slopes(rf, X, y, colname, verbose=False):
+def collect_discrete_slopes(rf, X, y, colname):
     """
     For each leaf of each tree of the random forest rf (trained on all features
     except colname), get the leaf samples then isolate the column of interest X values
@@ -592,18 +591,8 @@ def avg_values_at_x_nojit(uniq_x, leaf_ranges, leaf_slopes, verbose):
     nx = len(uniq_x)
     nslopes = len(leaf_slopes)
     slopes = np.zeros(shape=(nx, nslopes))
-    #i = 0  # unique x value (column in slopes matrix) index; we get a slope line for each range x_i to x_i+1
     # collect the slope for each range (taken from a leaf) as collection of
     # flat lines across the same x range
-
-    '''
-    # Hmm...this doesn't seem to work so back it out
-    for i, (xr, slope) in enumerate(zip(leaf_ranges, leaf_slopes)):
-        # now trim line so it's only valid in range xr;
-        # don't set slope on right edge
-        slopes[:, i] = where( (uniq_x >= xr[0]) | (uniq_x < xr[1]), slope, nan )
-    '''
-
     i = 0
     for xr, slope in zip(leaf_ranges, leaf_slopes):
         s = np.full(nx, slope, dtype=float)
@@ -632,7 +621,7 @@ def avg_values_at_x_nojit(uniq_x, leaf_ranges, leaf_slopes, verbose):
 
 
 @jit(nopython=True, parallel=True)
-def avg_values_at_x_jit(uniq_x, leaf_ranges, leaf_slopes, verbose):
+def avg_values_at_x_jit(uniq_x, leaf_ranges, leaf_slopes):
     """
     Compute the weighted average of leaf_slopes at each uniq_x.
 
@@ -839,7 +828,6 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
         col += 1
 
 
-#@jit(forceobj=True, parallel=True)
 def catwise_leaves(rf, X_not_col, X_col, y):
     """
     Return a 2D array with the average y value for each category in each leaf
@@ -854,8 +842,6 @@ def catwise_leaves(rf, X_not_col, X_col, y):
     leaves = leaf_samples(rf, X_not_col)
 
     leaf_histos = np.full(shape=(max(X_col)+1, len(leaves)), fill_value=np.nan)
-    y = y.values
-
     ignored = 0
     for leaf_i in range(len(leaves)):
         sample = leaves[leaf_i]
@@ -914,7 +900,7 @@ def cat_partial_dependence(X, y,
     #     catwise_leaves(rf, X, y, colname, verbose=verbose)
 
     leaf_histos, ignored = \
-        catwise_leaves(rf, X_not_col, X_col, y)
+        catwise_leaves(rf, X_not_col, X_col, y.values)
 
     if verbose:
         print(f"CatStratPD Num samples ignored {ignored} for {colname}")

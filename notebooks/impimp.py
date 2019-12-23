@@ -25,6 +25,8 @@ def impact_importances(X: pd.DataFrame,
         raise ValueError("Can only operate on dataframes at the moment")
 
     resample_with_replacement = n_trees>1
+    if not stddev:
+        n_stddev_trials = 1
     n,p = X.shape
     imps = np.zeros(shape=(p, n_stddev_trials)) # track p var importances for ntrials; cols are trials
     for i in range(n_stddev_trials):
@@ -94,7 +96,6 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                                            max_features=max_features,
                                            verbose=verbose)
                 #         print(f"Ignored for {colname} = {ignored}")
-                print()
             elif pdp=='ice':
                 pdpy = original_catpdp(rf, X=X, colname=colname)
             # no need to shift as abs(avg_per_cat) deals with negatives. The avg per cat
