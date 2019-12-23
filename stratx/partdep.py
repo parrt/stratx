@@ -109,7 +109,7 @@ def collect_point_betas(X, y, colname, leaves, nbins:int):
 
 def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
                        min_slopes_per_x=15,
-                       ntrees=1, min_samples_leaf=10, bootstrap=False, max_features=1.0,
+                       n_trees=1, min_samples_leaf=10, bootstrap=False, max_features=1.0,
                        supervised=True,
                        verbose=False):
     """
@@ -121,7 +121,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
     :param colname: 
     :param min_slopes_per_x:   ignore pdp y values derived from too few slopes (less than .3% of num records)
                             tried percentage of max slope count but was too variable; this is same count across all features
-    :param ntrees: 
+    :param n_trees:
     :param min_samples_leaf: 
     :param bootstrap: 
     :param max_features: 
@@ -151,7 +151,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
     X_not_col = X.drop(colname, axis=1).values
     X_col = X[colname]
     if supervised:
-        rf = RandomForestRegressor(n_estimators=ntrees,
+        rf = RandomForestRegressor(n_estimators=n_trees,
                                    min_samples_leaf=min_samples_leaf,
                                    bootstrap=bootstrap,
                                    max_features=max_features)
@@ -165,7 +165,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
         """
         if verbose: print("USING UNSUPERVISED MODE")
         X_synth, y_synth = conjure_twoclass(X)
-        rf = RandomForestRegressor(n_estimators=ntrees,
+        rf = RandomForestRegressor(n_estimators=n_trees,
                                    min_samples_leaf=min_samples_leaf,
                                    bootstrap=bootstrap,
                                    max_features=max_features,
@@ -380,9 +380,9 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  slope_line_alpha=.3,
                  pdp_line_color='black',
                  pdp_marker_color='black',
-                 title_fontsize=8,
-                 label_fontsize=7,
-                 ticklabel_fontsize=7,
+                 title_fontsize=11,
+                 label_fontsize=10,
+                 ticklabel_fontsize=10,
                  barchart_size = 0.1,  # if show_slope_counts, what ratio of vertical space should barchart use at bottom?
                  barchar_alpha = 0.7,
                  verbose=False
@@ -412,7 +412,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
     """
     leaf_xranges, leaf_slopes, slope_counts_at_x, dx, dydx, pdpx, pdpy, ignored = \
         partial_dependence(X=X, y=y, colname=colname, min_slopes_per_x=min_slopes_per_x,
-                           ntrees=ntrees, min_samples_leaf=min_samples_leaf,
+                           n_trees=ntrees, min_samples_leaf=min_samples_leaf,
                            bootstrap=bootstrap, max_features=max_features, supervised=supervised,
                            verbose=verbose)
 
@@ -879,17 +879,17 @@ def catwise_leaves(rf, X_not_col, X_col, y):
 
 def cat_partial_dependence(X, y,
                            colname,  # X[colname] expected to be numeric codes
-                           ntrees=1,
+                           n_trees=1,
                            min_samples_leaf=10,
                            max_features=1.0,
                            bootstrap=False,
                            supervised=True,
-                           use_weighted_avg=False, # not implemented
+                           use_weighted_avg=False,  # not implemented
                            verbose=False):
     X_not_col = X.drop(colname, axis=1).values
     X_col = X[colname].values
     if supervised:
-        rf = RandomForestRegressor(n_estimators=ntrees,
+        rf = RandomForestRegressor(n_estimators=n_trees,
                                    min_samples_leaf=min_samples_leaf,
                                    bootstrap = bootstrap,
                                    max_features = max_features,
@@ -900,7 +900,7 @@ def cat_partial_dependence(X, y,
     else:
         print("USING UNSUPERVISED MODE")
         X_synth, y_synth = conjure_twoclass(X)
-        rf = RandomForestRegressor(n_estimators=ntrees,
+        rf = RandomForestRegressor(n_estimators=n_trees,
                                    min_samples_leaf=min_samples_leaf,
                                    bootstrap = bootstrap,
                                    max_features = max_features,
@@ -998,7 +998,7 @@ def plot_catstratpd(X, y,
     leaf_histos, avg_per_cat, ignored = \
         cat_partial_dependence(X, y,
                                colname=colname,
-                               ntrees=ntrees,
+                               n_trees=ntrees,
                                min_samples_leaf=min_samples_leaf,
                                max_features=max_features,
                                bootstrap=bootstrap,

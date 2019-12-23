@@ -11,24 +11,24 @@ from stratx.ice import *
 def impact_importances(X: pd.DataFrame,
                        y: pd.Series,
                        catcolnames=set(),
-                       normalize=True, # make imp values 0..1
-                       n_samples=None,  # use all by default
-                       min_slopes_per_x=10,
-                       bootstrap_sampling=True,
-                       n_trials: int = 1,
+                       normalize=True,  # make imp values 0..1
+                       sort=True,  # sort by importance in descending order?
+                       min_slopes_per_x=15,
+                       stddev=False,  # turn on to get stddev of importances via bootstrapping
+                       n_stddev_trials: int = 5,
+                       pvalues=False,  # use to get p-values for each importance; it's number trials
+                       n_pvalue_trials=50,  # how many trials to do to get p-values
                        n_trees=1, min_samples_leaf=10, bootstrap=False, max_features=1.0,
                        verbose=False,
                        pdp:('stratpd','ice')='stratpd') -> pd.DataFrame:
     if not isinstance(X, pd.DataFrame):
         raise ValueError("Can only operate on dataframes at the moment")
 
-    if n_trees==1:
-        bootstrap_sampling = False
-
+    resample_with_replacement = n_trees>1
     n,p = X.shape
-    imps = np.zeros(shape=(p, n_trials)) # track p var importances for ntrials; cols are trials
-    for i in range(n_trials):
-        bootstrap_sample_idxs = resample(range(n), n_samples=n_samples, replace=bootstrap_sampling)
+    imps = np.zeros(shape=(p, n_stddev_trials)) # track p var importances for ntrials; cols are trials
+    for i in range(n_stddev_trials):
+        bootstrap_sample_idxs = resample(range(n), n_samples=n, replace=resample_with_replacement)
         X_, y_ = X.iloc[bootstrap_sample_idxs], y.iloc[bootstrap_sample_idxs]
         imps[:,i] = impact_importances_(X_, y_, catcolnames=catcolnames,
                                         normalize=normalize,
@@ -41,15 +41,24 @@ def impact_importances(X: pd.DataFrame,
                                         pdp=pdp)
 
     avg_imps = np.mean(imps, axis=1)
-    stddev_imps = np.std(imps, axis=1)
 
-    I = pd.DataFrame(data={'Feature': X.columns,
-                           'Importance': avg_imps,
-                           "Sigma":stddev_imps})
-    if n_trials==1:
-        I = I.drop('Sigma', axis=1)
+    I = pd.DataFrame(data={'Feature': X.columns, 'Importance': avg_imps})
     I = I.set_index('Feature')
-    I = I.sort_values('Importance', ascending=False)
+
+    if stddev:
+        I['Sigma'] = np.std(imps, axis=1)
+
+    if pvalues:
+        I['p-value'] = importances_pvalues(X, y, catcolnames,
+                                           importances=I,
+                                           n_trials=n_pvalue_trials,
+                                           min_slopes_per_x=min_slopes_per_x,
+                                           n_trees=n_trees,
+                                           min_samples_leaf=min_samples_leaf,
+                                           bootstrap=bootstrap,
+                                           max_features=max_features)
+    if sort is not None:
+        I = I.sort_values('Importance', ascending=False)
 
     return I
 
@@ -57,7 +66,7 @@ def impact_importances(X: pd.DataFrame,
 def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                         normalize=True,
                         n_trees=1, min_samples_leaf=10,
-                        min_slopes_per_x=10,
+                        min_slopes_per_x=15,
                         bootstrap=False, max_features=1.0,
                         verbose=False,
                         pdp:('stratpd','ice')='stratpd') -> np.ndarray:
@@ -79,7 +88,7 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
             if pdp=='stratpd':
                 leaf_histos, avg_per_cat, ignored = \
                     cat_partial_dependence(X, y, colname=colname,
-                                           ntrees=n_trees,
+                                           n_trees=n_trees,
                                            min_samples_leaf=min_samples_leaf,
                                            bootstrap=bootstrap,
                                            max_features=max_features,
@@ -96,7 +105,7 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
             if pdp=='stratpd':
                 leaf_xranges, leaf_slopes, slope_counts_at_x, dx, dydx, pdpx, pdpy, ignored = \
                     partial_dependence(X=X, y=y, colname=colname,
-                                       ntrees=n_trees,
+                                       n_trees=n_trees,
                                        min_samples_leaf=min_samples_leaf,
                                        min_slopes_per_x=min_slopes_per_x,
                                        bootstrap=bootstrap,
@@ -134,3 +143,51 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
     print(f"Impact importance time {(all_stop-all_start):.0f}s")
 
     return normalized_importances
+
+
+def importances_pvalues(X: pd.DataFrame,
+                        y: pd.Series,
+                        catcolnames=set(),
+                        importances=None, # importances to use as baseline; must be in X column order!
+                        n_trials: int = 1,
+                        min_slopes_per_x=15,
+                        n_trees=1, min_samples_leaf=10, bootstrap=False,
+                        max_features=1.0):
+    """
+    For each feature, compute and return empirical p-values.  The idea is to shuffle y
+    and then compute feature importances; do this repeatedly to get a null distribution.
+    The importances for feature j form a distribution and we can count how many times the
+    importance value (obtained with shuffled y) reaches the importance value computed
+    using unshuffled y.
+    """
+    I_baseline = importances
+    if importances is None:
+        I_baseline = impact_importances(X, y, catcolnames=catcolnames, sort=False,
+                                        min_slopes_per_x=min_slopes_per_x,
+                                        n_trees=n_trees,
+                                        min_samples_leaf=min_samples_leaf,
+                                        bootstrap=bootstrap,
+                                        max_features=max_features)
+
+    counts = np.zeros(shape=X.shape[1])
+    for i in range(n_trials):
+        I = impact_importances(X, y.sample(frac=1.0, replace=False),
+                               catcolnames=catcolnames, sort=False,
+                               min_slopes_per_x=min_slopes_per_x,
+                               n_trees=n_trees,
+                               min_samples_leaf=min_samples_leaf,
+                               bootstrap=bootstrap,
+                               max_features=max_features)
+        counts += I['Importance'].values >= I_baseline['Importance'].values
+
+    # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC379178/ says don't use r/n
+    # "Typically, the estimate of the P value is obtained as equation p_hat = r/n, where n
+    # is the number of replicate samples that have been simulated and r is the number
+    # of these replicates that produce a test statistic greater than or equal to that
+    # calculated for the actual data. However, Davison and Hinkley (1997) give the
+    # correct formula for obtaining an empirical P value as (r+1)/(n+1)."
+    pvalue = (counts + 1) / (n_trials + 1)
+
+    # print(counts)
+    # print(pvalue)
+    return pvalue
