@@ -68,6 +68,7 @@ def impact_importances(X: pd.DataFrame,
     return I
 
 
+
 def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                         normalize=True,
                         n_jobs=1,
@@ -88,56 +89,52 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
         rf = RandomForestRegressor(n_estimators=30)
         rf.fit(X, y)
 
-    def feature_subset_importance(colnames):
-        avg_abs_pdp_subset = []
-        for colname in colnames:
-            # print(f"Start {colname}")
-            if colname in catcolnames:
-                if pdp=='stratpd':
-                    leaf_histos, avg_per_cat, ignored = \
-                        cat_partial_dependence(X, y, colname=colname,
-                                               n_trees=n_trees,
-                                               min_samples_leaf=min_samples_leaf,
-                                               bootstrap=bootstrap,
-                                               max_features=max_features,
-                                               verbose=verbose)
-                elif pdp=='ice':
-                    pdpy = original_catpdp(rf, X=X, colname=colname)
-                # no need to shift as abs(avg_per_cat) deals with negatives. The avg per cat
-                # values will straddle 0, some above, some below.
-                # some cats have NaN, such as 0th which is for "missing values"
-                avg_abs_pdp = np.nanmean(np.abs(avg_per_cat))# * (ncats - 1)
-            else:
-                if pdp=='stratpd':
-                    leaf_xranges, leaf_slopes, slope_counts_at_x, dx, dydx, pdpx, pdpy, ignored = \
-                        partial_dependence(X=X, y=y, colname=colname,
+    def single_feature_importance(colname):
+        # print(f"Start {colname}")
+        if colname in catcolnames:
+            if pdp=='stratpd':
+                leaf_histos, avg_per_cat, ignored = \
+                    cat_partial_dependence(X, y, colname=colname,
                                            n_trees=n_trees,
                                            min_samples_leaf=min_samples_leaf,
-                                           min_slopes_per_x=min_slopes_per_x,
                                            bootstrap=bootstrap,
                                            max_features=max_features,
-                                           verbose=verbose,
-                                           parallel_jit=n_jobs==1)
-                elif pdp=='ice':
-                    pdpy = original_pdp(rf, X=X, colname=colname)
-                avg_abs_pdp = np.mean(np.abs(pdpy))# * (np.max(pdpx) - np.min(pdpx))
-            avg_abs_pdp_subset.append(avg_abs_pdp)
-            # print(f"Stop {colname}")
-        return avg_abs_pdp_subset
+                                           verbose=verbose)
+                #         print(f"Ignored for {colname} = {ignored}")
+            elif pdp=='ice':
+                pdpy = original_catpdp(rf, X=X, colname=colname)
+            # no need to shift as abs(avg_per_cat) deals with negatives. The avg per cat
+            # values will straddle 0, some above, some below.
+            # some cats have NaN, such as 0th which is for "missing values"
+            avg_abs_pdp = np.nanmean(np.abs(avg_per_cat))# * (ncats - 1)
+        else:
+            if pdp=='stratpd':
+                leaf_xranges, leaf_slopes, slope_counts_at_x, dx, dydx, pdpx, pdpy, ignored = \
+                    partial_dependence(X=X, y=y, colname=colname,
+                                       n_trees=n_trees,
+                                       min_samples_leaf=min_samples_leaf,
+                                       min_slopes_per_x=min_slopes_per_x,
+                                       bootstrap=bootstrap,
+                                       max_features=max_features,
+                                       verbose=verbose,
+                                       parallel_jit=n_jobs == 1)
+                #         print(f"Ignored for {colname} = {ignored}")
+            elif pdp=='ice':
+                pdpy = original_pdp(rf, X=X, colname=colname)
+            avg_abs_pdp = np.mean(np.abs(pdpy))# * (np.max(pdpx) - np.min(pdpx))
+        # print(f"Stop {colname}")
+        return avg_abs_pdp
 
     if n_jobs>1 or n_jobs==-1:
-        # Split into n_jobs subsets
-        feature_subsets = np.array_split(X.columns, n_jobs)
-        avg_abs_pdp_subsets = Parallel(n_jobs=n_jobs)\
-            (delayed(feature_subset_importance)(colnames) for colnames in feature_subsets)
-        avg_abs_pdp = [pdp for sublist in avg_abs_pdp_subsets for pdp in sublist]
-        avg_abs_pdp = np.array(avg_abs_pdp)
-        total_avg_pdpy = np.sum(avg_abs_pdp)
+        # Do n_jobs in parallel; in case it flips to shared mem, make it readonly
+        avg_abs_pdp = Parallel(verbose=0, n_jobs=n_jobs, mmap_mode='r')\
+            (delayed(single_feature_importance)(colname) for colname in X.columns)
     else:
-        avg_abs_pdp = np.array([feature_subset_importance({colname})[0] for colname in X.columns])
-        total_avg_pdpy = np.sum(avg_abs_pdp)
+        avg_abs_pdp = [single_feature_importance(colname) for colname in X.columns]
 
-    # print("avg_pdp", avg_pdp, "sum", np.sum(avg_pdp), "avg y", np.mean(y), "avg y-min(y)", np.mean(y)-np.min(y))
+    avg_abs_pdp = np.array(avg_abs_pdp)
+    total_avg_pdpy = np.sum(avg_abs_pdp)
+
     normalized_importances = avg_abs_pdp
     if normalize:
         normalized_importances = avg_abs_pdp / total_avg_pdpy

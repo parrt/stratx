@@ -8,7 +8,7 @@ np.random.seed(999)
 
 n = 50_000
 min_samples_leaf = 5
-min_slopes_per_x = n*3/1000
+min_slopes_per_x = 15
 
 # X, y = load_rent(n=n)
 
@@ -23,7 +23,7 @@ for i in range(3):
 
     # I = impact_importances(X, y)
 
-    I = impact_importances(X, y, catcolnames={'ModelID'}, n_jobs=1)
+    I = impact_importances(X, y, catcolnames={'ModelID'}, n_jobs=4)
 
     # leaf_xranges, leaf_slopes, slope_counts_at_x, dx, dydx, pdpx, pdpy, ignored = \
     #     partial_dependence(X=X, y=y, colname="Wvillage",
