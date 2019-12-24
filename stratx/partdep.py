@@ -109,6 +109,7 @@ def collect_point_betas(X, y, colname, leaves, nbins:int):
 
 def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
                        min_slopes_per_x=15,
+                       parallel_jit=True,
                        n_trees=1, min_samples_leaf=10, bootstrap=False, max_features=1.0,
                        supervised=True,
                        verbose=False):
@@ -188,8 +189,12 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
     if verbose:
         print(f"discrete StratPD num samples ignored {ignored}/{len(X)} for {colname}")
 
-    slope_at_x, slope_counts_at_x = \
-        avg_values_at_x_jit(real_uniq_x, leaf_xranges, leaf_slopes)
+    if parallel_jit:
+        slope_at_x, slope_counts_at_x = \
+            avg_values_at_x_jit(real_uniq_x, leaf_xranges, leaf_slopes)
+    else:
+        slope_at_x, slope_counts_at_x = \
+            avg_values_at_x_nonparallel_jit(real_uniq_x, leaf_xranges, leaf_slopes)
 
     # Drop any nan slopes; implies we have no reliable data for that range
     # Last slope is nan since no data after last x value so that will get dropped too
@@ -581,13 +586,12 @@ def collect_discrete_slopes(rf, X, y, colname):
     return leaf_xranges, leaf_slopes, ignored
 
 
-def avg_values_at_x_nojit(uniq_x, leaf_ranges, leaf_slopes, verbose):
+def avg_values_at_x_nojit(uniq_x, leaf_ranges, leaf_slopes):
     """
     Compute the weighted average of leaf_slopes at each uniq_x.
 
     Value at max(x) is NaN since we have no data beyond that point.
     """
-    start = timer()
     nx = len(uniq_x)
     nslopes = len(leaf_slopes)
     slopes = np.zeros(shape=(nx, nslopes))
@@ -614,13 +618,15 @@ def avg_values_at_x_nojit(uniq_x, leaf_ranges, leaf_slopes, verbose):
         # how many slopes avg'd together to get avg
         slope_counts_at_x = nslopes - np.isnan(slopes).sum(axis=1)
 
-    stop = timer()
-    if verbose: print(f"avg_value_at_x {stop - start:.3f}s")
     # return average slope at each unique x value and how many slopes included in avg at each x
     return avg_value_at_x, slope_counts_at_x
 
 
-@jit(nopython=True, parallel=True)
+# We get about 20% boost from parallel but limits use of other parallelism it seems;
+# i get crashes when using multiprocessing package on top of this.
+# If using n_jobs=1 all the time for importances, then turn jit=False so this
+# method is not used
+@jit(nopython=True, parallel=True) # use prange not range.
 def avg_values_at_x_jit(uniq_x, leaf_ranges, leaf_slopes):
     """
     Compute the weighted average of leaf_slopes at each uniq_x.
@@ -658,8 +664,59 @@ def avg_values_at_x_jit(uniq_x, leaf_ranges, leaf_slopes):
     avg_value_at_x = np.zeros(shape=nx)
     slope_counts_at_x = np.zeros(shape=nx)
     for i in prange(nx):
-        avg_value_at_x[i] = np.nanmean(slopes[i,:])
-        slope_counts_at_x[i] = nslopes - np.sum(np.isnan(slopes[i,:]))
+        row = slopes[i, :]
+        n_nan = np.sum(np.isnan(row))
+        avg_value_at_x[i] = np.nan if n_nan==nslopes else np.nanmean(row)
+        slope_counts_at_x[i] = nslopes - n_nan
+
+    # return average slope at each unique x value and how many slopes included in avg at each x
+    return avg_value_at_x, slope_counts_at_x
+
+
+# Hideous copying to get different kinds of jit'ing. This is slower by 20%
+# than other version but can run in parallel with multiprocessing package.
+@jit(nopython=True)
+def avg_values_at_x_nonparallel_jit(uniq_x, leaf_ranges, leaf_slopes):
+    """
+    Compute the weighted average of leaf_slopes at each uniq_x.
+
+    Value at max(x) is NaN since we have no data beyond that point.
+    """
+    nx = len(uniq_x)
+    nslopes = len(leaf_slopes)
+    slopes = np.zeros(shape=(nx, nslopes))
+    # collect the slope for each range (taken from a leaf) as collection of
+    # flat lines across the same x range
+
+    for i in range(nslopes):
+        xr, slope = leaf_ranges[i], leaf_slopes[i]
+
+        # s = np.full(nx, slope)#, dtype=float)
+        # s[np.where( (uniq_x < xr[0]) | (uniq_x >= xr[1]) )] = np.nan
+        # slopes[:, i] = s
+
+        # Compute slope all the way across uniq_x but then trim line so
+        # slope is only valid in range xr; don't set slope on right edge
+        slopes[:, i] = np.where( (uniq_x < xr[0]) | (uniq_x >= xr[1]), np.nan, slope)
+
+
+    # The value could be genuinely zero so we use nan not 0 for out-of-range
+    # Now average horiz across the matrix, averaging within each range
+    # Wrap nanmean() in catcher to avoid "Mean of empty slice" warning, which
+    # comes from some rows being purely NaN; I should probably look at this sometime
+    # to decide whether that's hiding a bug (can there ever be a nan for an x range)?
+    # Oh right. We might have to ignore some leaves (those with single unique x values)
+
+    # Compute:
+    #   avg_value_at_x = np.mean(slopes[good], axis=1)  (numba doesn't allow axis arg)
+    #   slope_counts_at_x = nslopes - np.isnan(slopes).sum(axis=1)
+    avg_value_at_x = np.zeros(shape=nx)
+    slope_counts_at_x = np.zeros(shape=nx)
+    for i in range(nx):
+        row = slopes[i, :]
+        n_nan = np.sum(np.isnan(row))
+        avg_value_at_x[i] = np.nan if n_nan==nslopes else np.nanmean(row)
+        slope_counts_at_x[i] = nslopes - n_nan
 
     # return average slope at each unique x value and how many slopes included in avg at each x
     return avg_value_at_x, slope_counts_at_x

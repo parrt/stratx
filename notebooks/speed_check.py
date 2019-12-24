@@ -23,16 +23,16 @@ for i in range(3):
 
     # I = impact_importances(X, y)
 
-    # I = impact_importances(X, y, catcolnames={'ModelID'})
+    I = impact_importances(X, y, catcolnames={'ModelID'}, n_jobs=1)
 
     # leaf_xranges, leaf_slopes, slope_counts_at_x, dx, dydx, pdpx, pdpy, ignored = \
     #     partial_dependence(X=X, y=y, colname="Wvillage",
     #                        min_samples_leaf=min_samples_leaf,
     #                        min_slopes_per_x=min_slopes_per_x)
 
-    leaf_histos, avg_per_cat, ignored = \
-        cat_partial_dependence(X, y, colname="ModelID",
-                               min_samples_leaf=min_samples_leaf)
+    # leaf_histos, avg_per_cat, ignored = \
+    #     cat_partial_dependence(X, y, colname="ModelID",
+    #                            min_samples_leaf=min_samples_leaf)
 
     stop = timer()
     print(f"Time {i+1}: {stop-start:.1f}s")
