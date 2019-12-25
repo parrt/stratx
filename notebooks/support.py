@@ -99,11 +99,14 @@ def load_cancer_regr():
     return X, y
 
 
-def load_rent(n=3_000):
+def load_rent(n=3_000, clean_prices=True):
     df = pd.read_json('data/train.json')
 
     # Create ideal numeric data set w/o outliers etc...
-    df = df[(df.price > 1_000) & (df.price < 10_000)]
+
+    if clean_prices:
+        df = df[(df.price > 1_000) & (df.price < 10_000)]
+
     df = df[df.bathrooms <= 6]  # There's almost no data for 6 and above with small sample
     df = df[(df.longitude != 0) | (df.latitude != 0)]
     df = df[(df['latitude'] > 40.55) & (df['latitude'] < 40.94) &
@@ -262,7 +265,8 @@ def get_multiple_imps(X, y, n_shap=300, n_estimators=50, min_samples_leaf=10,
 
     ours_I = impact_importances(X, y, verbose=False, min_samples_leaf=min_samples_leaf,
                                 catcolnames=catcolnames,
-                                min_slopes_per_x=min_slopes_per_x)
+                                min_slopes_per_x=min_slopes_per_x,
+                                supervised=False)
     return ols_I, ols_shap_I, rf_I, perm_I, ours_I
 
 

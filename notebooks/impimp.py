@@ -12,6 +12,7 @@ def impact_importances(X: pd.DataFrame,
                        y: pd.Series,
                        catcolnames=set(),
                        normalize=True,  # make imp values 0..1
+                       supervised=True,
                        n_jobs=1,
                        sort=True,  # sort by importance in descending order?
                        min_slopes_per_x=15,
@@ -35,6 +36,7 @@ def impact_importances(X: pd.DataFrame,
         X_, y_ = X.iloc[bootstrap_sample_idxs], y.iloc[bootstrap_sample_idxs]
         imps[:,i] = impact_importances_(X_, y_, catcolnames=catcolnames,
                                         normalize=normalize,
+                                        supervised=supervised,
                                         n_jobs=n_jobs,
                                         n_trees=n_trees,
                                         min_samples_leaf=min_samples_leaf,
@@ -55,6 +57,7 @@ def impact_importances(X: pd.DataFrame,
     if pvalues:
         I['p-value'] = importances_pvalues(X, y, catcolnames,
                                            importances=I,
+                                           supervised=supervised,
                                            n_jobs=n_jobs,
                                            n_trials=n_pvalue_trials,
                                            min_slopes_per_x=min_slopes_per_x,
@@ -71,6 +74,7 @@ def impact_importances(X: pd.DataFrame,
 
 def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                         normalize=True,
+                        supervised=True,
                         n_jobs=1,
                         n_trees=1, min_samples_leaf=10,
                         min_slopes_per_x=15,
@@ -99,9 +103,10 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                                            min_samples_leaf=min_samples_leaf,
                                            bootstrap=bootstrap,
                                            max_features=max_features,
-                                           verbose=verbose)
+                                           verbose=verbose,
+                                           supervised=supervised)
                 #         print(f"Ignored for {colname} = {ignored}")
-            elif pdp=='ice':
+            elif pdp == 'ice':
                 pdpy = original_catpdp(rf, X=X, colname=colname)
             # no need to shift as abs(avg_per_cat) deals with negatives. The avg per cat
             # values will straddle 0, some above, some below.
@@ -117,7 +122,8 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                                        bootstrap=bootstrap,
                                        max_features=max_features,
                                        verbose=verbose,
-                                       parallel_jit=n_jobs == 1)
+                                       parallel_jit=n_jobs == 1,
+                                       supervised=supervised)
                 #         print(f"Ignored for {colname} = {ignored}")
             elif pdp=='ice':
                 pdpy = original_pdp(rf, X=X, colname=colname)
@@ -149,6 +155,7 @@ def importances_pvalues(X: pd.DataFrame,
                         y: pd.Series,
                         catcolnames=set(),
                         importances=None, # importances to use as baseline; must be in X column order!
+                        supervised=True,
                         n_jobs=1,
                         n_trials: int = 1,
                         min_slopes_per_x=15,
@@ -165,6 +172,7 @@ def importances_pvalues(X: pd.DataFrame,
     if importances is None:
         I_baseline = impact_importances(X, y, catcolnames=catcolnames, sort=False,
                                         min_slopes_per_x=min_slopes_per_x,
+                                        supervised=supervised,
                                         n_jobs=n_jobs,
                                         n_trees=n_trees,
                                         min_samples_leaf=min_samples_leaf,
@@ -176,6 +184,7 @@ def importances_pvalues(X: pd.DataFrame,
         I = impact_importances(X, y.sample(frac=1.0, replace=False),
                                catcolnames=catcolnames, sort=False,
                                min_slopes_per_x=min_slopes_per_x,
+                               supervised=supervised,
                                n_jobs=n_jobs,
                                n_trees=n_trees,
                                min_samples_leaf=min_samples_leaf,
