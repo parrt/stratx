@@ -4,11 +4,14 @@ from Cython.Distutils import build_ext
 from glob import glob
 import numpy as np
 
+# Run with "export CC=gcc-8; python setup.py install" if using cython
+
 extensions = [
     Extension(
         'stratx.cy_partdep',
         glob('stratx/*.pyx'),
-        extra_compile_args=['-O3'])
+        extra_compile_args=['-O3','-fopenmp'], # brew install libomp
+        extra_link_args=['-fopenmp','-Wl,-rpath,/usr/local/Cellar/gcc/8.2.0/lib/gcc/8'])
 ]
 
 setup(
@@ -26,8 +29,6 @@ setup(
     keywords='model-independent net-effect plots, visualization, partial dependence plots, partial derivative plots, ICE plots, feature importance',
     classifiers=['License :: OSI Approved :: MIT License',
                  'Intended Audience :: Developers'],
-
-    # ext_modules=cythonize("stratx/cy_partdep.pyx", annotate=True),
 
     # ext_modules=cythonize(extensions, annotate=True),
     # cmdclass={'build_ext': build_ext},

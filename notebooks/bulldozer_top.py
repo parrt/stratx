@@ -22,7 +22,7 @@ use_oob=False
 metric = mean_absolute_error
 compute=True
 if compute:
-    n = 20_000 # shap crashes above this
+    n = 100_000 # shap crashes above this
 
     X, y = load_bulldozer()
 

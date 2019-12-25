@@ -6,13 +6,13 @@ from stratx.partdep import *
 
 np.random.seed(999)
 
-n = 50_000
+n = 100_000
 min_samples_leaf = 5
 min_slopes_per_x = 15
 
-# X, y = load_rent(n=n)
+X, y = load_rent(n=n)
 
-X, y = load_bulldozer()
+# X, y = load_bulldozer()
 
 X = X.iloc[-n:]
 y = y.iloc[-n:]
@@ -23,12 +23,13 @@ for i in range(3):
 
     # I = impact_importances(X, y)
 
-    I = impact_importances(X, y, catcolnames={'ModelID'}, n_jobs=4)
+    # I = impact_importances(X, y, catcolnames={'ModelID'}, n_jobs=1, min_slopes_per_x=15)
+    #print(I)
 
-    # leaf_xranges, leaf_slopes, slope_counts_at_x, dx, dydx, pdpx, pdpy, ignored = \
-    #     partial_dependence(X=X, y=y, colname="Wvillage",
-    #                        min_samples_leaf=min_samples_leaf,
-    #                        min_slopes_per_x=min_slopes_per_x)
+    leaf_xranges, leaf_slopes, slope_counts_at_x, dx, dydx, pdpx, pdpy, ignored = \
+        partial_dependence(X=X, y=y, colname="Wvillage",
+                           min_samples_leaf=min_samples_leaf,
+                           min_slopes_per_x=min_slopes_per_x)
 
     # leaf_histos, avg_per_cat, ignored = \
     #     cat_partial_dependence(X, y, colname="ModelID",
