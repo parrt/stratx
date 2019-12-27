@@ -23,3 +23,7 @@ StratImpact w/min_samples_leaf=12, 15 trials of 5000 records: [0.99068302 0.9973
 StratImpact w/min_samples_leaf=14, 15 trials of 5000 records: [1.02976418 0.99641839 1.01149308] with stddev [0.02290239 0.00067753 0.0220821 ]
 
 James pointed out [Cook's distance](https://en.wikipedia.org/wiki/Cook%27s_distance). Looks simple enough and "Cook's distance measures the effect of deleting a given observation."
+
+## Dec 27, 2019
+
+Use special loss function in RF to measure purity of X not y. We don't really want to squash y as we fit tree.  Use example of step function and good dtree fit that splits at discontinuity. That emphasizes many different x values, which is not what we want; want to group by x. Then show example where most pure y subregions gives wrong answer for most-pure-x-regions.

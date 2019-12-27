@@ -248,8 +248,11 @@ def shap_importances(model, X, n_shap, normalize=True):
 
 
 def get_multiple_imps(X, y, n_shap=300, n_estimators=50, min_samples_leaf=10,
+                      n_stratpd_trees=1,
+                      bootstrap=False,
                       catcolnames=set(),
-                      min_slopes_per_x=10):
+                      min_slopes_per_x=10,
+                      supervised=True):
 
     lm = LinearRegression()
     lm.fit(X, y)
@@ -264,9 +267,11 @@ def get_multiple_imps(X, y, n_shap=300, n_estimators=50, min_samples_leaf=10,
     perm_I = importances(rf, X, y)
 
     ours_I = impact_importances(X, y, verbose=False, min_samples_leaf=min_samples_leaf,
+                                n_trees = n_stratpd_trees,
+                                bootstrap=bootstrap,
                                 catcolnames=catcolnames,
                                 min_slopes_per_x=min_slopes_per_x,
-                                supervised=False)
+                                supervised=supervised)
     return ols_I, ols_shap_I, rf_I, perm_I, ours_I
 
 
@@ -365,9 +370,12 @@ def compare_top_features(X, y, top_features_range=None,
                          use_oob = False,
                          n_estimators=40,
                          trials=1,
+                         n_stratpd_trees=1,
+                         bootstrap=False,
                          min_samples_leaf=10,
                          min_slopes_per_x=10,
-                         catcolnames=set()):
+                         catcolnames=set(),
+                         supervised=True):
     if use_oob and metric!=r2_score:
         #     print("Warning: use_oob can only give R^2; flipping metric to r2_score")
         metric=r2_score
@@ -376,12 +384,16 @@ def compare_top_features(X, y, top_features_range=None,
     rf.fit(X, y)
     print(f"Sanity check: R^2 OOB on {X.shape[0]} records: {rf.oob_score_:.3f}, training {metric.__name__}={metric(y, rf.predict(X))}")
 
-    ols_I, shap_ols_I, rf_I, perm_I, our_I = get_multiple_imps(X, y,
-                                                               min_samples_leaf=min_samples_leaf,
-                                                               n_estimators=n_estimators,
-                                                               n_shap=n_shap,
-                                                               catcolnames=catcolnames,
-                                                               min_slopes_per_x=min_slopes_per_x)
+    ols_I, shap_ols_I, rf_I, perm_I, our_I = \
+        get_multiple_imps(X, y,
+                          n_stratpd_trees=n_stratpd_trees,
+                          bootstrap=bootstrap,
+                          min_samples_leaf=min_samples_leaf,
+                          n_estimators=n_estimators,
+                          n_shap=n_shap,
+                          catcolnames=catcolnames,
+                          min_slopes_per_x=min_slopes_per_x,
+                          supervised=supervised)
     print("OLS\n", ols_I)
     print("OLS SHAP\n", shap_ols_I)
     print("RF SHAP\n", rf_I)

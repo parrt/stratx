@@ -5,7 +5,7 @@ from typing import Mapping, List, Tuple
 import matplotlib.pyplot as plt
 from  matplotlib.collections import LineCollection
 from sklearn.linear_model import LinearRegression
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from scipy.stats import binned_statistic
 import warnings
 import collections
@@ -25,9 +25,9 @@ def leaf_samples_general(rf, X:np.ndarray):
     Return a list of arrays where each array is the set of X sample indexes
     residing in a single leaf of some tree in rf forest.
     """
-    ntrees = len(rf.estimators_)
+    n_trees = len(rf.estimators_)
     leaf_ids = rf.apply(X) # which leaf does each X_i go to for each tree?
-    d = pd.DataFrame(leaf_ids, columns=[f"tree{i}" for i in range(ntrees)])
+    d = pd.DataFrame(leaf_ids, columns=[f"tree{i}" for i in range(n_trees)])
     d = d.reset_index() # get 0..n-1 as column called index so we can do groupby
     """
     d looks like:
@@ -36,7 +36,7 @@ def leaf_samples_general(rf, X:np.ndarray):
     1	1	    8	    3	    4	    4	    3
     """
     leaf_samples = []
-    for i in range(ntrees):
+    for i in range(n_trees):
         """
         Each groupby gets a list of all X indexes associated with same leaf. 4 leaves would
         get 4 arrays of X indexes; e.g.,
@@ -59,10 +59,10 @@ def leaf_samples(rf, X_not_col:np.ndarray):
            array([10, 11, 12, 13, 14, 15]), array([16, 17, 18, 19, 20]),
            array([21, 22, 23, 24, 25, 26, 27, 28, 29]))
     """
-    ntrees = len(rf.estimators_)
+    n_trees = len(rf.estimators_)
     leaf_samples = []
     leaf_ids = rf.apply(X_not_col)  # which leaf does each X_i go to for sole tree?
-    for t in range(ntrees):
+    for t in range(n_trees):
         # Group by id and return sample indexes
         uniq_ids = np.unique(leaf_ids[:,t])
         sample_idxs_in_leaves = [np.where(leaf_ids[:, t] == id) for id in uniq_ids]
@@ -168,8 +168,8 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
         """
         if verbose: print("USING UNSUPERVISED MODE")
         X_synth, y_synth = conjure_twoclass(X)
-        rf = RandomForestRegressor(n_estimators=n_trees,
-                                   min_samples_leaf=min_samples_leaf,
+        rf = RandomForestClassifier(n_estimators=n_trees,
+                                   min_samples_leaf=int(min_samples_leaf * 2),  # there are 2x as many samples (X,X') so must double leaf size
                                    bootstrap=bootstrap,
                                    max_features=max_features,
                                    oob_score=False)
@@ -221,7 +221,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
 
 
 def plot_stratpd_binned(X, y, colname, targetname,
-                 ntrees=1, min_samples_leaf=10, bootstrap=False,
+                 n_trees=1, min_samples_leaf=10, bootstrap=False,
                  max_features=1.0,
                  nbins=3,  # piecewise binning
                  nbins_smoothing=None,  # binning of overall X[colname] space in plot
@@ -245,7 +245,7 @@ def plot_stratpd_binned(X, y, colname, targetname,
                  verbose=False
                  ):
     if supervised:
-        rf = RandomForestRegressor(n_estimators=ntrees,
+        rf = RandomForestRegressor(n_estimators=n_trees,
                                    min_samples_leaf=min_samples_leaf,
                                    bootstrap=bootstrap,
                                    max_features=max_features)
@@ -259,11 +259,12 @@ def plot_stratpd_binned(X, y, colname, targetname,
         """
         if verbose: print("USING UNSUPERVISED MODE")
         X_synth, y_synth = conjure_twoclass(X)
-        rf = RandomForestRegressor(n_estimators=ntrees,
-                                   min_samples_leaf=min_samples_leaf,
-                                   bootstrap=bootstrap,
-                                   max_features=max_features,
-                                   oob_score=False)
+        rf = RandomForestClassifier(n_estimators=n_trees,
+                                    min_samples_leaf=min_samples_leaf * 2,
+                                    # there are 2x as many samples (X,X') so must double leaf size
+                                    bootstrap=bootstrap,
+                                    max_features=max_features,
+                                    oob_score=False)
         rf.fit(X_synth.drop(colname, axis=1), y_synth)
 
     leaves = leaf_samples(rf, X.drop(colname, axis=1))
@@ -368,7 +369,7 @@ def plot_stratpd_binned(X, y, colname, targetname,
 
 def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  min_slopes_per_x=15,  # ignore pdp y values derived from too few slopes (drop 0.003 of n, 0.3th percentile)
-                 ntrees=1, min_samples_leaf=10, bootstrap=False,
+                 n_trees=1, min_samples_leaf=10, bootstrap=False,
                  max_features=1.0,
                  supervised=True,
                  ax=None,
@@ -420,7 +421,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
     """
     leaf_xranges, leaf_slopes, slope_counts_at_x, dx, dydx, pdpx, pdpy, ignored = \
         partial_dependence(X=X, y=y, colname=colname, min_slopes_per_x=min_slopes_per_x,
-                           n_trees=ntrees, min_samples_leaf=min_samples_leaf,
+                           n_trees=n_trees, min_samples_leaf=min_samples_leaf,
                            bootstrap=bootstrap, max_features=max_features, supervised=supervised,
                            verbose=verbose)
 
@@ -763,7 +764,7 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
                                      min_slopes_per_x=min_slopes_per_x,
                                      xrange=xrange,
                                      yrange=yrange,
-                                     ntrees=1,
+                                     n_trees=1,
                                      show_ylabel=False,
                                      slope_line_alpha=slope_line_alpha,
                                      label_fontsize=label_fontsize,
@@ -801,7 +802,7 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
                                             nbins_smoothing=nbins_smoothing,
                                             yrange=yrange,
                                             show_ylabel=False,
-                                            ntrees=1)
+                                            n_trees=1)
                 except ValueError:
                     axes[row, col].set_title(
                         f"Can't gen: leafsz={msl}, nbins={nbins}",
@@ -876,7 +877,7 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
                                 min_samples_leaf=msl,
                                 catnames=catnames,
                                 yrange=yrange,
-                                ntrees=1,
+                                n_trees=1,
                                 show_xticks=show_xticks,
                                 show_ylabel=False,
                                 sort=sort,
@@ -946,14 +947,15 @@ def cat_partial_dependence(X, y,
     else:
         print("USING UNSUPERVISED MODE")
         X_synth, y_synth = conjure_twoclass(X)
-        rf = RandomForestRegressor(n_estimators=n_trees,
-                                   min_samples_leaf=min_samples_leaf,
-                                   bootstrap = bootstrap,
-                                   max_features = max_features,
-                                   oob_score=False)
+        rf = RandomForestClassifier(n_estimators=n_trees,
+                                    min_samples_leaf=min_samples_leaf * 2,
+                                    # there are 2x as many samples (X,X') so must double leaf size
+                                    bootstrap=bootstrap,
+                                    max_features=max_features,
+                                    oob_score=False)
         rf.fit(X_synth.drop(colname,axis=1), y_synth)
 
-    # rf = RandomForestRegressor(n_estimators=ntrees, min_samples_leaf=min_samples_leaf, oob_score=True)
+    # rf = RandomForestRegressor(n_estimators=n_trees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X_not_col, y)
     # print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
     # leaf_histos, leaf_avgs, leaf_sizes, leaf_catcounts, ignored = \
@@ -986,7 +988,7 @@ def plot_catstratpd(X, y,
                     # Must be 0-indexed list of names if list
                     ax=None,
                     sort='ascending',
-                    ntrees=1,
+                    n_trees=1,
                     min_samples_leaf=10,
                     max_features=1.0,
                     bootstrap=False,
@@ -1017,7 +1019,7 @@ def plot_catstratpd(X, y,
     :param catnames:
     :param ax:
     :param sort:
-    :param ntrees:
+    :param n_trees:
     :param min_samples_leaf:
     :param max_features:
     :param bootstrap:
@@ -1044,7 +1046,7 @@ def plot_catstratpd(X, y,
     leaf_histos, avg_per_cat, ignored = \
         cat_partial_dependence(X, y,
                                colname=colname,
-                               n_trees=ntrees,
+                               n_trees=n_trees,
                                min_samples_leaf=min_samples_leaf,
                                max_features=max_features,
                                bootstrap=bootstrap,
