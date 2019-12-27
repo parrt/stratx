@@ -27,3 +27,19 @@ James pointed out [Cook's distance](https://en.wikipedia.org/wiki/Cook%27s_dista
 ## Dec 27, 2019
 
 Use special loss function in RF to measure purity of X not y. We don't really want to squash y as we fit tree.  Use example of step function and good dtree fit that splits at discontinuity. That emphasizes many different x values, which is not what we want; want to group by x. Then show example where most pure y subregions gives wrong answer for most-pure-x-regions.
+
+ISSUES for shap: 
+* categoricals
+* measure diff from avg output not from 0
+
+Did interaction.py term experiment. shap and we get same partial dependences and feature weights.
+
+added p-values via null distr recently.
+
+main paper features:
+
+* define feature imp as ratio of masses under partial dependence curve; partial deriv stuff
+* we have model-free partial dep which allows model free imporantances
+* linear complexity, paralleilizable.
+
+do we need to talk about LIME and others that subsumed by SHAP?

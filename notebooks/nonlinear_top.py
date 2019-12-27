@@ -25,12 +25,12 @@ def synthetic_nonlinear_data(n, p=2):
         df[f'x{i + 1}'] = np.random.random_sample(size=n) * 3
     yintercept = 100
     df['y'] = df['x1']**2 + df['x2'] + yintercept
-    eqn = "y = x1^2 + x2"
+    eqn = f"y = x1^2 + x2 + {yintercept}, xi ~ U(0,3)"
     return df, eqn
 
 
 n = 1000
-shap_test_size = 1000
+shap_test_size = n
 df, eqn = synthetic_nonlinear_data(n, p=2)
 X = df.drop('y', axis=1)
 y = df['y']
@@ -48,25 +48,29 @@ def OLS():
 def RF():
     rf = RandomForestRegressor(n_estimators=100, oob_score=True, n_jobs=-1)
     rf.fit(X,y)
-    print("OOB", rf.oob_score_)
+    # print("OOB", rf.oob_score_)
 
     explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100), feature_perturbation='interventional')
     shap_values = explainer.shap_values(X[:shap_test_size], check_additivity=False)
-    shapimp = np.mean(np.abs(shap_values), axis=0)
-    s = np.sum(shapimp)
-    print("\nRF SHAP importances", list(shapimp), list(shapimp/s))
     return shap_values
 
 # shap_values = OLS()
 shap_values = RF()
 
-#print(shap_values)
+print(f"n={n}, {eqn}, avg={np.mean(y)}")
+shapimp = np.mean(np.abs(shap_values), axis=0)
+s = np.sum(shapimp)
+print("\nRF SHAP importances", list(shapimp), list(shapimp / s))
+# print(shap_values[:10])
 
 #shap.summary_plot(shap_values, X[:shap_test_size])
 shap.dependence_plot("x1", shap_values, X[:shap_test_size], interaction_index=None)
 shap.dependence_plot("x2", shap_values, X[:shap_test_size], interaction_index=None)
 
 # plot_stratpd_gridsearch(X, y, 'x1', 'price')
+
+I = impact_importances(X, y, normalize=False)
+print(I)
 
 # plot_stratpd(X, y, colname='x1', targetname='y', min_samples_leaf=10,
 #              min_slopes_per_x=15)

@@ -26,6 +26,7 @@ n = X.shape[0]
 use_oob=False
 metric = mean_absolute_error
 
+# need small or 0 min_slopes_per_x given tiny toy dataset
 R = compare_top_features(X, y, n_shap=n, min_samples_leaf=10,
                          metric=metric,
                          use_oob=use_oob,

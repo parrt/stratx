@@ -22,12 +22,12 @@ use_oob=False
 metric = mean_absolute_error
 compute=True
 if compute:
-    n = 10_000
+    n = 1_000
 
     X, y, _ = load_flights(n=n)
 
     R = compare_top_features(X, y, n_shap=300, min_samples_leaf=15,
-                             min_slopes_per_x=15,
+                             min_slopes_per_x=0,
                              n_estimators=40,
                              catcolnames={'AIRLINE',
                                           'ORIGIN_AIRPORT','DESTINATION_AIRPORT',

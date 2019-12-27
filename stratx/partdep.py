@@ -582,7 +582,11 @@ def collect_discrete_slopes(rf, X, y, colname):
         leaf_xranges.extend(leaf_xranges_)
         ignored += ignored_
 
-    leaf_xranges = np.array(leaf_xranges)
+    if len(leaf_xranges)==0:
+        # make sure empty list has same shape (jit complains)
+        leaf_xranges = np.array([]).reshape(0, 0)
+    else:
+        leaf_xranges = np.array(leaf_xranges)
     leaf_slopes = np.array(leaf_slopes)
 
     # stop = timer()
@@ -637,14 +641,32 @@ def avg_values_at_x_jit(uniq_x, leaf_ranges, leaf_slopes):
 
     Value at max(x) is NaN since we have no data beyond that point.
     """
-    nx = len(uniq_x)
-    nslopes = len(leaf_slopes)
-    slopes = np.zeros(shape=(nx, nslopes))
+    nx = uniq_x.shape[0]
+    nslopes = leaf_slopes.shape[0]
+    slopes = np.empty(shape=(nx, nslopes), dtype=np.double)
     # collect the slope for each range (taken from a leaf) as collection of
     # flat lines across the same x range
 
+    for j in prange(nslopes):
+        xl = leaf_ranges[j][0]
+        xr = leaf_ranges[j][1]
+        slope = leaf_slopes[j]
+        # s = np.full(nx, slope)#, dtype=double)
+        # s[np.where( (uniq_x < xr[0]) | (uniq_x >= xr[1]) )] = np.nan
+        # slopes[:, i] = s
+
+        # Compute slope all the way across uniq_x but then trim line so
+        # slope is only valid in range xr; don't set slope on right edge
+        for i in range(nx):
+            if (uniq_x[i] < xl) or (uniq_x[i] >= xr):
+                slopes[i, j] = np.nan
+            else:
+                slopes[i, j] = slope
+
+    '''
     for i in prange(nslopes):
         xr, slope = leaf_ranges[i], leaf_slopes[i]
+        #print(numba.typeof(slope), numba.typeof(slopes))
 
         # s = np.full(nx, slope)#, dtype=float)
         # s[np.where( (uniq_x < xr[0]) | (uniq_x >= xr[1]) )] = np.nan
@@ -653,7 +675,7 @@ def avg_values_at_x_jit(uniq_x, leaf_ranges, leaf_slopes):
         # Compute slope all the way across uniq_x but then trim line so
         # slope is only valid in range xr; don't set slope on right edge
         slopes[:, i] = np.where( (uniq_x < xr[0]) | (uniq_x >= xr[1]), np.nan, slope)
-
+    '''
 
     # The value could be genuinely zero so we use nan not 0 for out-of-range
     # Now average horiz across the matrix, averaging within each range
