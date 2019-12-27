@@ -1,0 +1,259 @@
+\documentclass[12pt]{article}
+\usepackage{enumitem}
+%\usepackage[T1]{fontenc}
+\usepackage[auth-sc,affil-sl]{authblk}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{color}
+\usepackage[toc,page]{appendix}
+%\usepackage{enumerate}
+\usepackage[round]{natbib}
+%\usepackage{url} % not crucial - just used below for the URL 
+%\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{epstopdf}
+\usepackage{hyperref}
+\usepackage{alltt}
+\usepackage{listings}
+\usepackage{array}
+\usepackage[noline, boxed, linesnumbered, procnumbered, titlenumbered]{algorithm2e}
+%\usepackage[firstpage]{draftwatermark}
+\usepackage[margin=1in]{geometry}  %%jcgs has own margins
+\usepackage{lmodern}
+\usepackage{caption}
+\usepackage{subcaption}
+
+%\pdfminorversion=4
+% NOTE: To produce blinded version, replace "0" with "1" below.
+\newcommand{\blind}{0}
+
+\newcommand{\secref}[1]{Section~\ref{#1}}
+\newcommand{\appdxref}[1]{Appendix~\ref{#1}}
+\newcommand{\tblref}[1]{Table~\ref{#1}}
+\newcommand{\figref}[1]{Figure~\ref{#1}}
+\newcommand{\thmref}[1]{Theorem~\ref{#1}}
+\newcommand{\algref}[1]{Algorithm~\ref{#1}}
+\newcommand{\funref}[1]{Function~\ref{#1}}
+\newcommand{\listingref}[1]{Listing~\ref{#1}}
+
+\newcommand{\eg}{{\em e.g.}}
+\newcommand{\ith}{$i^{th}$}
+\newcommand{\cut}[1]{}
+\newcommand{\todo}[1]{{{\color{red}{[#1]}}}}
+
+\newcommand{\spd}{\fontfamily{cmr}\textsc{\small StratPD}}
+\newcommand{\cspd}{\fontfamily{cmr}\textsc{\small CatStratPD}}
+\newcommand{\xnc}{$x_{\overline{c}}$}
+\newcommand{\xnC}{$x_{\overline{C}}$}
+
+\setlist[enumerate]{itemsep=-1mm}
+
+% DON'T change margins - should be 1 inch all around.
+\cut{
+\addtolength{\oddsidemargin}{-.5in}%
+\addtolength{\evensidemargin}{-.5in}%
+\addtolength{\textwidth}{1in}%
+\addtolength{\textheight}{1.3in}%
+\addtolength{\topmargin}{-.8in}%
+}
+
+\begin{document}
+
+\def\spacingset#1{\renewcommand{\baselinestretch}%
+{#1}\small\normalsize} \spacingset{1}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\if0\blind
+{
+  \title{\bf foo}
+
+  \author{Terence Parr and James D. Wilson\\
+      University of San Francisco\\
+}
+  \maketitle
+} \fi
+
+\if1\blind
+{
+  \bigskip
+  \bigskip
+  \bigskip
+  \begin{center}
+    {\LARGE\bf Title}
+\end{center}
+  \medskip
+} \fi
+
+\bigskip
+\begin{abstract}
+dsf
+\end{abstract}
+
+\noindent%
+{\it Keywords:} feature importance, partial dependence, model interpretability, linear models
+%\vfill
+
+%\newpage
+%\spacingset{1.5} % DON'T change the spacing!
+\section{Introduction}
+\label{sec:intro}
+
+For true function $y = f(\bf x)$ and ${\bf x} = [x_1, \ldots, x_p]$ and ${\bf X} = [x^{(1)}, \ldots, x^{(n)}]$ (skipping bolding the vectors there).  Training data is pair ($\bf X, y$).
+
+The partial dependence of $y$ on  $x_i$ is the isolated contribution of $x_i$ to $y$. At some $x_i=z$ value, the partial dependence is the cumulative sum of $\frac{\partial y}{\partial x_i}$ from $min(x_i)$ up to $z$:
+
+\[
+\text{\it PD}_i(z) = \int_{min(x_i)}^z \frac{\partial y}{\partial x_i} dx_i
+\]
+
+Software currently relies on something like:
+
+\[
+\text{\it variation}_j = \frac{1}{N} \sum_{i=1}^N |\frac{\partial f}{\partial x_j}(x_j^{(i)})|
+\]
+
+\[
+\text{\it total\_variation} = \sum_{i=1}^N \text{\it variation}_j
+\]
+
+\[
+\text{\it importance}_j = \frac{\text{\it variation}_j}{\text{\it total\_variation}}
+\]
+
+\[
+\sum_{i=1}^{N} |y^{(i)}-\overline{y}^{(i)}| = \sum_{i=1}^{N} |\text{\it PD}_1(x_1^{(i)})-\overline{\text{\it PD}_1}| + \ldots + \sum_{i=1}^{N} |\text{\it PD}_p(x_p^{(i)})-\overline{\text{\it PD}_p}|
+\]
+
+\noindent which is really the area under $y$ and $\text{\it PD}_j(x_j)$ etc... divided by $N$.   Proof might start with this (is it true by definition?):
+
+\[
+y^{(i)} = \text{\it PD}_1(x_1^{(i)}) + \ldots + \text{\it PD}_p(x_p^{(i)})
+\]
+
+\noindent Probably also need to transform $y - \overline{y}$ to take out $y$-intercept from $y$.  Then area should use absolute value.
+
+Assumes no noise and no exonegenous vars for now.
+
+old:
+
+\[
+n \overline {\bf y} = \int_{min(x_1)}^{max(x_1)} \text{\it PD}_1(x) + \ldots + \int_{min(x_p)}^{max(x_p)} \text{\it PD}_p(x)
+\]
+
+Let width of $x_i$ var be $w_i = max(x_1)-min(x_1)$ then by mean value theorem of calculus:
+
+\[
+n \overline {\bf y} = w_1\overline{\text{\it PD}_1(x)}\big |_{min(x_1)}^{max(x_1)} + \ldots + w_p\overline{\text{\it PD}_p(x)}\big |_{min(x_p)}^{max(x_p)}
+\]
+
+Need to convert units so it's ``instances $\times$ $y$ units,'' not ``$x_i$ units $\times$ $y$ units'' so multiply by $\frac{n}{w_i}$:
+
+\[
+n \overline {\bf y} = \frac{n}{w_1} w_1\overline{\text{\it PD}_1(x)}\big |_{min(x_1)}^{max(x_1)} + \ldots + \frac{n}{w_p} w_p\overline{\text{\it PD}_p(x)}\big |_{min(x_p)}^{max(x_p)}
+\]
+
+(algebra seems sketchy there.) Simplifying:
+
+\[
+n \overline {\bf y} = n\overline{\text{\it PD}_1(x)}\big |_{min(x_1)}^{max(x_1)} + \ldots + n \overline{\text{\it PD}_p(x)}\big |_{min(x_p)}^{max(x_p)}
+\]
+
+The $n$'s cancel:
+
+\[
+\overline {\bf y} = \overline{\text{\it PD}_1(x)}\big |_{min(x_1)}^{max(x_1)} + \ldots + \overline{\text{\it PD}_p(x)}\big |_{min(x_p)}^{max(x_p)}
+\]
+
+Basically we gotta show that areas under all $\text{\it PD}_i(x)$ sum to $\overline{\bf y}$ if no noise and exogenous vars.
+
+Proof will likely hinge on
+
+\[
+\overline {\bf y} \le \overline{\text{\it PD}_i(x)}\big |_{min(x_i)}^{max(x_i)} ~\forall\, i
+\]
+
+Actually, I think the key is to start with the gradient of ${\bf x}$ and how it affects $y=f({\bf x})$. Might be easiest to think about this as a finite difference. Define the change in $y$ when we shift all vars by $h$:
+
+\[
+\Delta y = f({\bf x} + \vec{h}) - f({\bf x})
+\]
+
+Now look at each var. As we shift each $x_i$ var slightly by $h$, $y$ changes by $\Delta y_i$:
+
+\[
+\Delta y_i = f([x_1, ..., x_i+h, ..., x_p]) - f({\bf x})
+\]
+
+Now, I think we need to show
+
+\[
+\Delta y = \sum_{i=1}^{p} \Delta y_i
+\]
+
+(This *looks* obvious. is it?) The argument is that it's equivalent to measure the $\Delta y$ change all at once via ${\bf x} + \vec{h}$ or by collecting and summing $\Delta y_i$, the individual contributions of shifting each variable by $h$.  
+
+If we can turn these deltas into partial derivatives then we can do cumulative sum on them to get the partial dependence curves. This gets us closer I think.
+
+
+\[
+\frac{\partial y}{\partial \bf x} = \sum_{i=1}^p \frac{\partial y}{\partial x_i}
+\]
+
+\[
+\text{\it PD}_i(x) = \int_{min(x_i)}^x \frac{\partial y}{\partial x_i} dx_i
+\]
+
+\[
+\overline{\text{\it PD}_1(x)}\big |_{min(x_1)}^{max(x_1)}
+\]
+
+\cut{
+\noindent At $x_i$ for some $h$ (maybe $h$ is instance index).
+
+Define the gradient:
+
+\[
+\nabla {\bf x} = [\frac{\partial y}{\partial x_1}, \ldots, \frac{\partial y}{\partial x_p}]
+\]
+
+When we move from ${\bf x}$ to ${\bf x}+\nabla {\bf x}$, we add some $\Delta y$ to $y$ so
+
+\[
+f({\bf x}+\nabla {\bf x}) = y + \Delta y 
+\]
+
+I think we need to show
+
+\[
+\Delta y_i = \frac{f(x_i + h) - f(x_i)}{h}
+\]
+
+\[
+\Delta y = \sum_{i=1}^{p} \Delta y_i
+\]
+}
+
+\section{Notes}
+
+We have to pick an origin line, which we can assume a zero. Then we need to compute how much mass is between the origin and y. We need to subtract out the bias, such as the Y intercept in linear regression.  In discussions, we decided that if y has both negative and positive values, assuming that the data is smooth (which our data is not smooth); we can just take the absolute value and sum it up. 
+
+If all of the data is above or below the origin, we have to use these rules:
+
+\begin{itemize}
+\item regions above the origin, subtract the min(abs(y))
+\item regions below the origin, add the min(abs(y))
+\end{itemize}
+
+For the sum above and some below the origin y case, we have to break it into regions and apply these rules.
+
+Friedman's RuleFit alg has importance: see https://christophm.github.io/interpretable-ml-book/rulefit.html and https://arxiv.org/abs/0811.1679
+
+Boruta technique https://www.jstatsoft.org/article/view/v036i11 feature selection but also can give importances.
+
+\bibliographystyle{apalike}
+
+\bibliography{stratpd}
+\end{document}

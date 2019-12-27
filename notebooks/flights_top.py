@@ -22,7 +22,7 @@ use_oob=False
 metric = mean_absolute_error
 compute=True
 if compute:
-    n = 1_000
+    n = 10_000
 
     X, y, _ = load_flights(n=n)
 

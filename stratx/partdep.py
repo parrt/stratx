@@ -594,6 +594,8 @@ def collect_discrete_slopes(rf, X, y, colname):
     return leaf_xranges, leaf_slopes, ignored
 
 
+'''
+Currently not needed
 def avg_values_at_x_nojit(uniq_x, leaf_ranges, leaf_slopes):
     """
     Compute the weighted average of leaf_slopes at each uniq_x.
@@ -628,6 +630,7 @@ def avg_values_at_x_nojit(uniq_x, leaf_ranges, leaf_slopes):
 
     # return average slope at each unique x value and how many slopes included in avg at each x
     return avg_value_at_x, slope_counts_at_x
+'''
 
 
 # We get about 20% boost from parallel but limits use of other parallelism it seems;
@@ -647,9 +650,10 @@ def avg_values_at_x_jit(uniq_x, leaf_ranges, leaf_slopes):
     # collect the slope for each range (taken from a leaf) as collection of
     # flat lines across the same x range
 
+    '''
     for j in prange(nslopes):
-        xl = leaf_ranges[j][0]
-        xr = leaf_ranges[j][1]
+        xl = leaf_ranges[j,0]
+        xr = leaf_ranges[j,1]
         slope = leaf_slopes[j]
         # s = np.full(nx, slope)#, dtype=double)
         # s[np.where( (uniq_x < xr[0]) | (uniq_x >= xr[1]) )] = np.nan
@@ -657,25 +661,18 @@ def avg_values_at_x_jit(uniq_x, leaf_ranges, leaf_slopes):
 
         # Compute slope all the way across uniq_x but then trim line so
         # slope is only valid in range xr; don't set slope on right edge
-        for i in range(nx):
-            if (uniq_x[i] < xl) or (uniq_x[i] >= xr):
-                slopes[i, j] = np.nan
-            else:
+        for i in prange(nx):
+            if (uniq_x[i] >= xl) or (uniq_x[i] < xr):
                 slopes[i, j] = slope
-
+            else:
+                slopes[i, j] = np.nan
     '''
+
     for i in prange(nslopes):
         xr, slope = leaf_ranges[i], leaf_slopes[i]
-        #print(numba.typeof(slope), numba.typeof(slopes))
-
-        # s = np.full(nx, slope)#, dtype=float)
-        # s[np.where( (uniq_x < xr[0]) | (uniq_x >= xr[1]) )] = np.nan
-        # slopes[:, i] = s
-
         # Compute slope all the way across uniq_x but then trim line so
         # slope is only valid in range xr; don't set slope on right edge
         slopes[:, i] = np.where( (uniq_x < xr[0]) | (uniq_x >= xr[1]), np.nan, slope)
-    '''
 
     # The value could be genuinely zero so we use nan not 0 for out-of-range
     # Now average horiz across the matrix, averaging within each range
