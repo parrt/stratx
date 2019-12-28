@@ -22,7 +22,7 @@ use_oob=False
 metric = mean_absolute_error
 compute=True
 if compute:
-    n = 100_000 # shap crashes above this
+    n = 20_000 # shap crashes above this; 20k works
 
     X, y = load_bulldozer()
 
@@ -34,7 +34,7 @@ if compute:
                              catcolnames={'AC','ModelID'},
                              metric=metric,
                              use_oob=use_oob,
-                             top_features_range=(1,4))
+                             top_features_range=(1,6))
 
     R = R.reset_index(drop=True)
     if use_oob:

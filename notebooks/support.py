@@ -225,7 +225,9 @@ def shap_importances(model, X, n_shap, normalize=True):
     start = timer()
     #X = shap.kmeans(X, k=n_shap)
     X = X.sample(n=n_shap, replace=False)
-    if isinstance(model, RandomForestRegressor) or isinstance(model, GradientBoostingRegressor):
+    if isinstance(model, RandomForestRegressor) or \
+        isinstance(model, GradientBoostingRegressor) or \
+        isinstance(model, xgb.XGBRegressor):
         explainer = shap.TreeExplainer(model, data=X, feature_perturbation='interventional')
         shap_values = explainer.shap_values(X, check_additivity=False)
     elif isinstance(model, Lasso) or isinstance(model, LinearRegression):

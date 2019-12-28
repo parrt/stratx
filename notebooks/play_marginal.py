@@ -348,7 +348,7 @@ def boston():
     fig, axes = plt.subplots(6, 1, figsize=(5,12.5))
 
     lm = LinearRegression()
-    I, score = linear_model_importance(lm, X_test, X_train, y_test, y_train)
+    I, score = linear_model_importance(lm, X_train, y_train)
     print(I)
     plot_importances(I, imp_range=(0, 1), ax=axes[0])
     axes[0].set_title(f"OLS $\\beta_i$, $R^2$ {score :.2f}")
@@ -673,6 +673,7 @@ def rent_top(top_range=(1, 7),
         print
 
 
+boston()
 #rent_top(min_samples_leaf=10)
 
 #weather()
