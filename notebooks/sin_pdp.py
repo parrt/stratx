@@ -6,7 +6,7 @@ from timeit import default_timer as timer
 from sklearn.utils import resample
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
-from impimp import *
+from stratx.featimp import *
 from stratx import *
 from support import *
 

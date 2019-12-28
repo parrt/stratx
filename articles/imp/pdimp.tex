@@ -71,7 +71,7 @@
 
 \if0\blind
 {
-  \title{\bf foo}
+  \title{\bf Model-Free Feature Importance}
 
   \author{Terence Parr and James D. Wilson\\
       University of San Francisco\\
@@ -104,11 +104,21 @@ dsf
 \section{Introduction}
 \label{sec:intro}
 
-\section{Introduction}
-
 Among data analysis techniques, feature importance is one of the most  useful. Data science practitioners use feature importance to gain business insights (e.g., identifying product characteristics valued by customers) and to select features for predictive models (dropping the least predictive features to simplify and potentially increase the generality of the model). While some approaches work directly on the data, such as principle component analysis (PCA), the vast majority of feature importance algorithms analyze data through the lens of a specific model fitted to the data, or even through subsidiary models to analyze such fitted models (LIME, SHAP, permutation, drop column).
 
-Relying on a fitted model introduces a number of issues. First, practitioners must choose an appropriate model that captures the relationship between features and target; inaccurate models do not yield useful feature importance results. But, more importantly, it is possible to get very different feature importances running the same algorithm on the same data, just by choosing a different model. This fact should reduce trust in algorithms operating on fitted models. consider the example in 
+Relying on a fitted model introduces a number of issues. First, practitioners must choose an appropriate model that captures the relationship between features and target; inaccurate models do not yield useful feature importance results. But, more importantly, it is possible to get very different feature importances running the same algorithm on the same data, just by choosing a different model. This fact should reduce trust in algorithms operating on fitted models. consider the example in \figref{fig:diff-models}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.54]{images/diff-models.pdf}
+\caption{foobar. \texttt{\footnotesize RandomForestRegressor(n\_estimators=30)}, \texttt{\footnotesize XGBRegressor(max\_depth=5, eta=.01, n\_estimators=50)} }
+\label{fig:diff-models}
+\end{center}
+\end{figure}
+
+btw, SHAP claims to be model independent but it?s not usable in that configuration.  only linear and tree explainers complete in our lifetime and they exploit details of linear models and trees to go fast hence NOT independent
+
+people focus on "intersting features" but spurious OR function of model not data.
 
 \section{foo}
 

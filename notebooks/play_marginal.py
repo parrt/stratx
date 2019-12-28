@@ -12,7 +12,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 from rfpimp import *
 
-from impimp import *
+from stratx.featimp import *
 
 import xgboost as xgb
 

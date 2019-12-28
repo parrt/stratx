@@ -8,7 +8,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 import shap
 
-from impimp import *
+from stratx.featimp import *
 from support import *
 
 import numpy as np

@@ -9,7 +9,7 @@ import xgboost as xgb
 
 import shap
 
-from impimp import *
+from stratx.featimp import *
 from support import *
 
 import numpy as np

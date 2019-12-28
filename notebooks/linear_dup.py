@@ -7,7 +7,7 @@ from sklearn.utils import resample
 
 import shap
 
-from impimp import *
+from stratx.featimp import *
 from stratx import *
 
 import numpy as np

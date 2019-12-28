@@ -8,7 +8,7 @@ import statsmodels.api as sm
 
 import shap
 
-from impimp import *
+from stratx.featimp import *
 from stratx.partdep import *
 from stratx.ice import *
 

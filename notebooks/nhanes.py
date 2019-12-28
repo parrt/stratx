@@ -8,7 +8,7 @@ pd.set_option('display.max_columns', 80)
 import shap
 
 from stratx.partdep import *
-from impimp import *
+from stratx.featimp import *
 from support import *
 
 def fix_missing_num(df, colname):

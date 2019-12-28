@@ -10,7 +10,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.datasets import load_boston, load_iris, load_wine, load_digits, \
     load_breast_cancer, load_diabetes, fetch_mldata
 
-from impimp import *
+from stratx.featimp import *
 from support import *
 
 import numpy as np

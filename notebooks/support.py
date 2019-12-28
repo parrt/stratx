@@ -19,7 +19,7 @@ pd.set_option('display.width', 300)
 from timeit import default_timer as timer
 
 from rfpimp import *
-from impimp import *
+from stratx.featimp import *
 
 import shap
 
@@ -232,6 +232,9 @@ def shap_importances(model, X, n_shap, normalize=True):
         shap_values = explainer.shap_values(X, check_additivity=False)
     elif isinstance(model, Lasso) or isinstance(model, LinearRegression):
         shap_values = shap.LinearExplainer(model, X, feature_dependence='independent').shap_values(X)
+    else:
+        explainer = shap.KernelExplainer(model.predict, X.sample(frac=.1))
+        shap_values = explainer.shap_values(X, nsamples=100)
     shapimp = np.mean(np.abs(shap_values), axis=0)
     stop = timer()
     print(f"SHAP time for {len(X)} records using {model.__class__.__name__} = {(stop - start):.1f}s")

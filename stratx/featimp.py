@@ -3,6 +3,11 @@ import pandas as pd
 from sklearn.utils import resample
 from timeit import default_timer as timer
 from joblib import parallel_backend, Parallel, delayed
+from matplotlib.colors import ListedColormap
+from matplotlib.ticker import FormatStrFormatter
+from os import getpid, makedirs
+from matplotlib.collections import PatchCollection
+from matplotlib.patches import Rectangle
 
 from stratx.partdep import *
 from stratx.ice import *
@@ -203,3 +208,169 @@ def importances_pvalues(X: pd.DataFrame,
     # print(counts)
     # print(pvalue)
     return pvalue
+
+
+class ImpViz:
+    """
+    For use with jupyter notebooks, plot_importances returns an instance
+    of this class so we display SVG not PNG.
+    """
+    def __init__(self):
+        tmp = tempfile.gettempdir()
+        self.svgfilename = tmp+"/PimpViz_"+str(getpid())+".svg"
+        plt.tight_layout()
+        plt.savefig(self.svgfilename, bbox_inches='tight', pad_inches=0)
+
+    def _repr_svg_(self):
+        with open(self.svgfilename, "r", encoding='UTF-8') as f:
+            svg = f.read()
+        plt.close()
+        return svg
+
+    def save(self, filename):
+        plt.savefig(filename, bbox_inches='tight', pad_inches=0)
+
+    def view(self):
+        plt.show()
+
+    def close(self):
+        plt.close()
+
+
+def plot_importances(df_importances,
+                     yrot=0,
+                     title_fontsize=11,
+                     label_fontsize=10,
+                     fontname="Arial",
+                     figsize=None,
+                     bar_width=13,
+                     minheight=1.5,
+                     vscale=1,
+                     imp_range=(-.002, 1.0),
+                     dpi=150,
+                     color='#4574B4',#'#D9E6F5',
+                     bgcolor=None,  # seaborn uses '#F1F8FE'
+                     xtick_precision=2,
+                     title=None,
+                     ax=None):
+    """
+    Given an array or data frame of importances, plot a horizontal bar chart
+    showing the importance values.
+
+    :param df_importances: A data frame with Feature, Importance columns
+    :type df_importances: pd.DataFrame
+    :param width: Figure width in default units (inches I think). Height determined
+                  by number of features.
+    :type width: int
+    :param minheight: Minimum plot height in default matplotlib units (inches?)
+    :type minheight: float
+    :param vscale: Scale vertical plot (default .25) to make it taller
+    :type vscale: float
+    :param label_fontsize: Font size for feature names and importance values
+    :type label_fontsize: int
+    :param yrot: Degrees to rotate feature (Y axis) labels
+    :type yrot: int
+    :param label_fontsize:  The font size for the column names and x ticks
+    :type label_fontsize:  int
+    :param scalefig: Scale width and height of image (widthscale,heightscale)
+    :type scalefig: 2-tuple of floats
+    :param xtick_precision: How many digits after decimal for importance values.
+    :type xtick_precision: int
+    :param xtick_precision: Title of plot; set to None to avoid.
+    :type xtick_precision: string
+    :param ax: Matplotlib "axis" to plot into
+    :return: None
+
+    SAMPLE CODE
+
+    from stratx.featimp import *
+    rf = RandomForestRegressor(n_estimators=100, n_jobs=-1, oob_score=True)
+    X_train, y_train = ..., ...
+    rf.fit(X_train, y_train)
+    imp = importances(rf, X_test, y_test)
+    viz = plot_importances(imp)
+    viz.save('file.svg')
+    viz.save('file.pdf')
+    viz.view() # or just viz in notebook
+    """
+    GREY = '#444443'
+    I = df_importances
+    n_features = len(I)
+    ypadding = .1
+
+    ppi = 72 # matplotlib has this hardcoded. E.g., see https://github.com/matplotlib/matplotlib/blob/40dfc353aa66b93fd0fbc55ca1f51701202c0549/lib/matplotlib/axes/_base.py#L694
+    imp = I.Importance.values
+    min_imp = np.min(imp)
+    max_imp = np.max(imp)
+
+    barcounts = np.array([f.count('\n')+1 for f in I.index])
+    N = np.sum(barcounts)
+
+    ypositions = np.array(range(n_features))
+
+    if ax is None:
+        if figsize:
+            fig, ax = plt.subplots(1, 1, figsize=figsize, dpi=dpi)
+        else:
+            height_in_pixels = N * bar_width
+            fudge_factor = 1.28
+            fig, ax = plt.subplots(1, 1, figsize=(3, fudge_factor * height_in_pixels / ppi), dpi=dpi)
+
+    ax.spines['top'].set_linewidth(.5)
+    ax.spines['right'].set_linewidth(.5)
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
+    ax.spines['top'].set_color('none')
+    ax.spines['right'].set_color('none')
+    ax.spines['left'].set_smart_bounds(True)
+    # ax.spines['bottom'].set_smart_bounds(True)
+    if bgcolor:
+        ax.set_facecolor(bgcolor)
+
+    if title:
+        ax.set_title(title, fontsize=title_fontsize, fontname=fontname, color=GREY)
+
+    ax.invert_yaxis()  # labels read top-to-bottom
+    ax.xaxis.set_major_formatter(FormatStrFormatter(f'%.{xtick_precision}f'))
+    ax.set_xlim(*imp_range)
+
+    ax.tick_params(axis='both', which='major', labelsize=label_fontsize, labelcolor=GREY)
+    ax.set_yticks(ypositions)
+    ax.set_yticklabels(list(I.index.values))
+
+    for tick in ax.get_xticklabels():
+        tick.set_fontname(fontname)
+    for tick in ax.get_yticklabels():
+        tick.set_fontname(fontname)
+
+    # ax.tick_params(axis='both', which='major', labelsize=label_fontsize)
+    # ax.set_yticks(np.array(range(n_features)) + shift_upwards_from_axis)
+    # rects = []
+    # for fi,y in zip(imp,ypositions):
+    #     print(fi,y)
+    #     r = Rectangle([0.002, y-bar_width/2], fi, bar_width, color=color)
+    #     rects.append(r)
+    #
+    # bars = PatchCollection(rects)
+    # ax.add_collection(bars)
+
+    ax.hlines(y=ypositions, xmin=0.01, xmax=imp, color=color, linewidth=bar_width)
+
+
+    # barcontainer = ax.barh(y=range(n_features),
+    #                        width=imp,
+    #                        left=0.001,
+    #                        height=0.9,
+    #                        tick_label=I.index,
+    #                        color=color)
+
+    # # Alter appearance of each bar
+    # for rect in barcontainer.patches:
+    #     rect.set_linewidth(.1)
+    #     rect.set_edgecolor(GREY)#'none')
+
+    # rotate y-ticks
+    if yrot is not None:
+        ax.tick_params(labelrotation=yrot)
+
+    return ImpViz()
