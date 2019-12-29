@@ -239,14 +239,15 @@ class ImpViz:
 
 
 def plot_importances(df_importances,
+                     xlabel=None,
                      yrot=0,
                      title_fontsize=11,
                      label_fontsize=10,
                      fontname="Arial",
-                     figsize=None,
                      width:float=3, # if no figsize, use this width
+                     height:float=None,
                      bar_width=13, # in pixels
-                     bar_spacing = 3, # in pixels
+                     bar_spacing = 4, # in pixels
                      imp_range=(0, 1.0),
                      dpi=150,
                      color='#4574B4',#'#D9E6F5',
@@ -312,15 +313,17 @@ def plot_importances(df_importances,
     ypositions = np.array( range(n_features) )
 
     if ax is None:
-        if figsize:
-            fig, ax = plt.subplots(1, 1, figsize=figsize)#, dpi=dpi)
-        else:
+        if height is None:
             # we need a bar for each feature and half a bar on bottom + half a bar above
             # on top then spacing in between N bars (N-1 spaces)
             height_in_pixels = N * bar_width + 2 * bar_width / 2 + (N-1) * bar_spacing
             # space_for x axis (labels etc...)
-            fudge = 35
+            fudge = 25
+            if xlabel is not None: fudge += 12
+            if title is not None: fudge += 12
             fig, ax = plt.subplots(1, 1, figsize=(width, (height_in_pixels + fudge) / ppi), dpi=dpi)
+        else:
+            fig, ax = plt.subplots(1, 1, figsize=(width, height), dpi=dpi)
 
     ax.spines['top'].set_linewidth(.5)
     ax.spines['right'].set_linewidth(.5)
@@ -334,15 +337,17 @@ def plot_importances(df_importances,
         ax.set_facecolor(bgcolor)
 
     if title:
-        ax.set_title(title, fontsize=title_fontsize, fontname=fontname, color=GREY)
+        ax.set_title(title, fontsize=title_fontsize, fontname=fontname, color=GREY, pad=0)
 
 
     #ax.invert_yaxis()  # labels read top-to-bottom
     ax.xaxis.set_major_formatter(FormatStrFormatter(f'%.{xtick_precision}f'))
     ax.set_xlim(*imp_range)
+    if xlabel is not None:
+        ax.set_xlabel(xlabel)
 
     ax.tick_params(axis='both', which='major', labelsize=label_fontsize, labelcolor=GREY)
-    ax.set_ylim(-.6, n_features+.5) # leave room for about half a bar above and below
+    ax.set_ylim(-.6, n_features-.5) # leave room for about half a bar below
     ax.set_yticks(list(ypositions))
     ax.set_yticklabels(list(I.index.values))
 
@@ -393,7 +398,5 @@ def plot_importances(df_importances,
     # rotate y-ticks
     if yrot is not None:
         ax.tick_params(labelrotation=yrot)
-
-    print(ax.bbox)
 
     return ImpViz()

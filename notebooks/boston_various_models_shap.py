@@ -89,17 +89,18 @@ svm_score = s.score(X, y)
 print("svm_score", svm_score)
 svm_shap_I = shap_importances(s, X, n_shap=n_shap)  # fast enough so use all data
 
-plot_importances(ols_shap_I.iloc[:8], ax=axes[0], imp_range=(0,.4), width=2.5)
+plot_importances(ols_shap_I.iloc[:8], ax=axes[0], imp_range=(0,.4), width=2.5, xlabel='(a)')
 axes[0].set_title(f"OLS training $R^2$={lm_score:.2f}")
-plot_importances(rf_I.iloc[:8], ax=axes[1], imp_range=(0,.4), width=2.5)
+plot_importances(rf_I.iloc[:8], ax=axes[1], imp_range=(0,.4), width=2.5, xlabel='(b)')
 axes[1].set_title(f"RF training $R^2$={rf_score:.2f}")
-plot_importances(m_I.iloc[:8], ax=axes[2], imp_range=(0,.4), width=2.5)
+plot_importances(m_I.iloc[:8], ax=axes[2], imp_range=(0,.4), width=2.5, xlabel='(c)')
 axes[2].set_title(f"XGBoost training $R^2$={b_score:.2f}")
-plot_importances(svm_shap_I.iloc[:8], ax=axes[3], imp_range=(0,.4), width=2.5)
+plot_importances(svm_shap_I.iloc[:8], ax=axes[3], imp_range=(0,.4), width=2.5, xlabel='(d)')
 axes[3].set_title(f"SVM training $R^2$={svm_score:.2f}")
 
 plt.suptitle(f"SHAP importances for Boston dataset: {n:,d} records, {n_shap} SHAP test records")
 plt.tight_layout()
-plt.savefig("/Users/parrt/github/stratx/articles/imp/images/diff-models.pdf", bbox_inches=0)
+plt.savefig("/Users/parrt/github/stratx/articles/imp/images/diff-models.pdf",
+            bbox_inches="tight", pad_inches=0)
 plt.show()
 
