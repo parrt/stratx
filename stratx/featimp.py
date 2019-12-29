@@ -245,7 +245,8 @@ def plot_importances(df_importances,
                      fontname="Arial",
                      figsize=None,
                      width:float=3, # if no figsize, use this width
-                     bar_width=13,
+                     bar_width=13, # in pixels
+                     bar_spacing = 3, # in pixels
                      imp_range=(0, 1.0),
                      dpi=150,
                      color='#4574B4',#'#D9E6F5',
@@ -295,26 +296,28 @@ def plot_importances(df_importances,
     """
     GREY = '#444443'
     I = df_importances
+    I = I.sort_values('Importance', ascending=True)
     n_features = len(I)
     left_padding = 0.01
 
     ppi = 72 # matplotlib has this hardcoded. E.g., see https://github.com/matplotlib/matplotlib/blob/40dfc353aa66b93fd0fbc55ca1f51701202c0549/lib/matplotlib/axes/_base.py#L694
     imp = I.Importance.values
+    y_margin = .1 #(bar_width / 2 + bar_width / 2 + bar_spacing) / ppi
 
     barcounts = np.array([f.count('\n')+1 for f in I.index])
     N = np.sum(barcounts)
 
-    ypositions = np.array(range(n_features))
+    ypositions = np.array( range(n_features) )
 
     if ax is None:
         if figsize:
             fig, ax = plt.subplots(1, 1, figsize=figsize)#, dpi=dpi)
         else:
-            # plt tries to make Bbox(x0=0.125, y0=0.10999999999999999, x1=0.9, y1=0.88) for canvas
-            # Those are 0..1 values for part of the overall fig I think
-            height_in_pixels = N * bar_width + 2 * bar_width/2 + (N-1) * 3
-            # to compute figsize, add 1-.88 and .11 = .12+.11 = .23
-            fudge = 15
+            # we need a bar for each feature and half a bar on bottom + half a bar above
+            # on top then spacing in between N bars (N-1 spaces)
+            height_in_pixels = N * bar_width + 2 * bar_width / 2 + (N-1) * bar_spacing
+            # space_for x axis (labels etc...)
+            fudge = 35
             fig, ax = plt.subplots(1, 1, figsize=(width, (height_in_pixels + fudge) / ppi), dpi=dpi)
 
     ax.spines['top'].set_linewidth(.5)
@@ -332,12 +335,13 @@ def plot_importances(df_importances,
         ax.set_title(title, fontsize=title_fontsize, fontname=fontname, color=GREY)
 
 
-    ax.invert_yaxis()  # labels read top-to-bottom
+    #ax.invert_yaxis()  # labels read top-to-bottom
     ax.xaxis.set_major_formatter(FormatStrFormatter(f'%.{xtick_precision}f'))
     ax.set_xlim(*imp_range)
 
     ax.tick_params(axis='both', which='major', labelsize=label_fontsize, labelcolor=GREY)
-    ax.set_yticks(ypositions)
+    ax.set_ylim(-.6, n_features+.5)
+    ax.set_yticks(list(ypositions))
     ax.set_yticklabels(list(I.index.values))
 
     for tick in ax.get_xticklabels():
@@ -345,14 +349,12 @@ def plot_importances(df_importances,
     for tick in ax.get_yticklabels():
         tick.set_fontname(fontname)
 
-    # ax.tick_params(axis='both', which='major', labelsize=label_fontsize)
-    # ax.set_yticks(np.array(range(n_features)) + shift_upwards_from_axis)
     # rects = []
     # for fi,y in zip(imp,ypositions):
     #     print(fi,y)
-    #     r = Rectangle([0.002, y-bar_width/2], fi, bar_width, color=color)
+    #     r = Rectangle([0.01, y-.45], fi, .9, color=color)
     #     rects.append(r)
-    #
+
     # bars = PatchCollection(rects)
     # ax.add_collection(bars)
 
