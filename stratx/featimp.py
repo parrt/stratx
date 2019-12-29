@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.utils import resample
+import matplotlib.pyplot as plt
 from timeit import default_timer as timer
 from joblib import parallel_backend, Parallel, delayed
 from matplotlib.colors import ListedColormap
@@ -244,7 +245,6 @@ def plot_importances(df_importances,
                      fontname="Arial",
                      figsize=None,
                      width:float=3, # if no figsize, use this width
-                     vscale = 1.28,
                      bar_width=13,
                      imp_range=(0, 1.0),
                      dpi=150,
@@ -296,7 +296,7 @@ def plot_importances(df_importances,
     GREY = '#444443'
     I = df_importances
     n_features = len(I)
-    ypadding = .1
+    left_padding = 0.01
 
     ppi = 72 # matplotlib has this hardcoded. E.g., see https://github.com/matplotlib/matplotlib/blob/40dfc353aa66b93fd0fbc55ca1f51701202c0549/lib/matplotlib/axes/_base.py#L694
     imp = I.Importance.values
@@ -308,10 +308,14 @@ def plot_importances(df_importances,
 
     if ax is None:
         if figsize:
-            fig, ax = plt.subplots(1, 1, figsize=figsize, dpi=dpi)
+            fig, ax = plt.subplots(1, 1, figsize=figsize)#, dpi=dpi)
         else:
-            height_in_pixels = N * bar_width
-            fig, ax = plt.subplots(1, 1, figsize=(width, vscale * height_in_pixels / ppi), dpi=dpi)
+            # plt tries to make Bbox(x0=0.125, y0=0.10999999999999999, x1=0.9, y1=0.88) for canvas
+            # Those are 0..1 values for part of the overall fig I think
+            height_in_pixels = N * bar_width + 2 * bar_width/2 + (N-1) * 3
+            # to compute figsize, add 1-.88 and .11 = .12+.11 = .23
+            fudge = 15
+            fig, ax = plt.subplots(1, 1, figsize=(width, (height_in_pixels + fudge) / ppi), dpi=dpi)
 
     ax.spines['top'].set_linewidth(.5)
     ax.spines['right'].set_linewidth(.5)
@@ -326,6 +330,7 @@ def plot_importances(df_importances,
 
     if title:
         ax.set_title(title, fontsize=title_fontsize, fontname=fontname, color=GREY)
+
 
     ax.invert_yaxis()  # labels read top-to-bottom
     ax.xaxis.set_major_formatter(FormatStrFormatter(f'%.{xtick_precision}f'))
@@ -351,7 +356,19 @@ def plot_importances(df_importances,
     # bars = PatchCollection(rects)
     # ax.add_collection(bars)
 
-    ax.hlines(y=ypositions, xmin=0.01, xmax=imp+0.01, color=color, linewidth=bar_width)
+    ax.hlines(y=ypositions, xmin=left_padding, xmax=imp + left_padding, color=color,
+              linewidth=bar_width, linestyles='solid')
+
+    if False and 'Sigma' in I.columns:
+        sigmas = I['Sigma'].values
+        for fi,s,y in zip(imp, sigmas, ypositions):
+            if fi < 0.005: continue
+            left_whisker = fi + left_padding - s
+            right_whisker = fi + left_padding + s
+            if left_whisker < left_padding:
+                left_whisker = left_padding + 0.004 # add fudge factor; mpl sees to draw bars a bit too far to right
+            # print(fi, y, left_whisker, right_whisker)
+            ax.plot([left_whisker, right_whisker], [y, y], lw=1.1, c='#F46C43')
 
 
     # barcontainer = ax.barh(y=range(n_features),
@@ -369,5 +386,7 @@ def plot_importances(df_importances,
     # rotate y-ticks
     if yrot is not None:
         ax.tick_params(labelrotation=yrot)
+
+    print(ax.bbox)
 
     return ImpViz()
