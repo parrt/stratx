@@ -250,6 +250,9 @@ def plot_importances(df_importances,
                      imp_range=(0, 1.0),
                      dpi=150,
                      color='#4574B4',#'#D9E6F5',
+                     whisker_color='black', #'#F46C43'
+                     whisker_linewidth = .6,
+                     whisker_barwidth = .1,
                      bgcolor=None,  # seaborn uses '#F1F8FE'
                      xtick_precision=2,
                      title=None,
@@ -302,7 +305,6 @@ def plot_importances(df_importances,
 
     ppi = 72 # matplotlib has this hardcoded. E.g., see https://github.com/matplotlib/matplotlib/blob/40dfc353aa66b93fd0fbc55ca1f51701202c0549/lib/matplotlib/axes/_base.py#L694
     imp = I.Importance.values
-    y_margin = .1 #(bar_width / 2 + bar_width / 2 + bar_spacing) / ppi
 
     barcounts = np.array([f.count('\n')+1 for f in I.index])
     N = np.sum(barcounts)
@@ -340,7 +342,7 @@ def plot_importances(df_importances,
     ax.set_xlim(*imp_range)
 
     ax.tick_params(axis='both', which='major', labelsize=label_fontsize, labelcolor=GREY)
-    ax.set_ylim(-.6, n_features+.5)
+    ax.set_ylim(-.6, n_features+.5) # leave room for about half a bar above and below
     ax.set_yticks(list(ypositions))
     ax.set_yticklabels(list(I.index.values))
 
@@ -361,16 +363,19 @@ def plot_importances(df_importances,
     ax.hlines(y=ypositions, xmin=left_padding, xmax=imp + left_padding, color=color,
               linewidth=bar_width, linestyles='solid')
 
-    if False and 'Sigma' in I.columns:
+    if 'Sigma' in I.columns:
         sigmas = I['Sigma'].values
         for fi,s,y in zip(imp, sigmas, ypositions):
             if fi < 0.005: continue
+            s *= 2 # show 2 sigma
             left_whisker = fi + left_padding - s
             right_whisker = fi + left_padding + s
             if left_whisker < left_padding:
                 left_whisker = left_padding + 0.004 # add fudge factor; mpl sees to draw bars a bit too far to right
             # print(fi, y, left_whisker, right_whisker)
-            ax.plot([left_whisker, right_whisker], [y, y], lw=1.1, c='#F46C43')
+            ax.plot([left_whisker, right_whisker], [y, y], lw=whisker_linewidth, c=whisker_color)
+            ax.plot([left_whisker, left_whisker], [y - whisker_barwidth, y + whisker_barwidth], lw=whisker_linewidth, c=whisker_color)
+            ax.plot([right_whisker, right_whisker], [y - whisker_barwidth, y + whisker_barwidth], lw=whisker_linewidth, c=whisker_color)
 
 
     # barcontainer = ax.barh(y=range(n_features),

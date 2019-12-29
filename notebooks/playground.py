@@ -5,7 +5,7 @@ from stratx.partdep import *
 
 I = pd.read_feather("/tmp/t.feather")
 I = I.set_index('Feature')
-I.iloc[2,1] = .07
+#I.iloc[2,1] = .07
 # print(I)
 # plot_importances(I.iloc[0:4])
 # plot_importances(I.iloc[0:8])
