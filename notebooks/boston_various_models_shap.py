@@ -32,7 +32,7 @@ y = pd.Series(boston.target)
 n = X.shape[0]
 n_shap=n
 
-fig, axes = plt.subplots(1,4,figsize=(12,2.5))
+fig, axes = plt.subplots(1,4,figsize=(10,2.5))
 
 lm = LinearRegression()
 #lm = Lasso(alpha=.001)
@@ -42,6 +42,27 @@ ols_shap_I = shap_importances(lm, X, n_shap=n_shap)  # fast enough so use all da
 # print(ols_shap_I)
 lm_score = lm.score(X,y)
 print("OLS", lm_score, mean_absolute_error(y, lm.predict(X)))
+
+"""
+Uncomment to compute variance of RF SHAP
+n_rf_trials = 15
+all_rf_I = np.empty(shape=(n_rf_trials,X.shape[1]))
+for i in range(n_rf_trials):
+    rf = RandomForestRegressor(n_estimators=20, min_samples_leaf=5, oob_score=True)
+    rf.fit(X, y)
+    rf_I = shap_importances(rf, X, n_shap, sort=False)
+    all_rf_I[i,:] = rf_I['Importance'].values
+    rf_score = rf.score(X, y)
+    print("RF", rf_score, rf.oob_score_, mean_absolute_error(y, rf.predict(X)))
+
+rf_I = pd.DataFrame(data={'Feature': X.columns,
+                           'Importance': np.mean(all_rf_I, axis=0),
+                           'Sigma': np.std(all_rf_I, axis=0)})
+rf_I = rf_I.set_index('Feature')
+rf_I = rf_I.sort_values('Importance', ascending=False)
+rf_I.reset_index().to_feather("/tmp/t.feather")
+# print(rf_I)
+"""
 
 rf = RandomForestRegressor(n_estimators=30, oob_score=True)
 rf.fit(X, y)
@@ -68,13 +89,13 @@ svm_score = s.score(X, y)
 print("svm_score", svm_score)
 svm_shap_I = shap_importances(s, X, n_shap=n_shap)  # fast enough so use all data
 
-plot_importances(ols_shap_I.iloc[:8], ax=axes[0], imp_range=(0,.4))
+plot_importances(ols_shap_I.iloc[:8], ax=axes[0], imp_range=(0,.4), width=2.5)
 axes[0].set_title(f"OLS training $R^2$={lm_score:.2f}")
-plot_importances(rf_I.iloc[:8], ax=axes[1], imp_range=(0,.4))
+plot_importances(rf_I.iloc[:8], ax=axes[1], imp_range=(0,.4), width=2.5)
 axes[1].set_title(f"RF training $R^2$={rf_score:.2f}")
-plot_importances(m_I.iloc[:8], ax=axes[2], imp_range=(0,.4))
+plot_importances(m_I.iloc[:8], ax=axes[2], imp_range=(0,.4), width=2.5)
 axes[2].set_title(f"XGBoost training $R^2$={b_score:.2f}")
-plot_importances(svm_shap_I.iloc[:8], ax=axes[3], imp_range=(0,.4))
+plot_importances(svm_shap_I.iloc[:8], ax=axes[3], imp_range=(0,.4), width=2.5)
 axes[3].set_title(f"SVM training $R^2$={svm_score:.2f}")
 
 plt.suptitle(f"SHAP importances for Boston dataset: {n:,d} records, {n_shap} SHAP test records")

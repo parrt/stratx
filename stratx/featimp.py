@@ -243,10 +243,10 @@ def plot_importances(df_importances,
                      label_fontsize=10,
                      fontname="Arial",
                      figsize=None,
+                     width:float=3, # if no figsize, use this width
+                     vscale = 1.28,
                      bar_width=13,
-                     minheight=1.5,
-                     vscale=1,
-                     imp_range=(-.002, 1.0),
+                     imp_range=(0, 1.0),
                      dpi=150,
                      color='#4574B4',#'#D9E6F5',
                      bgcolor=None,  # seaborn uses '#F1F8FE'
@@ -300,8 +300,6 @@ def plot_importances(df_importances,
 
     ppi = 72 # matplotlib has this hardcoded. E.g., see https://github.com/matplotlib/matplotlib/blob/40dfc353aa66b93fd0fbc55ca1f51701202c0549/lib/matplotlib/axes/_base.py#L694
     imp = I.Importance.values
-    min_imp = np.min(imp)
-    max_imp = np.max(imp)
 
     barcounts = np.array([f.count('\n')+1 for f in I.index])
     N = np.sum(barcounts)
@@ -313,8 +311,7 @@ def plot_importances(df_importances,
             fig, ax = plt.subplots(1, 1, figsize=figsize, dpi=dpi)
         else:
             height_in_pixels = N * bar_width
-            fudge_factor = 1.28
-            fig, ax = plt.subplots(1, 1, figsize=(3, fudge_factor * height_in_pixels / ppi), dpi=dpi)
+            fig, ax = plt.subplots(1, 1, figsize=(width, vscale * height_in_pixels / ppi), dpi=dpi)
 
     ax.spines['top'].set_linewidth(.5)
     ax.spines['right'].set_linewidth(.5)
@@ -354,7 +351,7 @@ def plot_importances(df_importances,
     # bars = PatchCollection(rects)
     # ax.add_collection(bars)
 
-    ax.hlines(y=ypositions, xmin=0.01, xmax=imp, color=color, linewidth=bar_width)
+    ax.hlines(y=ypositions, xmin=0.01, xmax=imp+0.01, color=color, linewidth=bar_width)
 
 
     # barcontainer = ax.barh(y=range(n_features),

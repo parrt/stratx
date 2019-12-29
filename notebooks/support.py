@@ -221,7 +221,7 @@ def ginidrop_importances(rf, X):
     return ginidrop_I
 
 
-def shap_importances(model, X, n_shap, normalize=True):
+def shap_importances(model, X, n_shap, normalize=True, sort=True):
     start = timer()
     #X = shap.kmeans(X, k=n_shap)
     X = X.sample(n=n_shap, replace=False)
@@ -247,7 +247,8 @@ def shap_importances(model, X, n_shap, normalize=True):
     # print("SHAP", normalized_shap)
     shapI = pd.DataFrame(data={'Feature': X.columns, 'Importance': normalized_shap})
     shapI = shapI.set_index('Feature')
-    shapI = shapI.sort_values('Importance', ascending=False)
+    if sort:
+        shapI = shapI.sort_values('Importance', ascending=False)
     # plot_importances(shapI)
     return shapI
 
