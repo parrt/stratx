@@ -21,7 +21,7 @@ y = y.iloc[-n:]
 for i in range(1):
     start = timer()
 
-    I = impact_importances(X, y)
+    I = importances(X, y)
 
     # I = impact_importances(X, y, catcolnames={'ModelID'}, n_jobs=1,
     #                        min_samples_leaf=20, min_slopes_per_x=15)

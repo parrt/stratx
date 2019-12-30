@@ -50,9 +50,9 @@ def compare():
     rf.fit(X,y)
     print("OOB", rf.oob_score_)
 
-    I = impact_importances(X, pd.Series(y), min_samples_leaf=40,
-                           n_jobs=-1,
-                           catcolnames={'Sex', 'Race'})
+    I = importances(X, pd.Series(y), min_samples_leaf=40,
+                    n_jobs=-1,
+                    catcolnames={'Sex', 'Race'})
     plot_importances(I)
     #
     # shap_test_size = 200
@@ -90,9 +90,9 @@ def examine_sex_feature(shap_test_size=200):
     # shap.dependence_plot("Sex", shap_values, X[:shap_test_size], interaction_index=None)
     # plot_catstratpd(X, pd.Series(y), 'Sex', 'y', yrange=(-3,5), min_y_shifted_to_zero=False,
     #                 sort=None)
-    I = impact_importances(X, pd.Series(y), catcolnames={'Sex','Race'},
-                           min_samples_leaf=40,
-                           normalize=False)
+    I = importances(X, pd.Series(y), catcolnames={'Sex', 'Race'},
+                    min_samples_leaf=40,
+                    normalize=False)
     print(I)
 
 

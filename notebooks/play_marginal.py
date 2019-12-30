@@ -177,7 +177,7 @@ def synthetic_poly2dup_data(n, p):
 def compare_imp(rf, X, y, catcolnames=set(), eqn="n/a"):
     fig, axes = plt.subplots(1, 5, figsize=(12, 2.2))
 
-    I = impact_importances(X, y, catcolnames=catcolnames)
+    I = importances(X, y, catcolnames=catcolnames)
     plot_importances(I, imp_range=(0, 1), ax=axes[0])
 
     shap_I = shap_importances(rf, X)
@@ -238,7 +238,7 @@ def weight():
     # #X['noise'] = np.random.random_sample(size=len(X))
     # y = df['y']
 
-    I = impact_importances(X, y, catcolnames={'sex', 'pregnant'})
+    I = importances(X, y, catcolnames={'sex', 'pregnant'})
     print(X.columns)
     print(I)
     plot_importances(I, imp_range=(0, 1.0))
@@ -256,7 +256,7 @@ def weather():
 
     X = df.drop('temperature', axis=1)
     y = df['temperature']
-    I = impact_importances(X, y, catcolnames={'state'})
+    I = importances(X, y, catcolnames={'state'})
     print(X.columns)
     print(I)
     plot_importances(I, imp_range=(0,1.0))
@@ -280,7 +280,7 @@ def poly():
     # #X['noise'] = np.random.random_sample(size=len(X))
     # y = df['y']
 
-    I = impact_importances(X, y, n_samples=None)
+    I = importances(X, y, n_samples=None)
     print(I)
     # I = impact_importances(X, y, n_samples=100, bootstrap=False, n_trials=25)
     # print(I)
@@ -326,7 +326,7 @@ def time_SHAP(n_estimators, n_records, model=None):
 def our_bulldozer():
     X, n_records, y = load_bulldozer()
     start = timer()
-    I = impact_importances(X, y, verbose=True)#, n_samples=3000, bootstrap_sampling=False, n_trials=10)#, catcolnames={'ModelID','SalesID','auctioneerID','MachineID','datasource'})
+    I = importances(X, y, verbose=True)#, n_samples=3000, bootstrap_sampling=False, n_trials=10)#, catcolnames={'ModelID','SalesID','auctioneerID','MachineID','datasource'})
     print(I)
     stop = timer()
     print(f"Time for {n_records} = {(stop - start):.1f}s")
@@ -416,8 +416,8 @@ def boston():
     axes[4].set_title(f"SHAP RF(n_estimators={n_estimators}), OOB $R^2$ {model.oob_score_:.2f}")
 
     # Do ours
-    I = impact_importances(X, y, verbose=True,
-                           min_samples_leaf=5)
+    I = importances(X, y, verbose=True,
+                    min_samples_leaf=5)
     plot_importances(I, imp_range=(0, 1), ax=axes[5])
     axes[5].set_title(f"Model-Free Impact Importance")
 

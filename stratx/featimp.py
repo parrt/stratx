@@ -14,21 +14,21 @@ from stratx.partdep import *
 from stratx.ice import *
 
 
-def impact_importances(X: pd.DataFrame,
-                       y: pd.Series,
-                       catcolnames=set(),
-                       normalize=True,  # make imp values 0..1
-                       supervised=True,
-                       n_jobs=1,
-                       sort=True,  # sort by importance in descending order?
-                       min_slopes_per_x=15,
-                       stddev=False,  # turn on to get stddev of importances via bootstrapping
-                       n_stddev_trials: int = 5,
-                       pvalues=False,  # use to get p-values for each importance; it's number trials
-                       n_pvalue_trials=50,  # how many trials to do to get p-values
-                       n_trees=1, min_samples_leaf=10, bootstrap=False, max_features=1.0,
-                       verbose=False,
-                       pdp:('stratpd','ice')='stratpd') -> pd.DataFrame:
+def importances(X: pd.DataFrame,
+                y: pd.Series,
+                catcolnames=set(),
+                normalize=True,  # make imp values 0..1
+                supervised=True,
+                n_jobs=1,
+                sort=True,  # sort by importance in descending order?
+                min_slopes_per_x=15,
+                stddev=False,  # turn on to get stddev of importances via bootstrapping
+                n_stddev_trials: int = 5,
+                pvalues=False,  # use to get p-values for each importance; it's number trials
+                n_pvalue_trials=50,  # how many trials to do to get p-values
+                n_trees=1, min_samples_leaf=10, bootstrap=False, max_features=1.0,
+                verbose=False,
+                pdp:('stratpd','ice')='stratpd') -> pd.DataFrame:
     if not isinstance(X, pd.DataFrame):
         raise ValueError("Can only operate on dataframes at the moment")
 
@@ -40,17 +40,17 @@ def impact_importances(X: pd.DataFrame,
     for i in range(n_stddev_trials):
         bootstrap_sample_idxs = resample(range(n), n_samples=n, replace=resample_with_replacement)
         X_, y_ = X.iloc[bootstrap_sample_idxs], y.iloc[bootstrap_sample_idxs]
-        imps[:,i] = impact_importances_(X_, y_, catcolnames=catcolnames,
-                                        normalize=normalize,
-                                        supervised=supervised,
-                                        n_jobs=n_jobs,
-                                        n_trees=n_trees,
-                                        min_samples_leaf=min_samples_leaf,
-                                        min_slopes_per_x=min_slopes_per_x,
-                                        bootstrap=bootstrap,
-                                        max_features=max_features,
-                                        verbose=verbose,
-                                        pdp=pdp)
+        imps[:,i] = importances_(X_, y_, catcolnames=catcolnames,
+                                 normalize=normalize,
+                                 supervised=supervised,
+                                 n_jobs=n_jobs,
+                                 n_trees=n_trees,
+                                 min_samples_leaf=min_samples_leaf,
+                                 min_slopes_per_x=min_slopes_per_x,
+                                 bootstrap=bootstrap,
+                                 max_features=max_features,
+                                 verbose=verbose,
+                                 pdp=pdp)
 
     avg_imps = np.mean(imps, axis=1)
 
@@ -78,15 +78,15 @@ def impact_importances(X: pd.DataFrame,
 
 
 
-def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
-                        normalize=True,
-                        supervised=True,
-                        n_jobs=1,
-                        n_trees=1, min_samples_leaf=10,
-                        min_slopes_per_x=15,
-                        bootstrap=False, max_features=1.0,
-                        verbose=False,
-                        pdp:('stratpd','ice')='stratpd') -> np.ndarray:
+def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
+                 normalize=True,
+                 supervised=True,
+                 n_jobs=1,
+                 n_trees=1, min_samples_leaf=10,
+                 min_slopes_per_x=15,
+                 bootstrap=False, max_features=1.0,
+                 verbose=False,
+                 pdp:('stratpd','ice')='stratpd') -> np.ndarray:
     if not isinstance(X, pd.DataFrame):
         raise ValueError("Can only operate on dataframes at the moment")
 
@@ -102,37 +102,31 @@ def impact_importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
     def single_feature_importance(colname):
         # print(f"Start {colname}")
         if colname in catcolnames:
-            if pdp=='stratpd':
-                leaf_histos, avg_per_cat, ignored = \
-                    cat_partial_dependence(X, y, colname=colname,
-                                           n_trees=n_trees,
-                                           min_samples_leaf=min_samples_leaf,
-                                           bootstrap=bootstrap,
-                                           max_features=max_features,
-                                           verbose=verbose,
-                                           supervised=supervised)
-                #         print(f"Ignored for {colname} = {ignored}")
-            elif pdp == 'ice':
-                pdpy = original_catpdp(rf, X=X, colname=colname)
+            leaf_histos, avg_per_cat, ignored = \
+                cat_partial_dependence(X, y, colname=colname,
+                                       n_trees=n_trees,
+                                       min_samples_leaf=min_samples_leaf,
+                                       bootstrap=bootstrap,
+                                       max_features=max_features,
+                                       verbose=verbose,
+                                       supervised=supervised)
+            #         print(f"Ignored for {colname} = {ignored}")
             # no need to shift as abs(avg_per_cat) deals with negatives. The avg per cat
             # values will straddle 0, some above, some below.
             # some cats have NaN, such as 0th which is for "missing values"
             avg_abs_pdp = np.nanmean(np.abs(avg_per_cat))# * (ncats - 1)
         else:
-            if pdp=='stratpd':
-                leaf_xranges, leaf_slopes, slope_counts_at_x, dx, dydx, pdpx, pdpy, ignored = \
-                    partial_dependence(X=X, y=y, colname=colname,
-                                       n_trees=n_trees,
-                                       min_samples_leaf=min_samples_leaf,
-                                       min_slopes_per_x=min_slopes_per_x,
-                                       bootstrap=bootstrap,
-                                       max_features=max_features,
-                                       verbose=verbose,
-                                       parallel_jit=n_jobs == 1,
-                                       supervised=supervised)
-                #         print(f"Ignored for {colname} = {ignored}")
-            elif pdp=='ice':
-                pdpy = original_pdp(rf, X=X, colname=colname)
+            leaf_xranges, leaf_slopes, slope_counts_at_x, dx, dydx, pdpx, pdpy, ignored = \
+                partial_dependence(X=X, y=y, colname=colname,
+                                   n_trees=n_trees,
+                                   min_samples_leaf=min_samples_leaf,
+                                   min_slopes_per_x=min_slopes_per_x,
+                                   bootstrap=bootstrap,
+                                   max_features=max_features,
+                                   verbose=verbose,
+                                   parallel_jit=n_jobs == 1,
+                                   supervised=supervised)
+            #         print(f"Ignored for {colname} = {ignored}")
             avg_abs_pdp = np.mean(np.abs(pdpy))# * (np.max(pdpx) - np.min(pdpx))
         # print(f"Stop {colname}")
         return avg_abs_pdp
@@ -176,26 +170,26 @@ def importances_pvalues(X: pd.DataFrame,
     """
     I_baseline = importances
     if importances is None:
-        I_baseline = impact_importances(X, y, catcolnames=catcolnames, sort=False,
-                                        min_slopes_per_x=min_slopes_per_x,
-                                        supervised=supervised,
-                                        n_jobs=n_jobs,
-                                        n_trees=n_trees,
-                                        min_samples_leaf=min_samples_leaf,
-                                        bootstrap=bootstrap,
-                                        max_features=max_features)
+        I_baseline = importances(X, y, catcolnames=catcolnames, sort=False,
+                                 min_slopes_per_x=min_slopes_per_x,
+                                 supervised=supervised,
+                                 n_jobs=n_jobs,
+                                 n_trees=n_trees,
+                                 min_samples_leaf=min_samples_leaf,
+                                 bootstrap=bootstrap,
+                                 max_features=max_features)
 
     counts = np.zeros(shape=X.shape[1])
     for i in range(n_trials):
-        I = impact_importances(X, y.sample(frac=1.0, replace=False),
-                               catcolnames=catcolnames, sort=False,
-                               min_slopes_per_x=min_slopes_per_x,
-                               supervised=supervised,
-                               n_jobs=n_jobs,
-                               n_trees=n_trees,
-                               min_samples_leaf=min_samples_leaf,
-                               bootstrap=bootstrap,
-                               max_features=max_features)
+        I = importances(X, y.sample(frac=1.0, replace=False),
+                        catcolnames=catcolnames, sort=False,
+                        min_slopes_per_x=min_slopes_per_x,
+                        supervised=supervised,
+                        n_jobs=n_jobs,
+                        n_trees=n_trees,
+                        min_samples_leaf=min_samples_leaf,
+                        bootstrap=bootstrap,
+                        max_features=max_features)
         counts += I['Importance'].values >= I_baseline['Importance'].values
 
     # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC379178/ says don't use r/n

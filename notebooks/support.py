@@ -18,7 +18,6 @@ pd.set_option('display.width', 300)
 
 from timeit import default_timer as timer
 
-from rfpimp import *
 from stratx.featimp import *
 
 import shap
@@ -272,12 +271,12 @@ def get_multiple_imps(X, y, n_shap=300, n_estimators=50, min_samples_leaf=10,
 
     perm_I = importances(rf, X, y)
 
-    ours_I = impact_importances(X, y, verbose=False, min_samples_leaf=min_samples_leaf,
-                                n_trees = n_stratpd_trees,
-                                bootstrap=bootstrap,
-                                catcolnames=catcolnames,
-                                min_slopes_per_x=min_slopes_per_x,
-                                supervised=supervised)
+    ours_I = importances(X, y, verbose=False, min_samples_leaf=min_samples_leaf,
+                         n_trees = n_stratpd_trees,
+                         bootstrap=bootstrap,
+                         catcolnames=catcolnames,
+                         min_slopes_per_x=min_slopes_per_x,
+                         supervised=supervised)
     return ols_I, ols_shap_I, rf_I, perm_I, ours_I
 
 

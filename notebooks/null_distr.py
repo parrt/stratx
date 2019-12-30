@@ -22,6 +22,6 @@ from rfpimp import plot_importances, dropcol_importances, importances
 X, y = load_rent(n=30_000)
 
 # importances_pvalues(X, y, n_trials=50)
-I = impact_importances(X, y, pvalues=True, n_pvalue_trials=80, n_jobs=4)
+I = importances(X, y, pvalues=True, n_pvalue_trials=80, n_jobs=4)
 # I = impact_importances(X, y, stddev=True, n_stddev_trials=5, pvalues=True, n_pvalue_trials=5)
 print(I)

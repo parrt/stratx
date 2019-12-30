@@ -41,10 +41,10 @@ def dupcol():
     fig, axes = plt.subplots(ntrials, 2, figsize=(4.5, ntrials))
 
     for i in range(ntrials):
-        I = impact_importances(X, y, min_samples_leaf=5, pdp='stratpd')
+        I = importances(X, y, min_samples_leaf=5, pdp='stratpd')
         plot_importances(I, imp_range=(0, 1.0), ax=axes[i][0])
         axes[i][0].set_title(f"StratPD impact", fontsize=8)
-        I = impact_importances(X, y, pdp='ice')
+        I = importances(X, y, pdp='ice')
         plot_importances(I, imp_range=(0, 1.0), ax=axes[i][1])
         axes[i][1].set_title(f"ICE/PDP impact", fontsize=8)
         # ntrees=5, min_samples_leaf=10, bootstrap=False, max_features=1)

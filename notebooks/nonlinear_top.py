@@ -69,7 +69,7 @@ shap.dependence_plot("x2", shap_values, X[:shap_test_size], interaction_index=No
 
 # plot_stratpd_gridsearch(X, y, 'x1', 'price')
 
-I = impact_importances(X, y, normalize=False)
+I = importances(X, y, normalize=False)
 print(I)
 
 # plot_stratpd(X, y, colname='x1', targetname='y', min_samples_leaf=10,
