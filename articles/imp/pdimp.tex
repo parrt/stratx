@@ -202,7 +202,8 @@ In \figref{fig:boston-features}, we
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.6]{images/boston-features.pdf}
-\caption{Top 8 of 13 features. Boston}
+\includegraphics[scale=0.6]{images/boston-features-shap-rf.pdf}
+\caption{Top 8 of 13 features. Boston. Note LSTAT/RM order is diff than in original figure as their is high variance}
 \label{fig:boston-features}
 \end{center}
 \end{figure}
@@ -282,6 +283,33 @@ Then see \figref{fig:rent-topk}
 \end{figure}
 
 
+Try all together now:
+
+\noindent \begin{minipage}[t]{0.5\textwidth}
+%    \centering
+\includegraphics[scale=0.7]{images/boston-topk.pdf}
+\vspace{-3mm}
+\captionof{figure}{foo\vspace{1em}}
+\label{fig:bigx_stratpd}
+\end{minipage}
+\begin{minipage}[t]{0.5\textwidth}
+%    \centering
+\includegraphics[scale=0.7]{images/flights-topk.pdf}
+\vspace{-3mm}
+\captionof{figure}{blort\vspace{1em}}
+\end{minipage}
+
+\noindent \begin{minipage}[t]{0.5\textwidth}
+\includegraphics[scale=0.7]{images/bulldozer-topk.pdf}
+\vspace{-3mm}
+\captionof{figure}{blort\vspace{1em}}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.5\textwidth}
+\includegraphics[scale=0.7]{images/rent-topk.pdf}
+\vspace{-3mm}
+\captionof{figure}{blort\vspace{1em}}
+\end{minipage}
 
 performance. with lots of outliers, choosing a small subset for shap is a bad idea so this is a real problem.
  
@@ -291,7 +319,7 @@ performance. with lots of outliers, choosing a small subset for shap is a bad id
 
 The variance of the importances derived from the random forest is high, SHAP has specialized ``explainers'' for linear and tree-based models for performance reasons, but relies on the general method to explain support vector machines. , but the results are subject to the variance of the internal model parameters.  Ideally, feature importances would not change from run to run on the same data set using the same technique.
 
-\section{Discussion in future work}
+\section{Discussion and future work}
 
 research should now focus on getting more accurate partial dependence approximations.
 

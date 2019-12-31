@@ -19,13 +19,13 @@ R, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
                          use_oob=use_oob,
                          top_features_range=(1, 8))
 
-plot_importances(our_I.iloc[:8], imp_range=(0,0.4), width=2.8,
+plot_importances(our_I.iloc[:8], imp_range=(0,0.4), width=3,
                  title="Bulldozer StratImpact importances")
 plt.tight_layout()
 plt.savefig("../images/bulldozer-features.pdf", bbox_inches="tight", pad_inches=0)
 plt.show()
 
-plot_importances(rf_I.iloc[0:8], imp_range=(0, .4), width=4.5,
+plot_importances(rf_I.iloc[0:8], imp_range=(0, .4), width=3,
                  title="Bulldozer RF SHAP importances")
 plt.tight_layout()
 plt.savefig("../images/bulldozer-features-shap-rf.pdf", bbox_inches="tight", pad_inches=0)

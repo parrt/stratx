@@ -12,10 +12,16 @@ R, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
                          metric=metric,
                          min_slopes_per_x=1)
 
-plot_importances(our_I.iloc[:8], imp_range=(0,0.4), width=2.5,
+plot_importances(our_I.iloc[:8], imp_range=(0,0.4), width=3,
                  title="Boston StratImpact importances")
 plt.tight_layout()
 plt.savefig("../images/boston-features.pdf")
+plt.show()
+
+plot_importances(rf_I.iloc[:8], imp_range=(0,0.4), width=3,
+                 title="Boston SHAP RF importances")
+plt.tight_layout()
+plt.savefig("../images/boston-features-shap-rf.pdf")
 plt.show()
 
 print(R)
