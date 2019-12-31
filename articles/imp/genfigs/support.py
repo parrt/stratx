@@ -7,6 +7,8 @@ from scipy.stats import spearmanr
 
 import matplotlib.pyplot as plt
 
+from collections import OrderedDict
+
 from sklearn.linear_model import LinearRegression, Lasso, LogisticRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.ensemble import GradientBoostingRegressor
@@ -64,7 +66,6 @@ def df_split_dates(df,colname):
 
 
 def spearmans_importances(X, y):
-    global I
     correlations = [spearmanr(X[colname], y)[0] for colname in X.columns]
     I = pd.DataFrame(data={'Feature': X.columns, 'Importance': np.abs(correlations)})
     I = I.set_index('Feature')
@@ -133,10 +134,17 @@ def compare_top_features(X, y, top_features_range=None,
                          stratpd_min_samples_leaf=10,
                          min_slopes_per_x=15,
                          catcolnames=set(),
-                         supervised=True):
+                         supervised=True,
+                         include=['Spearman', 'OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact'],
+                         drop=()):
     if use_oob and metric!=r2_score:
         #     print("Warning: use_oob can only give R^2; flipping metric to r2_score")
         metric=r2_score
+
+    include = include.copy()
+    for feature in drop:
+        include.remove(feature)
+
 
     n_estimators = 40 # for both SHAP and testing purposes
 
@@ -144,43 +152,44 @@ def compare_top_features(X, y, top_features_range=None,
     rf.fit(X, y)
     print(f"Sanity check: R^2 OOB on {X.shape[0]} records: {rf.oob_score_:.3f}, training {metric.__name__}={metric(y, rf.predict(X))}")
 
-    ols_I, shap_ols_I, rf_I, perm_I, our_I = \
-        get_multiple_imps(X, y,
-                          n_stratpd_trees=n_stratpd_trees,
-                          bootstrap=bootstrap,
-                          stratpd_min_samples_leaf=stratpd_min_samples_leaf,
-                          n_estimators=n_estimators,
-                          n_shap=n_shap,
-                          catcolnames=catcolnames,
-                          min_slopes_per_x=min_slopes_per_x,
-                          supervised=supervised)
-    print("OLS\n", ols_I)
-    print("OLS SHAP\n", shap_ols_I)
-    print("RF SHAP\n", rf_I)
-    print("RF perm\n", perm_I)
-    print("Our importances\n",our_I)
+    all_importances = get_multiple_imps(X, y,
+                                        n_stratpd_trees=n_stratpd_trees,
+                                        bootstrap=bootstrap,
+                                        stratpd_min_samples_leaf=stratpd_min_samples_leaf,
+                                        n_estimators=n_estimators,
+                                        n_shap=n_shap,
+                                        catcolnames=catcolnames,
+                                        min_slopes_per_x=min_slopes_per_x,
+                                        supervised=supervised,
+                                        include=include)
+
+    print("Spearman\n", all_importances['Spearman'])
+    print("OLS\n", all_importances['OLS'])
+    print("OLS SHAP\n", all_importances['OLS SHAP'])
+    print("RF SHAP\n", all_importances['RF SHAP'])
+    print("RF perm\n", all_importances['RF perm'])
+    print("Our importances\n",all_importances['StratImpact'])
 
     if top_features_range is None:
         top_features_range = (1, X.shape[1])
 
-    features_names = ['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']
-
-    print("Our FEATURES rank", our_I.index.values)
+    features_names = include #['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']
 
     print(f"n={len(X)}, n_top={top_features_range[1]}, n_estimators={n_estimators}, n_shap={n_shap}, min_samples_leaf={stratpd_min_samples_leaf}")
     topscores = []
     for top in range(top_features_range[0], top_features_range[1] + 1):
-        ols_top = ols_I.iloc[:top, 0].index.values
-        shap_ols_top = shap_ols_I.iloc[:top, 0].index.values
-        rf_top = rf_I.iloc[:top, 0].index.values
-        perm_top = perm_I.iloc[:top, 0].index.values
-        our_top = our_I.iloc[:top, 0].index.values
-        features_set = [ols_top, shap_ols_top, rf_top, perm_top, our_top]
+        # ols_top = ols_I.iloc[:top, 0].index.values
+        # shap_ols_top = shap_ols_I.iloc[:top, 0].index.values
+        # rf_top = rf_I.iloc[:top, 0].index.values
+        # perm_top = perm_I.iloc[:top, 0].index.values
+        # our_top = our_I.iloc[:top, 0].index.values
+        # features_set = [ols_top, shap_ols_top, rf_top, perm_top, our_top]
         all = []
         for i in range(trials):
             # print(i, end=' ')
             results = []
-            for name, features in zip(features_names, features_set):
+            feature_sets = [I.iloc[:top, 0].index.values for I in all_importances.values() if I is not None]
+            for name, features in zip(include, feature_sets):
                 # print(f"Train with {features} from {name}")
                 # Train RF model with top-k features
                 rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=use_oob,
@@ -204,38 +213,63 @@ def compare_top_features(X, y, top_features_range=None,
 
     R = pd.DataFrame(data=topscores, columns=features_names)
     R.index = [f"top-{top} {'OOB' if use_oob else 'training'} {metric.__name__}" for top in range(top_features_range[0], top_features_range[1] + 1)]
-    return R, ols_I, shap_ols_I, rf_I, perm_I, our_I
+
+    # unpack for users
+    return (R, *all_importances.values())
 
 
-def get_multiple_imps(X, y, n_shap=300, n_estimators=50, stratpd_min_samples_leaf=10,
+def get_multiple_imps(X, y, n_shap=300, n_estimators=50,
+                      stratpd_min_samples_leaf=10,
                       n_stratpd_trees=1,
                       bootstrap=False,
                       catcolnames=set(),
                       min_slopes_per_x=10,
-                      supervised=True):
+                      supervised=True,
+                      include=['Spearman', 'OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']):
+    spear_I = ols_I = ols_shap_I = rf_I = perm_I = ours_I = None
 
-    lm = LinearRegression()
-    lm.fit(X, y)
-    X_ = StandardScaler().fit_transform(X)
-    X_ = pd.DataFrame(X_, columns=X.columns)
-    ols_I, score = linear_model_importance(lm, X_, y)
+    if 'Spearman' in include:
+        spear_I = spearmans_importances(X, y)
 
-    ols_shap_I = shap_importances(lm, X, n_shap=len(X)) # fast enough so use all data
+    if "OLS" in include:
+        X_ = StandardScaler().fit_transform(X)
+        X_ = pd.DataFrame(X_, columns=X.columns)
+        lm = LinearRegression()
+        lm.fit(X_, y)
+        ols_I, score = linear_model_importance(lm, X_, y)
+
+    if "OLS SHAP" in include:
+        X_ = StandardScaler().fit_transform(X)
+        X_ = pd.DataFrame(X_, columns=X.columns)
+        lm = LinearRegression()
+        lm.fit(X_, y)
+        ols_shap_I = shap_importances(lm, X_, n_shap=len(X)) # fast enough so use all data
 
     rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=True)
     rf.fit(X, y)
-    rf_I = shap_importances(rf, X, n_shap)
 
-    perm_I = rfpimp.importances(rf, X, y) # permutation
+    if "RF SHAP" in include:
+        rf_I = shap_importances(rf, X, n_shap)
 
-    ours_I = importances(X, y, verbose=False,
-                         min_samples_leaf=stratpd_min_samples_leaf,
-                         n_trees = n_stratpd_trees,
-                         bootstrap=bootstrap,
-                         catcolnames=catcolnames,
-                         min_slopes_per_x=min_slopes_per_x,
-                         supervised=supervised)
-    return ols_I, ols_shap_I, rf_I, perm_I, ours_I
+    if "RF perm" in include:
+        perm_I = rfpimp.importances(rf, X, y) # permutation
+
+    if "StratImpact" in include:
+        ours_I = importances(X, y, verbose=False,
+                             min_samples_leaf=stratpd_min_samples_leaf,
+                             n_trees = n_stratpd_trees,
+                             bootstrap=bootstrap,
+                             catcolnames=catcolnames,
+                             min_slopes_per_x=min_slopes_per_x,
+                             supervised=supervised)
+    d = OrderedDict()
+    d['Spearman'] = spear_I
+    d['OLS'] = ols_I
+    d['OLS SHAP'] = ols_shap_I
+    d['RF SHAP'] = rf_I
+    d["RF perm"] = perm_I
+    d['StratImpact'] = ours_I
+    return d
 
 
 def plot_topk(R, ax, k=None):
@@ -243,11 +277,13 @@ def plot_topk(R, ax, k=None):
     if k is None:
         k = R.shape[0]
     feature_counts = range(1, k + 1)
-    fmts = ['o-','v-','s-','x-','-']
+    fmts = {'Spearman':'P-', 'OLS':'o-', 'OLS SHAP':'v-', 'RF SHAP':'s-',
+            "RF perm":'x-', 'StratImpact':'-'}
     for i,technique in enumerate(R.columns):
-        fmt = fmts[i]
+        fmt = fmts[technique]
         ms = 8
         if fmt == 'x-': ms = 11
+        if fmt == 'P-': ms = 11
         if technique == 'StratImpact':
             color = '#A22396' #'#4574B4'  # '#415BA3'
             lw = 2
@@ -256,16 +292,6 @@ def plot_topk(R, ax, k=None):
             lw = .5
         ax.plot(feature_counts, R[technique][:k], fmt, lw=lw, label=technique,
                 c=color, alpha=.9, markersize=ms, fillstyle='none')
-
-    plt.legend()
-    ax.set_xlabel("Top $k$ most important features")
-    ax.xaxis.set_ticks(feature_counts)
-
-
-def plot_topk_bars(R, ax):
-    feature_counts = np.array(range(1, R.shape[0] + 1))
-    for i, technique in enumerate(R.columns):
-        ax.bar(feature_counts + 0.15 * i, R[technique], width=0.15, label=technique)
 
     plt.legend()
     ax.set_xlabel("Top $k$ most important features")

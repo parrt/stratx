@@ -197,6 +197,24 @@ The best feature importance method ranks features by their independent contribut
 
 even if recommendations are identified by their isolated contribution, the model is still taking the combination into consideration when fitting and hence the marginal errors are not necessarily reduced specifically because of the added feature at number $k$.
 
+Get a baseline \figref{fig:baseline}.
+
+\begin{figure}[b]
+\centering
+\begin{subfigure}{.5\textwidth}
+    \centering
+\includegraphics[scale=0.7]{images/rent-topk-spearman.pdf}
+\vspace{-2mm}\subcaption{\footnotesize foo}\vspace{3mm}
+\end{subfigure}%
+\begin{subfigure}{.5\textwidth}
+    \centering
+\includegraphics[scale=0.7]{images/bulldozer-topk-spearman.pdf}
+\vspace{-2mm}\subcaption{\footnotesize foo}\vspace{3mm}
+\end{subfigure}
+\caption{Whew}
+\label{fig:baseline}
+\end{figure}
+
 Model-based methods have all the advantages in these experiments.
 
 In \figref{fig:features}, we

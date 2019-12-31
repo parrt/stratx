@@ -7,10 +7,11 @@ n = X.shape[0]
 metric = mean_absolute_error
 
 # need small or 1 min_slopes_per_x given tiny toy dataset
-R, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
+R, spear_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
     compare_top_features(X, y, n_shap=n,
                          metric=metric,
-                         min_slopes_per_x=1)
+                         min_slopes_per_x=1,
+                         drop=['Spearman'])
 
 plot_importances(our_I.iloc[:8], imp_range=(0,0.4), width=3,
                  title="Boston StratImpact importances")
@@ -28,7 +29,6 @@ print(R)
 R.reset_index().to_feather("/tmp/boston.feather")
 
 fig, ax = plt.subplots(1,1,figsize=(4,3.5))
-
 plot_topk(R, ax, k=8)
 ax.set_ylabel("Training MAE (k$)")
 ax.set_title("Boston housing prices")

@@ -10,14 +10,15 @@ print("Loaded...")
 X = X.iloc[-n:]
 y = y.iloc[-n:]
 
-R, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
+R, spear_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
     compare_top_features(X, y, n_shap=300,
                          stratpd_min_samples_leaf=20, # gridsearch showed 20 better than 15
                          # min_slopes_per_x=15, # default
                          catcolnames={'AC', 'ModelID'},
                          metric=metric,
                          use_oob=use_oob,
-                         top_features_range=(1, 8))
+                         top_features_range=(1, 8),
+                         drop=['Spearman'])
 
 plot_importances(our_I.iloc[:8], imp_range=(0,0.4), width=3,
                  title="Bulldozer StratImpact importances")
