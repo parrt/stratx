@@ -37,7 +37,7 @@ print(R)
 fig, ax = plt.subplots(1,1,figsize=(4,3.5))
 
 plot_topk(R, ax, k=8)
-ax.set_ylabel("Training MAE (dollars)")
+ax.set_ylabel("Training MAE ($)")
 ax.set_title("Bulldozer auction prices")
 plt.tight_layout()
 plt.savefig("../images/bulldozer-topk.pdf", bbox_inches="tight", pad_inches=0)

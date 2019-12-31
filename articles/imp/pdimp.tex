@@ -197,121 +197,81 @@ The best feature importance method ranks features by their independent contribut
  
 {\bf Definition 3} The {\em top-k} fitness measure trains a suitable model on the  most important $k$ features as reported by two or more importance methods then compares prediction metrics.
 
-In \figref{fig:boston-features}, we
+even if recommendations are identified by their isolated contribution, the model is still taking the combination into consideration when fitting and hence the marginal errors are not necessarily reduced specifically because of the added feature at number $k$.
 
-\begin{figure}[htbp]
-\begin{center}
+Model-based methods have all the advantages in these experiments.
+
+In \figref{fig:features}, we
+
+Then see \figref{fig:topk}
+
+\begin{figure}[b]
+\centering
+\begin{subfigure}{.5\textwidth}
+    \centering
+\includegraphics[scale=0.7]{images/boston-topk.pdf}
+\vspace{-2mm}\subcaption{\footnotesize foo}\vspace{3mm}
+\end{subfigure}%
+\begin{subfigure}{.5\textwidth}
+    \centering
+\includegraphics[scale=0.7]{images/flights-topk.pdf}
+\vspace{-2mm}\subcaption{\footnotesize foo}\vspace{3mm}
+\end{subfigure}
+\begin{subfigure}{.5\textwidth}
+    \centering
+\includegraphics[scale=0.7]{images/bulldozer-topk.pdf}
+\vspace{-2mm}\subcaption{\footnotesize foo}\vspace{3mm}
+\end{subfigure}%
+\begin{subfigure}{.5\textwidth}
+    \centering
+\includegraphics[scale=0.7]{images/rent-topk.pdf}
+\vspace{-2mm}\subcaption{\footnotesize foo}\vspace{3mm}
+\end{subfigure}
+\caption[short]{A beautiful, well written caption}
+\label{fig:topk}
+\end{figure}
+
+\begin{figure}[b]
+\centering
+\begin{subfigure}{1\textwidth}
+    \centering
 \includegraphics[scale=0.6]{images/boston-features.pdf}
 \includegraphics[scale=0.6]{images/boston-features-shap-rf.pdf}
-\caption{Top 8 of 13 features. Boston. Note LSTAT/RM order is diff than in original figure as their is high variance}
-\label{fig:boston-features}
-\end{center}
-\end{figure}
-
-Then see \figref{fig:boston-topk}
-
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.6]{images/boston-topk.pdf}
-\caption{Top 8 of 13 features. Boston}
-\label{fig:boston-topk}
-\end{center}
-\end{figure}
-
-In \figref{fig:flights-features}, we
-
-\begin{figure}[htbp]
-\begin{center}
+\vspace{-2mm}\subcaption{\footnotesize Note LSTAT/RM order is diff than in original figure as their is high variance}\vspace{3mm}
+\end{subfigure}%
+\hfill
+\begin{subfigure}{1\textwidth}
+    \centering
 \includegraphics[scale=0.6]{images/flights-features.pdf}
 \includegraphics[scale=0.6]{images/flights-features-shap-rf.pdf}
-\caption{Top 8 of 13 features. Flight arrival. 5.8M records}
-\label{fig:flights-features}
-\end{center}
-\end{figure}
-
-Then see \figref{fig:flights-topk}
-
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.6]{images/flights-topk.pdf}
-\caption{Top 8 of 13 features. Flight arrival 20k record sample. Had to use gridsearch to pick min slopes of 10 not 15. default samples/leaf was ok at 10.}
-\label{fig:flights-topk}
-\end{center}
-\end{figure}
-
-
-In \figref{fig:bulldozer-features}, we
-
-\begin{figure}[htbp]
-\begin{center}
+\vspace{-2mm}\subcaption{\footnotesize 5.8M records}\vspace{3mm}
+\end{subfigure}
+\hfill
+\begin{subfigure}{1\textwidth}
+    \centering
 \includegraphics[scale=0.6]{images/bulldozer-features.pdf}
 \includegraphics[scale=0.6]{images/bulldozer-features-shap-rf.pdf}
-\caption{Bulldozer}
-\label{fig:bulldozer-features}
-\end{center}
-\end{figure}
-
-Then see \figref{fig:bulldozer-topk}
-
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.6]{images/bulldozer-topk.pdf}
-\caption{Bulldozer}
-\label{fig:bulldozer-topk}
-\end{center}
-\end{figure}
-
-In \figref{fig:rent-features}, we
-
-\begin{figure}[htbp]
-\begin{center}
+\vspace{-2mm}\subcaption{\footnotesize foo}\vspace{3mm}
+\end{subfigure}%
+\hfill
+\begin{subfigure}{1\textwidth}
+    \centering
 \includegraphics[scale=0.6]{images/rent-features.pdf}
 \includegraphics[scale=0.6]{images/rent-features-shap-rf.pdf}
-\caption{rent}
-\label{fig:rent-features}
-\end{center}
-\end{figure}
-
-Then see \figref{fig:rent-topk}
-
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.6]{images/rent-topk.pdf}
-\caption{rent}
-\label{fig:rent-topk}
-\end{center}
+\vspace{-2mm}\subcaption{\footnotesize foo}\vspace{3mm}
+\end{subfigure}
+\caption[short]{blorttttt}
+\label{fig:features}
 \end{figure}
 
 
-Try all together now:
+Consider the recommendations from OLS SHAP used in a random forest. In general, they are not good recommendations. This demonstrates that the rank of features is highly dependent upon the model used to get those recommendations. In some cases, plain OLS recommendations fitted to RF beats the recommendations from OLS SHAP fitted to the RF.
 
-\noindent \begin{minipage}[t]{0.5\textwidth}
-%    \centering
-\includegraphics[scale=0.7]{images/boston-topk.pdf}
-\vspace{-3mm}
-\captionof{figure}{foo\vspace{1em}}
-\label{fig:bigx_stratpd}
-\end{minipage}
-\begin{minipage}[t]{0.5\textwidth}
-%    \centering
-\includegraphics[scale=0.7]{images/flights-topk.pdf}
-\vspace{-3mm}
-\captionof{figure}{blort\vspace{1em}}
-\end{minipage}
+Do an experiment that compares PCA and Spearman's R against StratImpact.
 
-\noindent \begin{minipage}[t]{0.5\textwidth}
-\includegraphics[scale=0.7]{images/bulldozer-topk.pdf}
-\vspace{-3mm}
-\captionof{figure}{blort\vspace{1em}}
-\end{minipage}
-\hfill
-\begin{minipage}[t]{0.5\textwidth}
-\includegraphics[scale=0.7]{images/rent-topk.pdf}
-\vspace{-3mm}
-\captionof{figure}{blort\vspace{1em}}
-\end{minipage}
+performance. with lots of outliers, choosing a small subset for shap is a bad idea so this is a real problem. linear and boosted trees are efficient but RF are not and I wouldn't consider anything using the general explainer.
 
-performance. with lots of outliers, choosing a small subset for shap is a bad idea so this is a real problem.
+There are issues surrounding how many explanatory samples you can use. 300 even run a couple of times is not enough to sample 5.8M records.
  
 \section{foo}
 
