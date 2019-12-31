@@ -203,6 +203,8 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
     # Last slope is nan since no data after last x value so that will get dropped too
     # Also cut out any pdp x for which we don't have enough support (num slopes avg'd together)
     # Make sure to drop slope_counts_at_x, uniq_x values too :)
+    if min_slopes_per_x <= 0:
+        min_slopes_per_x = 1 # must have at least one slope value
     notnan_idx = ~np.isnan(slope_at_x)
     relevant_slopes = slope_counts_at_x >= min_slopes_per_x
     idx = notnan_idx & relevant_slopes
@@ -754,6 +756,7 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
                             yrange=None,
                             xrange=None,
                             show_regr_line=False,
+                            show_slope_lines=True,
                             marginal_alpha=.05,
                             slope_line_alpha=.1,
                             title_fontsize=8,
@@ -786,6 +789,7 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
                                      n_trees=1,
                                      show_ylabel=False,
                                      slope_line_alpha=slope_line_alpha,
+                                     show_slope_lines=show_slope_lines,
                                      label_fontsize=label_fontsize,
                                      ticklabel_fontsize=ticklabel_fontsize)
                     # print(f"leafsz {msl} avg abs curve value: {np.mean(np.abs(pdpy)):.2f}, mean {np.mean(pdpy):.2f}, min {np.min(pdpy):.2f}, max {np.max(pdpy)}")
@@ -870,12 +874,15 @@ def marginal_catplot_(X, y, colname, targetname, ax, catnames, alpha=.1, show_xt
 
 def plot_catstratpd_gridsearch(X, y, colname, targetname,
                                min_samples_leaf_values=(2, 5, 10, 20, 30),
-                               min_y_shifted_to_zero=True, # easier to read if values are relative to 0 (usually); do this for high cardinality cat vars
+                               min_y_shifted_to_zero=True,  # easier to read if values are relative to 0 (usually); do this for high cardinality cat vars
                                show_xticks=True,
+                               show_mean_line=False,
+                               show_all_cat_deltas=True,
                                catnames=None,
                                yrange=None,
                                sort='ascending',
-                               cellwidth=2.5, 
+                               style:('strip','scatter')='strip',
+                               cellwidth=2.5,
                                cellheight=2.5):
     ncols = len(min_samples_leaf_values)
     fig, axes = plt.subplots(1, ncols + 1,
@@ -898,8 +905,11 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
                                 yrange=yrange,
                                 n_trees=1,
                                 show_xticks=show_xticks,
+                                show_mean_line=show_mean_line,
+                                show_all_deltas=show_all_cat_deltas,
                                 show_ylabel=False,
                                 sort=sort,
+                                style=style,
                                 min_y_shifted_to_zero=min_y_shifted_to_zero)
         except ValueError:
             axes[col].set_title(f"Can't gen: leafsz={msl}", fontsize=8)
@@ -1015,6 +1025,8 @@ def plot_catstratpd(X, y,
                     title=None,
                     supervised=True,
                     use_weighted_avg=False,
+                    show_mean_line=False,
+                    show_all_deltas=True,
                     alpha=.15,
                     color='#2c7fb8',
                     pdp_marker_size=.5,
@@ -1112,9 +1124,10 @@ def plot_catstratpd(X, y,
         x_noise = np.zeros(shape=(nleaves,))
     for cat in sorted_catcodes:
         if catcode2name[cat] is None: continue
-        ax.scatter(x_noise + xloc, leaf_histos[catcode2name[cat]] - min_avg_value,
-                   alpha=alpha, marker='o', s=marker_size,
-                   c=color)
+        if show_all_deltas:
+            ax.scatter(x_noise + xloc, leaf_histos[catcode2name[cat]] - min_avg_value,
+                       alpha=alpha, marker='o', s=marker_size,
+                       c=color)
         if style == 'strip':
             ax.plot([xloc - .1, xloc + .1], [avg_per_cat[catcode2name[cat]]-min_avg_value] * 2,
                     c='black', linewidth=2)
@@ -1128,6 +1141,13 @@ def plot_catstratpd(X, y,
     else:
         ax.set_xticklabels([])
         ax.tick_params(axis='x', which='both', bottom=False)
+
+    if show_mean_line:
+        m = np.nanmean(np.abs(avg_per_cat))
+        ax.plot([0, len(sorted_catcodes)], [m,m], '--', lw=.5, c='black')
+        # add a tick for the mean in y axis
+        ax.set_yticks(list(ax.get_yticks()) + [m])
+
 
     if show_xlabel:
         ax.set_xlabel(colname)

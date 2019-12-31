@@ -169,21 +169,133 @@ The mean value theorem of integrals implies that the area under a curve in inter
 
 \noindent The feature importance of $x_j$ is then just how much, on average, $x_j$ pushes $y$ away from zero.  
 
-As an example, consider quadratic $y = x_1^2 + x_2 + 100$ as a generator of data for $x_j \sim U(0,3)$. The partial derivatives are $\frac{\partial y}{\partial x_1} = 2 x_1$ and $\frac{\partial y}{\partial x_2} = 1$, giving $\text{\it PD}_1 = x_1^2$ and $\text{\it PD}_2 = x_2$. The areas under the partial dependence curves in $[0,3]$ are $\Imp_1 = \frac{x_1^3}{3} \big |_0^3 = 9$ and $\Imp_2 = \frac{x_2^2}{2} \big |_0^3 = 4.5$.   Therefore, $x_1$ is twice as important as $x_2$ for data generated in that interval with normalized importances $\Imp_1 = 0.\overline{66}$ and $\Imp_2 = 0.\overline{33}$.
+As an example, consider quadratic
 
-The obvious disadvantage of this feature importance definition is that we never know function $f$ in practice, so we cannot compute the partial derivatives. But, if we could  compute exact partial dependence curves by some other method, then this definition of feature importance would still be useful. Partial dependence curves derived from fitted models are biased in the presence of codependent variables, but we recently introduced a technique to approximate unbiased partial dependence curves using a data stratification approach, rather than through a fitted model.
+\begin{equation}\label{eq:quad}
+y = x_1^2 + x_2 + 100
+\end{equation}
+
+\noindent as a generator of data for $x_j \sim U(0,3)$. The partial derivatives are $\frac{\partial y}{\partial x_1} = 2 x_1$ and $\frac{\partial y}{\partial x_2} = 1$, giving $\text{\it PD}_1 = x_1^2$ and $\text{\it PD}_2 = x_2$. The areas under the partial dependence curves in $[0,3]$ are $\Imp_1 = \frac{x_1^3}{3} \big |_0^3 = 9$ and $\Imp_2 = \frac{x_2^2}{2} \big |_0^3 = 4.5$.   Therefore, $x_1$ is twice as important as $x_2$ for data generated in that interval with normalized importances $\Imp_1 = 0.\overline{66}$ and $\Imp_2 = 0.\overline{33}$.
+
+The obvious disadvantage of this feature importance definition is that we never know function $f$ in practice, so we cannot symbolically compute the partial derivatives. But, if we could  compute exact partial dependence curves by some other method, then this definition would be still be a viable approach to get true feature importances. While partial dependence curves derived from fitted models, as originally defined, are biased in the presence of codependent variables, we introduced a technique (\cite{stratpd}) to approximate unbiased partial dependence curves using a data stratification approach, rather than through a fitted model.
 
 \section{Related work}
 
+ these are not comparable but as they have the same goal and are the primary means to obtain future importance now, we summarize existing techniques.
+ 
 Existing techniques are variations on a single theme: tweak the model by adding/subtracting/permuting features and measuring the impact on model accuracy (permutation and drop column) or average response (SHAP). LIME has a linear model that approximates the output in a neighborhood of x for each x.
 
 Here is where we show that SHAP gets $y = x_1^2 + x_2 + 100$ wrong.
+
+\section{Experimental results}
+
+Even with domain expertise, humans are unreliable estimates of feature importance. Otherwise, we would need feature important mechanisms. Comparing the quality of feature importance methods is then a challenge. The simplest approach is to compare methods on synthetic data for which the answer is clear, such as the quadratic in \ref{eq:quad}.
+
+For real data sets, we can train a predictive model on the most important $k$ features and compare prediction error. The importance method that accurately identifies the most impactful features without getting confused by codependent features, should yield lower production errors for a given $k$.   This mirrors how one would use it for model feature selection.
+ 
+The best feature importance method ranks features by their independent contributions to $y$, without getting confused by codependent features. The most important single feature as reported by two importance methods can be used to train a model and measure a prediction metric.
+ 
+{\bf Definition 3} The {\em top-k} fitness measure trains a suitable model on the  most important $k$ features as reported by two or more importance methods then compares prediction metrics.
+
+In \figref{fig:boston-features}, we
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.6]{images/boston-features.pdf}
+\caption{Top 8 of 13 features. Boston}
+\label{fig:boston-features}
+\end{center}
+\end{figure}
+
+Then see \figref{fig:boston-topk}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.6]{images/boston-topk.pdf}
+\caption{Top 8 of 13 features. Boston}
+\label{fig:boston-topk}
+\end{center}
+\end{figure}
+
+In \figref{fig:flights-features}, we
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.6]{images/flights-features.pdf}
+\includegraphics[scale=0.6]{images/flights-features-shap-rf.pdf}
+\caption{Top 8 of 13 features. Flight arrival. 5.8M records}
+\label{fig:flights-features}
+\end{center}
+\end{figure}
+
+Then see \figref{fig:flights-topk}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.6]{images/flights-topk.pdf}
+\caption{Top 8 of 13 features. Flight arrival 20k record sample. Had to use gridsearch to pick min slopes of 10 not 15. default samples/leaf was ok at 10.}
+\label{fig:flights-topk}
+\end{center}
+\end{figure}
+
+
+In \figref{fig:bulldozer-features}, we
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.6]{images/bulldozer-features.pdf}
+\includegraphics[scale=0.6]{images/bulldozer-features-shap-rf.pdf}
+\caption{Bulldozer}
+\label{fig:bulldozer-features}
+\end{center}
+\end{figure}
+
+Then see \figref{fig:bulldozer-topk}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.6]{images/bulldozer-topk.pdf}
+\caption{Bulldozer}
+\label{fig:bulldozer-topk}
+\end{center}
+\end{figure}
+
+In \figref{fig:rent-features}, we
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.6]{images/rent-features.pdf}
+\includegraphics[scale=0.6]{images/rent-features-shap-rf.pdf}
+\caption{rent}
+\label{fig:rent-features}
+\end{center}
+\end{figure}
+
+Then see \figref{fig:rent-topk}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.6]{images/rent-topk.pdf}
+\caption{rent}
+\label{fig:rent-topk}
+\end{center}
+\end{figure}
+
+
+
+performance. with lots of outliers, choosing a small subset for shap is a bad idea so this is a real problem.
  
 \section{foo}
 
  what is the definition: loosely as which are most predictive
 
 The variance of the importances derived from the random forest is high, SHAP has specialized ``explainers'' for linear and tree-based models for performance reasons, but relies on the general method to explain support vector machines. , but the results are subject to the variance of the internal model parameters.  Ideally, feature importances would not change from run to run on the same data set using the same technique.
+
+\section{Discussion in future work}
+
+research should now focus on getting more accurate partial dependence approximations.
+
+must define for classification
 
 \bibliographystyle{apalike}
 

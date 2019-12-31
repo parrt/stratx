@@ -16,27 +16,39 @@ import matplotlib.pyplot as plt
 
 from rfpimp import plot_importances, dropcol_importances, importances
 
-n = 15_000
+n = 20_000
 
 X, y = load_bulldozer()
 
 X = X.iloc[-n:]
 y = y.iloc[-n:]
 
-min_slopes_per_x = 10
-min_samples_leaf = 10
 # plot_stratpd(X, y, colname='age', targetname='SalePrice',
 #              min_slopes_per_x=min_slopes_per_x,
 #              show_slope_lines=False,
 #              min_samples_leaf=min_samples_leaf)
 
-plot_stratpd_gridsearch(X, y, colname='age', targetname='SalePrice',
-                        min_samples_leaf_values=(5,10,40,50,80),
-                        yrange=(-30000,30000))
+plot_stratpd_gridsearch(X, y, colname='YearMade', targetname='SalePrice',
+                        min_samples_leaf_values=(10,20,30,40,50,80),
+                        min_slopes_per_x_values=(5,10,20,30,40),
+                        show_slope_lines=False,
+                        yrange=None)
 
+#
+# plot_stratpd_gridsearch(X, y, colname='age', targetname='SalePrice',
+#                         min_samples_leaf_values=(10,20,30,40,50,80),
+#                         min_slopes_per_x_values=(5,10,20,30,40),
+#                         show_slope_lines=False,
+#                         yrange=(-30000,25000))
+#
 # plot_catstratpd_gridsearch(X, y, 'ModelID', 'SalePrice',
+#                            min_samples_leaf_values=(5,10,15,20,25,30),
 #                            sort=None,
-#                            show_xticks=False, min_y_shifted_to_zero=False)
+#                            show_xticks=False,
+#                            show_mean_line=True,
+#                            show_all_cat_deltas=False,
+#                            style='scatter',
+#                            min_y_shifted_to_zero=False)
 
 # plot_catstratpd(X, y, 'ModelID', 'SalePrice',
 #                 min_samples_leaf=min_samples_leaf, sort=None,
@@ -45,5 +57,5 @@ plot_stratpd_gridsearch(X, y, colname='age', targetname='SalePrice',
 
 # plt.title(f"min_slopes_per_x={min_slopes_per_x}, min_samples_leaf={min_samples_leaf}")
 plt.tight_layout()
-plt.savefig("/Users/parrt/Desktop/james.png", pad_inches=0, dpi=150)
+plt.savefig("/Users/parrt/Desktop/james-yearmade.png", pad_inches=0, dpi=150)
 plt.show()

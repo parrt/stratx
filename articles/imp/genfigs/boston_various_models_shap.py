@@ -1,16 +1,3 @@
-from sklearn.utils import resample
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import normalize
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.linear_model import LinearRegression, Lasso
-from timeit import default_timer as timer
-from sklearn.utils import resample
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from sklearn.model_selection import GridSearchCV
-import xgboost as xgb
-from sklearn import svm
-
-import shap
 
 from stratx.featimp import *
 from support import *
@@ -100,7 +87,7 @@ axes[3].set_title(f"SVM training $R^2$={svm_score:.2f}")
 
 plt.suptitle(f"SHAP importances for Boston dataset: {n:,d} records, {n_shap} SHAP test records")
 plt.tight_layout()
-plt.savefig("/Users/parrt/github/stratx/articles/imp/images/diff-models.pdf",
+plt.savefig("../images/diff-models.pdf",
             bbox_inches="tight", pad_inches=0)
 plt.show()
 

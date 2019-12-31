@@ -26,9 +26,9 @@ import matplotlib.pyplot as plt
 #     # plot_stratpd_gridsearch(X, y, 'longitude', 'price')
 
 
-np.random.seed(999)
+#np.random.seed(999)
 
-n=10_000
+n=20_000
 #r = (500,600)
 # r = (0,500)
 _, _, df_flights = load_flights(n=n)
@@ -38,11 +38,20 @@ X, y = df_flights.drop('ARRIVAL_DELAY', axis=1), df_flights['ARRIVAL_DELAY']
 
 print(f"Avg arrival delay {df_flights['ARRIVAL_DELAY'].mean()}")
 
-# plot_stratpd(X, y, 'FLIGHT_NUMBER', 'ARRIVAL_DELAY',
-#              show_slope_counts=True,
-#              min_slopes_per_x=n*3.5/1000,
-#              min_samples_leaf=5,
-#              show_slope_lines=True)
+# plot_stratpd_gridsearch(X, y, 'TAXI_OUT', 'ARRIVAL_DELAY',
+#                         min_samples_leaf_values=(10,15),
+#                         min_slopes_per_x_values=(15,20,25,30,40),
+#                         show_slope_lines=False,
+#                         yrange=(-10,90)
+#                         )
+
+plot_stratpd_gridsearch(X, y, 'DEPARTURE_TIME', 'ARRIVAL_DELAY',
+                        min_samples_leaf_values=(10,),
+                        min_slopes_per_x_values=(25,30,40,45,50),
+                        show_slope_lines=False,
+                        yrange=(-10,90)
+                        )
+
 # #
 # plot_catstratpd(X, y, 'FLIGHT_NUMBER', 'ARRIVAL_DELAY',
 #                 min_samples_leaf=10,
@@ -52,17 +61,19 @@ print(f"Avg arrival delay {df_flights['ARRIVAL_DELAY'].mean()}")
 #                 style='scatter')
 # plt.title(f"X range {r[0]}..{r[1]} with {n} records")
 
-I = importances(X, y,
-                catcolnames={'AIRLINE',
-                             'ORIGIN_AIRPORT', 'DESTINATION_AIRPORT',
-                             'FLIGHT_NUMBER',
-                             'DAY_OF_WEEK', 'dayofyear'},
-                )
-print(I)
+# I = importances(X, y,
+#                 min_samples_leaf=10, # default
+#                 min_slopes_per_x=20,
+#                 catcolnames={'AIRLINE',
+#                              'ORIGIN_AIRPORT', 'DESTINATION_AIRPORT',
+#                              'FLIGHT_NUMBER',
+#                              'DAY_OF_WEEK', 'dayofyear'},
+#                 )
+# print(I)
 
 # plot_catstratpd_gridsearch(X, y, 'ORIGIN_AIRPORT', 'ARRIVAL_DELAY',
 #                            yrange=(-100,500))
 plt.tight_layout()
 # rent_pdp()
-plt.savefig("/Users/parrt/Desktop/james.svg", pad_inches=0, dpi=150)
+plt.savefig("/Users/parrt/Desktop/james.png", pad_inches=0, dpi=200)
 plt.show()
