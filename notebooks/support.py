@@ -15,6 +15,7 @@ from sklearn.datasets import load_boston, load_iris, load_wine, load_digits, \
 from pandas.api.types import is_string_dtype, is_object_dtype, is_categorical_dtype, is_bool_dtype
 pd.set_option('display.max_columns', 10)
 pd.set_option('display.width', 300)
+from sklearn.preprocessing import StandardScaler
 
 from timeit import default_timer as timer
 
@@ -261,7 +262,8 @@ def get_multiple_imps(X, y, n_shap=300, n_estimators=50, min_samples_leaf=10,
 
     lm = LinearRegression()
     lm.fit(X, y)
-    X_ = pd.DataFrame(normalize(X), columns=X.columns)
+    X_ = StandardScaler().fit_transform(X)
+    X_ = pd.DataFrame(X_, columns=X.columns)
     ols_I, score = linear_model_importance(lm, X_, y)
     ols_shap_I = shap_importances(lm, X_, n_shap=len(X_)) # fast enough so use all data
 

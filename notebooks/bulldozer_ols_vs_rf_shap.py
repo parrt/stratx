@@ -29,7 +29,8 @@ y = y.iloc[-n:]
 
 lm = LinearRegression()
 lm.fit(X, y)
-X_ = pd.DataFrame(normalize(X), columns=X.columns)
+X_ = data = StandardScaler().fit_transform(X)
+X_ = pd.DataFrame(X_, columns=X.columns)
 ols_I, score = linear_model_importance(lm, X_, y)
 ols_shap_I = shap_importances(lm, X_, n_shap=n_shap)  # fast enough so use all data
 print(ols_shap_I)

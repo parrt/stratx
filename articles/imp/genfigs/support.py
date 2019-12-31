@@ -3,6 +3,7 @@ import pandas as pd
 
 from sklearn.preprocessing import normalize
 import statsmodels.api as sm
+from scipy.stats import spearmanr
 
 import matplotlib.pyplot as plt
 
@@ -18,6 +19,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import GridSearchCV
 from sklearn.datasets import load_boston
 from pandas.api.types import is_string_dtype, is_object_dtype, is_categorical_dtype, is_bool_dtype
+from sklearn.preprocessing import StandardScaler
 
 import xgboost as xgb
 from sklearn import svm
@@ -59,6 +61,15 @@ def df_split_dates(df,colname):
     df["saledayofweek"] = df[colname].dt.dayofweek
     df["saledayofyear"] = df[colname].dt.dayofyear
     df[colname] = df[colname].astype(np.int64) # convert to seconds since 1970
+
+
+def spearmans_importances(X, y):
+    global I
+    correlations = [spearmanr(X[colname], y)[0] for colname in X.columns]
+    I = pd.DataFrame(data={'Feature': X.columns, 'Importance': np.abs(correlations)})
+    I = I.set_index('Feature')
+    I = I.sort_values('Importance', ascending=False)
+    return I
 
 
 def linear_model_importance(model, X, y):
@@ -205,7 +216,8 @@ def get_multiple_imps(X, y, n_shap=300, n_estimators=50, stratpd_min_samples_lea
 
     lm = LinearRegression()
     lm.fit(X, y)
-    X_ = pd.DataFrame(normalize(X), columns=X.columns)
+    X_ = StandardScaler().fit_transform(X)
+    X_ = pd.DataFrame(X_, columns=X.columns)
     ols_I, score = linear_model_importance(lm, X_, y)
 
     ols_shap_I = shap_importances(lm, X, n_shap=len(X)) # fast enough so use all data

@@ -98,7 +98,7 @@ dsf
 \end{abstract}
 
 \noindent%
-{\it Keywords:} feature importance, partial dependence, model interpretability, linear models
+{\it Keywords:} feature importance, partial dependence, model interpretability, machine learning
 %\vfill
 
 %\newpage
@@ -106,9 +106,9 @@ dsf
 \section{Introduction}
 \label{sec:intro}
 
-Among data analysis techniques, feature importance is one of the most  useful. Data science practitioners use feature importance to gain business insights (e.g., identifying product characteristics valued by customers) and to select features for predictive models (dropping the least predictive features to simplify and potentially increase the generality of the model). While some approaches work directly on the data, such as principle component analysis (PCA), almost all feature importance algorithms analyze data through interrogation of a specific  fitted model, or even interrogating subsidiary models to analyze such fitted models (LIME, SHAP, permutation, drop column).
+Among data analysis techniques, feature importance is one of the most  useful. Data science practitioners use feature importance to gain business insights (e.g., identifying product characteristics valued by customers) and to select features for predictive models (dropping the least predictive features to simplify and potentially increase the generality of the model). While some approaches work directly on the data, such as principle component analysis (PCA), almost all feature importance algorithms analyze data through interrogation of a specific  fitted model (SHAP, permutation, drop column), or even interrogating subsidiary models to analyze such fitted models (LIME).
 
-Relying on a fitted model has a number of issues. First, practitioners must choose an appropriate model that captures the relationship between features and target. Inaccurate models do not yield useful feature importance results, but there is no definition of ``accurate enough.'' More importantly, it is possible to get very different feature importances running the same algorithm on the same data, just by choosing a different model. Feature importances derived from a model indicate how well that specific model is able to take advantage of the features, rather than the predictiveness or importance intrinsic to the data.  This fact is troubling and calls into question the validity of importances derived from imperfect models using any technique.  
+But, relying on a fitted model is problematic. Practitioners must choose an appropriate model that captures the relationship between features and target. Inaccurate models do not yield useful feature importance results, yet, there is no definition of ``accurate enough.'' More importantly, it is possible to get very different feature importances running the same algorithm on the same data, just by choosing a different model. Feature importances derived from a model indicate how well that specific model is able to take advantage of the features, rather than the predictiveness or importance intrinsic to those features of the data.  This fact is troubling and calls into question the validity of importances derived from imperfect models using any technique.  
 
 Consider the feature importance graphs in \figref{fig:diff-models} derived from four different models on the same, well-known Boston toy data set, as computed by SHAP \cite{shap} that has recently emerged as the front runner in feature importance. The linear model (a) struggles to capture the relationship between features and target ($R^2$=0.74), so those importances should not be trusted.  In contrast, the random forest (b), boosted trees (c), and support vector machine (d) models capture the relationship in the training records (all 506) with high fidelity, but SHAP derives meaningfully different feature importances from each model.  This is particularly true given the high variance of the importances computed from the random forest. \todo{explain that} It is unclear which results, if any, are correct. (If humans could examine the data directly to find the true feature importances, we would not need feature importance algorithms.) (we'll intro fitness measure in \secref{foo}.)
 
@@ -120,31 +120,31 @@ Consider the feature importance graphs in \figref{fig:diff-models} derived from 
 \end{center}
 \end{figure}
 
-The differences clearly arise because the feature importances are distorted by the lens' of the models. Current techniques peer through the model (and possibly through an extra, explanatory model) to the underlying data, but true feature importances are relationships that exist in the data, with or without a model.  For example, to gain business insights about customers, a predictive model is unnecessary and a data analysis technique that revealed importances directly from the data would be sufficient. \todo{maybe say PCA does this although limited to linear features and assumes most spread = most important?} Besides, predictive features do not always coincide with important features; e.g., some models are unable to capture nonlinear relationships and, therefore, always find them non-predictive.  \todo{last bit redundant?}
+The differences clearly arise because the feature importances are distorted by the lens' of the models. Current techniques peer through the model (and possibly through an extra, explanatory model) to the underlying data, but true feature importances are relationships that exist in the data, with or without a model.  For example, to gain business insights about customers, a predictive model is unnecessary and a data analysis technique that revealed importances directly from the data would be sufficient and preferable. \todo{maybe say PCA does this although limited to linear features and assumes most spread = most important?} Besides, predictive features do not always coincide with important features; e.g., some models are unable to capture nonlinear relationships and, therefore, always find them non-predictive.  \todo{last bit redundant?}
  
-In our experience, it is best to get importances using multiple techniques and to view the combined results as a clue rather than the gospel truth.  The unfortunate reality, though, is that practitioners routinely make business decisions and  perform feature selection using the results provided by machine learning libraries without questioning their validity.  For example, \cite{rfpimp} demonstrated that the widely-used {\em gini-drop} technique, specific to random forests, gives inappropriate weight to features with many unique values, even pure noise features. (The gini-drop of a feature is the average drop in gini impurity for decision nodes splitting on that feature.) \todo{transition}
+In our experience, it is best to get importances using multiple techniques and to view the combined results as a clue rather than the gospel truth.  The unfortunate reality, though, is that practitioners routinely make business decisions and  perform feature selection using the results provided by machine learning libraries without questioning their validity.  For example, \cite{rfpimp} demonstrated that the widely-used {\em gini-drop} technique, specific to random forests and provided by the popular {\tt scikit-learn} Python library, gives inappropriate weight to features with many unique values, even pure noise features. (The gini-drop of a feature is the average drop in gini impurity for decision nodes splitting on that feature.) \todo{transition}
 
-Despite many years of research attention, there is still no widely-accepted definition of feature importance. While there are multiple precisely-defined algorithms with known strengths and weaknesses, all interrogate fitted models for predictions. The primary contributions of this paper are (1) a simple, intuitive definition of feature importance that operates purely on the training data without making predictions from a model and (2) an implementation that yields plausible and effective results, as measured by the {\em top-p} fitness metric defined in \secref{foo}.
+Despite many years of research attention, there is still no widely-accepted definition of feature importance. While there are multiple precisely-defined algorithms with known strengths and weaknesses, all interrogate fitted models for predictions. The primary contributions of this paper are (1) a simple, intuitive definition of feature importance that operates purely on the training data without making predictions from a model and (2) an implementation that yields plausible and effective results, as measured by the {\em top-k} fitness metric defined in \secref{sec:experiments}.
 
 ~\\
 \noindent \todo{Likely a good spot for a paper walk-through}
 
 \section{A definition of feature importance}\label{sec:def}
 
-Practitioners loosely define feature importance as measuring feature predictiveness, which presupposes a fitted predictive model, probably because it is so often used for feature selection during model development.  Research  focuses on more accurately identifying the impact of features upon model predictions.  But, this makes it difficult to tease apart the true feature importance from the ability of the model to exploit that feature for prediction purposes. Rather than measuring feature impact on model predictions, we propose avoiding the model completely to define feature importance as the average impact of a feature on the original target values.
+Practitioners loosely define feature importance as measuring feature predictiveness, which presupposes a fitted predictive model, probably because importances are so often used for feature selection during model development.  Research  focuses on more accurately identifying the impact of features upon model predictions.  But, relying on a fitted model makes it difficult to tease apart the true feature importance from the ability of the model to exploit that feature for prediction purposes. Rather than measuring feature impact on {\em model predictions}, we propose avoiding the model completely to define feature importance as the average impact of a feature on the {\em data set response values}.
 
-Assume we are given training data pair ($\bf X, y$) where ${\bf X} = [x^{(1)}, \ldots, x^{(n)}]$ is an $n \times p$ matrix whose $p$ columns represent observed features and ${\bf y}$ is the $n \times 1$ vector of responses. In special circumstances, we know the precise importance of each feature $x_j$.  For example, if a data set is generated using a linear function, $y = \beta_0 + \sum_{j=1}^p \beta_j x_j$, \todo{assumes independence of $x_j$?} then coefficient $\beta_j$ corresponds exactly to the importance of $x_j$.  $\beta_j$ is the impact on $\bf y$ for unit change in $x_j$, holding all other features constant.
+Assume we are given training data pair ($\bf X, y$) where ${\bf X} = [x^{(1)}, \ldots, x^{(n)}]$ is an $n \times p$ matrix whose $p$ columns represent observed features and ${\bf y}$ is the $n \times 1$ vector of responses. In special circumstances, we know the precise importance of each feature $x_j$.  For example, if a data set is generated using a linear function, $y = \beta_0 + \sum_{j=1}^p \beta_j x_j$, \todo{assumes independence of $x_j$?} then coefficient $\beta_j$ corresponds exactly to the importance of $x_j$.  $\beta_j$ is the impact on $y$ for a unit change in $x_j$, holding all other features constant.
 
-To hold features constant for more general functions, we can take the partial derivative. Imagine there exists a smooth function $f:\mathbb{R}^{p} \rightarrow \mathbb{R}$ that precisely maps each $\xi$ to $y_i$, ${y_i} = f(\xi)$. \todo{should that be $y^{(i)}$ to be consistent?} The partial derivative of $y$ with respect to $x_j$ gives the change in $y$ holding all other variables constant; e.g., for linear functions, $\beta_j = \frac{\partial y}{\partial x_j}$. Integrating the partial derivative then gives the {\em partial dependence}  of $y$ on $x_j$, the isolated contribution of $x_j$ to $y$. But, rather than relying on a fitted model as originally formulated by \cite{PDP}, this definition of partial dependence relies on the partial derivative of a known function that generated the data set.
+To hold features constant for more general functions, we can take the partial derivatives of $y$ with respect to each feature $x_j$. Imagine there exists a smooth function $f:\mathbb{R}^{p} \rightarrow \mathbb{R}$ that precisely maps each $\xi$ to $y_i$, ${y_i} = f(\xi)$. \todo{should that be $y^{(i)}$ to be consistent?} The partial derivative of $y$ with respect to $x_j$ gives the change in $y$ holding all other variables constant; e.g., for linear functions, $\beta_j = \frac{\partial y}{\partial x_j}$. Integrating the partial derivative then gives the {\em partial dependence}  of $y$ on $x_j$, the isolated contribution of $x_j$ to $y$. But, rather than relying on a fitted model as originally formulated by \cite{PDP}, this definition of partial dependence relies on the partial derivative of a known function that generated the data set.
 
 ~\\
-\noindent {\bf Definition 1} The partial dependence of $y$ on feature $x_j$ evaluated at $x_j = z$ is the cumulative sum to $z$:
+\noindent {\bf Definition 1} The partial dependence of $y$ on feature $x_j$ evaluated at $x_j = z$ is the cumulative sum up to $z$:
 
 \begin{equation}\label{eq:pd}
 \text{\it PD}_j(z) = \int_{min(x_j)}^z \frac{\partial y}{\partial x_j} dx_j
 \end{equation}
 
-$PD_j(z)$ is the value contributed to $y$ by $x_j$ at $x_j = z$ and, at the left edge of the curve, $PD_j(0)=0$. The advantage of this partial dependence definition is that it is insensitive to collinear or otherwise codependent features, unlike the traditional definition that are most accurate for models ``{\em dominated by low order interactions}'' per Friedman.  To go from partial dependence to feature importance, we compare the area under each partial dependence curve. The larger the area under the curve, the larger the impact on $y$.
+$PD_j(z)$ is the value contributed to $y$ by $x_j$ at $x_j = z$ and, at the left edge of the curve, $PD_j(0)=0$. The advantage of this partial dependence definition is that it is insensitive to collinear or otherwise codependent features, unlike the traditional definition that is most accurate for models ``{\em dominated by low order interactions}'' per Friedman.  To go from partial dependence to feature importance, we compare the area under each partial dependence curve. The larger the area under the curve, the larger the impact on $y$.
 
 ~\\
 \noindent {\bf Definition 2} The feature importance of $x_j$ is the expected value of the absolute value of $x_j$'s partial dependence: $\Imp_j = \Ex[|\text{\it PD}_j|]$. Or, normalized to be in [0,1]:
@@ -167,9 +167,7 @@ The mean value theorem of integrals implies that the area under a curve in inter
 \Ex[|\text{\it PD}_j|] = \frac{1}{N_j} \sum_{i=1}^{N_j} |\text{\it PD}_j(x_j^{(i)})|
 \end{equation}
 
-\noindent The feature importance of $x_j$ is then just how much, on average, $x_j$ pushes $y$ away from zero.  
-
-As an example, consider quadratic
+\noindent The feature importance of $x_j$ is then just how much, on average, $x_j$ pushes $y$ away from zero.   As an example, consider quadratic equation:
 
 \begin{equation}\label{eq:quad}
 y = x_1^2 + x_2 + 100
@@ -177,7 +175,7 @@ y = x_1^2 + x_2 + 100
 
 \noindent as a generator of data for $x_j \sim U(0,3)$. The partial derivatives are $\frac{\partial y}{\partial x_1} = 2 x_1$ and $\frac{\partial y}{\partial x_2} = 1$, giving $\text{\it PD}_1 = x_1^2$ and $\text{\it PD}_2 = x_2$. The areas under the partial dependence curves in $[0,3]$ are $\Imp_1 = \frac{x_1^3}{3} \big |_0^3 = 9$ and $\Imp_2 = \frac{x_2^2}{2} \big |_0^3 = 4.5$.   Therefore, $x_1$ is twice as important as $x_2$ for data generated in that interval with normalized importances $\Imp_1 = 0.\overline{66}$ and $\Imp_2 = 0.\overline{33}$.
 
-The obvious disadvantage of this feature importance definition is that we never know function $f$ in practice, so we cannot symbolically compute the partial derivatives. But, if we could  compute exact partial dependence curves by some other method, then this definition would be still be a viable approach to get true feature importances. While partial dependence curves derived from fitted models, as originally defined, are biased in the presence of codependent variables, we introduced a technique (\cite{stratpd}) to approximate unbiased partial dependence curves using a data stratification approach, rather than through a fitted model.
+The obvious disadvantage of this feature importance definition is that function $f$ is unknown in practice, so symbolically computing the partial derivatives is not a viable approach. But, if we could compute exact partial dependence curves by some other method, then this definition would be still be a viable approach to get true feature importances. While partial dependence curves derived from fitted models, as originally defined, are biased in the presence of codependent variables, we introduced a technique called \spd{} (\cite{stratpd}) to approximate unbiased partial dependence curves using a data stratification approach, rather than through a fitted model. \todo{In a nutshell, \spd{} ...}
 
 \section{Related work}
 
@@ -187,7 +185,7 @@ Existing techniques are variations on a single theme: tweak the model by adding/
 
 Here is where we show that SHAP gets $y = x_1^2 + x_2 + 100$ wrong.
 
-\section{Experimental results}
+\section{Experimental results}\label{sec:experiments}
 
 Even with domain expertise, humans are unreliable estimates of feature importance. Otherwise, we would need feature important mechanisms. Comparing the quality of feature importance methods is then a challenge. The simplest approach is to compare methods on synthetic data for which the answer is clear, such as the quadratic in \ref{eq:quad}.
 

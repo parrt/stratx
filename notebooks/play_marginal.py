@@ -335,7 +335,7 @@ def our_bulldozer():
 
 def boston():
     boston = load_boston()
-    df = pd.DataFrame(normalize(boston.data), columns=boston.feature_names)
+    df = pd.DataFrame(StandardScaler().fit_transform(boston.data), columns=boston.feature_names)
     df['MEDV'] = boston.target
 
     n_estimators=50
@@ -427,7 +427,7 @@ def boston():
 
 def boston_multicollinearity():
     boston = load_boston()
-    df = pd.DataFrame(normalize(boston.data), columns=boston.feature_names)
+    df = pd.DataFrame(StandardScaler().fit_transform(boston.data), columns=boston.feature_names)
     df['MEDV'] = boston.target
     n_estimators=50
     n_records=len(df)
@@ -444,7 +444,7 @@ def boston_multicollinearity():
 
 def boston_pdp():
     boston = load_boston()
-    df = pd.DataFrame(normalize(boston.data), columns=boston.feature_names)
+    df = pd.DataFrame(StandardScaler().fit_transform(boston.data), columns=boston.feature_names)
     df['MEDV'] = boston.target
     n_estimators=200
     n_records=len(df)
@@ -457,7 +457,7 @@ def boston_pdp():
 
 def boston_drop_features():
     boston = load_boston()
-    df = pd.DataFrame(normalize(boston.data), columns=boston.feature_names)
+    df = pd.DataFrame(StandardScaler().fit_transform(boston.data), columns=boston.feature_names)
     df['MEDV'] = boston.target
     n_estimators=200
     n_records=len(df)
