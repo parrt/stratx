@@ -4,6 +4,7 @@ import pandas as pd
 from sklearn.preprocessing import normalize
 import statsmodels.api as sm
 from scipy.stats import spearmanr
+from sklearn.decomposition import PCA
 
 import matplotlib.pyplot as plt
 
@@ -73,6 +74,29 @@ def spearmans_importances(X, y):
     return I
 
 
+def pca_importances(X):
+    """
+    Get the first principle component and get "loading" from that as
+    the feature importances.  First component won't explain everything but
+    could still give useful importances in some cases.
+    """
+    X_ = StandardScaler().fit_transform(X)
+    pca = PCA(svd_solver='full')
+    pca.fit(X_)
+
+    # print(list(pca.explained_variance_ratio_))
+    # print("Explains this percentage:", pca.explained_variance_ratio_[0])
+
+    # print( cross_val_score(pca, X) )
+
+    correlations = np.abs(pca.components_[0, :])
+    # print(correlations)
+    I = pd.DataFrame(data={'Feature': X.columns, 'Importance': correlations})
+    I = I.set_index('Feature')
+    I = I.sort_values('Importance', ascending=False)
+    return I
+
+
 def linear_model_importance(model, X, y):
     model.fit(X, y)
     score = model.score(X, y)
@@ -135,7 +159,7 @@ def compare_top_features(X, y, top_features_range=None,
                          min_slopes_per_x=15,
                          catcolnames=set(),
                          supervised=True,
-                         include=['Spearman', 'OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact'],
+                         include=['Spearman', 'PCA', 'OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact'],
                          drop=()):
     if use_oob and metric!=r2_score:
         #     print("Warning: use_oob can only give R^2; flipping metric to r2_score")
@@ -164,6 +188,7 @@ def compare_top_features(X, y, top_features_range=None,
                                         include=include)
 
     print("Spearman\n", all_importances['Spearman'])
+    print("PCA\n", all_importances['PCA'])
     print("OLS\n", all_importances['OLS'])
     print("OLS SHAP\n", all_importances['OLS SHAP'])
     print("RF SHAP\n", all_importances['RF SHAP'])
@@ -225,11 +250,14 @@ def get_multiple_imps(X, y, n_shap=300, n_estimators=50,
                       catcolnames=set(),
                       min_slopes_per_x=10,
                       supervised=True,
-                      include=['Spearman', 'OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']):
-    spear_I = ols_I = ols_shap_I = rf_I = perm_I = ours_I = None
+                      include=['Spearman', 'PCA', 'OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']):
+    spear_I = pca_I = ols_I = ols_shap_I = rf_I = perm_I = ours_I = None
 
     if 'Spearman' in include:
         spear_I = spearmans_importances(X, y)
+
+    if 'PCA' in include:
+        pca_I = pca_importances(X)
 
     if "OLS" in include:
         X_ = StandardScaler().fit_transform(X)
@@ -264,6 +292,7 @@ def get_multiple_imps(X, y, n_shap=300, n_estimators=50,
                              supervised=supervised)
     d = OrderedDict()
     d['Spearman'] = spear_I
+    d['PCA'] = pca_I
     d['OLS'] = ols_I
     d['OLS SHAP'] = ols_shap_I
     d['RF SHAP'] = rf_I
@@ -277,7 +306,8 @@ def plot_topk(R, ax, k=None):
     if k is None:
         k = R.shape[0]
     feature_counts = range(1, k + 1)
-    fmts = {'Spearman':'P-', 'OLS':'o-', 'OLS SHAP':'v-', 'RF SHAP':'s-',
+    fmts = {'Spearman':'P-', 'PCA':'D-',
+            'OLS':'o-', 'OLS SHAP':'v-', 'RF SHAP':'s-',
             "RF perm":'x-', 'StratImpact':'-'}
     for i,technique in enumerate(R.columns):
         fmt = fmts[technique]
@@ -293,7 +323,7 @@ def plot_topk(R, ax, k=None):
         ax.plot(feature_counts, R[technique][:k], fmt, lw=lw, label=technique,
                 c=color, alpha=.9, markersize=ms, fillstyle='none')
 
-    plt.legend()
+    plt.legend(loc='upper right')  # usually it's out of the way
     ax.set_xlabel("Top $k$ most important features")
     ax.xaxis.set_ticks(feature_counts)
 

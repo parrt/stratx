@@ -106,7 +106,7 @@ dsf
 \section{Introduction}
 \label{sec:intro}
 
-Among data analysis techniques, feature importance is one of the most  useful. Data science practitioners use feature importance to gain business insights (e.g., identifying product characteristics valued by customers) and to select features for predictive models (dropping the least predictive features to simplify and potentially increase the generality of the model). While some approaches work directly on the data, such as principle component analysis (PCA), almost all feature importance algorithms analyze data through interrogation of a specific  fitted model (SHAP, permutation, drop column), or even interrogating subsidiary models to analyze such fitted models (LIME).
+Among data analysis techniques, feature importance is one of the most  useful. Data science practitioners use feature importance to gain business insights (e.g., identifying product characteristics valued by customers) and to select features for predictive models (dropping the least predictive features to simplify and potentially increase the generality of the model). While some approaches work directly on the data, such as principle component analysis (PCA) or minimal-redundancy-maximal-relevance (mRMR) by \cite{mRMR}, almost all feature importance algorithms analyze data through interrogation of a specific  fitted model (SHAP, permutation, drop column), or even interrogating subsidiary models to analyze such fitted models (LIME).
 
 But, relying on a fitted model is problematic. Practitioners must choose an appropriate model that captures the relationship between features and target. Inaccurate models do not yield useful feature importance results, yet, there is no definition of ``accurate enough.'' More importantly, it is possible to get very different feature importances running the same algorithm on the same data, just by choosing a different model. Feature importances derived from a model indicate how well that specific model is able to take advantage of the features, rather than the predictiveness or importance intrinsic to those features of the data.  This fact is troubling and calls into question the validity of importances derived from imperfect models using any technique.  
 
@@ -180,7 +180,31 @@ The obvious disadvantage of this feature importance definition is that function 
 \section{Related work}
 
  these are not comparable but as they have the same goal and are the primary means to obtain future importance now, we summarize existing techniques.
+
+PCA is in a new space and so impossible to interpret and not able to really give us feature order but we can approximate by using the ``loads'' associated with the first principal component.
+
+ relevance: how correlated in the general sense is a feature with the response variable?
  
+ redundancy:  how much information is shared with codependent features. this can be computed using multicollinearity (RF trained on all but $x_j$ to predict $x_j$.
+ 
+ feature selection proceeds by ordering features by most to least relevant. 
+ 
+Pearson but limited to linear.
+
+Spearman ranked correlation  for monotonic relationship
+
+ could use mutual information here as well ( expensive?)
+ 
+ both ignore co-dependencies; so two identical features will appear side-by-side in the ranking, even though one should be tossed out.
+
+Instead of picking the first/top $k$, use a greedy selection algorithm to balance relevance with redundancy.
+
+\todo{We deal with all possible combinations for codependency's because of the nature of the partial dependence mechanism.}
+
+Relief Algorithm \cite{relief} limited to 2 class problems. \cite{ReliefF}  those multiclass problems. apparently does not deal with redundancy blood does deal with interactions. RReliefF works for regression. \cite{RReliefF}
+
+ classification only. minimal-redundancy-maximal-relevance (mRMR) by \cite{mRMR}  takes correlation-width, output a step further to deemphasize codependent features. greedy algorithm selects features one by one to minimize a loss func.  measuring relevance and redundancy.  works only on classification as formulated. it's unclear how you would measure the correlation between a categorical that was label encoded and a numerical column. what about correlation of two categoricals? correlation implies order but nominal categorical variables are not ordered. they use F statistic between numerical and target labels and then Pearson between numerical features. somebody claims that it does not deal with interactions nor non-pairwise collinearity. does it rely on density estimates?
+
 Existing techniques are variations on a single theme: tweak the model by adding/subtracting/permuting features and measuring the impact on model accuracy (permutation and drop column) or average response (SHAP). LIME has a linear model that approximates the output in a neighborhood of x for each x.
 
 Here is where we show that SHAP gets $y = x_1^2 + x_2 + 100$ wrong.
@@ -193,7 +217,7 @@ For real data sets, we can train a predictive model on the most important $k$ fe
  
 The best feature importance method ranks features by their independent contributions to $y$, without getting confused by codependent features. The most important single feature as reported by two importance methods can be used to train a model and measure a prediction metric.
  
-{\bf Definition 3} The {\em top-k} fitness measure trains a suitable model on the  most important $k$ features as reported by two or more importance methods then compares prediction metrics.
+{\bf Definition 3} The {\em top-k} fitness measure trains a suitable model on the  most important $k$ features as reported by two or more importance methods then compares prediction metrics. Actually p246 \cite{liu-fs} has an example of this.
 
 even if recommendations are identified by their isolated contribution, the model is still taking the combination into consideration when fitting and hence the marginal errors are not necessarily reduced specifically because of the added feature at number $k$.
 

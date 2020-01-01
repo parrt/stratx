@@ -6,7 +6,7 @@ n = 20_000 # 30k crashes shap so try 20k
 
 X, y, _ = load_flights(n=n)
 
-R, spear_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
+R, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
     compare_top_features(X, y, n_shap=300,
                          catcolnames={'AIRLINE',
                                       'ORIGIN_AIRPORT', 'DESTINATION_AIRPORT',
@@ -16,7 +16,7 @@ R, spear_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
                          min_slopes_per_x=10, # a bit less than usual (gridsearch showed how to get value)
                          use_oob=use_oob,
                          top_features_range=(1, 8),
-                         drop=['Spearman'])
+                         drop=['Spearman','PCA'])
 
 plot_importances(our_I.iloc[0:8], imp_range=(0, .4), width=4.1,
                  title="Flight delay StratImpact importances")
