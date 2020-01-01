@@ -223,6 +223,8 @@ Here is where we show that SHAP gets $y = x_1^2 + x_2 + 100$ wrong.
 
 \todo{what about outlier example}
 
+\todo{stability is valuable. users would not trust results that changed significantly for small data set changes.}
+
 Even with domain expertise, humans are unreliable estimates of feature importance. Otherwise, we would need feature important mechanisms. Comparing the quality of feature importance methods is then a challenge. The simplest approach is to compare methods on synthetic data for which the answer is clear, such as the quadratic in \ref{eq:quad}.
 
 For real data sets, we can train a predictive model on the most important $k$ features and compare prediction error. The importance method that accurately identifies the most impactful features without getting confused by codependent features, should yield lower production errors for a given $k$.   This mirrors how one would use it for model feature selection.

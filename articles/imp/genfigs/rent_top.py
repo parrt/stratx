@@ -1,7 +1,7 @@
 from support import *
 
 n = 30_000 # more and shap gets bus error it seems
-use_oob=False
+use_oob=True
 metric = mean_absolute_error
 X, y = load_rent(n=n)
 
@@ -24,13 +24,15 @@ plt.tight_layout()
 plt.savefig("../images/rent-features-shap-rf.pdf", bbox_inches="tight", pad_inches=0)
 plt.show()
 
-
 print(R)
 
 fig, ax = plt.subplots(1,1,figsize=(4,3.5))
 plot_topk(R, ax, k=8)
-ax.set_ylabel("Training MAE ($)")
-ax.set_title("NYC rent prices")
+if use_oob:
+    ax.set_ylabel("RF Out-of-bag $1-R^2$")
+else:
+    ax.set_ylabel("Training MAE ($)")
+ax.set_title(f"{'OOB Error: ' if use_oob else ''}NYC rent prices")
 plt.tight_layout()
-plt.savefig("../images/rent-topk.pdf", bbox_inches="tight", pad_inches=0)
+plt.savefig(f"../images/rent-topk{'-oob' if use_oob else ''}.pdf", bbox_inches="tight", pad_inches=0)
 plt.show()

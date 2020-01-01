@@ -1,6 +1,6 @@
 from support import *
 
-use_oob=False
+use_oob=True
 metric = mean_absolute_error
 n = 20_000 # 30k crashes shap so try 20k
 
@@ -37,8 +37,11 @@ R.reset_index().to_feather("/tmp/flights.feather")
 
 fig, ax = plt.subplots(1,1,figsize=(4,3.5))
 plot_topk(R, ax, k=8)
-ax.set_ylabel("Training MAE (minutes)")
-ax.set_title("Flight arrival delay")
+if use_oob:
+    ax.set_ylabel("RF Out-of-bag $1-R^2$")
+else:
+    ax.set_ylabel("Training MAE (minutes)")
+ax.set_title(f"{'OOB Error: ' if use_oob else ''}Flight arrival delay")
 plt.tight_layout()
-plt.savefig("../images/flights-topk.pdf", bbox_inches="tight", pad_inches=0)
+plt.savefig(f"../images/flights-topk{'-oob' if use_oob else ''}.pdf", bbox_inches="tight", pad_inches=0)
 plt.show()

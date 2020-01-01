@@ -221,7 +221,9 @@ def compare_top_features(X, y, top_features_range=None,
                                            min_samples_leaf=1, n_jobs=-1)
                 rf.fit(X[features], y)
                 if use_oob:
-                    s = rf.oob_score_
+                    # make so it's a metric; lower is better
+                    s = rf.oob_score_ if rf.oob_score_ >= 0 else 0
+                    s = 1 - s
                 else:
                     y_pred = rf.predict(X[features])
                     s = metric(y, y_pred)

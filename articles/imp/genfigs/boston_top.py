@@ -4,12 +4,14 @@ boston = load_boston()
 X = pd.DataFrame(boston.data, columns=boston.feature_names)
 y = pd.Series(boston.target)
 n = X.shape[0]
+use_oob=True
 metric = mean_absolute_error
 
 # need small or 1 min_slopes_per_x given tiny toy dataset
 R, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
     compare_top_features(X, y, n_shap=n,
                          metric=metric,
+                         use_oob=use_oob,
                          min_slopes_per_x=1,
                          drop=['Spearman','PCA'])
 
@@ -30,8 +32,11 @@ R.reset_index().to_feather("/tmp/boston.feather")
 
 fig, ax = plt.subplots(1,1,figsize=(4,3.5))
 plot_topk(R, ax, k=8)
-ax.set_ylabel("Training MAE (k$)")
-ax.set_title("Boston housing prices")
+if use_oob:
+    ax.set_ylabel("RF Out-of-bag $1-R^2$")
+else:
+    ax.set_ylabel("Training MAE (k$)")
+ax.set_title(f"{'OOB Error: ' if use_oob else ''}Boston housing prices")
 plt.tight_layout()
-plt.savefig("../images/boston-topk.pdf", bbox_inches="tight", pad_inches=0)
+plt.savefig(f"../images/boston-topk{'-oob' if use_oob else ''}.pdf", bbox_inches="tight", pad_inches=0)
 plt.show()
