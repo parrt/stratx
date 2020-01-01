@@ -1,10 +1,10 @@
 from support import *
 
+use_oob=False
 boston = load_boston()
 X = pd.DataFrame(boston.data, columns=boston.feature_names)
 y = pd.Series(boston.target)
 n = X.shape[0]
-use_oob=True
 metric = mean_absolute_error
 
 # need small or 1 min_slopes_per_x given tiny toy dataset
@@ -35,7 +35,7 @@ plot_topk(R, ax, k=8)
 if use_oob:
     ax.set_ylabel("RF Out-of-bag $1-R^2$")
 else:
-    ax.set_ylabel("Training MAE (k$)")
+    ax.set_ylabel("20% Validation MAE (k$)")
 ax.set_title(f"{'OOB Error: ' if use_oob else ''}Boston housing prices")
 plt.tight_layout()
 plt.savefig(f"../images/boston-topk{'-oob' if use_oob else ''}.pdf", bbox_inches="tight", pad_inches=0)

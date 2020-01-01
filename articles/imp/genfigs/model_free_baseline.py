@@ -25,7 +25,7 @@ def boston():
 
     fig, ax = plt.subplots(1, 1, figsize=(4, 3.5))
     plot_topk(R, ax, k=8)
-    ax.set_ylabel("Training MAE (k$)")
+    ax.set_ylabel("20% Validation MAE (k$)")
     ax.set_title("Boston housing prices")
     plt.tight_layout()
     plt.savefig("../images/boston-topk-spearman.pdf", bbox_inches="tight", pad_inches=0)
@@ -33,7 +33,7 @@ def boston():
 
 
 def bulldozer():
-    n = 20_000  # shap crashes above this; 20k works
+    n = 25_000  # shap crashes above this; 20k works
 
     X, y = load_bulldozer()
     X = X.iloc[-n:]
@@ -41,8 +41,7 @@ def bulldozer():
 
     R, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
         compare_top_features(X, y, n_shap=300,
-                             stratpd_min_samples_leaf=20, # gridsearch showed 20 better than 15
-                             catcolnames={'AC', 'ModelID'},
+                             catcolnames={'AC', 'ModelID', 'YearMade', 'ProductSize'},
                              top_features_range=(1, 8),
                              include=['Spearman','PCA', 'OLS', 'StratImpact'])
 
@@ -50,7 +49,7 @@ def bulldozer():
 
     fig, ax = plt.subplots(1, 1, figsize=(4, 3.5))
     plot_topk(R, ax, k=8)
-    ax.set_ylabel("Training MAE ($)")
+    ax.set_ylabel("20% Validation MAE ($)")
     ax.set_title("Bulldozer auction prices")
     plt.tight_layout()
     plt.savefig("../images/bulldozer-topk-spearman.pdf", bbox_inches="tight", pad_inches=0)
@@ -68,7 +67,7 @@ def rent():
 
     fig, ax = plt.subplots(1, 1, figsize=(4, 3.5))
     plot_topk(R, ax, k=8)
-    ax.set_ylabel("Training MAE ($)")
+    ax.set_ylabel("20% Validation MAE ($)")
     ax.set_title("NYC rent prices")
     plt.tight_layout()
     plt.savefig("../images/rent-topk-spearman.pdf", bbox_inches="tight", pad_inches=0)
@@ -98,31 +97,6 @@ def bulldozer_pca():
     pca_I = pca_importances(X)
     print(pca_I)
 
-boston()
+# boston()
 bulldozer()
-rent()
-
-'''
-def pca1():
-X_ = StandardScaler().fit_transform(X)
-pca = PCA(svd_solver='full')
-pca.fit(X_)
-
-#print(list(pca.explained_variance_))
-print(pca.explained_variance_ratio_)
-
-#print( cross_val_score(pca, X) )
-
-print("PC1")
-print( pca.components_[0,:] )
-pca_I = np.argsort(np.abs(pca.components_[0, :]))
-print(pca_I)
-print(X.columns[pca_I])
-
-print()
-print("PC2")
-print( pca.components_[1,:] )
-pca_I = np.argsort(np.abs(pca.components_[1, :]))
-print(pca_I)
-print(X.columns[pca_I])
-'''
+# rent()

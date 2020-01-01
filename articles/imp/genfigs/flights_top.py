@@ -1,8 +1,8 @@
 from support import *
 
-use_oob=True
+use_oob=False
 metric = mean_absolute_error
-n = 20_000 # 30k crashes shap so try 20k
+n = 25_000 # 30k crashes shap so try 20k
 
 X, y, _ = load_flights(n=n)
 
@@ -40,7 +40,7 @@ plot_topk(R, ax, k=8)
 if use_oob:
     ax.set_ylabel("RF Out-of-bag $1-R^2$")
 else:
-    ax.set_ylabel("Training MAE (minutes)")
+    ax.set_ylabel("20% Validation MAE (minutes)")
 ax.set_title(f"{'OOB Error: ' if use_oob else ''}Flight arrival delay")
 plt.tight_layout()
 plt.savefig(f"../images/flights-topk{'-oob' if use_oob else ''}.pdf", bbox_inches="tight", pad_inches=0)

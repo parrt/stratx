@@ -116,23 +116,28 @@ def linear_model_importance(model, X, y):
     return I, score
 
 
-def shap_importances(model, X, n_shap, normalize=True, sort=True):
+def shap_importances(model, X_train, X_test, n_shap, normalize=True, sort=True):
     start = timer()
     #X = shap.kmeans(X, k=n_shap)
-    X = X.sample(n=n_shap, replace=False)
+    X_test = X_test.sample(n=min(n_shap, len(X_test)), replace=False)
     if isinstance(model, RandomForestRegressor) or \
         isinstance(model, GradientBoostingRegressor) or \
         isinstance(model, xgb.XGBRegressor):
-        explainer = shap.TreeExplainer(model, data=X, feature_perturbation='interventional')
-        shap_values = explainer.shap_values(X, check_additivity=False)
+        """
+        We get this warning for big X_train so choose smaller
+        'Passing 20000 background samples may lead to slow runtimes. Consider using shap.sample(data, 100) to create a smaller background data set.'
+        """
+        explainer = shap.TreeExplainer(model, data=shap.sample(X_train, 100), feature_perturbation='interventional')
+        shap_values = explainer.shap_values(X_test, check_additivity=False)
     elif isinstance(model, Lasso) or isinstance(model, LinearRegression):
-        shap_values = shap.LinearExplainer(model, X, feature_dependence='independent').shap_values(X)
+        shap_values = shap.LinearExplainer(model, X_train, feature_dependence='independent').shap_values(X_train)
     else:
-        explainer = shap.KernelExplainer(model.predict, X.sample(frac=.1))
-        shap_values = explainer.shap_values(X, nsamples=100)
+        # gotta use really small sample; verrry slow
+        explainer = shap.KernelExplainer(model.predict, X_train.sample(frac=.1))
+        shap_values = explainer.shap_values(X_test, nsamples='auto')
     shapimp = np.mean(np.abs(shap_values), axis=0)
     stop = timer()
-    print(f"SHAP time for {len(X)} records using {model.__class__.__name__} = {(stop - start):.1f}s")
+    print(f"SHAP time for {len(X_test)} test records using {model.__class__.__name__} = {(stop - start):.1f}s")
 
     total_imp = np.sum(shapimp)
     normalized_shap = shapimp
@@ -140,7 +145,7 @@ def shap_importances(model, X, n_shap, normalize=True, sort=True):
         normalized_shap = shapimp / total_imp
 
     # print("SHAP", normalized_shap)
-    shapI = pd.DataFrame(data={'Feature': X.columns, 'Importance': normalized_shap})
+    shapI = pd.DataFrame(data={'Feature': X_test.columns, 'Importance': normalized_shap})
     shapI = shapI.set_index('Feature')
     if sort:
         shapI = shapI.sort_values('Importance', ascending=False)
@@ -152,6 +157,7 @@ def compare_top_features(X, y, top_features_range=None,
                          n_shap=300,
                          metric = mean_absolute_error,
                          use_oob = False,
+                         time_sensitive=False,
                          trials=1,
                          n_stratpd_trees=1,
                          bootstrap=False,
@@ -169,14 +175,22 @@ def compare_top_features(X, y, top_features_range=None,
     for feature in drop:
         include.remove(feature)
 
+    if time_sensitive:
+        n_test = int(0.20 * len(X))
+        n_train = len(X) - n_test
+        X_train, X_test = X[:n_train], X[n_train:]
+        y_train, y_test = y[:n_train], y[n_train:]
+    else:
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
     n_estimators = 40 # for both SHAP and testing purposes
 
     rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=True, n_jobs=-1)
-    rf.fit(X, y)
-    print(f"Sanity check: R^2 OOB on {X.shape[0]} records: {rf.oob_score_:.3f}, training {metric.__name__}={metric(y, rf.predict(X))}")
+    rf.fit(X_train, y_train)
+    print(f"Sanity check: R^2 OOB on {X_train.shape[0]} training records: {rf.oob_score_:.3f}, training {metric.__name__}={metric(y_train, rf.predict(X_train))}")
+    print(f"testing {metric.__name__}={metric(y_test, rf.predict(X_test))}")
 
-    all_importances = get_multiple_imps(X, y,
+    all_importances = get_multiple_imps(X_train, y_train, X_test, y_test,
                                         n_stratpd_trees=n_stratpd_trees,
                                         bootstrap=bootstrap,
                                         stratpd_min_samples_leaf=stratpd_min_samples_leaf,
@@ -200,7 +214,7 @@ def compare_top_features(X, y, top_features_range=None,
 
     features_names = include #['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']
 
-    print(f"n={len(X)}, n_top={top_features_range[1]}, n_estimators={n_estimators}, n_shap={n_shap}, min_samples_leaf={stratpd_min_samples_leaf}")
+    print(f"n_train={len(X_train)}, n_top={top_features_range[1]}, n_estimators={n_estimators}, n_shap={n_shap}, min_samples_leaf={stratpd_min_samples_leaf}")
     topscores = []
     for top in range(top_features_range[0], top_features_range[1] + 1):
         # ols_top = ols_I.iloc[:top, 0].index.values
@@ -219,14 +233,14 @@ def compare_top_features(X, y, top_features_range=None,
                 # Train RF model with top-k features
                 rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=use_oob,
                                            min_samples_leaf=1, n_jobs=-1)
-                rf.fit(X[features], y)
+                rf.fit(X_train[features], y_train)
                 if use_oob:
                     # make so it's a metric; lower is better
                     s = rf.oob_score_ if rf.oob_score_ >= 0 else 0
                     s = 1 - s
                 else:
-                    y_pred = rf.predict(X[features])
-                    s = metric(y, y_pred)
+                    y_pred = rf.predict(X_test[features])
+                    s = metric(y_test, y_pred)
 
                 results.append(s)
                 # print(f"{name} valid R^2 {s:.3f}")
@@ -245,7 +259,7 @@ def compare_top_features(X, y, top_features_range=None,
     return (R, *all_importances.values())
 
 
-def get_multiple_imps(X, y, n_shap=300, n_estimators=50,
+def get_multiple_imps(X_train, y_train, X_test, y_test, n_shap=300, n_estimators=50,
                       stratpd_min_samples_leaf=10,
                       n_stratpd_trees=1,
                       bootstrap=False,
@@ -256,38 +270,45 @@ def get_multiple_imps(X, y, n_shap=300, n_estimators=50,
     spear_I = pca_I = ols_I = ols_shap_I = rf_I = perm_I = ours_I = None
 
     if 'Spearman' in include:
-        spear_I = spearmans_importances(X, y)
+        spear_I = spearmans_importances(X_train, y_train)
 
     if 'PCA' in include:
-        pca_I = pca_importances(X)
+        pca_I = pca_importances(X_train)
 
     if "OLS" in include:
-        X_ = StandardScaler().fit_transform(X)
-        X_ = pd.DataFrame(X_, columns=X.columns)
+        X_train_ = StandardScaler().fit_transform(X_train)
+        X_train_ = pd.DataFrame(X_train_, columns=X_train.columns)
         lm = LinearRegression()
-        lm.fit(X_, y)
-        ols_I, score = linear_model_importance(lm, X_, y)
+        lm.fit(X_train_, y_train)
+        ols_I, score = linear_model_importance(lm, X_train_, y_train)
 
     if "OLS SHAP" in include:
-        X_ = StandardScaler().fit_transform(X)
-        X_ = pd.DataFrame(X_, columns=X.columns)
+        X_train_ = StandardScaler().fit_transform(X_train)
+        X_train_ = pd.DataFrame(X_train_, columns=X_train.columns)
         lm = LinearRegression()
-        lm.fit(X_, y)
-        ols_shap_I = shap_importances(lm, X_, n_shap=len(X)) # fast enough so use all data
+        lm.fit(X_train_, y_train)
+        ols_shap_I = shap_importances(lm, X_train_, X_test, n_shap=len(X_test)) # fast enough so use all data
 
     rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=True)
-    rf.fit(X, y)
+    rf.fit(X_train, y_train)
 
     if "RF SHAP" in include:
-        rf_I = shap_importances(rf, X, n_shap)
+        rf_I = shap_importances(rf, X_train, X_test, n_shap)
 
     if "RF perm" in include:
-        perm_I = rfpimp.importances(rf, X, y) # permutation
+        perm_I = rfpimp.importances(rf, X_test, y_test) # permutation; drop in test accuracy
 
     if "StratImpact" in include:
-        ours_I = importances(X, y, verbose=False,
+        # RF SHAP and RF perm get to look at the test data to decide which features
+        # are more predictive and useful for generality's sake so it's fair to
+        # let this method see all data as well
+        # X_full = pd.concat([X_train, X_test], axis=0)
+        # y_full = pd.concat([y_train, y_test], axis=0)
+        X_full = X_train
+        y_full = y_train
+        ours_I = importances(X_full, y_full, verbose=False,
                              min_samples_leaf=stratpd_min_samples_leaf,
-                             n_trees = n_stratpd_trees,
+                             n_trees=n_stratpd_trees,
                              bootstrap=bootstrap,
                              catcolnames=catcolnames,
                              min_slopes_per_x=min_slopes_per_x,
@@ -374,17 +395,16 @@ def load_bulldozer():
     Download Train.csv data from https://www.kaggle.com/c/bluebook-for-bulldozers/data
     and save in data subdir
     """
-    if os.path.exists("data/bulldozer-train.feather"):
-        print("Loading cached version")
-        df = pd.read_feather("data/bulldozer-train.feather")
+    if os.path.exists("data/bulldozer-train-all.feather"):
+        print("Loading cached version...")
+        df = pd.read_feather("data/bulldozer-train-all.feather")
     else:
         dtypes = {col: str for col in
-                  ['fiModelSeries', 'Coupler_System', 'Grouser_Tracks',
-                   'Hydraulics_Flow']}
+                  ['fiModelSeries', 'Coupler_System', 'Grouser_Tracks', 'Hydraulics_Flow']}
         df = pd.read_csv('data/Train.csv', dtype=dtypes, parse_dates=['saledate'])  # 35s load
         df = df.sort_values('saledate')
         df = df.reset_index(drop=True)
-        df.to_feather("data/bulldozer-train.feather")
+        df.to_feather("data/bulldozer-train-all.feather")
 
     df['MachineHours'] = df['MachineHoursCurrentMeter']  # shorten name
     df.loc[df.eval("MachineHours==0"),
@@ -395,6 +415,7 @@ def load_bulldozer():
     fix_missing_num(df, 'YearMade')
     df_split_dates(df, 'saledate')
     df['age'] = df['saleyear'] - df['YearMade']
+    df['YearMade'] = df['YearMade'].astype(int)
     sizes = {None: 0, 'Mini': 1, 'Compact': 1, 'Small': 2, 'Medium': 3,
              'Large / Medium': 4, 'Large': 5}
     df['ProductSize'] = df['ProductSize'].map(sizes).values

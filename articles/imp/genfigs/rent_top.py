@@ -1,7 +1,7 @@
 from support import *
 
+use_oob=False
 n = 30_000 # more and shap gets bus error it seems
-use_oob=True
 metric = mean_absolute_error
 X, y = load_rent(n=n)
 
@@ -31,7 +31,7 @@ plot_topk(R, ax, k=8)
 if use_oob:
     ax.set_ylabel("RF Out-of-bag $1-R^2$")
 else:
-    ax.set_ylabel("Training MAE ($)")
+    ax.set_ylabel("20% Validation MAE ($)")
 ax.set_title(f"{'OOB Error: ' if use_oob else ''}NYC rent prices")
 plt.tight_layout()
 plt.savefig(f"../images/rent-topk{'-oob' if use_oob else ''}.pdf", bbox_inches="tight", pad_inches=0)

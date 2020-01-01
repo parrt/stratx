@@ -27,8 +27,7 @@ def importances(X: pd.DataFrame,
                 pvalues=False,  # use to get p-values for each importance; it's number trials
                 n_pvalue_trials=50,  # how many trials to do to get p-values
                 n_trees=1, min_samples_leaf=10, bootstrap=False, max_features=1.0,
-                verbose=False,
-                pdp:('stratpd','ice')='stratpd') -> pd.DataFrame:
+                verbose=False) -> pd.DataFrame:
     if not isinstance(X, pd.DataFrame):
         raise ValueError("Can only operate on dataframes at the moment")
 
@@ -38,7 +37,10 @@ def importances(X: pd.DataFrame,
     n,p = X.shape
     imps = np.zeros(shape=(p, n_stddev_trials)) # track p var importances for ntrials; cols are trials
     for i in range(n_stddev_trials):
-        bootstrap_sample_idxs = resample(range(n), n_samples=n, replace=resample_with_replacement)
+        if n_stddev_trials==1: # don't shuffle if not bootstrapping
+            bootstrap_sample_idxs = range(n)
+        else:
+            bootstrap_sample_idxs = resample(range(n), n_samples=n, replace=resample_with_replacement)
         X_, y_ = X.iloc[bootstrap_sample_idxs], y.iloc[bootstrap_sample_idxs]
         imps[:,i] = importances_(X_, y_, catcolnames=catcolnames,
                                  normalize=normalize,
@@ -49,8 +51,7 @@ def importances(X: pd.DataFrame,
                                  min_slopes_per_x=min_slopes_per_x,
                                  bootstrap=bootstrap,
                                  max_features=max_features,
-                                 verbose=verbose,
-                                 pdp=pdp)
+                                 verbose=verbose)
 
     avg_imps = np.mean(imps, axis=1)
 
@@ -85,19 +86,11 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                  n_trees=1, min_samples_leaf=10,
                  min_slopes_per_x=15,
                  bootstrap=False, max_features=1.0,
-                 verbose=False,
-                 pdp:('stratpd','ice')='stratpd') -> np.ndarray:
+                 verbose=False) -> np.ndarray:
     if not isinstance(X, pd.DataFrame):
         raise ValueError("Can only operate on dataframes at the moment")
 
-    if pdp not in {'stratpd','ice'}:
-        raise ValueError("pdp must be 'stratpd' or 'ice'")
-
     all_start = timer()
-
-    if pdp=='ice':
-        rf = RandomForestRegressor(n_estimators=30)
-        rf.fit(X, y)
 
     def single_feature_importance(colname):
         # print(f"Start {colname}")
@@ -116,7 +109,7 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
             # some cats have NaN, such as 0th which is for "missing values"
             avg_abs_pdp = np.nanmean(np.abs(avg_per_cat))# * (ncats - 1)
         else:
-            leaf_xranges, leaf_slopes, slope_counts_at_x, dx, dydx, pdpx, pdpy, ignored = \
+            leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored = \
                 partial_dependence(X=X, y=y, colname=colname,
                                    n_trees=n_trees,
                                    min_samples_leaf=min_samples_leaf,
@@ -128,6 +121,7 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                                    supervised=supervised)
             #         print(f"Ignored for {colname} = {ignored}")
             avg_abs_pdp = np.mean(np.abs(pdpy))# * (np.max(pdpx) - np.min(pdpx))
+        # print(f"{colname}:{avg_abs_pdp:.3f} mass")
         # print(f"Stop {colname}")
         return avg_abs_pdp
 

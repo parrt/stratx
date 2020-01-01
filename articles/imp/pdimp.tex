@@ -72,8 +72,7 @@
 
 \if0\blind
 {
-  \title{\bf Feature Importances without Models\\
-  {\small or feature importance directly from the data? model-free?}}
+  \title{\bf Tech Report: Model-Free Feature Importances}
 
   \author{Terence Parr and James D. Wilson\\
       University of San Francisco\\
@@ -223,7 +222,9 @@ Here is where we show that SHAP gets $y = x_1^2 + x_2 + 100$ wrong.
 
 \todo{what about outlier example}
 
-\todo{stability is valuable. users would not trust results that changed significantly for small data set changes.}
+\todo{stability is valuable. users would not trust results that changed significantly for small data set changes. show our error bars from bootstrapping and say we can do p-values.}
+
+\todo{bulldozer: YearMade ignores too much with stratpd, use catstrat}
 
 Even with domain expertise, humans are unreliable estimates of feature importance. Otherwise, we would need feature important mechanisms. Comparing the quality of feature importance methods is then a challenge. The simplest approach is to compare methods on synthetic data for which the answer is clear, such as the quadratic in \ref{eq:quad}.
 

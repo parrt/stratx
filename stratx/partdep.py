@@ -421,7 +421,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                         ignore because of samples in leaves with identical X[colname]
                         values.
     """
-    leaf_xranges, leaf_slopes, slope_counts_at_x, dx, dydx, pdpx, pdpy, ignored = \
+    leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored = \
         partial_dependence(X=X, y=y, colname=colname, min_slopes_per_x=min_slopes_per_x,
                            n_trees=n_trees, min_samples_leaf=min_samples_leaf,
                            bootstrap=bootstrap, max_features=max_features, supervised=supervised,

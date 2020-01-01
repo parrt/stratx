@@ -206,11 +206,11 @@ def plot_partials(X,y,eqn, yrange=(.5,1.5)):
     plt.suptitle('$'+eqn+'$', y=1.02)
     for j,colname in enumerate(X.columns):
         xj = X[colname]
-        leaf_xranges, leaf_slopes, slope_counts_at_x, dx, dydx, pdpx, pdpy, ignored = \
+        leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored = \
             partial_dependence(X=X, y=y, colname=colname)
-        # Plot dydx
-        axes[j].scatter(pdpx, dydx, c='k', s=3)
-        axes[j].plot([min(xj),max(xj)], [np.mean(dydx),np.mean(dydx)], c='orange')
+        # Plot slope_at_x
+        axes[j].scatter(pdpx, slope_at_x, c='k', s=3)
+        axes[j].plot([min(xj),max(xj)], [np.mean(slope_at_x),np.mean(slope_at_x)], c='orange')
 
         # Plot PD
         axes[j].plot(pdpx, pdpy, c='blue', lw=.5)
@@ -221,7 +221,7 @@ def plot_partials(X,y,eqn, yrange=(.5,1.5)):
         axes[j].set_xlabel(colname)
         axes[j].set_ylabel("y")
         axes[j].set_title(#(min(xj)+max(xj))/2, 1.4,
-                     f"$\\sigma(dy)$={np.std(dydx):.3f}, $\\mu(pdpy)$={np.mean(pdpy):.3f}, $\\sigma(pdpy)$={np.std(pdpy):.3f}",
+                     f"$\\sigma(dy)$={np.std(slope_at_x):.3f}, $\\mu(pdpy)$={np.mean(pdpy):.3f}, $\\sigma(pdpy)$={np.std(pdpy):.3f}",
                      horizontalalignment='center')
 
 
