@@ -394,12 +394,15 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  slope_line_alpha=.3,
                  pdp_line_color='black',
                  pdp_marker_color='black',
+                 impact_fill_color='#FFE091',
+                 impact_pdp_color='#D73028',
                  fontname='Arial',
                  title_fontsize=11,
                  label_fontsize=10,
                  ticklabel_fontsize=10,
-                 barchart_size = 0.09,  # if show_slope_counts, what ratio of vertical space should barchart use at bottom?
-                 barchar_alpha = 0.7,
+                 barchart_size=0.09,
+                 # if show_slope_counts, what ratio of vertical space should barchart use at bottom?
+                 barchar_alpha=0.7,
                  verbose=False,
                  figsize=None
                  ):
@@ -514,10 +517,9 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
             y_text_shift = -r*.02 # drop a bit to avoid collision with 0 line
         ax.text((max(pdpx)+1+min(pdpx))/2, 0+y_text_shift, f"Impact {absm:.2f}",
                 horizontalalignment='center', verticalalignment=verticalalignment,
-                fontsize=label_fontsize, fontname=fontname,
-                fontweight='bold')
-        ax.fill_between(pdpx, weighted_pdpy, [0]*len(pdpx), color='#FFE091')
-        ax.scatter(pdpx, weighted_pdpy, s=pdp_marker_size, c='#D73028')
+                fontsize=label_fontsize, fontname=fontname)
+        ax.fill_between(pdpx, weighted_pdpy, [0] * len(pdpx), color=impact_fill_color)
+        ax.scatter(pdpx, weighted_pdpy, s=pdp_marker_size, c=impact_pdp_color)
         ax.plot(pdpx, weighted_pdpy, lw=.3, c='grey')
 
     if show_xlabel:
@@ -1064,15 +1066,21 @@ def plot_catstratpd(X, y,
                     show_all_deltas=True,
                     alpha=.15,
                     color='#2c7fb8',
+                    impact_color='#D73028',
                     pdp_marker_size=.5,
                     marker_size=5,
                     pdp_color='black',
+                    fontname='Arial',
+                    title_fontsize=11,
+                    label_fontsize=10,
+                    ticklabel_fontsize=10,
                     style:('strip','scatter')='strip',
                     min_y_shifted_to_zero=True,  # easier to read if values are relative to 0 (usually); do this for high cardinality cat vars
                     show_xlabel=True,
                     show_ylabel=True,
                     show_xticks=True,
-                    verbose=False):
+                    verbose=False,
+                    figsize=None):
     """
     Warning: cat columns are assumed to be label encoded as unique integers. This
     function uses the cat code as a raw index internally. So if you have two cat
@@ -1121,7 +1129,10 @@ def plot_catstratpd(X, y,
                                verbose=verbose)
 
     if ax is None:
-        fig, ax = plt.subplots(1, 1)
+        if figsize is not None:
+            fig, ax = plt.subplots(1,1,figsize=figsize)
+        else:
+            fig, ax = plt.subplots(1, 1)
 
     ncats = len(catcodes)
     nleaves = leaf_histos.shape[1]
@@ -1173,23 +1184,34 @@ def plot_catstratpd(X, y,
     ax.set_xticks(range(0, ncats))
     if show_xticks: # sometimes too many
         ax.set_xticklabels(catcode2name[sorted_catcodes])
+        ax.tick_params(axis='x', which='major', labelsize=ticklabel_fontsize)
     else:
         ax.set_xticklabels([])
-        ax.tick_params(axis='x', which='both', bottom=False)
+        ax.tick_params(axis='x', which='major', labelsize=ticklabel_fontsize, bottom=False)
+    ax.tick_params(axis='y', which='major', labelsize=ticklabel_fontsize)
 
     if show_impact:
         m = np.nanmean(np.abs(avg_per_cat))
-        ax.plot([0, len(sorted_catcodes)], [m,m], '--', lw=.5, c='black')
+        ax.plot([0, len(sorted_catcodes)], [m,m], '--', lw=.7, c=impact_color)
         # add a tick for the mean in y axis
-        ax.set_yticks(list(ax.get_yticks()) + [m])
-
+        # ax.set_yticks(list(ax.get_yticks()) + [m])
+        ax.text(0.5, .94, f"Impact {m:.2f}",
+                horizontalalignment='center',
+                fontsize=label_fontsize, fontname=fontname,
+                transform=ax.transAxes,
+                color=impact_color)
 
     if show_xlabel:
-        ax.set_xlabel(colname)
+        ax.set_xlabel(colname, fontsize=label_fontsize, fontname=fontname)
     if show_ylabel:
-        ax.set_ylabel(targetname)
+        ax.set_ylabel(targetname, fontsize=label_fontsize, fontname=fontname)
     if title is not None:
-        ax.set_title(title)
+        ax.set_title(title, fontsize=title_fontsize, fontname=fontname)
+
+    for tick in ax.get_xticklabels():
+        tick.set_fontname(fontname)
+    for tick in ax.get_yticklabels():
+        tick.set_fontname(fontname)
 
     if yrange is not None:
         ax.set_ylim(*yrange)

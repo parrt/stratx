@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 #np.random.seed(666) # good results
 np.random.seed(999)
 
-n = 25_000
+n = 5_000
 
 X, y = load_bulldozer()
 
@@ -37,15 +37,15 @@ plot_stratpd(X, y, colname='age', targetname='SalePrice',
 plt.tight_layout()
 plt.savefig(f"/Users/parrt/Desktop/james-age.pdf", pad_inches=0)
 plt.show()
-
-plot_stratpd(X, y, colname='YearMade', targetname='SalePrice',
-             show_slope_lines=False,
-             show_impact=True,
-             figsize=(4,3)
-             )
-plt.tight_layout()
-plt.savefig(f"/Users/parrt/Desktop/james-YearMade.pdf", pad_inches=0)
-plt.show()
+#
+# plot_stratpd(X, y, colname='YearMade', targetname='SalePrice',
+#              show_slope_lines=False,
+#              show_impact=True,
+#              figsize=(4,3)
+#              )
+# plt.tight_layout()
+# plt.savefig(f"/Users/parrt/Desktop/james-YearMade.pdf", pad_inches=0)
+# plt.show()
 
 # plot_stratpd(X, y, colname='saledayofyear', targetname='SalePrice',
 #              min_samples_leaf=10,
@@ -62,10 +62,13 @@ plt.show()
 # plot_catstratpd(X, y, colname='ModelID', targetname='SalePrice',
 #                 min_samples_leaf=10, sort=None,
 #                 alpha=.08,
+#                 show_all_deltas=False,
 #                 show_xticks=False,
-#                 show_mean_line=True,
-#                 min_y_shifted_to_zero=False)
+#                 show_impact=True,
+#                 min_y_shifted_to_zero=False,
+#                 figsize=(4,3))
 # plt.tight_layout()
+# plt.savefig(f"/Users/parrt/Desktop/james-ModelID.pdf", pad_inches=0)
 # plt.show()
 
 # I = importances(X, y, catcolnames={'AC', 'ModelID', 'ProductSize'},

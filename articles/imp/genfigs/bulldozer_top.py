@@ -34,7 +34,7 @@ plt.show()
 
 print(R)
 
-fig, ax = plt.subplots(1,1,figsize=(4,3.5))
+fig, ax = plt.subplots(1,1,figsize=(3.5,3))
 
 plot_topk(R, ax, k=8)
 if use_oob:
