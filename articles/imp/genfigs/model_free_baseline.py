@@ -5,6 +5,7 @@ from sklearn.model_selection import cross_val_score
 
 np.set_printoptions(precision=4, suppress=True, linewidth=150)
 
+figsize = (3.2, 2.8)
 
 # Show BOSTON Spearman's vs ours
 def boston():
@@ -23,10 +24,12 @@ def boston():
 
     print(R)
 
-    fig, ax = plt.subplots(1, 1, figsize=(4, 3.5))
-    plot_topk(R, ax, k=8)
-    ax.set_ylabel("20% Validation MAE (k$)")
-    ax.set_title("Boston housing prices")
+    plot_topk(R, k=8, title="Boston housing prices",
+              ylabel="20% Validation MAE (k$)",
+              title_fontsize=14,
+              label_fontsize=14,
+              ticklabel_fontsize=14,
+              figsize=figsize)
     plt.tight_layout()
     plt.savefig("../images/boston-topk-spearman.pdf", bbox_inches="tight", pad_inches=0)
     plt.show()
@@ -48,10 +51,12 @@ def bulldozer():
 
     print(R)
 
-    fig, ax = plt.subplots(1, 1, figsize=(4, 3.5))
-    plot_topk(R, ax, k=8)
-    ax.set_ylabel("20% Validation MAE ($)")
-    ax.set_title("Bulldozer auction prices")
+    plot_topk(R, k=8, title="Bulldozer auction prices",
+              ylabel="20% Validation MAE ($)",
+              title_fontsize=14,
+              label_fontsize=14,
+              ticklabel_fontsize=14,
+              figsize=figsize)
     plt.tight_layout()
     plt.savefig("../images/bulldozer-topk-spearman.pdf", bbox_inches="tight", pad_inches=0)
     plt.show()
@@ -67,11 +72,12 @@ def rent():
                              top_features_range=(1, 8),
                              include=['Spearman','PCA','OLS','StratImpact'])
 
-    fig, ax = plt.subplots(1, 1, figsize=(4, 3.5))
-    plot_topk(R, ax, k=8)
-    ax.set_ylabel("20% Validation MAE ($)")
-    ax.set_title("NYC rent prices")
-    plt.tight_layout()
+    plot_topk(R, k=8, title="NYC rent prices",
+              ylabel="20% Validation MAE ($)",
+              title_fontsize=15, # make font a bit bigger as we shrink this one is paper a bit
+              label_fontsize=15,
+              ticklabel_fontsize=15,
+              figsize=figsize)
     plt.savefig("../images/rent-topk-spearman.pdf", bbox_inches="tight", pad_inches=0)
     plt.show()
 
@@ -93,16 +99,18 @@ def flight():
                              # a bit less than usual (gridsearch showed how to get value)
                              top_features_range=(1, 8),
                              include=['Spearman','PCA','OLS','StratImpact'])
-    fig, ax = plt.subplots(1, 1, figsize=(4, 3.5))
-    plot_topk(R, ax, k=8)
-    ax.set_ylabel("20% Validation MAE (minutes)")
-    ax.set_title(f"Flight arrival delay")
+    plot_topk(R, k=8, title="Flight arrival delay",
+              ylabel="20% Validation MAE (mins)",
+              title_fontsize=14,
+              label_fontsize=14,
+              ticklabel_fontsize=14,
+              figsize=figsize)
     plt.tight_layout()
     plt.savefig("../images/flights-topk-spearman.pdf", bbox_inches="tight", pad_inches=0)
     plt.show()
 
 
-flight()
-# boston()
+#flight()
+#boston()
 # bulldozer()
-# rent()
+rent()

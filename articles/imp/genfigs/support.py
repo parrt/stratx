@@ -324,7 +324,21 @@ def get_multiple_imps(X_train, y_train, X_test, y_test, n_shap=300, n_estimators
     return d
 
 
-def plot_topk(R, ax, k=None):
+def plot_topk(R, ax=None, k=None,
+              title=None,
+              fontname='Arial',
+              title_fontsize=11,
+              label_fontsize=11,
+              ticklabel_fontsize=11,
+              ylabel=None,
+              emphasis_color = '#A22396',
+              figsize=None):
+    if ax is None:
+        if figsize is not None:
+            fig, ax = plt.subplots(1,1,figsize=figsize)
+        else:
+            fig, ax = plt.subplots(1, 1)
+
     GREY = '#444443'
     if k is None:
         k = R.shape[0]
@@ -338,17 +352,48 @@ def plot_topk(R, ax, k=None):
         if fmt == 'x-': ms = 11
         if fmt == 'P-': ms = 11
         if technique == 'StratImpact':
-            color = '#A22396' #'#4574B4'  # '#415BA3'
+            color = emphasis_color
             lw = 2
         else:
-            color = GREY# '#415BA3'  # '#8E8E8F'
+            color = GREY
             lw = .5
         ax.plot(feature_counts, R[technique][:k], fmt, lw=lw, label=technique,
                 c=color, alpha=.9, markersize=ms, fillstyle='none')
 
     plt.legend(loc='upper right')  # usually it's out of the way
-    ax.set_xlabel("Top $k$ most important features")
+    ax.set_xlabel("Top $k$ most important features", fontsize=label_fontsize,
+                       fontname=fontname)
+
+    if ylabel is not None:
+        ax.set_ylabel(ylabel, fontsize = label_fontsize, fontname=fontname)
+
     ax.xaxis.set_ticks(feature_counts)
+    ax.tick_params(axis='both', which='major', labelsize=ticklabel_fontsize)
+    for tick in ax.get_xticklabels():
+        tick.set_fontname(fontname)
+    for tick in ax.get_yticklabels():
+        tick.set_fontname(fontname)
+
+    if title is not None:
+        ax.set_title(title, fontsize=title_fontsize, fontname=fontname)
+
+
+def stability(X, y, sample_size, n_trials):
+    n = len(X)
+    all_I = np.empty(shape=(n_trials, X.shape[1]))
+    for i in range(n_trials):
+        bootstrap_sample_idxs = resample(range(n), n_samples=sample_size, replace=False)
+        X_, y_ = X.iloc[bootstrap_sample_idxs], y.iloc[bootstrap_sample_idxs]
+        I = importances(X_, y_)
+        print(I.iloc[:8])
+        all_I[i, :] = I['Importance'].values
+    I = pd.DataFrame(data={'Feature': X.columns,
+                           'Importance': np.mean(all_I, axis=0),
+                           'Sigma': np.std(all_I, axis=0)})
+    I = I.set_index('Feature')
+    I = I.sort_values('Importance', ascending=False)
+    I.reset_index().to_feather("/tmp/t.feather")
+    return I
 
 
 def load_flights(n):
@@ -382,14 +427,14 @@ def load_flights(n):
 
     features = ['YEAR', 'MONTH', 'DAY', 'DAY_OF_WEEK', 'dayofyear',
                 'AIRLINE', 'ORIGIN_AIRPORT', 'DESTINATION_AIRPORT',
-#                'SCHEDULED_DEPARTURE',
+                # 'SCHEDULED_DEPARTURE',
                 'SCHEDULED_DEPARTURE_HOUR', 'SCHEDULED_DEPARTURE_MIN',
                 'SCHEDULED_ARRIVAL_HOUR',   'SCHEDULED_ARRIVAL_MIN',
+                # 'DEPARTURE_TIME',
                 'DEPARTURE_TIME_HOUR',      'DEPARTURE_TIME_MIN',
                 'FLIGHT_NUMBER', 'TAIL_NUMBER',
                 'AIR_TIME', 'DISTANCE',
                 'TAXI_IN', 'TAXI_OUT',
-                # 'DEPARTURE_TIME',
 #                'SCHEDULED_ARRIVAL',
 #                 'SCHEDULED_TIME',
                 'ARRIVAL_DELAY']  # target
@@ -465,7 +510,7 @@ def load_bulldozer():
     return X, y
 
 
-def load_rent(n:int, clean_prices=True):
+def load_rent(n:int=None, clean_prices=True):
     """
     Download train.json from https://www.kaggle.com/c/two-sigma-connect-rental-listing-inquiries/data
     and save into data subdir.
@@ -506,7 +551,9 @@ def load_rent(n:int, clean_prices=True):
         df[hood] *= 1000 # GPS range is very tight so distances are very small. bump up
     hoodfeatures = list(hoods.keys())
 
-    df = df.sort_values(by='created').sample(min(n,len(df)), replace=False)  # get a small subsample
+    if n is not None:
+        howmany = min(n, len(df))
+        df = df.sort_values(by='created').sample(howmany, replace=False)
     # df = df.sort_values(by='created')  # time-sensitive dataset
     # df = df.iloc[-n:]
 

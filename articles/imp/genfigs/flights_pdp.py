@@ -49,29 +49,24 @@ col = 'TAXI_OUT'
 col = 'DEPARTURE_TIME_HOUR'
 col = 'SCHEDULED_DEPARTURE_HOUR'
 
-plot_stratpd(X, y, colname='SCHEDULED_DEPARTURE_HOUR', targetname='delay',
-             show_slope_lines=False,
-             show_impact=True)
-             # yrange=(-10,100))
-plt.tight_layout()
-plt.show()
-
-plot_stratpd(X, y, colname='DEPARTURE_TIME_HOUR', targetname='delay',
-             show_slope_lines=False,
-             show_impact=True)
-             # yrange=(-10,100))
-plt.tight_layout()
-plt.show()
-
-# plot_catstratpd(X, y, 'SCHEDULED_DEPARTURE_HOUR', 'ARRIVAL_DELAY',
-#                 min_samples_leaf=10,
-#                 sort=None,
-#                 # yrange=(-110,250),
-#                 show_xticks=False,
-#                 show_mean_line=True,
-#                 style='scatter')
+# plot_stratpd(X, y, colname='SCHEDULED_DEPARTURE_HOUR', targetname='delay',
+#              show_slope_lines=False,
+#              show_impact=True)
+#              # yrange=(-10,100))
 # plt.tight_layout()
 # plt.show()
+#
+# plot_stratpd(X, y, colname='DEPARTURE_TIME_HOUR', targetname='delay',
+#              show_slope_lines=False,
+#              show_impact=True)
+#              # yrange=(-10,100))
+# plt.tight_layout()
+# plt.show()
+
+plot_stratpd_gridsearch(X, y, 'SCHEDULED_DEPARTURE_HOUR', 'ARRIVAL_DELAY',
+                        show_impact=True)
+plt.tight_layout()
+plt.show()
 
 # plot_catstratpd(X, y, 'DEPARTURE_TIME_MIN', 'ARRIVAL_DELAY',
 #                 min_samples_leaf=10,

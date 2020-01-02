@@ -786,7 +786,7 @@ def avg_values_at_x_nonparallel_jit(uniq_x, leaf_ranges, leaf_slopes):
 
 def plot_stratpd_gridsearch(X, y, colname, targetname,
                             min_samples_leaf_values=(2,5,10,20,30),
-                            min_slopes_per_x_values=(15,), # Show default count only by default
+                            min_slopes_per_x_values=(5,), # Show default count only by default
                             nbins_values=(1,2,3,4,5),
                             nbins_smoothing=None,
                             binned=False,
@@ -794,6 +794,7 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
                             xrange=None,
                             show_regr_line=False,
                             show_slope_lines=True,
+                            show_impact=False,
                             marginal_alpha=.05,
                             slope_line_alpha=.1,
                             title_fontsize=8,
@@ -827,6 +828,7 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
                                      show_ylabel=False,
                                      slope_line_alpha=slope_line_alpha,
                                      show_slope_lines=show_slope_lines,
+                                     show_impact=show_impact,
                                      label_fontsize=label_fontsize,
                                      ticklabel_fontsize=ticklabel_fontsize)
                     # print(f"leafsz {msl} avg abs curve value: {np.mean(np.abs(pdpy)):.2f}, mean {np.mean(pdpy):.2f}, min {np.min(pdpy):.2f}, max {np.max(pdpy)}")
