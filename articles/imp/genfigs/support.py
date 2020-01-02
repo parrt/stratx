@@ -369,14 +369,29 @@ def load_flights(n):
     df_flights = df_flights[
         (df_flights['CANCELLED'] == 0) & (df_flights['DIVERTED'] == 0)]
 
+    # times are in 830 to mean 08:30, convert to two columns, hour and min
+    def cvt_time(df, colname):
+        df[f'{colname}_HOUR'] = df[colname] / 100
+        df[f'{colname}_HOUR'] = df[f'{colname}_HOUR'].astype(int)
+        df[f'{colname}_MIN']  = df[colname] - df[f'{colname}_HOUR'] * 100
+        df[f'{colname}_MIN']  = df[f'{colname}_MIN'].astype(int)
+
+    cvt_time(df_flights, 'SCHEDULED_DEPARTURE')
+    cvt_time(df_flights, 'SCHEDULED_ARRIVAL')
+    cvt_time(df_flights, 'DEPARTURE_TIME')
+
     features = ['YEAR', 'MONTH', 'DAY', 'DAY_OF_WEEK', 'dayofyear',
                 'AIRLINE', 'ORIGIN_AIRPORT', 'DESTINATION_AIRPORT',
-                'SCHEDULED_DEPARTURE', 'FLIGHT_NUMBER', 'TAIL_NUMBER',
+#                'SCHEDULED_DEPARTURE',
+                'SCHEDULED_DEPARTURE_HOUR', 'SCHEDULED_DEPARTURE_MIN',
+                'SCHEDULED_ARRIVAL_HOUR',   'SCHEDULED_ARRIVAL_MIN',
+                'DEPARTURE_TIME_HOUR',      'DEPARTURE_TIME_MIN',
+                'FLIGHT_NUMBER', 'TAIL_NUMBER',
                 'AIR_TIME', 'DISTANCE',
                 'TAXI_IN', 'TAXI_OUT',
-                'DEPARTURE_TIME',
-                'SCHEDULED_ARRIVAL',
-                'SCHEDULED_TIME',
+                # 'DEPARTURE_TIME',
+#                'SCHEDULED_ARRIVAL',
+#                 'SCHEDULED_TIME',
                 'ARRIVAL_DELAY']  # target
 
     df_flights = df_flights[features]

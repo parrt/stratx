@@ -9,9 +9,10 @@ X, y, _ = load_flights(n=n)
 R, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
     compare_top_features(X, y, n_shap=300,
                          catcolnames={'AIRLINE',
-                                      'ORIGIN_AIRPORT', 'DESTINATION_AIRPORT',
+                                      'ORIGIN_AIRPORT',
+                                      'DESTINATION_AIRPORT',
                                       'FLIGHT_NUMBER',
-                                      'DAY_OF_WEEK', 'dayofyear'},
+                                      'DAY_OF_WEEK'},
                          metric=mean_squared_error,
                          min_slopes_per_x=10, # a bit less than usual (gridsearch showed how to get value)
                          use_oob=use_oob,

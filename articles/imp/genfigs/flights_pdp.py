@@ -28,7 +28,7 @@ import matplotlib.pyplot as plt
 
 #np.random.seed(999)
 
-n=20_000
+n=25_000
 #r = (500,600)
 # r = (0,500)
 _, _, df_flights = load_flights(n=n)
@@ -38,22 +38,57 @@ X, y = df_flights.drop('ARRIVAL_DELAY', axis=1), df_flights['ARRIVAL_DELAY']
 
 print(f"Avg arrival delay {df_flights['ARRIVAL_DELAY'].mean()}")
 
-# plot_stratpd_gridsearch(X, y, 'TAXI_OUT', 'ARRIVAL_DELAY',
-#                         min_samples_leaf_values=(10,15),
-#                         min_slopes_per_x_values=(15,20,25,30,40),
+# plot_stratpd_gridsearch(X, y, 'TAXI_IN', 'ARRIVAL_DELAY',
+#                         min_samples_leaf_values=(3,5,10,15),
+#                         min_slopes_per_x_values=(15,20,25,30,40,50),
 #                         show_slope_lines=False,
 #                         yrange=(-10,90)
 #                         )
 
-plot_stratpd_gridsearch(X, y, 'DEPARTURE_TIME', 'ARRIVAL_DELAY',
-                        min_samples_leaf_values=(10,),
-                        min_slopes_per_x_values=(25,30,40,45,50),
-                        show_slope_lines=False,
-                        yrange=(-10,90)
-                        )
+col = 'TAXI_OUT'
+col = 'DEPARTURE_TIME_HOUR'
+col = 'SCHEDULED_DEPARTURE_HOUR'
+
+plot_stratpd(X, y, colname='TAXI_IN', targetname='delay',
+             min_samples_leaf=10,
+             min_slopes_per_x=30,
+             show_slope_lines=True,
+             yrange=(-10,100))
+plt.tight_layout()
+plt.show()
+
+# plot_catstratpd(X, y, 'SCHEDULED_DEPARTURE_HOUR', 'ARRIVAL_DELAY',
+#                 min_samples_leaf=10,
+#                 sort=None,
+#                 # yrange=(-110,250),
+#                 show_xticks=False,
+#                 show_mean_line=True,
+#                 style='scatter')
+# plt.tight_layout()
+# plt.show()
+
+# plot_catstratpd(X, y, 'DEPARTURE_TIME_MIN', 'ARRIVAL_DELAY',
+#                 min_samples_leaf=10,
+#                 sort=None,
+#                 # yrange=(-110,250),
+#                 show_xticks=False,
+#                 show_mean_line=True,
+#                 style='scatter')
+# plt.tight_layout()
+# plt.show()
+
+# I = spearmans_importances(X, y)
+# print(I)
+
+# plot_stratpd_gridsearch(X, y, col, 'ARRIVAL_DELAY',
+#                         min_samples_leaf_values=(10,15,20,30),
+#                         min_slopes_per_x_values=(5,10,15,20,25),
+#                         show_slope_lines=False,
+#                         yrange=(-10,90)
+#                         )
 
 # #
-# plot_catstratpd(X, y, 'FLIGHT_NUMBER', 'ARRIVAL_DELAY',
+# plot_catstratpd(X, y, 'SCHEDULED_DEPARTURE_HOUR', 'ARRIVAL_DELAY',
 #                 min_samples_leaf=10,
 #                 # sort=None,
 #                 yrange=(-110,250),
@@ -71,9 +106,12 @@ plot_stratpd_gridsearch(X, y, 'DEPARTURE_TIME', 'ARRIVAL_DELAY',
 #                 )
 # print(I)
 
-# plot_catstratpd_gridsearch(X, y, 'ORIGIN_AIRPORT', 'ARRIVAL_DELAY',
+# plot_catstratpd_gridsearch(X, y, col, 'ARRIVAL_DELAY',
 #                            yrange=(-100,500))
+# plt.savefig(f"/Users/parrt/Desktop/flight-{col}-cat.png", pad_inches=0, dpi=150)
+
+
 plt.tight_layout()
 # rent_pdp()
-plt.savefig("/Users/parrt/Desktop/james.png", pad_inches=0, dpi=200)
+# plt.savefig(f"/Users/parrt/Desktop/flight-{col}.png", pad_inches=0, dpi=150)
 plt.show()
