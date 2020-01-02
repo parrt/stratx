@@ -69,9 +69,9 @@ shap.dependence_plot("x2", shap_values, X[:shap_test_size], interaction_index=No
 # plot_stratpd_gridsearch(X, y, 'x1', 'price')
 
 plot_stratpd(X, y, colname='x1', targetname='y', min_samples_leaf=10,
-             min_slopes_per_x=15)
+             min_slopes_per_x=5)
 plot_stratpd(X, y, colname='x2', targetname='y', min_samples_leaf=10,
-             min_slopes_per_x=15)
+             min_slopes_per_x=5)
 
 """
 Looks like both shap and we get even contributions from x1, x2.

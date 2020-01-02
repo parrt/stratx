@@ -110,7 +110,9 @@ def collect_point_betas(X, y, colname, leaves, nbins:int):
 
 
 def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
-                       min_slopes_per_x=15,
+                       min_slopes_per_x=5,
+                       # ignore pdp y values derived from too few slopes (usually at edges)
+                       # important for getting good starting point of PD so AUC isn't skewed.
                        parallel_jit=True,
                        n_trees=1, min_samples_leaf=10, bootstrap=False, max_features=1.0,
                        supervised=True,
@@ -370,7 +372,8 @@ def plot_stratpd_binned(X, y, colname, targetname,
 
 
 def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
-                 min_slopes_per_x=15,  # ignore pdp y values derived from too few slopes (drop 0.003 of n, 0.3th percentile)
+                 min_slopes_per_x=5,  # ignore pdp y values derived from too few slopes (usually at edges)
+                 # important for getting good starting point of PD so AUC isn't skewed.
                  n_trees=1, min_samples_leaf=10, bootstrap=False,
                  max_features=1.0,
                  supervised=True,
@@ -431,6 +434,8 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         fig, ax = plt.subplots(1,1)
 
     ax.scatter(pdpx, pdpy, s=pdp_marker_size, c=pdp_marker_color, label=colname)
+
+    ax.scatter(pdpx, (pdpy*slope_counts_at_x)/np.max(slope_counts_at_x), s=pdp_marker_size, c='red')
 
     if show_pdp_line:
         ax.plot(pdpx, pdpy, lw=pdp_line_width, c=pdp_line_color)

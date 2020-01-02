@@ -21,7 +21,9 @@ def importances(X: pd.DataFrame,
                 supervised=True,
                 n_jobs=1,
                 sort=True,  # sort by importance in descending order?
-                min_slopes_per_x=15,
+                min_slopes_per_x=5,
+                # ignore pdp y values derived from too few slopes (usually at edges)
+                # important for getting good starting point of PD so AUC isn't skewed.
                 stddev=False,  # turn on to get stddev of importances via bootstrapping
                 n_stddev_trials: int = 5,
                 pvalues=False,  # use to get p-values for each importance; it's number trials
@@ -84,7 +86,7 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                  supervised=True,
                  n_jobs=1,
                  n_trees=1, min_samples_leaf=10,
-                 min_slopes_per_x=15,
+                 min_slopes_per_x=5,
                  bootstrap=False, max_features=1.0,
                  verbose=False) -> np.ndarray:
     if not isinstance(X, pd.DataFrame):
@@ -120,8 +122,12 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                                    parallel_jit=n_jobs == 1,
                                    supervised=supervised)
             #         print(f"Ignored for {colname} = {ignored}")
-            avg_abs_pdp = np.mean(np.abs(pdpy))# * (np.max(pdpx) - np.min(pdpx))
-        # print(f"{colname}:{avg_abs_pdp:.3f} mass")
+            if len(slope_counts_at_x)>0:
+                weighted_pdpy = (pdpy * slope_counts_at_x) / np.max(slope_counts_at_x)
+            else:
+                weighted_pdpy = pdpy
+            avg_abs_pdp = np.mean(np.abs(weighted_pdpy))
+        print(f"{colname}:{avg_abs_pdp:.3f} mass")
         # print(f"Stop {colname}")
         return avg_abs_pdp
 
@@ -152,7 +158,7 @@ def importances_pvalues(X: pd.DataFrame,
                         supervised=True,
                         n_jobs=1,
                         n_trials: int = 1,
-                        min_slopes_per_x=15,
+                        min_slopes_per_x=5,
                         n_trees=1, min_samples_leaf=10, bootstrap=False,
                         max_features=1.0):
     """

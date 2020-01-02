@@ -101,7 +101,7 @@ if compute:
     R = compare_top_features(X, y, n_shap=300, min_samples_leaf=10,
                              metric=metric,
                              use_oob=use_oob,
-                             min_slopes_per_x=15,
+                             min_slopes_per_x=5,
                              top_features_range=(1,9),
                              n_stratpd_trees=1,
                              bootstrap=False,

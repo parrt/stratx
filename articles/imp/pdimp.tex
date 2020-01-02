@@ -242,12 +242,22 @@ Get a baseline \figref{fig:baseline}.
 \centering
 \begin{subfigure}{.5\textwidth}
     \centering
-\includegraphics[scale=0.7]{images/rent-topk-spearman.pdf}
+\includegraphics[scale=0.7]{images/boston-topk-spearman.pdf}
 \vspace{-2mm}\subcaption{\footnotesize foo}\vspace{3mm}
 \end{subfigure}%
 \begin{subfigure}{.5\textwidth}
     \centering
+\includegraphics[scale=0.7]{images/flights-topk-spearman.pdf}
+\vspace{-2mm}\subcaption{\footnotesize foo}\vspace{3mm}
+\end{subfigure}
+\begin{subfigure}{.49\textwidth}
+    \centering
 \includegraphics[scale=0.7]{images/bulldozer-topk-spearman.pdf}
+\vspace{-2mm}\subcaption{\footnotesize foo}\vspace{3mm}
+\end{subfigure}
+\begin{subfigure}{.5\textwidth}
+    \centering
+\includegraphics[scale=0.7]{images/rent-topk-spearman.pdf}
 \vspace{-2mm}\subcaption{\footnotesize foo}\vspace{3mm}
 \end{subfigure}
 \caption{Whew}
@@ -282,7 +292,7 @@ Then see \figref{fig:topk}
 \includegraphics[scale=0.7]{images/rent-topk.pdf}
 \vspace{-2mm}\subcaption{\footnotesize foo}\vspace{3mm}
 \end{subfigure}
-\caption[short]{A beautiful, well written caption}
+\caption[short]{A caption}
 \label{fig:topk}
 \end{figure}
 
@@ -319,7 +329,6 @@ Then see \figref{fig:topk}
 \label{fig:features}
 \end{figure}
 
-
 Consider the recommendations from OLS SHAP used in a random forest. In general, they are not good recommendations. This demonstrates that the rank of features is highly dependent upon the model used to get those recommendations. In some cases, plain OLS recommendations fitted to RF beats the recommendations from OLS SHAP fitted to the RF.
 
 Do an experiment that compares PCA and Spearman's R against StratImpact.
@@ -327,6 +336,8 @@ Do an experiment that compares PCA and Spearman's R against StratImpact.
 performance. with lots of outliers, choosing a small subset for shap is a bad idea so this is a real problem. linear and boosted trees are efficient but RF are not and I wouldn't consider anything using the general explainer.
 
 There are issues surrounding how many explanatory samples you can use. 300 even run a couple of times is not enough to sample 5.8M records.
+
+\todo{We need min samples per x to avoid left edge issues as they skew entire pdp, which seveerly skews mass AUC.}
  
 \section{foo}
 

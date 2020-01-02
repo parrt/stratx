@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 
-np.random.seed(6) # choose a seed that demonstrates diff RF/GBM importances
+np.random.seed(111) # choose a seed that demonstrates diff RF/GBM importances
 
 boston = load_boston()
 X = pd.DataFrame(boston.data, columns=boston.feature_names)
@@ -51,7 +51,7 @@ rf_I.reset_index().to_feather("/tmp/t.feather")
 # print(rf_I)
 """
 
-rf = RandomForestRegressor(n_estimators=30, oob_score=True)
+rf = RandomForestRegressor(n_estimators=40, oob_score=True)
 rf.fit(X_train, y_train)
 rf_I = shap_importances(rf, X_train, X_test, n_shap)
 rf_score = rf.score(X_test, y_test)
@@ -69,12 +69,14 @@ print("XGBRegressor", b_score, mean_absolute_error(y_test, b.predict(X_test)))
 # model.fit(X_train, y_train)
 # svr = model.best_estimator_
 # print("SVM best:",model.best_params_)
+'''
 s = svm.SVR(gamma=0.001, C=100.)
 s.fit(X_train, y_train)
 # print(model.best_params_)
 svm_score = s.score(X_test, y_test)
 print("svm_score", svm_score)
 svm_shap_I = shap_importances(s, X_train, X_test, n_shap=n_shap)  # fast enough so use all data
+'''
 
 plot_importances(ols_shap_I.iloc[:8], ax=axes[0], imp_range=(0,.4), width=2.5, xlabel='(a)')
 axes[0].set_title(f"OLS test $R^2$={lm_score:.2f}")
@@ -82,8 +84,8 @@ plot_importances(rf_I.iloc[:8], ax=axes[1], imp_range=(0,.4), width=2.5, xlabel=
 axes[1].set_title(f"RF test $R^2$={rf_score:.2f}")
 plot_importances(m_I.iloc[:8], ax=axes[2], imp_range=(0,.4), width=2.5, xlabel='(c)')
 axes[2].set_title(f"XGBoost test $R^2$={b_score:.2f}")
-plot_importances(svm_shap_I.iloc[:8], ax=axes[3], imp_range=(0,.4), width=2.5, xlabel='(d)')
-axes[3].set_title(f"SVM test $R^2$={svm_score:.2f}")
+# plot_importances(svm_shap_I.iloc[:8], ax=axes[3], imp_range=(0,.4), width=2.5, xlabel='(d)')
+# axes[3].set_title(f"SVM test $R^2$={svm_score:.2f}")
 
 plt.suptitle(f"SHAP importances for Boston dataset: {n:,d} records, {n_shap} SHAP test records")
 plt.tight_layout()

@@ -29,19 +29,21 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 X = pd.concat([X_train, X_test], axis=0)
 y = pd.concat([y_train, y_test], axis=0)
 
-# plot_stratpd(X, y, colname='age', targetname='SalePrice',
-#              min_samples_leaf=10,
-#              min_slopes_per_x=5,
-#              show_slope_lines=False)
-# plt.tight_layout()
-# plt.show()
-#
-# plot_stratpd(X, y, colname='YearMade', targetname='SalePrice',
-#              min_samples_leaf=10,
-#              min_slopes_per_x=5,
-#              show_slope_lines=False)
-# plt.tight_layout()
-# plt.show()
+plot_stratpd(X, y, colname='age', targetname='SalePrice',
+             min_samples_leaf=10,
+             min_slopes_per_x=3,
+             show_slope_lines=False)
+plt.title("min_slopes_per_x=3")
+plt.tight_layout()
+plt.show()
+
+plot_stratpd(X, y, colname='YearMade', targetname='SalePrice',
+             min_samples_leaf=10,
+             min_slopes_per_x=3,
+             show_slope_lines=False)
+plt.title("min_slopes_per_x=3")
+plt.tight_layout()
+plt.show()
 #
 # plot_stratpd(X, y, colname='ProductSize', targetname='SalePrice',
 #              min_samples_leaf=10,
@@ -67,11 +69,11 @@ y = pd.concat([y_train, y_test], axis=0)
 col = 'age'
 # col = 'ProductSize'
 
-plot_stratpd_gridsearch(X, y, colname=col, targetname='SalePrice',
-                        min_samples_leaf_values=(10,20,30),
-                        min_slopes_per_x_values=(5,10,20,30),
-                        show_slope_lines=False,
-                        yrange=None)
+# plot_stratpd_gridsearch(X, y, colname=col, targetname='SalePrice',
+#                         min_samples_leaf_values=(10,20,30),
+#                         min_slopes_per_x_values=(5,10,20,30),
+#                         show_slope_lines=False,
+#                         yrange=None)
 
 # plot_catstratpd_gridsearch(X, y, 'ProductSize', 'SalePrice',
 #                            min_samples_leaf_values=(5,10,15,20),
@@ -90,5 +92,5 @@ plot_stratpd_gridsearch(X, y, colname=col, targetname='SalePrice',
 #                 min_y_shifted_to_zero=False)
 
 plt.tight_layout()
-plt.savefig(f"/Users/parrt/Desktop/james-{col}.png", pad_inches=0, dpi=150)
+# plt.savefig(f"/Users/parrt/Desktop/james-{col}.png", pad_inches=0, dpi=150)
 plt.show()

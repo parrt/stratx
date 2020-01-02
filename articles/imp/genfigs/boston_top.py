@@ -12,7 +12,7 @@ R, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
     compare_top_features(X, y, n_shap=n,
                          metric=metric,
                          use_oob=use_oob,
-                         min_slopes_per_x=1,
+                         min_slopes_per_x=5,
                          drop=['Spearman','PCA'])
 
 plot_importances(our_I.iloc[:8], imp_range=(0,0.4), width=3,

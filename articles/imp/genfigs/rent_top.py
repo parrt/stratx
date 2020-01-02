@@ -9,6 +9,7 @@ R, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
     compare_top_features(X, y, n_shap=300,
                          metric=metric,
                          use_oob=use_oob,
+                         min_slopes_per_x=5, # a bit less than usual (gridsearch showed how to get value)
                          top_features_range=(1, 8),
                          drop=['Spearman','PCA'])
 
