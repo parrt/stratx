@@ -49,11 +49,17 @@ col = 'TAXI_OUT'
 col = 'DEPARTURE_TIME_HOUR'
 col = 'SCHEDULED_DEPARTURE_HOUR'
 
-plot_stratpd(X, y, colname='TAXI_IN', targetname='delay',
-             min_samples_leaf=10,
-             min_slopes_per_x=30,
-             show_slope_lines=True,
-             yrange=(-10,100))
+plot_stratpd(X, y, colname='SCHEDULED_DEPARTURE_HOUR', targetname='delay',
+             show_slope_lines=False,
+             show_impact=True)
+             # yrange=(-10,100))
+plt.tight_layout()
+plt.show()
+
+plot_stratpd(X, y, colname='DEPARTURE_TIME_HOUR', targetname='delay',
+             show_slope_lines=False,
+             show_impact=True)
+             # yrange=(-10,100))
 plt.tight_layout()
 plt.show()
 

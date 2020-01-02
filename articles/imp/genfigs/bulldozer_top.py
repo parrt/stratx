@@ -14,7 +14,6 @@ R, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
                          catcolnames={'AC', 'ModelID', 'YearMade', 'ProductSize'},
                          metric=metric,
                          use_oob=use_oob,
-                         min_slopes_per_x=5,
                          top_features_range=(1, 8),
                          time_sensitive=True,
                          #include=['StratImpact']

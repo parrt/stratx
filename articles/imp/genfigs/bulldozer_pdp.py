@@ -30,36 +30,44 @@ X = pd.concat([X_train, X_test], axis=0)
 y = pd.concat([y_train, y_test], axis=0)
 
 plot_stratpd(X, y, colname='age', targetname='SalePrice',
-             min_samples_leaf=10,
-             min_slopes_per_x=3,
-             show_slope_lines=False)
-plt.title("min_slopes_per_x=3")
+             show_slope_lines=False,
+             show_impact=True,
+             figsize=(4,3)
+             )
 plt.tight_layout()
+plt.savefig(f"/Users/parrt/Desktop/james-age.pdf", pad_inches=0)
 plt.show()
 
 plot_stratpd(X, y, colname='YearMade', targetname='SalePrice',
-             min_samples_leaf=10,
-             min_slopes_per_x=3,
-             show_slope_lines=False)
-plt.title("min_slopes_per_x=3")
+             show_slope_lines=False,
+             show_impact=True,
+             figsize=(4,3)
+             )
 plt.tight_layout()
+plt.savefig(f"/Users/parrt/Desktop/james-YearMade.pdf", pad_inches=0)
 plt.show()
-#
-# plot_stratpd(X, y, colname='ProductSize', targetname='SalePrice',
+
+# plot_stratpd(X, y, colname='saledayofyear', targetname='SalePrice',
 #              min_samples_leaf=10,
-#              min_slopes_per_x=5,
 #              show_slope_lines=False)
 # plt.tight_layout()
 # plt.show()
 #
+# plot_stratpd(X, y, colname='ProductSize', targetname='SalePrice',
+#              show_slope_lines=False)
+# plt.tight_layout()
+# plt.show()
+
+
 # plot_catstratpd(X, y, colname='ModelID', targetname='SalePrice',
 #                 min_samples_leaf=10, sort=None,
+#                 alpha=.08,
 #                 show_xticks=False,
 #                 show_mean_line=True,
 #                 min_y_shifted_to_zero=False)
 # plt.tight_layout()
 # plt.show()
-#
+
 # I = importances(X, y, catcolnames={'AC', 'ModelID', 'ProductSize'},
 #                 min_samples_leaf=10,
 #                 min_slopes_per_x=5)

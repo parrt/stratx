@@ -386,7 +386,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  show_pdp_line=False,
                  show_slope_lines=True,
                  show_slope_counts=True,
-                 show_mean_line=True,
+                 show_impact=False,
                  pdp_marker_size=5,
                  pdp_line_width=.5,
                  slope_line_color='#2c7fb8',
@@ -394,12 +394,14 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  slope_line_alpha=.3,
                  pdp_line_color='black',
                  pdp_marker_color='black',
+                 fontname='Arial',
                  title_fontsize=11,
                  label_fontsize=10,
                  ticklabel_fontsize=10,
-                 barchart_size = 0.1,  # if show_slope_counts, what ratio of vertical space should barchart use at bottom?
+                 barchart_size = 0.09,  # if show_slope_counts, what ratio of vertical space should barchart use at bottom?
                  barchar_alpha = 0.7,
-                 verbose=False
+                 verbose=False,
+                 figsize=None
                  ):
     """
     Plot the partial dependence of X[colname] on y.
@@ -431,11 +433,12 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                            verbose=verbose)
 
     if ax is None:
-        fig, ax = plt.subplots(1,1)
+        if figsize is not None:
+            fig, ax = plt.subplots(1,1,figsize=figsize)
+        else:
+            fig, ax = plt.subplots(1, 1)
 
     ax.scatter(pdpx, pdpy, s=pdp_marker_size, c=pdp_marker_color, label=colname)
-
-    ax.scatter(pdpx, (pdpy*slope_counts_at_x)/np.max(slope_counts_at_x), s=pdp_marker_size, c='red')
 
     if show_pdp_line:
         ax.plot(pdpx, pdpy, lw=pdp_line_width, c=pdp_line_color)
@@ -480,27 +483,54 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         ax2.yaxis.set_major_locator(plt.FixedLocator([0, max(slope_counts_at_x)]))
         ax2.bar(x=pdpx, height=slope_counts_at_x, width=(max(pdpx)-min(pdpx)+1)/len(pdpx),
                 facecolor='#BABABA', align='edge', alpha=barchar_alpha)
-        ax2.set_ylabel(f"{colname} slope count", labelpad=-12, fontsize=label_fontsize)
+        ax2.set_ylabel(f"{colname} slope count", labelpad=-12, fontsize=label_fontsize,
+                       fontname=fontname)
         # shift other y axis down 10% to make room
         if yrange is not None:
             ax.set_ylim(yrange[0]-(yrange[1]-yrange[0])*.1, yrange[1])
         else:
             ax.set_ylim(min_y-(max_y-min_y)*.1, max_y)
         ax2.tick_params(axis='both', which='major', labelsize=ticklabel_fontsize)
+        for tick in ax2.get_xticklabels():
+            tick.set_fontname(fontname)
+        for tick in ax2.get_yticklabels():
+            tick.set_fontname(fontname)
 
-    if show_mean_line:
-        m = np.mean(np.abs(pdpy))
-        ax.plot(domain, [m,m], '--', lw=.5, c='black')
-        # add a tick for the mean in y axis
-        ax.set_yticks(list(ax.get_yticks()) + [m])
+    if show_impact:
+        weighted_pdpy = pdpy * (slope_counts_at_x / np.max(slope_counts_at_x))
+        #cx = pdpx[np.argmax(slope_counts_at_x)]
+        # m = np.mean(weighted_pdpy)
+        # ax.plot(domain, [m,m], '--', lw=.5, c='black')
+        absm = np.mean(np.abs(weighted_pdpy))
+        # ax.text(0.5, .98, f"Impact {absm:.2f}", horizontalalignment='center',
+        #         verticalalignment='top', transform=ax.transAxes,
+        #         fontsize=label_fontsize, fontname=fontname)
+        r = max_y - min_y
+        if max(weighted_pdpy) > 0:
+            verticalalignment = 'bottom'
+            y_text_shift = r*.01
+        else:
+            verticalalignment = 'top'
+            y_text_shift = -r*.02 # drop a bit to avoid collision with 0 line
+        ax.text((max(pdpx)+1+min(pdpx))/2, 0+y_text_shift, f"Impact {absm:.2f}",
+                horizontalalignment='center', verticalalignment=verticalalignment,
+                fontsize=label_fontsize, fontname=fontname,
+                fontweight='bold')
+        ax.fill_between(pdpx, weighted_pdpy, [0]*len(pdpx), color='#FFE091')
+        ax.scatter(pdpx, weighted_pdpy, s=pdp_marker_size, c='#D73028')
+        ax.plot(pdpx, weighted_pdpy, lw=.3, c='grey')
 
     if show_xlabel:
-        ax.set_xlabel(colname, fontsize=label_fontsize)
+        ax.set_xlabel(colname, fontsize=label_fontsize, fontname=fontname)
     if show_ylabel:
-        ax.set_ylabel(targetname, fontsize=label_fontsize)
+        ax.set_ylabel(targetname, fontsize=label_fontsize, fontname=fontname)
     if title is not None:
-        ax.set_title(title, fontsize=title_fontsize)
+        ax.set_title(title, fontsize=title_fontsize, fontname=fontname)
 
+    for tick in ax.get_xticklabels():
+        tick.set_fontname(fontname)
+    for tick in ax.get_yticklabels():
+        tick.set_fontname(fontname)
     ax.tick_params(axis='both', which='major', labelsize=ticklabel_fontsize)
 
     return leaf_xranges, leaf_slopes, slope_counts_at_x, pdpx, pdpy, ignored
@@ -881,7 +911,7 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
                                min_samples_leaf_values=(2, 5, 10, 20, 30),
                                min_y_shifted_to_zero=True,  # easier to read if values are relative to 0 (usually); do this for high cardinality cat vars
                                show_xticks=True,
-                               show_mean_line=False,
+                               show_impact=False,
                                show_all_cat_deltas=True,
                                catnames=None,
                                yrange=None,
@@ -910,7 +940,7 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
                                 yrange=yrange,
                                 n_trees=1,
                                 show_xticks=show_xticks,
-                                show_mean_line=show_mean_line,
+                                show_impact=show_impact,
                                 show_all_deltas=show_all_cat_deltas,
                                 show_ylabel=False,
                                 sort=sort,
@@ -926,9 +956,9 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
 def catwise_leaves(rf, X_not_col, X_col, y):
     """
     Return a 2D array with the average y value for each category in each leaf
-    normalized by subtracting min avg y value from all categories.
-    The columns are the y avg value changes found in a single leaf.
-    Each row represents a category level. E.g.,
+    normalized by subtracting avg y value from all categories.
+    The columns are the y avg value changes per cat found in a single leaf as
+    they differ from the leaf y. Each row represents a category level. E.g.,
 
     row           leaf0       leaf1
      0       166.430176  186.796956
@@ -1030,7 +1060,7 @@ def plot_catstratpd(X, y,
                     title=None,
                     supervised=True,
                     use_weighted_avg=False,
-                    show_mean_line=False,
+                    show_impact=False,
                     show_all_deltas=True,
                     alpha=.15,
                     color='#2c7fb8',
@@ -1038,7 +1068,7 @@ def plot_catstratpd(X, y,
                     marker_size=5,
                     pdp_color='black',
                     style:('strip','scatter')='strip',
-                    min_y_shifted_to_zero=True, # easier to read if values are relative to 0 (usually); do this for high cardinality cat vars
+                    min_y_shifted_to_zero=True,  # easier to read if values are relative to 0 (usually); do this for high cardinality cat vars
                     show_xlabel=True,
                     show_ylabel=True,
                     show_xticks=True,
@@ -1147,7 +1177,7 @@ def plot_catstratpd(X, y,
         ax.set_xticklabels([])
         ax.tick_params(axis='x', which='both', bottom=False)
 
-    if show_mean_line:
+    if show_impact:
         m = np.nanmean(np.abs(avg_per_cat))
         ax.plot([0, len(sorted_catcodes)], [m,m], '--', lw=.5, c='black')
         # add a tick for the mean in y axis

@@ -73,6 +73,11 @@ s.fit(X, y)
 svm_score = s.score(X, y)
 print("svm_score", svm_score)
 svm_shap_I = shap_importances(s, X, X, n_shap=n_shap)  # fast enough so use all data
+"""
+Takes 13 minutes for all records
+100%|██████████| 506/506 [13:30<00:00,  1.60s/it]
+SHAP time for 506 test records using SVR = 810.1s
+"""
 
 plot_importances(ols_shap_I.iloc[:8], ax=axes[0], imp_range=(0,.4), width=2.5, xlabel='(a)')
 axes[0].set_title(f"OLS train $R^2$={lm_score:.2f}")
