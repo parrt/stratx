@@ -1,5 +1,6 @@
 from support import *
 
+figsize = (3.2, 2.8)
 use_oob=False
 boston = load_boston()
 X = pd.DataFrame(boston.data, columns=boston.feature_names)
@@ -13,6 +14,7 @@ R, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
                          metric=metric,
                          use_oob=use_oob,
                          min_slopes_per_x=5,
+                         top_features_range=(1,8),
                          drop=['Spearman','PCA'])
 
 plot_importances(our_I.iloc[:8], imp_range=(0,0.4), width=3,
@@ -30,13 +32,12 @@ plt.show()
 print(R)
 R.reset_index().to_feather("/tmp/boston.feather")
 
-fig, ax = plt.subplots(1,1,figsize=(3.5,3))
-plot_topk(R, ax, k=8)
-if use_oob:
-    ax.set_ylabel("RF Out-of-bag $1-R^2$")
-else:
-    ax.set_ylabel("20% Validation MAE (k$)")
-ax.set_title(f"{'OOB Error: ' if use_oob else ''}Boston housing prices")
+plot_topk(R, k=8, title="Boston housing prices",
+          ylabel="20% Validation MAE (k$)",
+          title_fontsize=14,
+          label_fontsize=14,
+          ticklabel_fontsize=14,
+          figsize=figsize)
 plt.tight_layout()
 plt.savefig(f"../images/boston-topk{'-oob' if use_oob else ''}.pdf", bbox_inches="tight", pad_inches=0)
 plt.show()

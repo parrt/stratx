@@ -153,12 +153,32 @@ def shap_importances(model, X_train, X_test, n_shap, normalize=True, sort=True):
     return shapI
 
 
+def cv_features(X, y, features, metric, time_sensitive=False, kfolds=5):
+    # if time_sensitive:
+    #     n_test = int(0.20 * len(X))
+    #     n_train = len(X) - n_test
+    #     X_train, X_test = X[:n_train], X[n_train:]
+    #     y_train, y_test = y[:n_train], y[n_train:]
+    # else:
+    scores = []
+    n_estimators = 40  # for both SHAP and testing purposes
+
+    for k in range(kfolds):
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+        rf = RandomForestRegressor(n_estimators=n_estimators, min_samples_leaf=1, n_jobs=-1)
+        rf.fit(X_train[features], y_train)
+        y_pred = rf.predict(X_test[features])
+        s = metric(y_test, y_pred)
+        scores.append(s)
+
+    return np.array(scores)
+
+
 def compare_top_features(X, y, top_features_range=None,
                          n_shap=300,
                          metric = mean_absolute_error,
                          use_oob = False,
-                         time_sensitive=False,
-                         trials=1,
+                         #time_sensitive=False,
                          n_stratpd_trees=1,
                          bootstrap=False,
                          stratpd_min_samples_leaf=10,
@@ -175,13 +195,13 @@ def compare_top_features(X, y, top_features_range=None,
     for feature in drop:
         include.remove(feature)
 
-    if time_sensitive:
-        n_test = int(0.20 * len(X))
-        n_train = len(X) - n_test
-        X_train, X_test = X[:n_train], X[n_train:]
-        y_train, y_test = y[:n_train], y[n_train:]
-    else:
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    # if time_sensitive:
+    #     n_test = int(0.20 * len(X))
+    #     n_train = len(X) - n_test
+    #     X_train, X_test = X[:n_train], X[n_train:]
+    #     y_train, y_test = y[:n_train], y[n_train:]
+    # else:
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
     n_estimators = 40 # for both SHAP and testing purposes
 
@@ -223,31 +243,17 @@ def compare_top_features(X, y, top_features_range=None,
         # perm_top = perm_I.iloc[:top, 0].index.values
         # our_top = our_I.iloc[:top, 0].index.values
         # features_set = [ols_top, shap_ols_top, rf_top, perm_top, our_top]
-        all = []
-        for i in range(trials):
-            # print(i, end=' ')
-            results = []
-            feature_sets = [I.iloc[:top, 0].index.values for I in all_importances.values() if I is not None]
-            for name, features in zip(include, feature_sets):
-                # print(f"Train with {features} from {name}")
-                # Train RF model with top-k features
-                rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=use_oob,
-                                           min_samples_leaf=1, n_jobs=-1)
-                rf.fit(X_train[features], y_train)
-                if use_oob:
-                    # make so it's a metric; lower is better
-                    s = rf.oob_score_ if rf.oob_score_ >= 0 else 0
-                    s = 1 - s
-                else:
-                    y_pred = rf.predict(X_test[features])
-                    s = metric(y_test, y_pred)
-
-                results.append(s)
-                # print(f"{name} valid R^2 {s:.3f}")
-            all.append(results)
-        # print(pd.DataFrame(data=all, columns=['OLS','RF','Ours']))
-        # print()
-        topscores.append( [round(m,3) for m in np.mean(all, axis=0)] )
+        # print(i, end=' ')
+        results = []
+        feature_sets = [I.iloc[:top, 0].index.values for I in all_importances.values() if I is not None]
+        for technique_name, features in zip(include, feature_sets):
+            # print(f"Train with {features} from {technique_name}")
+            # Train RF model with top-k features
+            # Do 5-fold cross validation using original X, y passed in to this method
+            scores = cv_features(X, y, features, metric=metric, kfolds=5)
+            results.append(np.mean(scores))
+            # print(f"{technique_name} valid R^2 {s:.3f}")
+        topscores.append( results )
 
         # avg = [f"{round(m,2):9.3f}" for m in np.mean(all, axis=0)]
         # print(f"Avg top-{top} valid {metric.__name__} {', '.join(avg)}")

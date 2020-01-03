@@ -1,5 +1,6 @@
 from support import *
 
+figsize = (3.2, 2.8)
 use_oob=False
 metric = mean_absolute_error
 n = 25_000 # 30k crashes shap so try 20k
@@ -14,7 +15,7 @@ R, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
                                       'FLIGHT_NUMBER',
                                       'DAY_OF_WEEK'},
                          metric=mean_squared_error,
-                         # stratpd_min_samples_leaf=3, # overcome lots of collinearity
+                         stratpd_min_samples_leaf=3, # overcome lots of collinearity
                          use_oob=use_oob,
                          top_features_range=(1, 8),
                          drop=['Spearman','PCA'])
@@ -36,13 +37,12 @@ print(R)
 R = R.reset_index(drop=True)
 R.reset_index().to_feather("/tmp/flights.feather")
 
-fig, ax = plt.subplots(1,1,figsize=(3.5,3))
-plot_topk(R, ax, k=8)
-if use_oob:
-    ax.set_ylabel("RF Out-of-bag $1-R^2$")
-else:
-    ax.set_ylabel("20% Validation MAE (minutes)")
-ax.set_title(f"{'OOB Error: ' if use_oob else ''}Flight arrival delay")
+plot_topk(R, k=8, title="Flight arrival delay",
+          ylabel="20% Validation MAE (mins)",
+          title_fontsize=14,
+          label_fontsize=14,
+          ticklabel_fontsize=14,
+          figsize=figsize)
 plt.tight_layout()
 plt.savefig(f"../images/flights-topk{'-oob' if use_oob else ''}.pdf", bbox_inches="tight", pad_inches=0)
 plt.show()

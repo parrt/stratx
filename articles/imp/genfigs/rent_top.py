@@ -1,5 +1,6 @@
 from support import *
 
+figsize = (3.2, 2.8)
 use_oob=False
 n = 30_000 # more and shap gets bus error it seems
 metric = mean_absolute_error
@@ -27,13 +28,12 @@ plt.show()
 
 print(R)
 
-fig, ax = plt.subplots(1,1,figsize=(3.5,3))
-plot_topk(R, ax, k=8)
-if use_oob:
-    ax.set_ylabel("RF Out-of-bag $1-R^2$")
-else:
-    ax.set_ylabel("20% Validation MAE ($)")
-ax.set_title(f"{'OOB Error: ' if use_oob else ''}NYC rent prices")
+plot_topk(R, k=8, title="NYC rent prices",
+          ylabel="20% Validation MAE ($)",
+          title_fontsize=15, # make font a bit bigger as we shrink this one is paper a bit
+          label_fontsize=15,
+          ticklabel_fontsize=15,
+          figsize=figsize)
 plt.tight_layout()
 plt.savefig(f"../images/rent-topk{'-oob' if use_oob else ''}.pdf", bbox_inches="tight", pad_inches=0)
 plt.show()

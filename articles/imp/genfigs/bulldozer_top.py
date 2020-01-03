@@ -1,5 +1,6 @@
 from support import *
 
+figsize = (3.2, 2.8)
 use_oob=False
 metric = mean_absolute_error
 n = 25_000 # shap crashes above this; 20k works
@@ -34,14 +35,12 @@ plt.show()
 
 print(R)
 
-fig, ax = plt.subplots(1,1,figsize=(3.5,3))
-
-plot_topk(R, ax, k=8)
-if use_oob:
-    ax.set_ylabel("RF Out-of-bag $1-R^2$")
-else:
-    ax.set_ylabel("20% Validation MAE ($)")
-ax.set_title(f"{'OOB Error: ' if use_oob else ''}Bulldozer auction prices")
+plot_topk(R, k=8, title="Bulldozer auction prices",
+          ylabel="20% Validation MAE ($)",
+          title_fontsize=14,
+          label_fontsize=14,
+          ticklabel_fontsize=14,
+          figsize=figsize)
 plt.tight_layout()
 plt.savefig(f"../images/bulldozer-topk{'-oob' if use_oob else ''}.pdf", bbox_inches="tight", pad_inches=0)
 plt.show()
