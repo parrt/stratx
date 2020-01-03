@@ -28,7 +28,7 @@ import matplotlib.pyplot as plt
 
 #np.random.seed(999)
 
-n=25_000
+n=5_000
 #r = (500,600)
 # r = (0,500)
 _, _, df_flights = load_flights(n=n)
@@ -63,19 +63,21 @@ col = 'SCHEDULED_DEPARTURE_HOUR'
 # plt.tight_layout()
 # plt.show()
 
-plot_stratpd_gridsearch(X, y, 'SCHEDULED_DEPARTURE_HOUR', 'ARRIVAL_DELAY',
-                        show_impact=True)
-plt.tight_layout()
-plt.show()
+# plot_stratpd_gridsearch(X, y, 'SCHEDULED_DEPARTURE_HOUR', 'ARRIVAL_DELAY',
+#                         show_impact=True)
+# plt.tight_layout()
+# plt.show()
 
-# plot_catstratpd(X, y, 'DEPARTURE_TIME_MIN', 'ARRIVAL_DELAY',
+# plot_catstratpd(X, y, 'FLIGHT_NUMBER', 'ARRIVAL_DELAY',
 #                 min_samples_leaf=10,
 #                 sort=None,
 #                 # yrange=(-110,250),
+#                 show_all_deltas=False,
 #                 show_xticks=False,
-#                 show_mean_line=True,
+#                 show_impact=True,
 #                 style='scatter')
 # plt.tight_layout()
+# plt.savefig(f"/Users/parrt/Desktop/flight-fnum-cat-10.pdf", pad_inches=0)
 # plt.show()
 
 # I = spearmans_importances(X, y)
@@ -107,9 +109,14 @@ plt.show()
 #                 )
 # print(I)
 
-# plot_catstratpd_gridsearch(X, y, col, 'ARRIVAL_DELAY',
-#                            yrange=(-100,500))
-# plt.savefig(f"/Users/parrt/Desktop/flight-{col}-cat.png", pad_inches=0, dpi=150)
+plot_catstratpd_gridsearch(X, y, 'FLIGHT_NUMBER', 'ARRIVAL_DELAY',
+                           min_samples_leaf_values=(2, 3, 5),
+                           show_all_cat_deltas=False, show_impact=True,
+                           show_xticks=False,
+                           min_y_shifted_to_zero=False,
+                           sort=False)
+
+plt.savefig(f"/Users/parrt/Desktop/flight-fnum-cat.pdf", pad_inches=0)
 
 
 plt.tight_layout()

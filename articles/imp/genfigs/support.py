@@ -295,13 +295,17 @@ def get_multiple_imps(X_train, y_train, X_test, y_test, n_shap=300, n_estimators
         lm.fit(X_train_, y_train)
         ols_shap_I = shap_importances(lm, X_train_, X_test, n_shap=len(X_test)) # fast enough so use all data
 
-    rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=True)
-    rf.fit(X_train, y_train)
-
     if "RF SHAP" in include:
-        rf_I = shap_importances(rf, X_train, X_test, n_shap)
+        # Limit to training RFs with 20,000 records as it sometimes crashes above
+        X_train_ = X_train[:min(20_000,len(X_train))] # already randomly selected, just grab first part
+        y_train_ = y_train[:min(20_000,len(X_train))]
+        rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=True)
+        rf.fit(X_train_, y_train_)
+        rf_I = shap_importances(rf, X_train_, X_test, n_shap)
 
     if "RF perm" in include:
+        rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=True)
+        rf.fit(X_train, y_train)
         perm_I = rfpimp.importances(rf, X_test, y_test) # permutation; drop in test accuracy
 
     if "StratImpact" in include:

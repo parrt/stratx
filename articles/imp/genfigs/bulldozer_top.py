@@ -3,7 +3,7 @@ from support import *
 figsize = (3.5, 3.0)
 use_oob=False
 metric = mean_absolute_error
-n = 25_000 # shap crashes above this; 20k works
+n = 50_000
 
 X, y = load_bulldozer()
 
@@ -38,7 +38,7 @@ plot_topk(R, k=8, title="Bulldozer auction prices",
           ylabel="20% 5-fold CV MAE ($)",
           title_fontsize=14,
           label_fontsize=14,
-          ticklabel_fontsize=14,
+          ticklabel_fontsize=10,
           figsize=figsize)
 plt.tight_layout()
 plt.savefig(f"../images/bulldozer-topk{'-oob' if use_oob else ''}.pdf", bbox_inches="tight", pad_inches=0)

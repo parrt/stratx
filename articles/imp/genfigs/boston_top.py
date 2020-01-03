@@ -36,7 +36,7 @@ plot_topk(R, k=8, title="Boston housing prices",
           ylabel="20% 5-fold CV MAE (k$)",
           title_fontsize=14,
           label_fontsize=14,
-          ticklabel_fontsize=14,
+          ticklabel_fontsize=10,
           figsize=figsize)
 plt.tight_layout()
 plt.savefig(f"../images/boston-topk{'-oob' if use_oob else ''}.pdf", bbox_inches="tight", pad_inches=0)

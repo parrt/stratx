@@ -5,7 +5,7 @@ from sklearn.model_selection import cross_val_score
 
 np.set_printoptions(precision=4, suppress=True, linewidth=150)
 
-figsize = (3.2, 2.8)
+figsize = (3.5, 3)
 
 # Show BOSTON Spearman's vs ours
 def boston():
@@ -28,7 +28,7 @@ def boston():
               ylabel="20% 5-fold CV MAE (k$)",
               title_fontsize=14,
               label_fontsize=14,
-              ticklabel_fontsize=14,
+              ticklabel_fontsize=10,
               figsize=figsize)
     plt.tight_layout()
     plt.savefig("../images/boston-topk-spearman.pdf", bbox_inches="tight", pad_inches=0)
@@ -55,7 +55,7 @@ def bulldozer():
               ylabel="20% 5-fold CV MAE ($)",
               title_fontsize=14,
               label_fontsize=14,
-              ticklabel_fontsize=14,
+              ticklabel_fontsize=10,
               figsize=figsize)
     plt.tight_layout()
     plt.savefig("../images/bulldozer-topk-spearman.pdf", bbox_inches="tight", pad_inches=0)
@@ -76,14 +76,14 @@ def rent():
               ylabel="20% 5-fold CV MAE ($)",
               title_fontsize=15, # make font a bit bigger as we shrink this one is paper a bit
               label_fontsize=15,
-              ticklabel_fontsize=15,
+              ticklabel_fontsize=10,
               figsize=figsize)
     plt.savefig("../images/rent-topk-spearman.pdf", bbox_inches="tight", pad_inches=0)
     plt.show()
 
 
 def flight():
-    n = 25_000  # 30k crashes shap so try 20k
+    n = 50_000
 
     X, y, _ = load_flights(n=n)
 
@@ -103,14 +103,14 @@ def flight():
               ylabel="20% 5-fold CV MAE (mins)",
               title_fontsize=14,
               label_fontsize=14,
-              ticklabel_fontsize=14,
+              ticklabel_fontsize=10,
               figsize=figsize)
     plt.tight_layout()
     plt.savefig("../images/flights-topk-spearman.pdf", bbox_inches="tight", pad_inches=0)
     plt.show()
 
 
-#flight()
-#boston()
-# bulldozer()
+flight()
+boston()
+bulldozer()
 rent()
