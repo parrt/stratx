@@ -2,11 +2,11 @@ from support import *
 
 figsize = (3.5, 3.0)
 use_oob=False
-n = 50_000 # more and shap gets bus error it seems
+n = 25_000
 metric = mean_absolute_error
 X, y = load_rent(n=n)
 
-R, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
+R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
     compare_top_features(X, y, n_shap=300,
                          metric=metric,
                          use_oob=use_oob,

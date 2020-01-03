@@ -9,7 +9,7 @@ n = X.shape[0]
 metric = mean_absolute_error
 
 # need small or 1 min_slopes_per_x given tiny toy dataset
-R, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
+R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
     compare_top_features(X, y, n_shap=n,
                          metric=metric,
                          use_oob=use_oob,

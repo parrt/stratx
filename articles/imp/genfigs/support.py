@@ -179,6 +179,7 @@ def compare_top_features(X, y, top_features_range=None,
                          metric = mean_absolute_error,
                          use_oob = False,
                          #time_sensitive=False,
+                         kfolds=5,
                          n_stratpd_trees=1,
                          bootstrap=False,
                          stratpd_min_samples_leaf=10,
@@ -236,6 +237,7 @@ def compare_top_features(X, y, top_features_range=None,
 
     print(f"n_train={len(X_train)}, n_top={top_features_range[1]}, n_estimators={n_estimators}, n_shap={n_shap}, min_samples_leaf={stratpd_min_samples_leaf}")
     topscores = []
+    topstddevs = []
     for top in range(top_features_range[0], top_features_range[1] + 1):
         # ols_top = ols_I.iloc[:top, 0].index.values
         # shap_ols_top = shap_ols_I.iloc[:top, 0].index.values
@@ -245,24 +247,30 @@ def compare_top_features(X, y, top_features_range=None,
         # features_set = [ols_top, shap_ols_top, rf_top, perm_top, our_top]
         # print(i, end=' ')
         results = []
+        stddevs = []
         feature_sets = [I.iloc[:top, 0].index.values for I in all_importances.values() if I is not None]
         for technique_name, features in zip(include, feature_sets):
             # print(f"Train with {features} from {technique_name}")
             # Train RF model with top-k features
             # Do 5-fold cross validation using original X, y passed in to this method
-            scores = cv_features(X, y, features, metric=metric, kfolds=5)
+            scores = cv_features(X, y, features, metric=metric, kfolds=kfolds)
             results.append(np.mean(scores))
+            stddevs.append(np.std(scores))
             # print(f"{technique_name} valid R^2 {s:.3f}")
         topscores.append( results )
+        topstddevs.append( stddevs )
 
         # avg = [f"{round(m,2):9.3f}" for m in np.mean(all, axis=0)]
         # print(f"Avg top-{top} valid {metric.__name__} {', '.join(avg)}")
 
     R = pd.DataFrame(data=topscores, columns=features_names)
     R.index = [f"top-{top} {'OOB' if use_oob else 'training'} {metric.__name__}" for top in range(top_features_range[0], top_features_range[1] + 1)]
+    Rstddev = pd.DataFrame(data=topstddevs, columns=features_names)
+    Rstddev.index = [f"top-{top} stddev" for top in range(top_features_range[0], top_features_range[1] + 1)]
+    print(Rstddev)
 
     # unpack for users
-    return (R, *all_importances.values())
+    return (R, Rstddev, *all_importances.values())
 
 
 def get_multiple_imps(X_train, y_train, X_test, y_test, n_shap=300, n_estimators=50,
@@ -431,22 +439,22 @@ def load_flights(n):
         df[f'{colname}_MIN']  = df[colname] - df[f'{colname}_HOUR'] * 100
         df[f'{colname}_MIN']  = df[f'{colname}_MIN'].astype(int)
 
-    cvt_time(df_flights, 'SCHEDULED_DEPARTURE')
-    cvt_time(df_flights, 'SCHEDULED_ARRIVAL')
-    cvt_time(df_flights, 'DEPARTURE_TIME')
+    # cvt_time(df_flights, 'SCHEDULED_DEPARTURE')
+    # cvt_time(df_flights, 'SCHEDULED_ARRIVAL')
+    # cvt_time(df_flights, 'DEPARTURE_TIME')
 
     features = ['YEAR', 'MONTH', 'DAY', 'DAY_OF_WEEK', 'dayofyear',
                 'AIRLINE', 'ORIGIN_AIRPORT', 'DESTINATION_AIRPORT',
-                # 'SCHEDULED_DEPARTURE',
-                'SCHEDULED_DEPARTURE_HOUR', 'SCHEDULED_DEPARTURE_MIN',
-                'SCHEDULED_ARRIVAL_HOUR',   'SCHEDULED_ARRIVAL_MIN',
-                # 'DEPARTURE_TIME',
-                'DEPARTURE_TIME_HOUR',      'DEPARTURE_TIME_MIN',
+                'SCHEDULED_DEPARTURE',
+                # 'SCHEDULED_DEPARTURE_HOUR', 'SCHEDULED_DEPARTURE_MIN',
+                'SCHEDULED_ARRIVAL',
+                # 'SCHEDULED_ARRIVAL_HOUR',   'SCHEDULED_ARRIVAL_MIN',
+                'DEPARTURE_TIME',
+                # 'DEPARTURE_TIME_HOUR',      'DEPARTURE_TIME_MIN',
                 'FLIGHT_NUMBER', 'TAIL_NUMBER',
                 'AIR_TIME', 'DISTANCE',
                 'TAXI_IN', 'TAXI_OUT',
-#                'SCHEDULED_ARRIVAL',
-#                 'SCHEDULED_TIME',
+                'SCHEDULED_TIME',
                 'ARRIVAL_DELAY']  # target
 
     df_flights = df_flights[features]

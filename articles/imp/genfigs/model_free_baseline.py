@@ -16,7 +16,7 @@ def boston():
     X = pd.DataFrame(data, columns=boston.feature_names)
     y = pd.Series(boston.target)
 
-    R, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
+    R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
         compare_top_features(X, y, n_shap=300,
                              min_slopes_per_x=5,
                              top_features_range=(1, 8),
@@ -42,7 +42,7 @@ def bulldozer():
     X = X.iloc[-n:]
     y = y.iloc[-n:]
 
-    R, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
+    R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
         compare_top_features(X, y, n_shap=300,
                              min_slopes_per_x=5,
                              catcolnames={'AC', 'ModelID', 'YearMade', 'ProductSize'},
@@ -66,7 +66,7 @@ def rent():
     n = 30_000  # more and shap gets bus error it seems
     X, y = load_rent(n=n)
 
-    R, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
+    R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
         compare_top_features(X, y, n_shap=300,
                              min_slopes_per_x=5,
                              top_features_range=(1, 8),
@@ -87,7 +87,7 @@ def flight():
 
     X, y, _ = load_flights(n=n)
 
-    R, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
+    R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
         compare_top_features(X, y, n_shap=300,
                              catcolnames={'AIRLINE',
                                           'ORIGIN_AIRPORT',

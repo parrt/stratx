@@ -3,11 +3,11 @@ from support import *
 figsize = (3.5, 3.0)
 use_oob=False
 metric = mean_absolute_error
-n = 50_000
+n = 25_000
 
 X, y, _ = load_flights(n=n)
 
-R, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
+R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
     compare_top_features(X, y, n_shap=300,
                          catcolnames={'AIRLINE',
                                       'ORIGIN_AIRPORT',
