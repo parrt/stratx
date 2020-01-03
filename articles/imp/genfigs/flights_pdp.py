@@ -49,13 +49,13 @@ col = 'TAXI_OUT'
 col = 'DEPARTURE_TIME_HOUR'
 col = 'SCHEDULED_DEPARTURE_HOUR'
 
-# plot_stratpd(X, y, colname='SCHEDULED_DEPARTURE_HOUR', targetname='delay',
-#              show_slope_lines=False,
-#              show_impact=True)
-#              # yrange=(-10,100))
-# plt.tight_layout()
-# plt.show()
-#
+plot_stratpd(X, y, colname='SCHEDULED_DEPARTURE', targetname='delay',
+             show_slope_lines=False,
+             show_impact=True)
+             # yrange=(-10,100))
+plt.tight_layout()
+plt.show()
+
 # plot_stratpd(X, y, colname='DEPARTURE_TIME_HOUR', targetname='delay',
 #              show_slope_lines=False,
 #              show_impact=True)
@@ -63,12 +63,12 @@ col = 'SCHEDULED_DEPARTURE_HOUR'
 # plt.tight_layout()
 # plt.show()
 
-plot_stratpd_gridsearch(X, y, 'DEPARTURE_TIME_MIN', 'ARRIVAL_DELAY',
-                        show_slope_lines=False,
-                        show_impact=True)
-plt.tight_layout()
-plt.savefig(f"/Users/parrt/Desktop/flight-dep-time-4.pdf", pad_inches=0)
-plt.show()
+# plot_stratpd_gridsearch(X, y, 'DEPARTURE_TIME', 'ARRIVAL_DELAY',
+#                         show_slope_lines=False,
+#                         show_impact=True)
+# plt.tight_layout()
+# plt.savefig(f"/Users/parrt/Desktop/flight-dep-time-4.pdf", pad_inches=0)
+# plt.show()
 
 # plot_catstratpd(X, y, 'FLIGHT_NUMBER', 'ARRIVAL_DELAY',
 #                 min_samples_leaf=10,

@@ -487,6 +487,9 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         ax2.bar(x=pdpx, height=slope_counts_at_x, width=(max(pdpx)-min(pdpx)+1)/len(pdpx),
                 facecolor='#BABABA', align='edge', alpha=barchar_alpha)
         ax2.set_ylabel(f"{colname} slope count", labelpad=-12, fontsize=label_fontsize,
+                       fontstretch='extra-condensed',
+                       horizontalalignment='right',
+                       verticalalignment='top',
                        fontname=fontname)
         # shift other y axis down 10% to make room
         if yrange is not None:
@@ -498,6 +501,10 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
             tick.set_fontname(fontname)
         for tick in ax2.get_yticklabels():
             tick.set_fontname(fontname)
+        ax2.spines['top'].set_linewidth(.5)
+        ax2.spines['right'].set_linewidth(.5)
+        ax2.spines['left'].set_linewidth(.5)
+        ax2.spines['bottom'].set_linewidth(.5)
 
     if show_impact:
         weighted_pdpy = pdpy * (slope_counts_at_x / np.max(slope_counts_at_x))
@@ -528,6 +535,11 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         ax.set_ylabel(targetname, fontsize=label_fontsize, fontname=fontname)
     if title is not None:
         ax.set_title(title, fontsize=title_fontsize, fontname=fontname)
+
+    ax.spines['top'].set_linewidth(.5)
+    ax.spines['right'].set_linewidth(.5)
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
 
     for tick in ax.get_xticklabels():
         tick.set_fontname(fontname)
@@ -1191,6 +1203,11 @@ def plot_catstratpd(X, y,
         ax.set_xticklabels([])
         ax.tick_params(axis='x', which='major', labelsize=ticklabel_fontsize, bottom=False)
     ax.tick_params(axis='y', which='major', labelsize=ticklabel_fontsize)
+
+    ax.spines['top'].set_linewidth(.5)
+    ax.spines['right'].set_linewidth(.5)
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
 
     if show_impact:
         m = np.nanmean(np.abs(avg_per_cat))

@@ -123,10 +123,11 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                                    supervised=supervised)
             #         print(f"Ignored for {colname} = {ignored}")
             if len(slope_counts_at_x)>0:
-                weighted_pdpy = (pdpy * slope_counts_at_x) / np.max(slope_counts_at_x)
+                # weighted average of pdpy using slope_counts_at_x as evidence
+                avg_abs_pdp = np.sum(np.abs(pdpy * slope_counts_at_x)) / np.sum(slope_counts_at_x)
             else:
                 weighted_pdpy = pdpy
-            avg_abs_pdp = np.mean(np.abs(weighted_pdpy))
+                avg_abs_pdp = np.mean(np.abs(weighted_pdpy))
         # print(f"{colname}:{avg_abs_pdp:.3f} mass")
         # print(f"Stop {colname}")
         return avg_abs_pdp
