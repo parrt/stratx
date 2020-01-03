@@ -1,6 +1,6 @@
 from support import *
 
-figsize = (3.2, 2.8)
+figsize = (3.5, 3.0)
 use_oob=False
 boston = load_boston()
 X = pd.DataFrame(boston.data, columns=boston.feature_names)
@@ -33,7 +33,7 @@ print(R)
 R.reset_index().to_feather("/tmp/boston.feather")
 
 plot_topk(R, k=8, title="Boston housing prices",
-          ylabel="20% Validation MAE (k$)",
+          ylabel="20% 5-fold CV MAE (k$)",
           title_fontsize=14,
           label_fontsize=14,
           ticklabel_fontsize=14,

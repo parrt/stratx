@@ -1,6 +1,6 @@
 from support import *
 
-figsize = (3.2, 2.8)
+figsize = (3.5, 3.0)
 use_oob=False
 metric = mean_absolute_error
 n = 25_000 # 30k crashes shap so try 20k
@@ -38,7 +38,7 @@ R = R.reset_index(drop=True)
 R.reset_index().to_feather("/tmp/flights.feather")
 
 plot_topk(R, k=8, title="Flight arrival delay",
-          ylabel="20% Validation MAE (mins)",
+          ylabel="20% 5-fold CV MAE (mins)",
           title_fontsize=14,
           label_fontsize=14,
           ticklabel_fontsize=14,
