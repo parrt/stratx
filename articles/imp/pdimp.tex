@@ -167,7 +167,7 @@ y = x_1^2 + x_2 + 100
 
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[scale=0.5]{images/quadratic-auc.pdf}
+\includegraphics[scale=0.5]{images/quadratic-auc.pdf}~~\includegraphics[scale=0.5]{images/linear-from-mean-auc.pdf}
 \caption{AUC for partial dependence curves from $y = x_1^2 + x_2 + 100$ in $[0,3]$}
 \label{fig:diff-models}
 \end{center}
@@ -179,12 +179,12 @@ As originally defined, partial dependence curves are derived from fitted models 
 
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[scale=0.7]{images/bulldozer-impact-age.pdf}\caption{AUC for bulldozer features weighted by evidence, 20, 000 records of 401,125}
+\includegraphics[scale=0.7]{images/bulldozer-impact-YearMade.pdf}\caption{AUC for bulldozer features weighted by evidence, 20, 000 records of 401,125}
 \label{fig:bulldozer-impact}
 \end{center}
 \end{figure}
 
-The definition of $\Imp_j$ in \eqnref{eq:Epd2a} assumes that data is evenly distributed across all $x_j$ domains, which is not the case in practice for $(\bf X, y)$ data sets.  The impact of each $\text{\it PD}_j(x_j=z)$ curve value must be weighted by the number of samples with $x_j=z$.  For example, \figref{fig:bulldozer-impact} shows the partial dependence curve (black dots) for feature {\tt\small age} from the bulldozer auction data set \cite{bulldozer}. The gray histogram under the curve indicates the number of samples at each $x_j$ value. The red dots represent the $\text{\it PD}_j$ weighted according to the histogram height and the orange regions represents the impact {\tt\small age} has on target {\tt\small SalePrice}. While the {\tt\small age} partial dependence curve is plausible beyond 25 years (older bulldozers are worth less), there are so few data points that the collection of very old bulldozers have little overall effect on the overall average sale price.  This leads to a definition based upon expected value rather than simple averages across $x_j$ domains.
+The definition of $\Imp_j$ in \eqnref{eq:Epd2a} assumes that data is evenly distributed across all $x_j$ domains, which is not the case in practice for $(\bf X, y)$ data sets.  The impact of each $\text{\it PD}_j(x_j=z)$ curve value must be weighted by the number of samples with $x_j=z$.  For example, \figref{fig:bulldozer-impact} shows the partial dependence curve (black dots) for feature {\tt\small age} from the bulldozer auction data set \cite{bulldozer}. The gray histogram under the curve indicates the number of samples at each $x_j$ value. The red dots represent the $\text{\it PD}_j$ weighted according to the histogram height and the orange regions represents the impact {\tt\small YearMade} has on target {\tt\small SalePrice}. While the {\tt\small YearMade} partial dependence curve is plausible before 1990 years (older bulldozers are worth less), there are so few data points that the collection of very old bulldozers have little overall effect on the overall average sale price.  This leads to a definition based upon expected value rather than simple averages across $x_j$ domains.
 
 ~\\
 \noindent {\bf Definition 2b} The feature importance of $x_j$ is the ratio of $x_j$'s expected partial dependence value to the total of all expected values, when all $x_j$ variables are normalized to the same fixed range:

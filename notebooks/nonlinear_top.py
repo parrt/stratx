@@ -24,12 +24,13 @@ def synthetic_nonlinear_data(n, p=2):
     for i in range(p):
         df[f'x{i + 1}'] = np.random.random_sample(size=n) * 3
     yintercept = 100
+    yintercept = 0
     df['y'] = df['x1']**2 + df['x2'] + yintercept
     eqn = f"y = x1^2 + x2 + {yintercept}, xi ~ U(0,3)"
     return df, eqn
 
 
-n = 1000
+n = 800
 shap_test_size = n
 df, eqn = synthetic_nonlinear_data(n, p=2)
 X = df.drop('y', axis=1)
@@ -65,12 +66,29 @@ print("\nRF SHAP importances", list(shapimp), list(shapimp / s))
 
 #shap.summary_plot(shap_values, X[:shap_test_size])
 shap.dependence_plot("x1", shap_values, X[:shap_test_size], interaction_index=None)
-shap.dependence_plot("x2", shap_values, X[:shap_test_size], interaction_index=None)
+# shap.dependence_plot("x2", shap_values, X[:shap_test_size], interaction_index=None)
+
+sorted_idx0 = np.argsort(X.iloc[:, 0])
+sorted_idx1 = np.argsort(X.iloc[:, 1])
+plt.plot(X.iloc[sorted_idx0, 0], shap_values[sorted_idx0, 0])
+plt.plot(X.iloc[sorted_idx0, 0], np.abs(shap_values[sorted_idx0, 0]))
+plt.plot(X.iloc[sorted_idx1, 1], np.abs(shap_values[sorted_idx1, 1]))
+
+m = np.mean(y)
+avg_dev_from_zero = np.mean(np.abs(shap_values))
+avg_dev_from_mean = np.mean(np.abs(shap_values - m)*(3-0))
+
+print(m)
+print(avg_dev_from_zero)
+print(avg_dev_from_mean)
+
+print("avg abs x1 shap + mean(y)", np.mean(np.abs(shap_values[:,0]*3)))
+print("avg abs x2 shap + mean(y)", np.mean(np.abs(shap_values[:,1]*3)))
 
 # plot_stratpd_gridsearch(X, y, 'x1', 'price')
 
-I = importances(X, y, normalize=False)
-print(I)
+# I = importances(X, y, normalize=False)
+# print(I)
 
 # plot_stratpd(X, y, colname='x1', targetname='y', min_samples_leaf=10,
 #              min_slopes_per_x=15)

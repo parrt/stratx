@@ -28,11 +28,14 @@ X_, y_ = X.iloc[idxs], y.iloc[idxs]
 
 figsize=(3.1, 2.3)
 
+# for display purposes, drop machine hours beyond 30 years
 fig, ax = plt.subplots(1,1,figsize=figsize)
 plot_stratpd(X_, y_, colname='age', targetname='SalePrice',
              show_slope_lines=False,
              show_impact=True,
              ticklabel_fontsize=10,
+             xrange=(0,30),
+             yrange=(-8000,1000),
              ax=ax
              )
 plt.tight_layout()
