@@ -177,12 +177,14 @@ The obvious disadvantage of this feature importance definition is that function 
 
 As originally defined, partial dependence curves are derived from fitted models and are biased in the presence of codependent variables.  To overcome this bias and to avoid the need for predictions from a fitted model, we recently introduced a technique called \spd{} (\cite{stratpd}) to approximate partial dependence curves using a data stratification approach. \spd{} stratifies a data set into groups of observations that are similar, except in the variable of interest, $x_j$, through the use of a single decision tree. Any fluctuation of the response variable within a group (decision tree leaf) is likely due to $x_j$. The $\beta_1$ coefficient of a simple local linear regression fit to the $(x_j, y)$ values within a group provides an estimate of $\frac{\partial y}{\partial x_j}$ in that group's $x_j$ range. Averaging the partial derivative estimates across all such groups yields the overall $\frac{\partial y}{\partial x_j}$ partial derivative approximation. The cumulative sum of the partial derivative yields the partial dependence curve. (Note that \spd{} never uses predictions from any model---the decision tree merely stratifies feature space and the piecewise linear regression models provide slope estimates.)
 
-The definition of $\Imp_j$ in \eqnref{eq:Epd2a} assumes that data is evenly distributed across all $x_j$ domains, which is not the case in practice. The evidence available to support each point on the partial dependence curve varies across each domain. In the context of \spd, the number of approximate slopes at $x_j=z$ averaged to get $\text{\it PD}_j(z)$ constitutes that evidence. \figref{fig:bulldozer-impact} shows the partial dependence curves (black dots) for two features from the bulldozer data set. The gray histogram under each curve indicates the number of slopes averaged to get $\text{\it PD}_j$ points, and those points with less support should be attenuated when computing areas under curves. The red dots represent the $\text{\it PD}_j$ weighted according to the histogram height and the orange region represents the impact each variable has on target {\tt\small SalePrice}.
+The definition of $\Imp_j$ in \eqnref{eq:Epd2a} assumes that data is evenly distributed across all $x_j$ domains, which is not the case in practice. The evidence available to support each point on the partial dependence curve varies across each domain. In the context of \spd, the number of approximate slopes at $x_j=z$ averaged to get $\text{\it PD}_j(z)$ constitutes that evidence. \figref{fig:bulldozer-impact} shows the partial dependence curves (black dots) for two features from the bulldozer data set. The gray histogram under each curve indicates the number of slopes averaged to get $\text{\it PD}_j$ points, and those points with less support
+
+ must be weighted by this evidence when computing areas under curves. The red dots represent the $\text{\it PD}_j$ weighted according to the histogram height and the orange region represents the impact each variable has on target {\tt\small SalePrice}.
 
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.6]{images/bulldozer-impact-YearMade.pdf}~~~
-\includegraphics[scale=0.6]{images/bulldozer-impact-MachineHours.pdf}
+\includegraphics[scale=0.6]{images/bulldozer-impact-saledayofyear.pdf}
 \caption{AUC for bulldozer features weighted by evidence}
 \label{fig:bulldozer-impact}
 \end{center}
@@ -190,7 +192,7 @@ The definition of $\Imp_j$ in \eqnref{eq:Epd2a} assumes that data is evenly dist
 
 \noindent {\bf Definition 2b} 
 
- does not sum to zero
+ sum to zero
  
 \begin{equation}\label{eq:Epd2}
 \Imp_j = \frac{\Ex[|\text{\it PD}_j|]}{\sum_{k=1}^p \Ex[|\text{\it PD}_k|]}

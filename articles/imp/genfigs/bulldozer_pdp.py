@@ -14,20 +14,17 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-#np.random.seed(666) # good results
-np.random.seed(999)
-
 n = 5_000
 
 X, y = load_bulldozer()
 
-X = X.iloc[-n:]
-y = y.iloc[-n:]
+# Most recent timeseries data is more relevant so get big recent chunk
+# then we can sample from that to get n
+X = X.iloc[-50_000:]
+y = y.iloc[-50_000:]
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-# now undo
-X = pd.concat([X_train, X_test], axis=0)
-y = pd.concat([y_train, y_test], axis=0)
+idxs = resample(range(n), n_samples=n, replace=False)
+X_, y_ = X.iloc[idxs], y.iloc[idxs]
 
 plot_stratpd(X, y, colname='age', targetname='SalePrice',
              show_slope_lines=False,

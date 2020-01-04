@@ -486,10 +486,8 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         ax2.yaxis.set_major_locator(plt.FixedLocator([0, max(slope_counts_at_x)]))
         ax2.bar(x=pdpx, height=slope_counts_at_x, width=(max(pdpx)-min(pdpx)+1)/len(pdpx),
                 facecolor='#BABABA', align='edge', alpha=barchar_alpha)
-        ax2.set_ylabel(f"{colname} slope count", labelpad=-12, fontsize=label_fontsize,
+        ax2.set_ylabel(f"slope count", labelpad=-12, fontsize=label_fontsize,
                        fontstretch='extra-condensed',
-                       horizontalalignment='right',
-                       verticalalignment='top',
                        fontname=fontname)
         # shift other y axis down 10% to make room
         if yrange is not None:
@@ -507,24 +505,23 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         ax2.spines['bottom'].set_linewidth(.5)
 
     if show_impact:
-        weighted_pdpy = pdpy * (slope_counts_at_x / np.max(slope_counts_at_x))
-        #cx = pdpx[np.argmax(slope_counts_at_x)]
-        # m = np.mean(weighted_pdpy)
-        # ax.plot(domain, [m,m], '--', lw=.5, c='black')
-        absm = np.mean(np.abs(weighted_pdpy))
-        # ax.text(0.5, .98, f"Impact {absm:.2f}", horizontalalignment='center',
-        #         verticalalignment='top', transform=ax.transAxes,
-        #         fontsize=label_fontsize, fontname=fontname)
+        # Convert histo height at x to 0..1 and then attenuate pdpy
+        # for plotting purposes; not quite right scale but it's representative
         r = max_y - min_y
+        weighted_pdpy = pdpy * (slope_counts_at_x / np.max(slope_counts_at_x))
+        impact = np.sum(np.abs(pdpy * slope_counts_at_x)) / np.sum(slope_counts_at_x)
         if max(weighted_pdpy) > 0:
             verticalalignment = 'bottom'
             y_text_shift = r*.01
         else:
             verticalalignment = 'top'
             y_text_shift = -r*.02 # drop a bit to avoid collision with 0 line
-        ax.text((max(pdpx)+1+min(pdpx))/2, 0+y_text_shift, f"Impact {absm:.2f}",
-                horizontalalignment='center', verticalalignment=verticalalignment,
+        ax.text(0.5, .98, f"Impact {impact:.2f}", horizontalalignment='center',
+                verticalalignment='top', transform=ax.transAxes,
                 fontsize=label_fontsize, fontname=fontname)
+        # ax.text((max(pdpx)+1+min(pdpx))/2, 0+y_text_shift, f"Impact {impact:.2f}",
+        #         horizontalalignment='center', verticalalignment=verticalalignment,
+        #         fontsize=label_fontsize, fontname=fontname)
         ax.fill_between(pdpx, weighted_pdpy, [0] * len(pdpx), color=impact_fill_color)
         ax.scatter(pdpx, weighted_pdpy, s=pdp_marker_size, c=impact_pdp_color)
         ax.plot(pdpx, weighted_pdpy, lw=.3, c='grey')
