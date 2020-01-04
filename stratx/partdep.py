@@ -385,8 +385,11 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  show_ylabel=True,
                  show_pdp_line=False,
                  show_slope_lines=True,
-                 show_slope_counts=True,
+                 show_slope_counts=False,
+                 show_x_counts=True,
                  show_impact=False,
+                 show_impact_dots=True,
+                 show_impact_line=True,
                  pdp_marker_size=5,
                  pdp_line_width=.5,
                  slope_line_color='#2c7fb8',
@@ -400,7 +403,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  title_fontsize=11,
                  label_fontsize=10,
                  ticklabel_fontsize=10,
-                 barchart_size=0.09,
+                 barchart_size=0.20,
                  # if show_slope_counts, what ratio of vertical space should barchart use at bottom?
                  barchar_alpha=0.7,
                  verbose=False,
@@ -434,6 +437,9 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                            n_trees=n_trees, min_samples_leaf=min_samples_leaf,
                            bootstrap=bootstrap, max_features=max_features, supervised=supervised,
                            verbose=verbose)
+
+    X_col = X[colname]
+    _, pdpx_counts = np.unique(X_col[np.isin(X_col, pdpx)], return_counts=True)
 
     if ax is None:
         if figsize is not None:
@@ -478,9 +484,35 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
     else:
         ax.set_ylim(min_y, max_y)
 
-    if show_slope_counts:
+    if show_x_counts:
         ax2 = ax.twinx()
         # scale y axis so the max count height is 10% of overall chart
+        ax2.set_ylim(0, max(pdpx_counts) * 1.2/barchart_size)
+        # draw just 0 and max count
+        ax2.yaxis.set_major_locator(plt.FixedLocator([0, max(pdpx_counts)]))
+        ax2.bar(x=pdpx, height=pdpx_counts, width=(max(pdpx)-min(pdpx)+1)/len(pdpx),
+                facecolor='#BABABA', align='edge', alpha=barchar_alpha)
+        ax2.set_ylabel(f"$x$ point count", labelpad=-12, fontsize=label_fontsize,
+                       fontstretch='extra-condensed',
+                       fontname=fontname)
+        # shift other y axis down barchart_size to make room
+        if yrange is not None:
+            ax.set_ylim(yrange[0]-(yrange[1]-yrange[0])*barchart_size, yrange[1])
+        else:
+            ax.set_ylim(min_y-(max_y-min_y)*barchart_size, max_y)
+        ax2.tick_params(axis='both', which='major', labelsize=ticklabel_fontsize)
+        for tick in ax2.get_xticklabels():
+            tick.set_fontname(fontname)
+        for tick in ax2.get_yticklabels():
+            tick.set_fontname(fontname)
+        ax2.spines['top'].set_linewidth(.5)
+        ax2.spines['right'].set_linewidth(.5)
+        ax2.spines['left'].set_linewidth(.5)
+        ax2.spines['bottom'].set_linewidth(.5)
+
+    if show_slope_counts:
+        ax2 = ax.twinx()
+        # scale y axis so the max count height is barchart_size of overall chart
         ax2.set_ylim(0, max(slope_counts_at_x) * 1/barchart_size)
         # draw just 0 and max count
         ax2.yaxis.set_major_locator(plt.FixedLocator([0, max(slope_counts_at_x)]))
@@ -489,11 +521,11 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         ax2.set_ylabel(f"slope count", labelpad=-12, fontsize=label_fontsize,
                        fontstretch='extra-condensed',
                        fontname=fontname)
-        # shift other y axis down 10% to make room
+        # shift other y axis down barchart_size to make room
         if yrange is not None:
-            ax.set_ylim(yrange[0]-(yrange[1]-yrange[0])*.1, yrange[1])
+            ax.set_ylim(yrange[0]-(yrange[1]-yrange[0])*barchart_size, yrange[1])
         else:
-            ax.set_ylim(min_y-(max_y-min_y)*.1, max_y)
+            ax.set_ylim(min_y-(max_y-min_y)*barchart_size, max_y)
         ax2.tick_params(axis='both', which='major', labelsize=ticklabel_fontsize)
         for tick in ax2.get_xticklabels():
             tick.set_fontname(fontname)
@@ -507,27 +539,32 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
     if show_impact:
         # Convert histo height at x to 0..1 and then attenuate pdpy
         # for plotting purposes; not quite right scale but it's representative
-        r = max_y - min_y
-        weighted_pdpy = pdpy * (slope_counts_at_x / np.max(slope_counts_at_x))
-        impact = np.sum(np.abs(pdpy * slope_counts_at_x)) / np.sum(slope_counts_at_x)
-        if max(weighted_pdpy) > 0:
-            verticalalignment = 'bottom'
-            y_text_shift = r*.01
-        else:
-            verticalalignment = 'top'
-            y_text_shift = -r*.02 # drop a bit to avoid collision with 0 line
-        ax.text(0.5, .98, f"Impact {impact:.2f}", horizontalalignment='center',
-                verticalalignment='top', transform=ax.transAxes,
-                fontsize=label_fontsize, fontname=fontname)
+        weighted_pdpy = pdpy * (pdpx_counts / np.max(pdpx_counts))
+        # r = max_y - min_y
+        # if max(weighted_pdpy) > 0:
+        #     verticalalignment = 'bottom'
+        #     y_text_shift = r*.01
+        # else:
+        #     verticalalignment = 'top'
+        #     y_text_shift = -r*.02 # drop a bit to avoid collision with 0 line
+        # ax.text(0.5, .98, f"Impact {impact:.2f}", horizontalalignment='center',
+        #         verticalalignment='top', transform=ax.transAxes,
+        #         fontsize=label_fontsize, fontname=fontname)
         # ax.text((max(pdpx)+1+min(pdpx))/2, 0+y_text_shift, f"Impact {impact:.2f}",
         #         horizontalalignment='center', verticalalignment=verticalalignment,
         #         fontsize=label_fontsize, fontname=fontname)
         ax.fill_between(pdpx, weighted_pdpy, [0] * len(pdpx), color=impact_fill_color)
-        ax.scatter(pdpx, weighted_pdpy, s=pdp_marker_size, c=impact_pdp_color)
-        ax.plot(pdpx, weighted_pdpy, lw=.3, c='grey')
+        if show_impact_dots:
+            ax.scatter(pdpx, weighted_pdpy, s=pdp_marker_size, c=impact_pdp_color)
+        if show_impact_line:
+            ax.plot(pdpx, weighted_pdpy, lw=.3, c='grey')
 
     if show_xlabel:
-        ax.set_xlabel(colname, fontsize=label_fontsize, fontname=fontname)
+        xl = colname
+        if show_impact:
+            impact = np.sum(np.abs(pdpy * pdpx_counts)) / np.sum(pdpx_counts)
+            xl += f" (Impact {impact:.2f})"
+        ax.set_xlabel(xl, fontsize=label_fontsize, fontname=fontname)
     if show_ylabel:
         ax.set_ylabel(targetname, fontsize=label_fontsize, fontname=fontname)
     if title is not None:

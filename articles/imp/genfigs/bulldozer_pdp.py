@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-n = 5_000
+n = 20_000
 
 X, y = load_bulldozer()
 
@@ -26,16 +26,21 @@ y = y.iloc[-50_000:]
 idxs = resample(range(n), n_samples=n, replace=False)
 X_, y_ = X.iloc[idxs], y.iloc[idxs]
 
-plot_stratpd(X, y, colname='age', targetname='SalePrice',
-             show_slope_lines=False,
-             show_impact=True,
-             figsize=(4,3)
-             )
-plt.tight_layout()
-plt.savefig(f"/Users/parrt/Desktop/james-age.pdf", pad_inches=0)
-plt.show()
+I = importances(X_, y_,
+                catcolnames={'AC', 'ModelID', 'YearMade', 'ProductSize'})
+print(I)
+#plot_catstratpd(X_, y_, colname='ProductSize', targetname='SalePrice')
+
+# plot_stratpd(X_, y_, colname='age', targetname='SalePrice',
+#              show_slope_lines=False,
+#              show_impact=True,
+#              figsize=(4,3)
+#              )
+# plt.tight_layout()
+# plt.savefig(f"/Users/parrt/Desktop/james-age.pdf", pad_inches=0)
+# plt.show()
 #
-# plot_stratpd(X, y, colname='YearMade', targetname='SalePrice',
+# plot_stratpd(X_, y_, colname='YearMade', targetname='SalePrice',
 #              show_slope_lines=False,
 #              show_impact=True,
 #              figsize=(4,3)
@@ -43,20 +48,21 @@ plt.show()
 # plt.tight_layout()
 # plt.savefig(f"/Users/parrt/Desktop/james-YearMade.pdf", pad_inches=0)
 # plt.show()
-
-# plot_stratpd(X, y, colname='saledayofyear', targetname='SalePrice',
-#              min_samples_leaf=10,
-#              show_slope_lines=False)
-# plt.tight_layout()
-# plt.show()
 #
-# plot_stratpd(X, y, colname='ProductSize', targetname='SalePrice',
+# plot_stratpd(X_, y_, colname='saledayofyear', targetname='SalePrice',
+#              show_impact=True,
+#              show_slope_lines=False)
+# plt.tight_layout()
+# plt.show()
+# #
+# plot_stratpd(X_, y_, colname='ProductSize', targetname='SalePrice',
+#              show_impact=True,
 #              show_slope_lines=False)
 # plt.tight_layout()
 # plt.show()
 
 
-# plot_catstratpd(X, y, colname='ModelID', targetname='SalePrice',
+# plot_catstratpd(X_, y_, colname='ModelID', targetname='SalePrice',
 #                 min_samples_leaf=10, sort=None,
 #                 alpha=.08,
 #                 show_all_deltas=False,
@@ -68,7 +74,7 @@ plt.show()
 # plt.savefig(f"/Users/parrt/Desktop/james-ModelID.pdf", pad_inches=0)
 # plt.show()
 
-# I = importances(X, y, catcolnames={'AC', 'ModelID', 'ProductSize'},
+# I = importances(X_, y_, catcolnames={'AC', 'ModelID', 'ProductSize'},
 #                 min_samples_leaf=10,
 #                 min_slopes_per_x=5)
 # print(I)
@@ -77,13 +83,13 @@ plt.show()
 col = 'age'
 # col = 'ProductSize'
 
-# plot_stratpd_gridsearch(X, y, colname=col, targetname='SalePrice',
+# plot_stratpd_gridsearch(X_, y_, colname=col, targetname='SalePrice',
 #                         min_samples_leaf_values=(10,20,30),
 #                         min_slopes_per_x_values=(5,10,20,30),
 #                         show_slope_lines=False,
 #                         yrange=None)
 
-# plot_catstratpd_gridsearch(X, y, 'ProductSize', 'SalePrice',
+# plot_catstratpd_gridsearch(X_, y_, 'ProductSize', 'SalePrice',
 #                            min_samples_leaf_values=(5,10,15,20),
 #                            sort=None,
 #                            show_xticks=False,
@@ -92,7 +98,7 @@ col = 'age'
 #                            style='scatter',
 #                            min_y_shifted_to_zero=False)
 
-# plot_catstratpd(X, y, 'YearMade', 'SalePrice',
+# plot_catstratpd(X_, y_, 'YearMade', 'SalePrice',
 #                 min_samples_leaf=10,
 #                 show_mean_line=True,
 #                 sort=None,

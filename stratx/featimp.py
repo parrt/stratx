@@ -80,7 +80,6 @@ def importances(X: pd.DataFrame,
     return I
 
 
-
 def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                  normalize=True,
                  supervised=True,
@@ -96,6 +95,7 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
 
     def single_feature_importance(colname):
         # print(f"Start {colname}")
+        X_col = X[colname]
         if colname in catcolnames:
             leaf_histos, avg_per_cat, ignored = \
                 cat_partial_dependence(X, y, colname=colname,
@@ -108,8 +108,16 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
             #         print(f"Ignored for {colname} = {ignored}")
             # no need to shift as abs(avg_per_cat) deals with negatives. The avg per cat
             # values will straddle 0, some above, some below.
-            # some cats have NaN, such as 0th which is for "missing values"
-            avg_abs_pdp = np.nanmean(np.abs(avg_per_cat))# * (ncats - 1)
+            # some cats have NaN, such as 0th which is often for "missing values"
+            # depending on label encoding scheme.
+            # Used to be just this but now we weight by num of each cat:
+            # avg_abs_pdp = np.nanmean(np.abs(avg_per_cat))
+
+            # group by cat and get count
+            uniq_cats = np.unique(X_col) # comes back sorted
+            cat_counts = [len(np.where(X_col == cat)[0]) for cat in uniq_cats]
+            abs_avg_per_cat = np.abs(avg_per_cat[~np.isnan(avg_per_cat)])
+            avg_abs_pdp = np.sum(cat_counts * abs_avg_per_cat) / np.sum(cat_counts)
         else:
             leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored = \
                 partial_dependence(X=X, y=y, colname=colname,
@@ -122,12 +130,12 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                                    parallel_jit=n_jobs == 1,
                                    supervised=supervised)
             #         print(f"Ignored for {colname} = {ignored}")
-            if len(slope_counts_at_x)>0:
-                # weighted average of pdpy using slope_counts_at_x as evidence
-                avg_abs_pdp = np.sum(np.abs(pdpy * slope_counts_at_x)) / np.sum(slope_counts_at_x)
+            _, pdpx_counts = np.unique(X_col[np.isin(X_col, pdpx)], return_counts=True)
+            if len(pdpx_counts)>0:
+                # weighted average of pdpy using pdpx_counts
+                avg_abs_pdp = np.sum(np.abs(pdpy * pdpx_counts)) / np.sum(pdpx_counts)
             else:
-                weighted_pdpy = pdpy
-                avg_abs_pdp = np.mean(np.abs(weighted_pdpy))
+                avg_abs_pdp = np.mean(np.abs(pdpy))
         # print(f"{colname}:{avg_abs_pdp:.3f} mass")
         # print(f"Stop {colname}")
         return avg_abs_pdp
@@ -333,7 +341,6 @@ def plot_importances(df_importances,
 
     if title:
         ax.set_title(title, fontsize=title_fontsize, fontname=fontname, color=GREY, pad=0)
-
 
     #ax.invert_yaxis()  # labels read top-to-bottom
     ax.xaxis.set_major_formatter(FormatStrFormatter(f'%.{xtick_precision}f'))

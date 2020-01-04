@@ -27,6 +27,8 @@ plot_stratpd(X, y, colname='SCHEDULED_DEPARTURE', targetname='Flight arrival del
              show_impact=True,
              ticklabel_fontsize=10,
              pdp_marker_size=1,
+             show_impact_dots=False,
+             show_impact_line=False,
              ax=ax
              )
 plt.tight_layout()
@@ -39,6 +41,8 @@ plot_stratpd(X, y, colname='DEPARTURE_TIME', targetname='Flight arrival delay (m
              show_impact=True,
              ticklabel_fontsize=10,
              pdp_marker_size=1,
+             show_impact_dots=False,
+             show_impact_line=False,
              ax=ax
              )
 plt.tight_layout()

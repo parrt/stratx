@@ -26,8 +26,10 @@ y = y.iloc[-50_000:]
 idxs = resample(range(n), n_samples=n, replace=False)
 X_, y_ = X.iloc[idxs], y.iloc[idxs]
 
-fig, ax = plt.subplots(1,1,figsize=(3.5, 2.7))
-plot_stratpd(X, y, colname='age', targetname='SalePrice',
+figsize=(3.1, 2.3)
+
+fig, ax = plt.subplots(1,1,figsize=figsize)
+plot_stratpd(X_, y_, colname='age', targetname='SalePrice',
              show_slope_lines=False,
              show_impact=True,
              ticklabel_fontsize=10,
@@ -38,8 +40,8 @@ plt.savefig("../images/bulldozer-impact-age.pdf", bbox_inches="tight", pad_inche
 plt.show()
 
 # for display purposes, drop machine hours beyond 70,000
-fig, ax = plt.subplots(1,1,figsize=(3.5, 2.7))
-plot_stratpd(X, y, colname='MachineHours', targetname='SalePrice',
+fig, ax = plt.subplots(1,1,figsize=figsize)
+plot_stratpd(X_, y_, colname='MachineHours', targetname='SalePrice',
              show_slope_lines=False,
              show_impact=True,
              ticklabel_fontsize=10,
@@ -50,8 +52,8 @@ plt.tight_layout()
 plt.savefig("../images/bulldozer-impact-MachineHours.pdf", bbox_inches="tight", pad_inches=0)
 plt.show()
 
-fig, ax = plt.subplots(1,1,figsize=(3.5, 2.7))
-plot_stratpd(X, y, colname='saledayofyear', targetname='SalePrice',
+fig, ax = plt.subplots(1,1,figsize=figsize)
+plot_stratpd(X_, y_, colname='saledayofyear', targetname='SalePrice',
              show_slope_lines=False,
              show_impact=True,
              ticklabel_fontsize=10,
@@ -61,8 +63,8 @@ plt.tight_layout()
 plt.savefig("../images/bulldozer-impact-saledayofyear.pdf", bbox_inches="tight", pad_inches=0)
 plt.show()
 
-fig, ax = plt.subplots(1,1,figsize=(3.5, 2.7))
-plot_stratpd(X, y, colname='YearMade', targetname='SalePrice',
+fig, ax = plt.subplots(1,1,figsize=figsize)
+plot_stratpd(X_, y_, colname='YearMade', targetname='SalePrice',
              show_slope_lines=False,
              show_impact=True,
              ticklabel_fontsize=10,

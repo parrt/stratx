@@ -75,7 +75,7 @@
 {
   \title{\bf Tech Report: Model-Free Feature Importances}
 
-  \author{Terence Parr and James D. Wilson\\
+  \author{Terence Parr, James D. Wilson, and Jeff Hamrick\\
       University of San Francisco\\
 }
   \maketitle
@@ -133,7 +133,7 @@ Despite many years of research attention, there is still no widely-accepted defi
 
 \section{A definition of feature importance}\label{sec:def}
 
-Practitioners loosely define feature importance as measuring feature predictiveness, which presupposes a fitted predictive model, probably because importances are so often used for feature selection during model development.  Research  focuses on more accurately identifying the impact of features upon model predictions.  But, relying on a fitted model makes it difficult to tease apart the true feature importance from the ability of the model to exploit that feature for prediction purposes. Rather than measuring feature impact on {\em model predictions}, we propose avoiding the model completely to define feature importance as the average impact of a feature on the {\em data set response values}.
+Practitioners loosely define feature importance as feature predictiveness, which presupposes a fitted predictive model, probably because importances are so often used for feature selection during model development.  Research  focuses on more accurately identifying the impact of features upon model predictions.  But, relying on a fitted model makes it difficult to tease apart the true feature importance from the ability of the model to exploit that feature for prediction purposes. Rather than measuring feature impact on {\em model predictions}, we propose avoiding the model completely to define feature importance as the average impact of a feature on the {\em data set response values}.
 
 In special circumstances, we know the precise importance of each feature $x_j$. Assume we are given training data pair ($\bf X, y$) where ${\bf X} = [x^{(1)}, \ldots, x^{(n)}]$ is an $n \times p$ matrix whose $p$ columns represent observed features and ${\bf y}$ is the $n \times 1$ vector of responses.  If a data set is generated using a linear function, $y = \beta_0 + \sum_{j=1}^p \beta_j x_j$, \todo{assumes independence of $x_j$?} then coefficient $\beta_j$ corresponds exactly to the importance of $x_j$.  $\beta_j$ is the impact on $y$ for a unit change in $x_j$, holding all other features constant.
 
@@ -148,16 +148,16 @@ To hold features constant for any smooth generator function, we can take the par
 
 $\text{\it PD}_j(z)$ is the value contributed to $y$ by $x_j$ at $x_j = z$. The advantage of this partial dependence definition is that it is insensitive to collinear or otherwise codependent features, unlike the traditional definition that is most accurate for fitted models ``{\em dominated by low order interactions}'' per Friedman.  
 
-To go from partial dependence to feature importance, compare the area under each partial dependence curve. The larger the area under the curve, the larger the impact on $y$.   By the mean-value theorem of integrals, the area under $f(x)$ in interval $[a,b]$ is $\int_{a}^{b} f(x) dx = \overline{f(x)}(b-a)$.  For comparison purposes between variables, the actual area is not important and the $b-a$ term drops out if we normalize the variables so all $x_j$ domains have the same range, such as $[0,1]$. The importance of $x_j$ is then just the average absolute height of $\text{\it PD}_j(z)$.
+To go from partial dependence to feature importance, we compare the area under each partial dependence curve. The larger the area under the curve, the larger the impact on $y$.   By the mean-value theorem of integrals, the area under $f(x)$ in interval $[a,b]$ is $\int_{a}^{b} f(x) dx = \overline{f(x)}(b-a)$.  For comparison purposes between variables, the actual area is not important and the $b-a$ term drops out if we normalize the variables so all $x_j$ domains have the same range, such as $[0,1]$. The importance of $x_j$ is then just the average absolute height of $\text{\it PD}_j(x_j)$.
 
 ~\\
-\noindent {\bf Definition 2a} The feature importance of $x_j$ when all $x_j$ variables normalized to the same fixed range, is the ratio of $x_j$'s average partial dependence value to the total area under all partial dependence curves:
+\noindent {\bf Definition 2a} The feature importance of $x_j$ is the ratio of $x_j$'s average partial dependence value to the total of all variables, when all $x_j$ variables are normalized to the same fixed range:
 
 \begin{equation}\label{eq:Epd2a}
-\Imp_j = \frac{\Ex[|\text{\it PD}_j|]}{\sum_{k=1}^p \Ex[|\text{\it PD}_k|]}
+\Imp_j = \frac{\overline{|\text{\it PD}_j|}}{\sum_{k=1}^p \overline{|\text{\it PD}_k|}}
 \end{equation}
 
-\noindent The feature importance of $x_j$ is then just how much, on average, $x_j$ pushes $y$ away from zero.   As an example, consider quadratic equation:
+\noindent For example, consider the quadratic equation:
 
 \begin{equation}\label{eq:quad}
 y = x_1^2 + x_2 + 100
@@ -177,38 +177,39 @@ The obvious disadvantage of this feature importance definition is that function 
 
 As originally defined, partial dependence curves are derived from fitted models and are biased in the presence of codependent variables.  To overcome this bias and to avoid the need for predictions from a fitted model, we recently introduced a technique called \spd{} (\cite{stratpd}) to approximate partial dependence curves using a data stratification approach. \spd{} stratifies a data set into groups of observations that are similar, except in the variable of interest, $x_j$, through the use of a single decision tree. Any fluctuation of the response variable within a group (decision tree leaf) is likely due to $x_j$. The $\beta_1$ coefficient of a simple local linear regression fit to the $(x_j, y)$ values within a group provides an estimate of $\frac{\partial y}{\partial x_j}$ in that group's $x_j$ range. Averaging the partial derivative estimates across all such groups yields the overall $\frac{\partial y}{\partial x_j}$ partial derivative approximation. The cumulative sum of the partial derivative yields the partial dependence curve. (Note that \spd{} never uses predictions from any model---the decision tree merely stratifies feature space and the piecewise linear regression models provide slope estimates.)
 
-The definition of $\Imp_j$ in \eqnref{eq:Epd2a} assumes that data is evenly distributed across all $x_j$ domains, which is not the case in practice. The evidence available to support each point on the partial dependence curve varies across each domain. In the context of \spd, the number of approximate slopes at $x_j=z$ averaged to get $\text{\it PD}_j(z)$ constitutes that evidence. \figref{fig:bulldozer-impact} shows the partial dependence curves (black dots) for two features from the bulldozer data set. The gray histogram under each curve indicates the number of slopes averaged to get $\text{\it PD}_j$ points, and those points with less support
-
- must be weighted by this evidence when computing areas under curves. The red dots represent the $\text{\it PD}_j$ weighted according to the histogram height and the orange region represents the impact each variable has on target {\tt\small SalePrice}.
-
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[scale=0.6]{images/bulldozer-impact-YearMade.pdf}~~~
-\includegraphics[scale=0.6]{images/bulldozer-impact-saledayofyear.pdf}
-\caption{AUC for bulldozer features weighted by evidence}
+\includegraphics[scale=0.7]{images/bulldozer-impact-age.pdf}\caption{AUC for bulldozer features weighted by evidence, 20, 000 records of 401,125}
 \label{fig:bulldozer-impact}
 \end{center}
 \end{figure}
 
-\noindent {\bf Definition 2b} 
+The definition of $\Imp_j$ in \eqnref{eq:Epd2a} assumes that data is evenly distributed across all $x_j$ domains, which is not the case in practice for $(\bf X, y)$ data sets.  The impact of each $\text{\it PD}_j(x_j=z)$ curve value must be weighted by the number of samples with $x_j=z$.  For example, \figref{fig:bulldozer-impact} shows the partial dependence curve (black dots) for feature {\tt\small age} from the bulldozer auction data set \cite{bulldozer}. The gray histogram under the curve indicates the number of samples at each $x_j$ value. The red dots represent the $\text{\it PD}_j$ weighted according to the histogram height and the orange regions represents the impact {\tt\small age} has on target {\tt\small SalePrice}. While the {\tt\small age} partial dependence curve is plausible beyond 25 years (older bulldozers are worth less), there are so few data points that the collection of very old bulldozers have little overall effect on the overall average sale price.  This leads to a definition based upon expected value rather than simple averages across $x_j$ domains.
 
- sum to zero
- 
-\begin{equation}\label{eq:Epd2}
+~\\
+\noindent {\bf Definition 2b} The feature importance of $x_j$ is the ratio of $x_j$'s expected partial dependence value to the total of all expected values, when all $x_j$ variables are normalized to the same fixed range:
+
+
+\begin{equation}\label{eq:Epd2b}
 \Imp_j = \frac{\Ex[|\text{\it PD}_j|]}{\sum_{k=1}^p \Ex[|\text{\it PD}_k|]}
 \end{equation}
 
-On a given data set, the expectation is just the average ($n_j$ is the number of unique $x_j$ values):
+\noindent where:
 
-\begin{equation}\label{eq:Epd}
-\Ex[|\text{\it PD}_j|] = \frac{1}{n_j} \sum_{i=1}^{n_j} |\text{\it PD}_j(x_j^{(i)})|
+\begin{equation}\label{eq:Epd2c}
+\Ex[|\text{\it PD}_j|] = \frac{1}{n} \sum_{i=1}^{n} |\text{\it PD}_j(x_j^{(i)})|
 \end{equation}
 
- note that $\sum_{k=1}^p \Ex[|\text{\it PD}_k|]$ is not the expected value of $|y|$.
+\todo{Do we need to explain why that is a weighted sum? i.e., repeated $x_j^{(i)}$ values and in repeated partial dependence values.}
+
+\todo{in our case $n$ differs for each $x_j$ due to implementation details of \spd{} but in the general case can't we therefore remove that common factor and just say that the weighted sum relative to other variables' weighted sum is the importance?}
+
+\todo{ do we need to point out that $\sum_{k=1}^p \Ex[|\text{\it PD}_k|]$ is not the expected value of avg $|y|$? I.e., why are we not dividing by avg $|y|$?}
+
+The feature importance of $x_j$ is then just how much, on average, $x_j$ pushes $y$ away from zero.   
 
  and, at the left edge of the curve, $PD_j(0)=0$
  
-\noindent The $n$ range factor is the same for each importance, so for comparison purposes it drops out.  
 \section{Related work}
 
  these are not comparable but as they have the same goal and are the primary means to obtain future importance now, we summarize existing techniques.
@@ -315,7 +316,7 @@ Then see \figref{fig:topk}
 \begin{subfigure}{.23\textwidth}
     \centering
 \includegraphics[scale=0.48]{images/flights-topk.pdf}
-\subcaption{\footnotesize foo}
+\subcaption{\footnotesize sometimes we get age as first feature which is ok but not the amazing ModelID, clearly best.}
 \end{subfigure}
 \hfill
 \begin{subfigure}{.25\textwidth}
