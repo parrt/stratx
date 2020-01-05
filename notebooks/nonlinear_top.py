@@ -30,7 +30,7 @@ def synthetic_nonlinear_data(n, p=2):
     return df, eqn
 
 
-n = 800
+n = 1000
 shap_test_size = n
 df, eqn = synthetic_nonlinear_data(n, p=2)
 X = df.drop('y', axis=1)
@@ -82,8 +82,10 @@ print(m)
 print(avg_dev_from_zero)
 print(avg_dev_from_mean)
 
+# By multiplying by the range (3), we get AUC
 print("avg abs x1 shap + mean(y)", np.mean(np.abs(shap_values[:,0]*3)))
 print("avg abs x2 shap + mean(y)", np.mean(np.abs(shap_values[:,1]*3)))
+
 
 # plot_stratpd_gridsearch(X, y, 'x1', 'price')
 

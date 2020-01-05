@@ -73,7 +73,7 @@
 
 \if0\blind
 {
-  \title{\bf Tech Report: Model-Free Feature Importances}
+  \title{\bf Tech Report: Model-Free Feature Importance}
 
   \author{Terence Parr, James D. Wilson, and Jeff Hamrick\\
       University of San Francisco\\
@@ -131,7 +131,7 @@ Despite many years of research attention, there is still no widely-accepted defi
 ~\\
 \noindent \todo{Likely a good spot for a paper walk-through}
 
-\section{A definition of feature importance}\label{sec:def}
+\section{The definition of feature importance}\label{sec:def}
 
 Practitioners loosely define feature importance as feature predictiveness, which presupposes a fitted predictive model, probably because importances are so often used for feature selection during model development.  Research  focuses on more accurately identifying the impact of features upon model predictions.  But, relying on a fitted model makes it difficult to tease apart the true feature importance from the ability of the model to exploit that feature for prediction purposes. Rather than measuring feature impact on {\em model predictions}, we propose avoiding the model completely to define feature importance as the average impact of a feature on the {\em data set response values}.
 
@@ -148,7 +148,7 @@ To hold features constant for any smooth generator function, we can take the par
 
 $\text{\it PD}_j(z)$ is the value contributed to $y$ by $x_j$ at $x_j = z$. The advantage of this partial dependence definition is that it is insensitive to collinear or otherwise codependent features, unlike the traditional definition that is most accurate for fitted models ``{\em dominated by low order interactions}'' per Friedman.  
 
-To go from partial dependence to feature importance, we compare the area under each partial dependence curve. The larger the area under the curve, the larger the impact on $y$.   By the mean-value theorem of integrals, the area under $f(x)$ in interval $[a,b]$ is $\int_{a}^{b} f(x) dx = \overline{f(x)}(b-a)$.  For comparison purposes between variables, the actual area is not important and the $b-a$ term drops out if we normalize the variables so all $x_j$ domains have the same range, such as $[0,1]$. The importance of $x_j$ is then just the average absolute height of $\text{\it PD}_j(x_j)$.
+To go from partial dependence to feature importance, we compare the area under each partial dependence curve. The larger the area under the curve, the larger the impact on $y$.   By the mean-value theorem of integrals, the area under $f(x)$ in interval $[a,b]$ is $\int_{a}^{b} f(x) dx = \overline{f(x)}(b-a)$.  For comparison purposes between variables, the actual area is not important and the $b-a$ term drops out if we normalize the variables so all $x_j$ domains have the same range, such as $[0,1]$. The importance of $x_j$ is then just the average magnitude of $\text{\it PD}_j(x_j)$.
 
 ~\\
 \noindent {\bf Definition 2a} The feature importance of $x_j$ is the ratio of $x_j$'s average partial dependence value to the total of all variables, when all $x_j$ variables are normalized to the same fixed range:
@@ -157,19 +157,14 @@ To go from partial dependence to feature importance, we compare the area under e
 \Imp_j = \frac{\overline{|\text{\it PD}_j|}}{\sum_{k=1}^p \overline{|\text{\it PD}_k|}}
 \end{equation}
 
-\noindent For example, consider the quadratic equation:
+\noindent For example, consider quadratic equation $y = x_1^2 + x_2 + 100$ as a generator of data in $[0,3]$. The partial derivatives are $\frac{\partial y}{\partial x_1} = 2 x_1$ and $\frac{\partial y}{\partial x_2} = 1$, giving $\text{\it PD}_1 = x_1^2$ and $\text{\it PD}_2 = x_2$. The areas under the partial dependence curves in $[0,3]$ are $\Imp_1 = \frac{x_1^3}{3} \big |_0^3 = 9$ and $\Imp_2 = \frac{x_2^2}{2} \big |_0^3 = 4.5$.   Therefore, $x_1$ is twice as important as $x_2$ for data generated in that interval with importances $\Imp_1 = 0.\overline{66}$ and $\Imp_2 = 0.\overline{33}$. \figref{fig:quad-area} shows...
 
-\begin{equation}\label{eq:quad}
-y = x_1^2 + x_2 + 100
-\end{equation}
-
-\noindent as a generator of data in $[0,3]$. The partial derivatives are $\frac{\partial y}{\partial x_1} = 2 x_1$ and $\frac{\partial y}{\partial x_2} = 1$, giving $\text{\it PD}_1 = x_1^2$ and $\text{\it PD}_2 = x_2$. The areas under the partial dependence curves in $[0,3]$ are $\Imp_1 = \frac{x_1^3}{3} \big |_0^3 = 9$ and $\Imp_2 = \frac{x_2^2}{2} \big |_0^3 = 4.5$.   Therefore, $x_1$ is twice as important as $x_2$ for data generated in that interval with importances $\Imp_1 = 0.\overline{66}$ and $\Imp_2 = 0.\overline{33}$.
 
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[scale=0.5]{images/quadratic-auc.pdf}~~\includegraphics[scale=0.5]{images/linear-from-mean-auc.pdf}
-\caption{AUC for partial dependence curves from $y = x_1^2 + x_2 + 100$ in $[0,3]$}
-\label{fig:diff-models}
+\includegraphics[scale=0.6]{images/quadratic-auc.pdf}
+\captionof{figure}{\small AUC for partial dependence curves from $y = x_1^2 + x_2 + 100$ in $[0,3]$}
+\label{fig:quad-area}
 \end{center}
 \end{figure}
 
@@ -177,14 +172,23 @@ The obvious disadvantage of this feature importance definition is that function 
 
 As originally defined, partial dependence curves are derived from fitted models and are biased in the presence of codependent variables.  To overcome this bias and to avoid the need for predictions from a fitted model, we recently introduced a technique called \spd{} (\cite{stratpd}) to approximate partial dependence curves using a data stratification approach. \spd{} stratifies a data set into groups of observations that are similar, except in the variable of interest, $x_j$, through the use of a single decision tree. Any fluctuation of the response variable within a group (decision tree leaf) is likely due to $x_j$. The $\beta_1$ coefficient of a simple local linear regression fit to the $(x_j, y)$ values within a group provides an estimate of $\frac{\partial y}{\partial x_j}$ in that group's $x_j$ range. Averaging the partial derivative estimates across all such groups yields the overall $\frac{\partial y}{\partial x_j}$ partial derivative approximation. The cumulative sum of the partial derivative yields the partial dependence curve. (Note that \spd{} never uses predictions from any model---the decision tree merely stratifies feature space and the piecewise linear regression models provide slope estimates.)
 
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.7]{images/bulldozer-impact-YearMade.pdf}\caption{AUC for bulldozer features weighted by evidence, 20, 000 records of 401,125}
+\begin{minipage}[t]{0.35\textwidth}
+\centering
+\vspace{1em}
+\includegraphics[scale=0.7]{images/bulldozer-impact-YearMade.pdf}\captionof{figure}{AUC for bulldozer features weighted by evidence, 20, 000 records of 401,125}
 \label{fig:bulldozer-impact}
-\end{center}
-\end{figure}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.57\textwidth}
+\centering
+\vspace{1em}
+\includegraphics[scale=0.65]{images/from-mean-auc.pdf}
+\captionof{figure}{AUC for partial dependence curves from $y = x_1^2 + x_2 + 100$ in $[0,3]$ Shows why must compute from 0 not deviation from mean}
+\label{fig:combined-area}
+\end{minipage}\vspace{5mm}
 
-The definition of $\Imp_j$ in \eqnref{eq:Epd2a} assumes that data is evenly distributed across all $x_j$ domains, which is not the case in practice for $(\bf X, y)$ data sets.  The impact of each $\text{\it PD}_j(x_j=z)$ curve value must be weighted by the number of samples with $x_j=z$.  For example, \figref{fig:bulldozer-impact} shows the partial dependence curve (black dots) for feature {\tt\small age} from the bulldozer auction data set \cite{bulldozer}. The gray histogram under the curve indicates the number of samples at each $x_j$ value. The red dots represent the $\text{\it PD}_j$ weighted according to the histogram height and the orange regions represents the impact {\tt\small YearMade} has on target {\tt\small SalePrice}. While the {\tt\small YearMade} partial dependence curve is plausible before 1990 years (older bulldozers are worth less), there are so few data points that the collection of very old bulldozers have little overall effect on the overall average sale price.  This leads to a definition based upon expected value rather than simple averages across $x_j$ domains.
+
+The definition of $\Imp_j$ in \eqnref{eq:Epd2a} assumes that data is evenly distributed across all $x_j$ domains, which is not the case in practice for $(\bf X, y)$ data sets.  The impact of each $\text{\it PD}_j$ curve value must be weighted by the number of samples at $x_j=z$.  For example, \figref{fig:bulldozer-impact} shows the partial dependence curve (black dots) for feature {\tt\small age} from the bulldozer auction data set \cite{bulldozer}. The gray histogram under the curve indicates the number of samples at each $x_j$ value. The red dots represent the $\text{\it PD}_j$ weighted according to the histogram height and the orange region represents the impact {\tt\small YearMade} has on target {\tt\small SalePrice}. While the {\tt\small YearMade} partial dependence curve is plausible before 1990 years (older bulldozers are worth less), there are so few data points that the collection of very old bulldozers should have little overall effect on the overall average sale price.  This leads to a definition based upon expected value rather than simple averages across $x_j$ domains.
 
 ~\\
 \noindent {\bf Definition 2b} The feature importance of $x_j$ is the ratio of $x_j$'s expected partial dependence value to the total of all expected values, when all $x_j$ variables are normalized to the same fixed range:
@@ -200,51 +204,45 @@ The definition of $\Imp_j$ in \eqnref{eq:Epd2a} assumes that data is evenly dist
 \Ex[|\text{\it PD}_j|] = \frac{1}{n} \sum_{i=1}^{n} |\text{\it PD}_j(x_j^{(i)})|
 \end{equation}
 
-\todo{Do we need to explain why that is a weighted sum? i.e., repeated $x_j^{(i)}$ values and in repeated partial dependence values.}
+\todo{
+\begin{itemize}
+\item Do we need to explain why that is a weighted sum? i.e., repeated $x_j^{(i)}$ values and in repeated partial dependence values.
+\item in our case $n$ differs for each $x_j$ due to implementation details of \spd{} but in the general case can't we therefore remove that common factor and just say that the weighted sum relative to other variables' weighted sum is the importance?
+\item do we need to point out that $\sum_{k=1}^p \Ex[|\text{\it PD}_k|]$ is not the expected value of avg $|y|$? I.e., why are we not dividing by avg $|y|$?
+\end{itemize}
+}
 
-\todo{in our case $n$ differs for each $x_j$ due to implementation details of \spd{} but in the general case can't we therefore remove that common factor and just say that the weighted sum relative to other variables' weighted sum is the importance?}
-
-\todo{ do we need to point out that $\sum_{k=1}^p \Ex[|\text{\it PD}_k|]$ is not the expected value of avg $|y|$? I.e., why are we not dividing by avg $|y|$?}
-
-The feature importance of $x_j$ is then just how much, on average, $x_j$ pushes $y$ away from zero.   
-
- and, at the left edge of the curve, $PD_j(0)=0$
+Intuitively, the feature importance of $x_j$ is how much, on average, the values found in $x_j$ are expected to push $y$ away from zero. We deliberately chose this approach instead of measuring how much $x_j$ pushes $y$ away from $\overline{y}$. The impact of $x_1$ on $y$ is $x_1^2$, not $\overline{y} - x_1^2$; e.g., at $x_j=0$, the impact on $y$ should be 0 not $\overline{y}-0 = \overline{y}$.  \figref{fig:combined-area} illustrates how the area under the $x_1^2$ and $x_2$ partial dependence curves from $y = x_1^2+x_2+100$ differ from the area straddling the means. The true area under the curve ratio of $x_1$-to-$x_2$ is 2-to-1 (9/4.5), whereas the ratio of the area straddling the mean has roughly a 3-to-1 ratio (6.95/2.26). \todo{is this clear enough?}
  
-\section{Related work}
+\section{Existing methods}
 
- these are not comparable but as they have the same goal and are the primary means to obtain future importance now, we summarize existing techniques.
+Feature importance methods for labeled data sets (with $\bf X$ and $\bf y$) are broadly categorized into data analysis and model analysis techniques, sometimes called {\em filter} and {\em wrapper} methods. Data analysis techniques analyze the data directly to identify important features, whereas model analysis techniques rely on predictions from fitted models.  The intended application of the feature importances often dictates the approach.
 
-PCA is in a new space and so impossible to interpret and not able to really give us feature order but we can approximate by using the ``loads'' associated with the first principal component.
+The data analysis techniques further split into techniques for regression and techniques for classification, with most of the research going into classification. The simplest technique to identify important regression features is to rank them by their Spearman's rank correlation coefficient \cite{spearmans}; the feature with the largest coefficient is taken to be the most important. This method works well for independent features, but suffers in the presence of codependent features.   Groups of features with similar relationships to the response variable receive the same or similar ranks, even though just one should be considered important.
 
- relevance: how correlated in the general sense is a feature with the response variable?
+Another possibility is to use PCA but on just to the $\bf X$ explanatory matrix. PCA transforms data into a new space described by eigenvectors and identifies features that explain the most variance in the new space. If the first principal component covers a large percentage of the variance, the ``loads'' associated with that component can indicate importance in the original $\bf X$ space. PCA is limited to linear relationships, however, and ``most variation'' is not always the same thing as ``most important.''
+
+For classification data sets, Relief \cite{relief} tries to identify features that distinguish between classes through repeated sampling from the data. For a sampled observation $\xi$, the algorithm finds the nearest observation with the same class (hit) and the nearest observation with the other class (miss). The score for each attribute, $x_j$, are then updated according to the distance from the selected $\xi$ to the $x_j$ values for the hit and miss observations. ReliefF \cite{ReliefF} extended Relief to work on multiclass problems and RReliefF \cite{RReliefF} adapted the technique to regression problems (by ``...introduc[ing] a kind of probability that the predicted values of two instances are different'').
+
+More work has been done on classification problems. In an effort to deal with codependencies, data analysis techniques rank features not just by {\em relevance} (correlation with the response variable) but also by low {\em redundancy}, the amount of information shared between codependent features, which is the idea behind minimal-redundancy-maximal-relevance (mRMR) by \cite{mRMR}. mRMR selects features in order according to the following score.
+
+\[
+J_{mRMR}(x_k) = I(x_k, y) - \frac{1}{|S|} \sum_{x_k \in S} I(x_k, x_j)
+\]
+
+\noindent here $I$ is some measure of mutual information, $S$ is the growing set of selected features, and $x_k$ is the candidate feature. \todo{what about mutual information between two label-encoded categoricals?} mRMR considers and avoids only pairwise codependency's between features and is limited to classification. See \cite{ubermRMR} for a recent application of mRMR at Uber Technologies.  For more on model-free feature importance, see the survey by \cite{survey}.
+
+Turning to model-based techniques now, ...
  
- redundancy:  how much information is shared with codependent features. this can be computed using multicollinearity (RF trained on all but $x_j$ to predict $x_j$.
- 
- feature selection proceeds by ordering features by most to least relevant. 
- 
-Pearson but limited to linear.
-
-Spearman ranked correlation  for monotonic relationship
-
- could use mutual information here as well ( expensive?)
- 
- both ignore co-dependencies; so two identical features will appear side-by-side in the ranking, even though one should be tossed out.
-
-Instead of picking the first/top $k$, use a greedy selection algorithm to balance relevance with redundancy.
-
-redundant variables are a problem because selection repeatedly selects features with much the same relationship or effect upon the response variable.
-
-\todo{We deal with all possible combinations for codependency's because of the nature of the partial dependence mechanism.}
-
-Relief Algorithm \cite{relief} limited to 2 class problems. \cite{ReliefF}  those multiclass problems. apparently does not deal with redundancy but does deal with interactions. RReliefF works for regression. \cite{RReliefF}. Idea is to weight weight features by how well they distinguish between classes by repeatedly sampling from the data set and updating weights according to the distance between near miss (diff class) and near hit (same class).
-
- classification only. minimal-redundancy-maximal-relevance (mRMR) by \cite{mRMR}  takes correlation-width, output a step further to deemphasize codependent features. greedy algorithm selects features one by one to minimize a loss func.  measuring relevance and redundancy.  works only on classification as formulated. it's unclear how you would measure the correlation between a categorical that was label encoded and a numerical column. what about correlation of two categoricals? correlation implies order but nominal categorical variables are not ordered. they use F statistic between numerical and target labels and then Pearson between numerical features. somebody claims that it does not deal with interactions nor non-pairwise collinearity. does it rely on density estimates? mRMR  at each step it selects the future with maximum value of relevance - average pairwise redundancy with other features. \todo{should we bother putting in the equation?}
- 
- for more see survey \cite{survey}
-
 Existing techniques are variations on a single theme: tweak the model by adding/subtracting/permuting features and measuring the impact on model accuracy (permutation and drop column) or average response (SHAP). LIME has a linear model that approximates the output in a neighborhood of x for each x.
 
 Here is where we show that SHAP gets $y = x_1^2 + x_2 + 100$ wrong.
+
+From previous paper:
+\cite{lime} proposed the local interpretable model-agnostic explanations (LIME) method as a strategy to interpret machine learning predictions. For a prediction of interest, LIME learns an interpretable model, on a small neighborhood of data around that prediction that explains the relationship between variables and the response locally. In contrast to \spd{}, LIME is used to create local interpretable models for each prediction
+
+We deal with all possible combinations for codependency's because of the nature of the partial dependence mechanism.
+
 
 \section{Experimental results}\label{sec:experiments}
 
@@ -386,6 +384,10 @@ There are issues surrounding how many explanatory samples you can use. 300 even 
 The variance of the importances derived from the random forest is high, SHAP has specialized ``explainers'' for linear and tree-based models for performance reasons, but relies on the general method to explain support vector machines. , but the results are subject to the variance of the internal model parameters.  Ideally, feature importances would not change from run to run on the same data set using the same technique.
 
 \section{Discussion and future work}
+
+For business insight purposes, practitioners often favor direct data analysis, but to perform machine learning model feature selection, practitioners strongly favor model-based techniques. The idea being that business insight should flow directly from the data without peering through a (possibly unneeded) predictive model.  Similarly, it stands to reason that computing feature importances using the intended predictive model would provide the most useful ranking.
+
+Our experience is that model analysis techniques dominate in practice, even for business insight purposes. Part of this is due to the prevalence of machine learning model usage but is also because we conflate predictive with important.  Predictiveness is sometimes a function of the model choice, however, rather than the inherent importance of the feature. For example, there could be a complex but one-to-one relationship between a variable and the response variable. A model unable to capture that relationship would show it as unpredictive, which is easy to confuse with unimportant.  On the other hand, important or not, tuning a model using what it considers predictive is useful in practice. Consequently, it might make sense to continue the bifurcation between data analysis for business insight and model analysis for model feature selection.
 
 research should now focus on getting more accurate partial dependence approximations.
 

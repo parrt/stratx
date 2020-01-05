@@ -7,7 +7,7 @@ def f(x): return x[0]**2
 
 GREY = '#D9D9D9'
 impact_fill_color = '#FFE091'
-n = 200
+n = 300
 right = 3
 
 def quad():
@@ -45,10 +45,9 @@ def quad():
     plt.show()
 
 
-def quad_from_mean():
+def quad_from_mean(ax):
     lx = np.linspace(0, right, n)
     y = lx ** 2
-    fig, ax = plt.subplots(1, 1, figsize=(3.2, 2.6))
     m = np.mean(y)
     avg_dev_from_zero = np.mean(np.abs(y))
     avg_dev_from_mean = np.mean(np.abs(y - m))
@@ -58,22 +57,20 @@ def quad_from_mean():
     print(np.mean(np.abs(y2-np.mean(y2))))
 
     ax.plot(lx, y, lw=.1, c='k')
-    ax.plot(lx, np.abs(y-m), lw=.1, c='k')
+    # ax.plot(lx, np.abs(y-m), lw=.1, c='k')
 
     ax.plot([0,right], [m,m], '--', c='k', lw=.5)
-    ax.text(1.5,m*1.1,"$\overline{y}$"+f" = {m:.1f}", fontname='Arial',
-            horizontalalignment='center')
-    ax.text(0,m*.73,'$|\overline{y}-y|$ '+f"area = {avg_dev_from_mean*(right-0):.1f}", fontname='Arial')
+    ax.text(right,m*1.1,"$\overline{y}$"+f" = {m:.1f}", fontname='Arial',
+            horizontalalignment='right')
+    ax.text(0,m*1.08,'$|\overline{y}-y|$ '+f"area = {avg_dev_from_mean*(right-0):.2f}", fontname='Arial')
     ax.text(right, 0.2,
             f"$y$ area = {avg_dev_from_zero * (right - 0):.1f}", fontname='Arial',
             horizontalalignment='right')
-    ax.set_xlabel("$x_1$", fontname='Arial')
+    ax.set_xlabel("$x_1$\n(a)", fontname='Arial')
     ax.set_ylabel("$y$", fontname='Arial')
     ax.fill_between(lx, [0] * n, y, color=impact_fill_color)
     ax.fill_between(lx, [m] * n, y, color=GREY, alpha=.8)
 
-    ax.spines['top'].set_linewidth(.5)
-    ax.spines['right'].set_linewidth(.5)
     ax.spines['left'].set_linewidth(.5)
     ax.spines['bottom'].set_linewidth(.5)
     ax.spines['top'].set_color('none')
@@ -83,15 +80,10 @@ def quad_from_mean():
 
     ax.set_yticks([0,2,4,6,8,9])
 
-    plt.tight_layout()
-    plt.savefig("../images/quadratic-from-mean-auc.pdf", bbox_inches="tight", pad_inches=0)
-    plt.show()
 
-
-def linear_from_mean():
+def linear_from_mean(ax):
     lx = np.linspace(0, right, n)
     y = lx
-    fig, ax = plt.subplots(1, 1, figsize=(3.2, 2.6))
     m = np.mean(y)
     avg_dev_from_zero = np.mean(np.abs(y))
     avg_dev_from_mean = np.mean(np.abs(y - m))
@@ -103,32 +95,30 @@ def linear_from_mean():
     ax.plot(lx, y, lw=.1, c='k')
 
     ax.plot([0,right], [m,m], '--', c='k', lw=.5)
-    ax.text(0.05,m*1.05,"$\overline{y}$"+f" = {m:.1f}", fontname='Arial',
-            horizontalalignment='left')
-    ax.text(0,m*.73,'$|\overline{y}-y|$ '+f"area = {avg_dev_from_mean*(right-0):.1f}", fontname='Arial')
+    ax.text(right,m*1.08,"$\overline{y}$"+f" = {m:.1f}", fontname='Arial',
+            horizontalalignment='right')
+    ax.text(0,m*1.08,'$|\overline{y}-y|$ '+f"area = {avg_dev_from_mean*(right-0):.2f}", fontname='Arial')
     ax.text(right, 0.2,
             f"$y$ area = {avg_dev_from_zero * (right - 0):.1f}", fontname='Arial',
             horizontalalignment='right')
-    ax.set_xlabel("$x_1$", fontname='Arial')
-    ax.set_ylabel("$y$", fontname='Arial')
+    ax.set_xlabel("$x_2$\n(b)", fontname='Arial')
     ax.fill_between(lx, [0] * n, y, color=impact_fill_color)
     ax.fill_between(lx, [m] * n, y, color=GREY, alpha=.8)
 
-    ax.spines['top'].set_linewidth(.5)
-    ax.spines['right'].set_linewidth(.5)
     ax.spines['left'].set_linewidth(.5)
     ax.spines['bottom'].set_linewidth(.5)
     ax.spines['top'].set_color('none')
     ax.spines['right'].set_color('none')
     ax.spines['left'].set_smart_bounds(True)
     ax.spines['bottom'].set_smart_bounds(True)
+    ax.set_yticks([0,2,4,6,8,9])
 
-    #ax.set_yticks([0,2,4,6,8,9])
 
-    plt.tight_layout()
-    plt.savefig("../images/linear-from-mean-auc.pdf", bbox_inches="tight", pad_inches=0)
-    plt.show()
-
-linear_from_mean()
 quad()
-quad_from_mean()
+
+fig, axes = plt.subplots(1, 2, figsize=(6.0, 2.7))
+quad_from_mean(axes[0])
+linear_from_mean(axes[1])
+plt.tight_layout()
+plt.savefig("../images/from-mean-auc.pdf", bbox_inches="tight", pad_inches=0)
+plt.show()
