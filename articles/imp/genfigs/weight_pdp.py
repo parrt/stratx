@@ -63,7 +63,11 @@ def shap_weight():
     s = np.sum(shapimp)
     print("\nRF SHAP importances", list(shapimp), list(shapimp / s))
 
-    shap.dependence_plot("height", shap_values, X[:shap_test_size], interaction_index=None)
+    # shap.dependence_plot("height", shap_values, X[:shap_test_size],
+    #                      interaction_index=None)
+    shap.dependence_plot("height", shap_values, X[:shap_test_size],
+                         interaction_index=None, dot_size=5,
+                         show=False, alpha=.5)
 
 
 def combined():
@@ -129,6 +133,6 @@ def combined():
     plt.savefig("../images/weight-shap.pdf", bbox_inches="tight", pad_inches=0)
     plt.show()
 
-weight()
-combined()
-# shap_weight()
+# weight()
+# combined()
+shap_weight()

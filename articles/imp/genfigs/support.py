@@ -472,6 +472,8 @@ def toy_weight_data(n):
     df = pd.DataFrame()
     nmen = n // 2
     nwomen = n // 2
+    nmen = int(.3 * n)
+    nwomen = int(.7 * n)
     df['sex'] = ['M'] * nmen + ['F'] * nwomen
     df.loc[df['sex'] == 'F', 'pregnant'] = np.random.randint(0, 2, size=(nwomen,))
     df.loc[df['sex'] == 'M', 'pregnant'] = 0
