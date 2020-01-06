@@ -115,7 +115,7 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
 
             # group by cat and get count
             # not quite right so leave as simple avg for now
-            # TODO: cat_counts was len 56 and abs_avg_per_cat was 55
+            # TODO: Bug: cat_counts was len 56 and abs_avg_per_cat was 55
             # uniq_cats = np.unique(X_col) # comes back sorted
             # cat_counts = [len(np.where(X_col == cat)[0]) for cat in uniq_cats]
             # abs_avg_per_cat = np.abs(avg_per_cat[~np.isnan(avg_per_cat)])
