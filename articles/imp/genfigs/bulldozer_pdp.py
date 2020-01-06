@@ -23,22 +23,22 @@ X, y = load_bulldozer()
 X = X.iloc[-50_000:]
 y = y.iloc[-50_000:]
 
-idxs = resample(range(n), n_samples=n, replace=False)
+idxs = resample(range(50_000), n_samples=n, replace=False)
 X_, y_ = X.iloc[idxs], y.iloc[idxs]
 
-I = importances(X_, y_,
-                catcolnames={'AC', 'ModelID', 'YearMade', 'ProductSize'})
-print(I)
+# I = importances(X_, y_,
+#                 catcolnames={'AC', 'ModelID', 'YearMade', 'ProductSize'})
+# print(I)
 #plot_catstratpd(X_, y_, colname='ProductSize', targetname='SalePrice')
 
-# plot_stratpd(X_, y_, colname='age', targetname='SalePrice',
-#              show_slope_lines=False,
-#              show_impact=True,
-#              figsize=(4,3)
-#              )
-# plt.tight_layout()
-# plt.savefig(f"/Users/parrt/Desktop/james-age.pdf", pad_inches=0)
-# plt.show()
+plot_stratpd(X_, y_, colname='age', targetname='SalePrice',
+             show_slope_lines=False,
+             show_impact=False,
+             figsize=(3.8,3.2)
+             )
+plt.tight_layout()
+plt.savefig(f"/Users/parrt/Desktop/james-age.pdf", pad_inches=0)
+plt.show()
 #
 # plot_stratpd(X_, y_, colname='YearMade', targetname='SalePrice',
 #              show_slope_lines=False,

@@ -468,6 +468,35 @@ def load_flights(n):
     return X, y, df_flights
 
 
+def toy_weight_data(n):
+    df = pd.DataFrame()
+    nmen = n // 2
+    nwomen = n // 2
+    df['sex'] = ['M'] * nmen + ['F'] * nwomen
+    df.loc[df['sex'] == 'F', 'pregnant'] = np.random.randint(0, 2, size=(nwomen,))
+    df.loc[df['sex'] == 'M', 'pregnant'] = 0
+    df.loc[df['sex'] == 'M', 'height'] = 5 * 12 + 8 + np.random.uniform(-7, +8,
+                                                                        size=(nmen,))
+    df.loc[df['sex'] == 'F', 'height'] = 5 * 12 + 5 + np.random.uniform(-4.5, +5,
+                                                                        size=(nwomen,))
+    df.loc[df['sex'] == 'M', 'education'] = 10 + np.random.randint(0, 8, size=nmen)
+    df.loc[df['sex'] == 'F', 'education'] = 12 + np.random.randint(0, 8, size=nwomen)
+    df['weight'] = 120 \
+                   + (df['height'] - df['height'].min()) * 10 \
+                   + df['pregnant'] * 70 \
+                   - df['education'] * 1.5
+    df['pregnant'] = df['pregnant'].astype(bool)
+    df['education'] = df['education'].astype(int)
+    eqn = "y = 120 + 10(x_{height} - min(x_{height})) + 30x_{pregnant} - 1.5x_{education}"
+
+    df['pregnant'] = df['pregnant'].astype(int)
+    df['sex'] = df['sex'].map({'M': 0, 'F': 1}).astype(int)
+    X = df.drop('weight', axis=1)
+    y = df['weight']
+
+    return X, y, df, eqn
+
+
 def load_bulldozer():
     """
     Download Train.csv data from https://www.kaggle.com/c/bluebook-for-bulldozers/data

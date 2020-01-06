@@ -111,13 +111,15 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
             # some cats have NaN, such as 0th which is often for "missing values"
             # depending on label encoding scheme.
             # Used to be just this but now we weight by num of each cat:
-            # avg_abs_pdp = np.nanmean(np.abs(avg_per_cat))
+            avg_abs_pdp = np.nanmean(np.abs(avg_per_cat))
 
             # group by cat and get count
-            uniq_cats = np.unique(X_col) # comes back sorted
-            cat_counts = [len(np.where(X_col == cat)[0]) for cat in uniq_cats]
-            abs_avg_per_cat = np.abs(avg_per_cat[~np.isnan(avg_per_cat)])
-            avg_abs_pdp = np.sum(cat_counts * abs_avg_per_cat) / np.sum(cat_counts)
+            # not quite right so leave as simple avg for now
+            # TODO: cat_counts was len 56 and abs_avg_per_cat was 55
+            # uniq_cats = np.unique(X_col) # comes back sorted
+            # cat_counts = [len(np.where(X_col == cat)[0]) for cat in uniq_cats]
+            # abs_avg_per_cat = np.abs(avg_per_cat[~np.isnan(avg_per_cat)])
+            # avg_abs_pdp = np.sum(cat_counts * abs_avg_per_cat) / np.sum(cat_counts)
         else:
             leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored = \
                 partial_dependence(X=X, y=y, colname=colname,

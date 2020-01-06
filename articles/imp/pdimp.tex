@@ -124,7 +124,7 @@ The differences clearly arise because the feature importances are distorted by t
  
 In our experience, it is best to get importances using multiple techniques and to view the combined results as a clue rather than the gospel truth.  The unfortunate reality, though, is that practitioners routinely make business decisions and  perform feature selection using the results provided by machine learning libraries without questioning their validity.  For example, \cite{rfpimp} demonstrated that the widely-used {\em gini-drop} technique, specific to random forests and provided by the popular {\tt scikit-learn} Python library, gives inappropriate weight to features with many unique values, even pure noise features. (The gini-drop of a feature is the average drop in gini impurity for decision nodes splitting on that feature.) \todo{transition}
 
-Despite many years of research attention, there is still no widely-accepted definition of feature importance. While there are multiple precisely-defined algorithms, we are unaware of a purely mathematical and data-driven definition.  Existing model-free techniques are greedy feature-selection algorithms rather than formulas to compute importances. Model-based techniques observe model behavior to estimate feature importances but, by definition, such estimates contain both feature importance and predictive strength information for a specific model.  The primary contributions of this paper are (1) a simple, intuitive, and mathematical definition of feature importance that is a purely function of training data and (2) an efficient implementation that yields plausible and effective results, as measured by the model prediction error for the top $k$ features (\secref{sec:experiments}). \todo{probably need to say regression versus classifier here.}
+Despite many years of research attention, there is still no widely-accepted definition of feature importance. While there are multiple precisely-defined algorithms, we are unaware of a purely mathematical, data-driven, non-algorithmic definition.  Existing model-free techniques are greedy feature-selection algorithms rather than formulas to compute importances. Model-based techniques observe model behavior to estimate feature importances but, by definition, such estimates contain both feature importance and predictive strength information for a specific model.  The primary contributions of this paper are (1) a simple, intuitive, and mathematical formula for computing feature importance that is purely a function of training data and (2) an efficient implementation that yields plausible and effective results, as measured by the model prediction error for the top $k$ features (\secref{sec:experiments}). \todo{probably need to say regression versus classifier here.}
 
 ~\\
 \noindent \todo{Likely a good spot for a paper walk-through}
@@ -210,7 +210,7 @@ The definition of $\Imp_j$ in \eqnref{eq:Epd2a} assumes that data is evenly dist
 \end{itemize}
 }
 
-Intuitively, the feature importance of $x_j$ is how much, on average, the values found in $x_j$ are expected to push $y$ away from zero. We deliberately chose this  definition instead of measuring how much $x_j$ pushes $y$ away from $\overline{y}$. The impact of $x_1$ on $y$ is $x_1^2$, not $\overline{y} - x_1^2$; e.g., at $x_j=0$, the impact on $y$ should be 0, not $\overline{y}-0 = \overline{y}$.  \figref{fig:combined-area} illustrates how the area under the $x_1^2$ and $x_2$ partial dependence curves from $y = x_1^2+x_2+100$ differ from the area straddling the means. The true area under the curve ratio of $x_1$-to-$x_2$ is 2-to-1 (9/4.5), whereas the ratio of the area straddling the mean has roughly a 3-to-1 ratio (6.95/2.26). \todo{is this clear enough?}
+Intuitively, the feature importance of $x_j$ is how much, on average, the values of $x_j$ are expected to push $y$ away from zero. We deliberately chose this  definition instead of measuring how much $x_j$ pushes $y$ away from the average response, $\overline{y}$. The impact of $x_1$ on $y$ is $x_1^2$, not $\overline{y} - x_1^2$; e.g., at $x_j=0$, the impact on $y$ should be 0, not $\overline{y}-0 = \overline{y}$.  \figref{fig:combined-area} illustrates how the area under the $x_1^2$ and $x_2$ partial dependence curves from $y = x_1^2+x_2+100$ differ from the area straddling the means. The true area under the curve ratio of $x_1$-to-$x_2$ is 2-to-1 (9/4.5), whereas the ratio of the area straddling the mean has roughly a 3-to-1 ratio (6.95/2.26). \todo{is this clear enough?}
  
 \section{Existing methods}
 
@@ -228,25 +228,65 @@ In an effort to deal with codependencies, data analysis techniques rank features
 J_{mRMR}(x_k) = I(x_k, y) - \frac{1}{|S|} \sum_{x_k \in S} I(x_k, x_j)
 \]
 
-\noindent where $I$ is some measure of mutual information, $S$ is the growing set of selected features, and $x_k$ is the candidate feature. mRMR only considers pairwise codependencies between features and is limited to classification as originally defined. See \cite{ubermRMR} for a recent application of mRMR at Uber Technologies.  For more on model-free feature importances, see the survey by \cite{survey}.
+\noindent where $I(x_k, x_j)$ is some measure of mutual information between $x_k$ and $x_j$, $S$ is the growing set of selected features, and $x_k$ is the candidate feature. mRMR only considers pairwise codependencies between features and is limited to classification as originally defined. See \cite{ubermRMR} for a recent application of mRMR at Uber Technologies.  For more on model-free feature importances, see the survey by \cite{survey}.
 
-Turning to model-based techniques now, ...
+Turning to model-based techniques, feature importances are typically variations on a theme: tweak the model and measure the effect on model prediction accuracy or expected model output. The simplest approach is {\em drop-column importance}, which defines $x_j$ importance as the difference in model accuracy between the full model and the model with $x_j$ removed. The model must be retrained $p$ times and highly similar features yield low or zero importances because codependent features cover for the dropped column in the model.
+
+To avoid retraining the model, $x_j$ can be permuted instead of dropped for {\em permutation importance} (\cite{RF}). This approach is faster but can introduce nonsensical observations by permuting invalid values into records; e.g., shifting a true {\tt\small pregnant} value into a male's record. Codependent features tend to share importance, at least when applied to random forest models.
+
+Rather than removing or permuting entire columns of data, LIME \cite{lime} and SHAP \cite{shap} focus on model behavior at the observation level. For a prediction of interest, LIME trains an interpretable linear model, on a small neighborhood of data around that prediction to explain the relationship between variables and the response locally. SHAP, however, was shown to subsume the LIME technique in \cite{shap}.
+
+SHAP has its roots in {\em Shapley regression values} \cite{shapley-regression} where (linear) models are trained on all possible subsets of features.  Each possible model pair differs in a single feature $x_j$ and contributes the difference in model pair output towards the Shapley value for $x_j$. The complete Shapley value is the average model-pair difference weighted by the number of possible pairs differing in just $x_j$.  For completely independent features, drop-column importance is sufficient because the contribution of $x_j$ can be computed without considering how combinations of features affect model output.  In practice, features are rarely independent and the marginal effect of adding a new feature on model output depends on the order in which features are added.  
+
+To avoid training a combinatorial explosion of models with the various feature subsets, SHAP reuses the same model by running simplified feature vectors into the model. Simplified vectors replace ``missing'' $x_j$ features with the expected value of $x_j$. To reduce computation costs, SHAP computes values on a subsample from the data set. SHAP has model-type-dependent optimizations for linear regression, deep learning, and decision-tree based models. As with permutation methods, replacing feature values with their expectations introduce the possibility of creating nonsensical feature vectors; e.g., replacing a bulldozer {\tt\small age} feature with the average risks conjuring up a type of bulldozer that did not exist at that time.
+
+ disadvantages are the subsets  size too small to be representative and costs go up dramatically. this is not a problem for linear models; SVM took 13min. RF goes up. boosting faster as it has shallower trees.
  
-Existing techniques are variations on a single theme: tweak the model by adding/subtracting/permuting features and measuring the impact on model accuracy (permutation and drop column) or average response (SHAP). LIME has a linear model that approximates the output in a neighborhood of x for each x.
+Equation (7) from \cite{stratpd} 
+
+\begin{equation}\label{eq:weight}
+y_{weight}  = 120 + 10(x_{height} - min(x_{height})) + 30x_{pregnant} - 1.5x_{education}
+\end{equation}
+
+where the relationship between height and weight and women gaining 70 pounds to make the bias more prominent. \figref{fig:shap-weight} show ...  \spd{} gives a flat line with slope with roughly 10 (see \cite{stratpd} for more).
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.5]{images/weight-shap.pdf}
+\includegraphics[scale=0.5]{images/weight-stratpd.pdf}
+\caption{Plots of height versus body weight using 2000 observations from Equation \eqref{eq:weight} as drawn by SHAP library}
+\label{fig:shap-weight}
+\end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.6]{images/bulldozer-age-shap.pdf}
+\includegraphics[scale=0.6]{images/bulldozer-age-stratpd.pdf}
+\caption{Bulldozer age vs SalePrice, as drawn by SHAP library and StratPD}
+\label{fig:shap-stratpd-age}
+\end{center}
+\end{figure}
+
+PD/ICE conjures up unlikely observation such as pregnant males, resulting in biased ICE lines.
+
+SHAP has model type optimizations so it is for performance; not unlike gini drop it is sensitive to vagaries of the underlying model.  high variance models such as the decision trees inside random forests can lead to high variance of SHAP values.
+
+most approaches are model-independent
+ 
+LIME has a linear model that approximates the output in a neighborhood of x for each x. this might be the Segway to gini drop and model type dependent SHAP.
 
 SHAP replaces missing values with mean, which can create nonsensical and what do they do with categoricals?
 
+\todo{ do we need to mention LASSO?}
+
 Here is where we show that SHAP gets $y = x_1^2 + x_2 + 100$ wrong.
 
-From previous paper:
-\cite{lime} proposed the local interpretable model-agnostic explanations (LIME) method as a strategy to interpret machine learning predictions. For a prediction of interest, LIME learns an interpretable model, on a small neighborhood of data around that prediction that explains the relationship between variables and the response locally. In contrast to \spd{}, LIME is used to create local interpretable models for each prediction
-
-We deal with all possible combinations for codependency's because of the nature of the partial dependence mechanism.
 
 
 \section{Experimental results}\label{sec:experiments}
 
-\todo{an experiment where we show and sensitive to noise column}
+\todo{an experiment where we show insensitive to noise column and any other codependent ones that are thrown in but don't affect y}
 
 \todo{maybe show the linear 1 1 1 codependence example}
 
@@ -385,6 +425,10 @@ The variance of the importances derived from the random forest is high, SHAP has
 
 \section{Discussion and future work}
 
+We deal with all possible combinations for codependency's because of the nature of the partial dependence mechanism.
+
+features important in one model are not exportable to another which also means that they're less likely to be useful for business insight.
+ 
 For business insight purposes, practitioners often favor direct data analysis, but to perform machine learning model feature selection, practitioners strongly favor model-based techniques. The idea being that business insight should flow directly from the data without peering through a (possibly unneeded) predictive model.  Similarly, it stands to reason that computing feature importances using the intended predictive model would provide the most useful ranking.
 
 Our experience is that model analysis techniques dominate in practice, even for business insight purposes. Part of this is due to the prevalence of machine learning model usage but is also because we conflate predictive with important.  Predictiveness is sometimes a function of the model choice, however, rather than the inherent importance of the feature. For example, there could be a complex but one-to-one relationship between a variable and the response variable. A model unable to capture that relationship would show it as unpredictive, which is easy to confuse with unimportant.  On the other hand, important or not, tuning a model using what it considers predictive is useful in practice. Consequently, it might make sense to continue the bifurcation between data analysis for business insight and model analysis for model feature selection.

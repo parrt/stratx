@@ -3,7 +3,7 @@ from support import *
 figsize = (3.5, 3.0)
 use_oob=False
 metric = mean_absolute_error
-n = 25_000
+n = 30_000
 
 X, y = load_bulldozer()
 
@@ -12,7 +12,7 @@ X, y = load_bulldozer()
 X = X.iloc[-50_000:]
 y = y.iloc[-50_000:]
 
-idxs = resample(range(n), n_samples=n, replace=False)
+idxs = resample(range(50_000), n_samples=n, replace=False)
 X_, y_ = X.iloc[idxs], y.iloc[idxs]
 
 R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \

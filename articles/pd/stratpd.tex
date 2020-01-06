@@ -139,7 +139,7 @@ Consider a New York City apartment rent data set from Kaggle \cite{rent} and the
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.7]{images/bedrooms_vs_price.png}
-\caption{Plots of bedrooms versus rent price using New York City apartment rent data. (a) marginal plot, (b) PD/ICE plot derived from random forest, (c) PD/ICE plot derived from SVM, and (d) \spd{} plot; sample size is 10,000 observations of \textascii tilde400k. The PD/ICE plots are radically different for the same data set, depending on the chosen user model.}
+\caption{Plots of bedrooms versus rent price using New York City apartment rent data. (a) marginal plot, (b) PD/ICE plot derived from random forest, (c) PD/ICE plot derived from SVM, and (d) \spd{} plot; sample size is 10,000 observations of \textasciitilde400k. The PD/ICE plots are radically different for the same data set, depending on the chosen user model.}
 \label{fig:baths_price}
 \end{center}
 \end{figure}
@@ -380,7 +380,7 @@ y & = &120 + 10(x_{height} - min(x_{height})) + 30x_{pregnant} - 1.5x_{education
 \end{array}
 \end{equation}
 
-Because of the codependence between $x_{pregnant}$ and $x_{height}$ via $x_{sex}$, \figref{fig:height_vs_weight} demonstrated that the PD/ICE plot incorrectly shows shorter people as heavier on average. PD/ICE conjures up unlikely observation such as pregnant males, resulting in biased ICE lines.
+Because of the codependence between $x_{pregnant}$ and $x_{height}$ via $x_{sex}$, \figref{fig:height_vs_weight} demonstrated that the PD/ICE plot incorrectly shows shorter people as heavier on average. PD/ICE conjures up unlikely observation such as pregnant males, resulting in biased ICE lines. height is slope 10 line.
 
 As another example of isolating codependent variable effects, compare the \spd{} and PD/ICE plots in \figref{fig:education_vs_weight} showing number of years of education versus weight. Weight is related to education by slope -1.5, so a perfect partial dependence graph would show a drop of 12 pounds over 8 years of education. The PD/ICE plot captures only about two thirds of that relationship, whereas, the \spd{} plot gets the true education-weight relationship.  Female observations have at least 12 years of education, versus 10 for males, so $x_{education}$ and $x_{sex}$ are codependent, though, there is no interaction term. The fact that women are shorter on average biases the education-weight PD/ICE plot because the baseline weight is lower from which the education contribution is  subtracted.
 
