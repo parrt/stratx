@@ -176,15 +176,6 @@ As originally defined, partial dependence curves are derived from fitted models 
 \includegraphics[scale=0.7]{images/bulldozer-impact-YearMade.pdf}\captionof{figure}{AUC for bulldozer features weighted by evidence, 20, 000 records of 401,125}
 \label{fig:bulldozer-impact}
 \end{minipage}
-\hfill
-\begin{minipage}[t]{0.57\textwidth}
-\centering
-\vspace{1em}
-\includegraphics[scale=0.65]{images/from-mean-auc.pdf}
-\captionof{figure}{AUC for partial dependence curves from $y = x_1^2 + x_2 + 100$ in $[0,3]$ Shows why must compute from 0 not deviation from mean}
-\label{fig:combined-area}
-\end{minipage}\vspace{5mm}
-
 
 The definition of $\Imp_j$ in \eqnref{eq:Epd2a} assumes that data is evenly distributed across all $x_j$ domains, which is not the case in practice for $(\bf X, y)$ data sets.  The impact of each $\text{\it PD}_j$ curve value must be weighted by the number of samples at $x_j=z$.  For example, \figref{fig:bulldozer-impact} shows the partial dependence curve (black dots) for feature {\tt\small age} from the bulldozer auction data set \cite{bulldozer}. The gray histogram under the curve indicates the number of samples at each $x_j$ value. The red dots represent the $\text{\it PD}_j$ weighted according to the histogram height and the orange region represents the impact {\tt\small YearMade} has on target {\tt\small SalePrice}. While the {\tt\small YearMade} partial dependence curve is plausible before year 1990 (older bulldozers are worth less), there are so few data points that the collection of very old bulldozers should have little overall effect on the overall average sale price.  This leads to a definition based upon expected value rather than simple averages across $x_j$ domains.
 
@@ -238,7 +229,15 @@ Rather than removing or permuting entire columns of data, LIME \cite{lime} and S
 
 SHAP has its roots in {\em Shapley regression values} \cite{shapley-regression} where (linear) models are trained on all possible subsets of features.  Each possible model pair differs in a single feature $x_j$ and contributes the difference in model pair output towards the Shapley value for $x_j$. The complete Shapley value is the average model-pair difference weighted by the number of possible pairs differing in just $x_j$.  For completely independent features, drop-column importance is sufficient because the contribution of $x_j$ can be computed without considering how combinations of features affect model output.  In practice, features are rarely independent and the marginal effect of adding a new feature on model output depends on the order in which features are added.  
 
-To avoid training a combinatorial explosion of models with the various feature subsets, SHAP reuses the same model by running simplified feature vectors into the model. Simplified vectors replace ``missing'' $x_j$ features with the expected value of $x_j$. To reduce computation costs, SHAP computes values on a subsample from the data set. SHAP has model-type-dependent optimizations for linear regression, deep learning, and decision-tree based models. As with permutation methods, replacing feature values with their expectations introduce the possibility of creating nonsensical feature vectors; e.g., replacing a bulldozer {\tt\small age} feature with the average risks conjuring up a type of bulldozer that did not exist at that time.
+To avoid training a combinatorial explosion of models with the various feature subsets, SHAP reuses the same model by running simplified feature vectors into the model. Simplified vectors replace ``missing'' $x_j$ features with the expected value of $x_j$, to simulate models trained on feature subsets. To further reduce computation costs, SHAP computes values on a subsample from the data set. SHAP has model-type-dependent optimizations for linear regression, deep learning, and decision-tree based models. As with permutation methods, replacing feature values with their expectations introduces the possibility of creating nonsensical feature vectors; e.g., replacing a bulldozer {\tt\small age} feature with the average risks conjuring up a type of bulldozer that did not exist at that time. This causes errors in contribution of var to y. 
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.65]{images/from-mean-auc.pdf}
+\captionof{figure}{AUC for partial dependence curves from $y = x_1^2 + x_2 + 100$ in $[0,3]$ Shows why must compute from 0 not deviation from mean}
+\label{fig:combined-area}
+\end{center}
+\end{figure}
 
  disadvantages are the subsets  size too small to be representative and costs go up dramatically. this is not a problem for linear models; SVM took 13min. RF goes up. boosting faster as it has shallower trees.
  
@@ -252,8 +251,8 @@ where the relationship between height and weight and women gaining 70 pounds to 
 
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[scale=0.5]{images/weight-shap.pdf}
-\includegraphics[scale=0.5]{images/weight-stratpd.pdf}
+\includegraphics[scale=0.7]{images/weight-shap-tree_path_dependent.pdf}~~
+\includegraphics[scale=0.7]{images/weight-shap-interventional.pdf}
 \caption{Plots of height versus body weight using 2000 observations from Equation \eqref{eq:weight} as drawn by SHAP library}
 \label{fig:shap-weight}
 \end{center}
@@ -261,14 +260,13 @@ where the relationship between height and weight and women gaining 70 pounds to 
 
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[scale=0.6]{images/bulldozer-age-shap.pdf}
+\includegraphics[scale=0.6]{images/bulldozer-age-marginal.pdf}~~
+\includegraphics[scale=0.6]{images/bulldozer-age-shap.pdf}~~
 \includegraphics[scale=0.6]{images/bulldozer-age-stratpd.pdf}
 \caption{Bulldozer age vs SalePrice, as drawn by SHAP library and StratPD}
 \label{fig:shap-stratpd-age}
 \end{center}
 \end{figure}
-
-PD/ICE conjures up unlikely observation such as pregnant males, resulting in biased ICE lines.
 
 SHAP has model type optimizations so it is for performance; not unlike gini drop it is sensitive to vagaries of the underlying model.  high variance models such as the decision trees inside random forests can lead to high variance of SHAP values.
 
