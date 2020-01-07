@@ -36,7 +36,7 @@ def boston():
 
 
 def bulldozer():
-    n = 25_000  # shap crashes above this; 20k works
+    n = 30_000  # shap crashes above this; 20k works
 
     X, y = load_bulldozer()
     X = X.iloc[-n:]
@@ -63,7 +63,7 @@ def bulldozer():
 
 
 def rent():
-    n = 25_000  # more and shap gets bus error it seems
+    n = 30_000  # more and shap gets bus error it seems
     X, y = load_rent(n=n)
 
     R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
@@ -83,7 +83,7 @@ def rent():
 
 
 def flight():
-    n = 25_000
+    n = 30_000
 
     X, y, _ = load_flights(n=n)
 
