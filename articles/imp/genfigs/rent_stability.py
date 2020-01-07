@@ -1,9 +1,9 @@
 from support import *
 
 metric = mean_absolute_error
-X, y = load_rent(clean_prices=False)
+X, y = load_rent(n=20_000, clean_prices=True)
 
-I = stability(X, y, 10000, 10)
+I = stability(X, y, 10000, 10, technique='RF SHAP')
 print("\nFinal")
 print(I)
 

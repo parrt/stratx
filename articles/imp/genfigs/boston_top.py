@@ -2,6 +2,8 @@ from support import *
 
 figsize = (3.5, 3.0)
 use_oob=False
+model='RF' # ('RF','SVM','GBM')
+
 boston = load_boston()
 X = pd.DataFrame(boston.data, columns=boston.feature_names)
 y = pd.Series(boston.target)
@@ -14,6 +16,8 @@ R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
                          metric=metric,
                          use_oob=use_oob,
                          min_slopes_per_x=5,
+                         kfolds=5,
+                         model=model,
                          top_features_range=(1,8),
                          drop=['Spearman','PCA'])
 
@@ -32,12 +36,12 @@ plt.show()
 print(R)
 R.reset_index().to_feather("/tmp/boston.feather")
 
-plot_topk(R, k=8, title="Boston housing prices",
+plot_topk(R, k=8, title=f"{model} Boston housing prices",
           ylabel="20% 5-fold CV MAE (k$)",
           title_fontsize=14,
           label_fontsize=14,
           ticklabel_fontsize=10,
           figsize=figsize)
 plt.tight_layout()
-plt.savefig(f"../images/boston-topk{'-oob' if use_oob else ''}.pdf", bbox_inches="tight", pad_inches=0)
+plt.savefig(f"../images/boston-topk-{model}.pdf", bbox_inches="tight", pad_inches=0)
 plt.show()

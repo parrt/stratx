@@ -346,28 +346,57 @@ Then see \figref{fig:topk}
 \centering
 \begin{subfigure}{.24\textwidth}
     \centering
-\includegraphics[scale=0.48]{images/boston-topk.pdf}
+\includegraphics[scale=0.48]{images/boston-topk-RF.pdf}
 \subcaption{\footnotesize foo}
 \end{subfigure}%
 \hfill
 \begin{subfigure}{.23\textwidth}
     \centering
-\includegraphics[scale=0.48]{images/flights-topk.pdf}
+\includegraphics[scale=0.48]{images/flights-topk-RF.pdf}
 \subcaption{\footnotesize foo}
 \end{subfigure}
 \hfill
 \begin{subfigure}{.25\textwidth}
     \centering
-\includegraphics[scale=0.5]{images/bulldozer-topk.pdf}
+\includegraphics[scale=0.5]{images/bulldozer-topk-RF.pdf}
 \subcaption{\footnotesize sometimes we get age as first feature which is ok but not the amazing ModelID, clearly best. 100 = 81/100 ModelID is top and 19/100 age is top}
 \end{subfigure}%
 \hfill
 \begin{subfigure}{.2\textwidth}
     \centering
-\includegraphics[scale=0.5]{images/rent-topk.pdf}
+\includegraphics[scale=0.5]{images/rent-topk-RF.pdf}
 \subcaption{\footnotesize foo}
 \end{subfigure}
-\caption[short]{A caption}
+\caption[short]{Features from RF model, tested on RF}
+\label{fig:topk}
+\end{figure}
+
+\begin{figure}
+\centering
+\begin{subfigure}{.24\textwidth}
+    \centering
+\includegraphics[scale=0.48]{images/boston-topk-GBM.pdf}
+\subcaption{\footnotesize foo}
+\end{subfigure}%
+\hfill
+\begin{subfigure}{.23\textwidth}
+    \centering
+\includegraphics[scale=0.48]{images/flights-topk-GBM.pdf}
+\subcaption{\footnotesize foo}
+\end{subfigure}
+\hfill
+\begin{subfigure}{.25\textwidth}
+    \centering
+\includegraphics[scale=0.5]{images/bulldozer-topk-GBM.pdf}
+\subcaption{\footnotesize sometimes we get age as first feature which is ok but not the amazing ModelID, clearly best. 100 = 81/100 ModelID is top and 19/100 age is top}
+\end{subfigure}%
+\hfill
+\begin{subfigure}{.2\textwidth}
+    \centering
+\includegraphics[scale=0.5]{images/rent-topk-GBM.pdf}
+\subcaption{\footnotesize foo}
+\end{subfigure}
+\caption[short]{Features from RF model, tested on gradient boosting machine}
 \label{fig:topk}
 \end{figure}
 

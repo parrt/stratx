@@ -153,7 +153,7 @@ def shap_importances(model, X_train, X_test, n_shap, normalize=True, sort=True):
     return shapI
 
 
-def cv_features(X, y, features, metric, time_sensitive=False, kfolds=5):
+def cv_features(X, y, features, metric, time_sensitive=False, kfolds=5, model='RF'):
     # if time_sensitive:
     #     n_test = int(0.20 * len(X))
     #     n_train = len(X) - n_test
@@ -165,10 +165,23 @@ def cv_features(X, y, features, metric, time_sensitive=False, kfolds=5):
 
     for k in range(kfolds):
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-        rf = RandomForestRegressor(n_estimators=n_estimators, min_samples_leaf=1, n_jobs=-1)
-        rf.fit(X_train[features], y_train)
-        y_pred = rf.predict(X_test[features])
-        s = metric(y_test, y_pred)
+        if model=='RF':
+            m = RandomForestRegressor(n_estimators=n_estimators, min_samples_leaf=1, n_jobs=-1)
+            m.fit(X_train[features], y_train)
+            y_pred = m.predict(X_test[features])
+            s = metric(y_test, y_pred)
+        elif model == 'SVM':
+            m = svm.SVR(gamma='auto')
+            m.fit(X_train[features], y_train)
+            y_pred = m.predict(X_test[features])
+            s = metric(y_test, y_pred)
+        elif model == 'GBM':
+            m = xgb.XGBRegressor(objective='reg:squarederror')
+            m.fit(X_train[features], y_train)
+            y_pred = m.predict(X_test[features])
+            s = metric(y_test, y_pred)
+        else:
+            raise ValueError(model+" is not valid model")
         scores.append(s)
 
     return np.array(scores)
@@ -177,6 +190,7 @@ def cv_features(X, y, features, metric, time_sensitive=False, kfolds=5):
 def compare_top_features(X, y, top_features_range=None,
                          n_shap=300,
                          metric = mean_absolute_error,
+                         model='RF',
                          use_oob = False,
                          #time_sensitive=False,
                          kfolds=5,
@@ -253,7 +267,7 @@ def compare_top_features(X, y, top_features_range=None,
             # print(f"Train with {features} from {technique_name}")
             # Train RF model with top-k features
             # Do 5-fold cross validation using original X, y passed in to this method
-            scores = cv_features(X, y, features, metric=metric, kfolds=kfolds)
+            scores = cv_features(X, y, features, metric=metric, kfolds=kfolds, model=model)
             results.append(np.mean(scores))
             stddevs.append(np.std(scores))
             # print(f"{technique_name} valid R^2 {s:.3f}")
@@ -396,13 +410,18 @@ def plot_topk(R, ax=None, k=None,
         ax.set_title(title, fontsize=title_fontsize, fontname=fontname)
 
 
-def stability(X, y, sample_size, n_trials):
+def stability(X, y, sample_size, n_trials, technique='StratImpact'):
     n = len(X)
     all_I = np.empty(shape=(n_trials, X.shape[1]))
     for i in range(n_trials):
         bootstrap_sample_idxs = resample(range(n), n_samples=sample_size, replace=False)
         X_, y_ = X.iloc[bootstrap_sample_idxs], y.iloc[bootstrap_sample_idxs]
-        I = importances(X_, y_)
+        if technique=='StratImpact':
+            I = importances(X_, y_)
+        elif technique=='RFSHAP':
+            rf = RandomForestRegressor(n_estimators=40)
+            rf.fit(X_, y_)
+            I = shap_importances(rf, X_, X_, n_shap=300)
         print(I.iloc[:8])
         all_I[i, :] = I['Importance'].values
     I = pd.DataFrame(data={'Feature': X.columns,
@@ -580,6 +599,13 @@ def load_rent(n:int=None, clean_prices=True):
     df["num_desc_words"] = df["description"].apply(lambda x: len(x.split()))
     df["num_features"] = df["features"].apply(lambda x: len(x))
     df["num_photos"] = df["photos"].apply(lambda x: len(x))
+
+    # The numeric stratpd can't extract data too well when so many data points sit
+    # on same values; flip it to integers from flops like 1.5 baths; can consider
+    # categorical nominal or as ordinal but it stratpd ignores lots of data as ordinal
+    # so best to use catstratpd
+    uniq_b = np.unique(df['bathrooms'])
+    df['bathrooms'] = df['bathrooms'].map({v: i + 1 for i, v in enumerate(uniq_b)})
 
     hoods = {
         "hells": [40.7622, -73.9924],

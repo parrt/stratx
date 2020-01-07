@@ -4,6 +4,7 @@ figsize = (3.5, 3.0)
 use_oob=False
 metric = mean_absolute_error
 n = 25_000
+model='RF' # ('RF','SVM','GBM')
 
 X, y, _ = load_flights(n=n)
 
@@ -14,6 +15,8 @@ R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
                                       'DESTINATION_AIRPORT',
                                       'FLIGHT_NUMBER',
                                       'DAY_OF_WEEK'},
+                         kfolds=5,
+                         model=model,
                          metric=mean_squared_error,
                          # stratpd_min_samples_leaf=5, # overcome lots of collinearity
                          use_oob=use_oob,
@@ -37,12 +40,12 @@ print(R)
 R = R.reset_index(drop=True)
 R.reset_index().to_feather("/tmp/flights.feather")
 
-plot_topk(R, k=8, title="Flight arrival delay",
+plot_topk(R, k=8, title=f"{model} Flight arrival delay",
           ylabel="20% 5-fold CV MAE (mins)",
           title_fontsize=14,
           label_fontsize=14,
           ticklabel_fontsize=10,
           figsize=figsize)
 plt.tight_layout()
-plt.savefig(f"../images/flights-topk{'-oob' if use_oob else ''}.pdf", bbox_inches="tight", pad_inches=0)
+plt.savefig(f"../images/flights-topk-{model}.pdf", bbox_inches="tight", pad_inches=0)
 plt.show()

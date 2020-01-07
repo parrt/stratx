@@ -84,25 +84,28 @@ With 1 job: Impact importance time 131s so about 2x longer. seems pretty stable.
 
 #np.random.seed(999)
 
-X, y = load_rent(n=50_000)
+X, y = load_rent(n=20_000)
 
 # I = impact_importances(X, y, 'price', n_jobs=1, supervised=False)
 # print(I)
 
-plot_stratpd(X, y, 'Wvillage', 'price',
-             show_slope_counts=True,
-             n_trees=1,
-             bootstrap=False,
-             # supervised=False,
-             supervised=True,
-             min_slopes_per_x=140,
-             min_samples_leaf=10,
-             show_slope_lines=False,
-             )
+# plot_stratpd(X, y, 'Wvillage', 'price',
+#              show_slope_counts=True,
+#              n_trees=1,
+#              bootstrap=False,
+#              # supervised=False,
+#              supervised=True,
+#              min_slopes_per_x=140,
+#              min_samples_leaf=10,
+#              show_slope_lines=False,
+#              )
 
-# plot_stratpd_gridsearch(X, y, 'bedrooms', 'price',
-#                         min_slopes_per_x_values=(0,5))
+plot_stratpd_gridsearch(X, y, 'astoria', 'price',
+                        show_slope_lines=False,
+                        show_impact=True,
+                        min_samples_leaf_values=(3,5,8),
+                        min_slopes_per_x_values=(5,8))
 plt.tight_layout()
 # rent_pdp()
-plt.savefig("/Users/parrt/Desktop/james.png", pad_inches=0, dpi=150)
+plt.savefig("/Users/parrt/Desktop/astoria.png", pad_inches=0, dpi=150)
 plt.show()
