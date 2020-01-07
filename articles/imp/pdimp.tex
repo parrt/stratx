@@ -244,9 +244,10 @@ To avoid training a combinatorial explosion of models with the various feature s
 Equation (7) from \cite{stratpd} 
 
 \begin{equation}\label{eq:weight}
-y_{weight}  = 120 + 10(x_{height} - min(x_{height})) + 30x_{pregnant} - 1.5x_{education}
+y_{weight}  = 120 + 10(x_{height} - min(x_{height})) + 70x_{pregnant} - 1.5x_{education}
 \end{equation}
 
+50/50 M/F, all women pregnant
 where the relationship between height and weight and women gaining 70 pounds to make the bias more prominent. \figref{fig:shap-weight} show ...  \spd{} gives a flat line with slope with roughly 10 (see \cite{stratpd} for more).
 
 \begin{figure}[htbp]
@@ -352,7 +353,7 @@ Then see \figref{fig:topk}
 \begin{subfigure}{.23\textwidth}
     \centering
 \includegraphics[scale=0.48]{images/flights-topk.pdf}
-\subcaption{\footnotesize sometimes we get age as first feature which is ok but not the amazing ModelID, clearly best.}
+\subcaption{\footnotesize sometimes we get age as first feature which is ok but not the amazing ModelID, clearly best. 100 = 81/100 ModelID and 19/100 age}
 \end{subfigure}
 \hfill
 \begin{subfigure}{.25\textwidth}

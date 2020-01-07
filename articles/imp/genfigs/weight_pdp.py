@@ -106,7 +106,7 @@ def combined(feature_perturbation, twin=False):
     ax.tick_params(axis='both', which='major', labelsize=10)
 
     ax.plot([70,70], [-75,75], '--', lw=.6, color=GREY)
-    ax.text(69.7,50, "Max female height", horizontalalignment='right',
+    ax.text(69.8,60, "Max female height", horizontalalignment='right',
             fontsize=9)
 
     leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored = \

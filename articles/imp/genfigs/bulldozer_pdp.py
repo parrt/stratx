@@ -31,14 +31,14 @@ X_, y_ = X.iloc[idxs], y.iloc[idxs]
 # print(I)
 #plot_catstratpd(X_, y_, colname='ProductSize', targetname='SalePrice')
 
-plot_stratpd(X_, y_, colname='age', targetname='SalePrice',
-             show_slope_lines=False,
-             show_impact=False,
-             figsize=(3.8,3.2)
-             )
-plt.tight_layout()
-plt.savefig(f"/Users/parrt/Desktop/james-age.pdf", pad_inches=0)
-plt.show()
+# plot_stratpd(X_, y_, colname='age', targetname='SalePrice',
+#              show_slope_lines=False,
+#              show_impact=False,
+#              figsize=(3.8,3.2)
+#              )
+# plt.tight_layout()
+# plt.savefig(f"/Users/parrt/Desktop/james-age.pdf", pad_inches=0)
+# plt.show()
 #
 # plot_stratpd(X_, y_, colname='YearMade', targetname='SalePrice',
 #              show_slope_lines=False,
@@ -83,11 +83,12 @@ plt.show()
 col = 'age'
 # col = 'ProductSize'
 
-# plot_stratpd_gridsearch(X_, y_, colname=col, targetname='SalePrice',
-#                         min_samples_leaf_values=(10,20,30),
-#                         min_slopes_per_x_values=(5,10,20,30),
-#                         show_slope_lines=False,
-#                         yrange=None)
+plot_stratpd_gridsearch(X_, y_, colname=col, targetname='SalePrice',
+                        min_samples_leaf_values=(10,15, 20,30),
+                        min_slopes_per_x_values=(5,10,20,30),
+                        show_slope_lines=False,
+                        show_impact=True,
+                        yrange=None)
 
 # plot_catstratpd_gridsearch(X_, y_, 'ProductSize', 'SalePrice',
 #                            min_samples_leaf_values=(5,10,15,20),
