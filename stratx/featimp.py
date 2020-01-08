@@ -21,11 +21,9 @@ def importances(X: pd.DataFrame,
                 supervised=True,
                 n_jobs=1,
                 sort=True,  # sort by importance in descending order?
-                min_slopes_per_x=5,
-                # ignore pdp y values derived from too few slopes (usually at edges)
+                min_slopes_per_x=5,  # ignore pdp y values derived from too few slopes (usually at edges)
                 # important for getting good starting point of PD so AUC isn't skewed.
-                stddev=False,  # turn on to get stddev of importances via bootstrapping
-                n_stddev_trials: int = 5,
+                n_trials: int = 1,
                 pvalues=False,  # use to get p-values for each importance; it's number trials
                 n_pvalue_trials=50,  # how many trials to do to get p-values
                 n_trees=1, min_samples_leaf=10, bootstrap=False, max_features=1.0,
@@ -33,39 +31,40 @@ def importances(X: pd.DataFrame,
     if not isinstance(X, pd.DataFrame):
         raise ValueError("Can only operate on dataframes at the moment")
 
-    resample_with_replacement = n_trees>1
-    if not stddev:
-        n_stddev_trials = 1
+    resample_with_replacement = n_trials>1
     n,p = X.shape
-    imps = np.zeros(shape=(p, n_stddev_trials)) # track p var importances for ntrials; cols are trials
-    for i in range(n_stddev_trials):
-        if n_stddev_trials==1: # don't shuffle if not bootstrapping
+    imps = np.zeros(shape=(p, n_trials))
+    # track p var importances for ntrials; cols are trials
+    for i in range(n_trials):
+        if n_trials==1: # don't shuffle if not bootstrapping
             bootstrap_sample_idxs = range(n)
         else:
-            bootstrap_sample_idxs = resample(range(n), n_samples=n, replace=resample_with_replacement)
+            bootstrap_sample_idxs = resample(range(n), n_samples=n,
+                                             replace=resample_with_replacement)
         X_, y_ = X.iloc[bootstrap_sample_idxs], y.iloc[bootstrap_sample_idxs]
-        imps[:,i] = importances_(X_, y_, catcolnames=catcolnames,
-                                 normalize=normalize,
-                                 supervised=supervised,
-                                 n_jobs=n_jobs,
-                                 n_trees=n_trees,
-                                 min_samples_leaf=min_samples_leaf,
-                                 min_slopes_per_x=min_slopes_per_x,
-                                 bootstrap=bootstrap,
-                                 max_features=max_features,
-                                 verbose=verbose)
+        I = importances_(X_, y_, catcolnames=catcolnames,
+                         normalize=normalize,
+                         supervised=supervised,
+                         n_jobs=n_jobs,
+                         n_trees=n_trees,
+                         min_samples_leaf=min_samples_leaf,
+                         min_slopes_per_x=min_slopes_per_x,
+                         bootstrap=bootstrap,
+                         max_features=max_features,
+                         verbose=verbose)
+        imps[:,i] = I
 
     avg_imps = np.mean(imps, axis=1)
 
     I = pd.DataFrame(data={'Feature': X.columns, 'Importance': avg_imps})
     I = I.set_index('Feature')
 
-    if stddev:
+    if n_trials>1:
         I['Sigma'] = np.std(imps, axis=1)
 
     if pvalues:
         I['p-value'] = importances_pvalues(X, y, catcolnames,
-                                           importances=I,
+                                           baseline_importances=I,
                                            supervised=supervised,
                                            n_jobs=n_jobs,
                                            n_trials=n_pvalue_trials,
@@ -165,7 +164,7 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
 def importances_pvalues(X: pd.DataFrame,
                         y: pd.Series,
                         catcolnames=set(),
-                        importances=None, # importances to use as baseline; must be in X column order!
+                        baseline_importances=None, # importances to use as baseline; must be in X column order!
                         supervised=True,
                         n_jobs=1,
                         n_trials: int = 1,
@@ -179,8 +178,8 @@ def importances_pvalues(X: pd.DataFrame,
     importance value (obtained with shuffled y) reaches the importance value computed
     using unshuffled y.
     """
-    I_baseline = importances
-    if importances is None:
+    I_baseline = baseline_importances
+    if baseline_importances is None:
         I_baseline = importances(X, y, catcolnames=catcolnames, sort=False,
                                  min_slopes_per_x=min_slopes_per_x,
                                  supervised=supervised,

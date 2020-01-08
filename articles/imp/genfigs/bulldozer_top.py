@@ -4,7 +4,7 @@ figsize = (3.5, 3.0)
 use_oob=False
 metric = mean_absolute_error
 n = 30_000
-model='GBM' # ('RF','SVM','GBM')
+model='RF' # ('RF','SVM','GBM')
 
 X, y = load_bulldozer()
 

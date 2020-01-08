@@ -3,7 +3,7 @@ from support import *
 figsize = (3.5, 3.0)
 use_oob=False
 metric = mean_absolute_error
-n = 30_000
+n = 20_000
 
 X, y = load_bulldozer()
 
@@ -12,7 +12,7 @@ X, y = load_bulldozer()
 X = X.iloc[-50_000:]
 y = y.iloc[-50_000:]
 
-trials=100
+trials=50
 
 m = 0
 a = 0
@@ -22,7 +22,7 @@ for i in range(trials):
 
     I = importances(X_, y_,
                     catcolnames={'AC', 'ModelID', 'YearMade', 'ProductSize'},
-                    min_samples_leaf=10,
+                    min_samples_leaf=8,
                     min_slopes_per_x=5
                     )
     I = I.reset_index()

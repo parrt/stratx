@@ -191,6 +191,7 @@ def compare_top_features(X, y, top_features_range=None,
                          n_shap=300,
                          metric = mean_absolute_error,
                          model='RF',
+                         imp_n_trials=1,
                          use_oob = False,
                          #time_sensitive=False,
                          kfolds=5,
@@ -227,6 +228,7 @@ def compare_top_features(X, y, top_features_range=None,
 
     all_importances = get_multiple_imps(X_train, y_train, X_test, y_test,
                                         n_stratpd_trees=n_stratpd_trees,
+                                        imp_n_trials=imp_n_trials,
                                         bootstrap=bootstrap,
                                         stratpd_min_samples_leaf=stratpd_min_samples_leaf,
                                         n_estimators=n_estimators,
@@ -289,6 +291,7 @@ def compare_top_features(X, y, top_features_range=None,
 
 def get_multiple_imps(X_train, y_train, X_test, y_test, n_shap=300, n_estimators=50,
                       stratpd_min_samples_leaf=10,
+                      imp_n_trials=1,
                       n_stratpd_trees=1,
                       bootstrap=False,
                       catcolnames=set(),
@@ -340,6 +343,7 @@ def get_multiple_imps(X_train, y_train, X_test, y_test, n_shap=300, n_estimators
         y_full = y_train
         ours_I = importances(X_full, y_full, verbose=False,
                              min_samples_leaf=stratpd_min_samples_leaf,
+                             n_trials=imp_n_trials,
                              n_trees=n_stratpd_trees,
                              bootstrap=bootstrap,
                              catcolnames=catcolnames,
@@ -410,23 +414,40 @@ def plot_topk(R, ax=None, k=None,
         ax.set_title(title, fontsize=title_fontsize, fontname=fontname)
 
 
-def stability(X, y, sample_size, n_trials, technique='StratImpact'):
+def stability(X, y, sample_size, n_trials, technique='StratImpact',
+              catcolnames=None,
+              imp_n_trials=1,
+              min_slopes_per_x=5,
+              n_trees=1, min_samples_leaf=10, bootstrap=False, max_features=1.0
+              ):
     n = len(X)
-    all_I = np.empty(shape=(n_trials, X.shape[1]))
+    all_I = pd.DataFrame(data=X.columns, columns=['Feature'])
+    all_I = all_I.set_index('Feature')
     for i in range(n_trials):
         bootstrap_sample_idxs = resample(range(n), n_samples=sample_size, replace=False)
         X_, y_ = X.iloc[bootstrap_sample_idxs], y.iloc[bootstrap_sample_idxs]
         if technique=='StratImpact':
-            I = importances(X_, y_)
+            I = importances(X_, y_,
+                            catcolnames=catcolnames,
+                            n_trials=imp_n_trials,
+                            max_features=max_features,
+                            min_samples_leaf=min_samples_leaf,
+                            min_slopes_per_x=min_slopes_per_x,
+                            n_trees=n_trees,
+                            bootstrap=bootstrap)
         elif technique=='RFSHAP':
+            print("RFSHAP",i)
             rf = RandomForestRegressor(n_estimators=40)
             rf.fit(X_, y_)
             I = shap_importances(rf, X_, X_, n_shap=300)
+        else:
+            raise ValueError("bad mode: "+model)
         print(I.iloc[:8])
-        all_I[i, :] = I['Importance'].values
+        all_I[i] = I['Importance']
+        # print(all_I)
     I = pd.DataFrame(data={'Feature': X.columns,
-                           'Importance': np.mean(all_I, axis=0),
-                           'Sigma': np.std(all_I, axis=0)})
+                           'Importance': np.mean(all_I, axis=1),
+                           'Sigma': np.std(all_I, axis=1)})
     I = I.set_index('Feature')
     I = I.sort_values('Importance', ascending=False)
     I.reset_index().to_feather("/tmp/t.feather")
@@ -543,7 +564,7 @@ def load_bulldozer():
     df.loc[df.YearMade < 1950, 'YearMade'] = np.nan
     fix_missing_num(df, 'YearMade')
     df_split_dates(df, 'saledate')
-    df['age'] = df['saleyear'] - df['YearMade']
+    # df['age'] = df['saleyear'] - df['YearMade']
     df['YearMade'] = df['YearMade'].astype(int)
     sizes = {None: 0, 'Mini': 1, 'Compact': 1, 'Small': 2, 'Medium': 3,
              'Large / Medium': 4, 'Large': 5}
@@ -566,7 +587,8 @@ def load_bulldozer():
                     'MachineHours'
                     ]
     X = df[basefeatures+
-           ['age',
+           [
+               # 'age',
             'YearMade_na',
             'AC',
             'ProductSize',

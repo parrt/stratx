@@ -11,10 +11,16 @@ y = y.iloc[-50_000:]
 
 n = 10000
 technique='RFSHAP'
+technique='StratImpact'
 idxs = resample(range(50_000), n_samples=n, replace=False)
 X_, y_ = X.iloc[idxs], y.iloc[idxs]
 
-I = stability(X, y, n, 10, technique=technique)
+I = stability(X, y, n, 10, technique=technique,
+              catcolnames={'AC', 'ModelID', 'YearMade', 'ProductSize'},
+              min_samples_leaf=10,
+              min_slopes_per_x=5,
+              imp_n_trials=1
+              )
 print("\nFinal")
 print(I)
 

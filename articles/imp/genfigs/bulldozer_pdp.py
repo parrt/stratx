@@ -82,13 +82,14 @@ X_, y_ = X.iloc[idxs], y.iloc[idxs]
 
 col = 'age'
 # col = 'ProductSize'
-
+col = 'YearMade'
 plot_stratpd_gridsearch(X_, y_, colname=col, targetname='SalePrice',
-                        min_samples_leaf_values=(10,15, 20,30),
-                        min_slopes_per_x_values=(5,10,20,30),
+                        min_samples_leaf_values=(3,5,8,10),
+                        min_slopes_per_x_values=(5,8,10),
                         show_slope_lines=False,
-                        show_impact=True,
-                        yrange=None)
+                        show_impact=True
+                        #,yrange=(-20000,2000)
+                        )
 
 # plot_catstratpd_gridsearch(X_, y_, 'ProductSize', 'SalePrice',
 #                            min_samples_leaf_values=(5,10,15,20),
@@ -107,5 +108,5 @@ plot_stratpd_gridsearch(X_, y_, colname=col, targetname='SalePrice',
 #                 min_y_shifted_to_zero=False)
 
 plt.tight_layout()
-# plt.savefig(f"/Users/parrt/Desktop/james-{col}.png", pad_inches=0, dpi=150)
+plt.savefig(f"/Users/parrt/Desktop/james-{col}-3.pdf", pad_inches=0)
 plt.show()
