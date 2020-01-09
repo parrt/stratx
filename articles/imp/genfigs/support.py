@@ -482,7 +482,8 @@ def load_flights(n):
     # cvt_time(df_flights, 'SCHEDULED_ARRIVAL')
     # cvt_time(df_flights, 'DEPARTURE_TIME')
 
-    features = ['YEAR', 'MONTH', 'DAY', 'DAY_OF_WEEK', 'dayofyear',
+    features = [#'YEAR',  # drop year as it's a constant
+                'MONTH', 'DAY', 'DAY_OF_WEEK', 'dayofyear',
                 'AIRLINE', 'ORIGIN_AIRPORT', 'DESTINATION_AIRPORT',
                 'SCHEDULED_DEPARTURE',
                 # 'SCHEDULED_DEPARTURE_HOUR', 'SCHEDULED_DEPARTURE_MIN',
