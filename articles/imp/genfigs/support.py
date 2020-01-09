@@ -17,7 +17,6 @@ from sklearn.utils import resample
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import normalize
 from timeit import default_timer as timer
-from sklearn.utils import resample
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import GridSearchCV
 from sklearn.datasets import load_boston
