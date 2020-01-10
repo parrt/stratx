@@ -219,7 +219,9 @@ In an effort to deal with codependencies, data analysis techniques rank features
 J_{mRMR}(x_k) = I(x_k, y) - \frac{1}{|S|} \sum_{x_k \in S} I(x_k, x_j)
 \]
 
-\noindent where $I(x_k, x_j)$ is some measure of mutual information between $x_k$ and $x_j$, $S$ is the growing set of selected features, and $x_k$ is the candidate feature. mRMR only considers pairwise codependencies between features and is limited to classification as originally defined. See \cite{ubermRMR} for a recent application of mRMR at Uber Technologies.  For more on model-free feature importances, see the survey by \cite{survey}.
+\noindent where $I(x_k, x_j)$ is some measure of mutual information between $x_k$ and $x_j$, $S$ is the growing set of selected features, and $x_k$ is the candidate feature. mRMR only considers pairwise codependencies between features and is limited to classification as originally defined. See \cite{ubermRMR} for a recent application of mRMR at Uber Technologies.  For more on model-free feature importances, see the survey by \cite{survey}. \todo{does not consider multi-feature to target requirements, just one feature to target but often combo is important. computing cat-to-num MI is hard. discretize or estimate density but not obvious how to pick bins or parzen window width etc...} \cite{tsanas} suggests using spearman's rank not MI.
+
+See \cite{filter-benchmark} for benchmarks of filter on filter methods.
 
 Turning to model-based techniques, feature importances are typically variations on a theme: tweak the model and measure the effect on model prediction accuracy or expected model output. The simplest approach is {\em drop-column importance}, which defines $x_j$ importance as the difference in model accuracy between the full model and the model with $x_j$ removed. The model must be retrained $p$ times and highly similar features yield low or zero importances because codependent features cover for the dropped column in the model.
 
