@@ -3,6 +3,7 @@ from numpy import nan, where
 import pandas as pd
 from typing import Mapping, List, Tuple
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 from  matplotlib.collections import LineCollection
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
@@ -10,6 +11,7 @@ from scipy.stats import binned_statistic
 import warnings
 import collections
 from timeit import default_timer as timer
+from sklearn.utils import resample
 
 # from stratx.cy_partdep import cy_avg_values_at_x_double
 
@@ -374,6 +376,7 @@ def plot_stratpd_binned(X, y, colname, targetname,
 def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  min_slopes_per_x=5,  # ignore pdp y values derived from too few slopes (usually at edges)
                  # important for getting good starting point of PD so AUC isn't skewed.
+                 n_trials=10, # how many pd curves to show (subsampling by 2/3 to get diff X sets)
                  n_trees=1, min_samples_leaf=10, bootstrap=False,
                  max_features=1.0,
                  supervised=True,
@@ -390,13 +393,15 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  show_impact=False,
                  show_impact_dots=True,
                  show_impact_line=True,
-                 pdp_marker_size=5,
+                 pdp_marker_size=4,
+                 pdp_marker_alpha=.5,
                  pdp_line_width=.5,
                  slope_line_color='#2c7fb8',
                  slope_line_width=.5,
                  slope_line_alpha=.3,
                  pdp_line_color='black',
                  pdp_marker_color='black',
+                 pdp_marker_cmap='plasma',
                  impact_fill_color='#FFE091',
                  impact_pdp_color='#D73028',
                  fontname='Arial',
@@ -432,22 +437,63 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                         ignore because of samples in leaves with identical X[colname]
                         values.
     """
+    def avg_pd_curve(all_pdpx, all_pdpy):
+        m = defaultdict(float)
+        c = defaultdict(int)
+        for i in range(n_trials):
+            for px, py in zip(all_pdpx, all_pdpy):
+                for x, y in zip(px, py):
+                    m[x] += y
+                    c[x] += 1
+        for x in m.keys():
+            m[x] /= c[x]
+        return m
+
     leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored = \
         partial_dependence(X=X, y=y, colname=colname, min_slopes_per_x=min_slopes_per_x,
                            n_trees=n_trees, min_samples_leaf=min_samples_leaf,
                            bootstrap=bootstrap, max_features=max_features, supervised=supervised,
                            verbose=verbose)
 
+    all_pdpx = []
+    all_pdpy = []
+    n = len(X)
+    for i in range(n_trials):
+        print(i)
+        # idxs = resample(range(n), n_samples=n, replace=True) # bootstrap
+        idxs = resample(range(n), n_samples=int(n * 2 / 3), replace=False)  # subset
+        X_, y_ = X.iloc[idxs], y.iloc[idxs]
+
+        leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored = \
+            partial_dependence(X=X_, y=y_, colname=colname,
+                               min_slopes_per_x=min_slopes_per_x,
+                               n_trees=n_trees, min_samples_leaf=min_samples_leaf,
+                               bootstrap=bootstrap, max_features=max_features,
+                               supervised=supervised,
+                               verbose=verbose)
+        all_pdpx.append(pdpx)
+        all_pdpy.append(pdpy)
+
     X_col = X[colname]
     _, pdpx_counts = np.unique(X_col[np.isin(X_col, pdpx)], return_counts=True)
 
     if ax is None:
         if figsize is not None:
-            fig, ax = plt.subplots(1,1,figsize=figsize)
+            fig, ax = plt.subplots(1, 1, figsize=figsize)
         else:
             fig, ax = plt.subplots(1, 1)
 
-    ax.scatter(pdpx, pdpy, s=pdp_marker_size, c=pdp_marker_color, label=colname)
+    sorted_by_imp = np.argsort([np.mean(np.abs(v)) for v in all_pdpy])
+    cmap = plt.get_cmap(pdp_marker_cmap)
+    ax.set_prop_cycle(color=cmap(np.linspace(0,1,num=n_trials)))
+    for i in range(n_trials):
+        ax.scatter(all_pdpx[sorted_by_imp[i]], all_pdpy[sorted_by_imp[i]],
+                   s=pdp_marker_size, label=colname, alpha=pdp_marker_alpha)
+
+    # Get avg curve and display
+    m = avg_pd_curve(all_pdpx, all_pdpy)
+    # ax.plot(list(m.keys()), list(m.values()), 's', lw=0, c=pdp_marker_color, fillstyle='none', markersize=pdp_marker_size+2)
+    ax.scatter(m.keys(), m.values(), c=pdp_marker_color, s=pdp_marker_size+1)
 
     if show_pdp_line:
         ax.plot(pdpx, pdpy, lw=pdp_line_width, c=pdp_line_color)
@@ -488,7 +534,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
     count_bar_width = x_width / len(pdpx)
     if count_bar_width/x_width < 0.002:
         count_bar_width = x_width * 0.002 # don't make them so skinny they're invisible
-    print(f"x_width={x_width:.2f}, count_bar_width={count_bar_width}")
+    # print(f"x_width={x_width:.2f}, count_bar_width={count_bar_width}")
     if show_x_counts:
         ax2 = ax.twinx()
         # scale y axis so the max count height is 10% of overall chart

@@ -18,7 +18,9 @@ X_, y_ = X.iloc[idxs], y.iloc[idxs]
 
 R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
     compare_top_features(X_, y_, n_shap=300,
-                         catcolnames={'AC', 'ModelID', 'YearMade', 'ProductSize'},
+                         catcolnames={'AC', 'ModelID',
+                                      #'YearMade',
+                                      'ProductSize'},
                          metric=metric,
                          use_oob=use_oob,
                          kfolds=5,

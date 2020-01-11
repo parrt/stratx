@@ -28,7 +28,7 @@ import matplotlib.pyplot as plt
 
 #np.random.seed(999)
 
-n=20_000
+n=2_000
 #r = (500,600)
 # r = (0,500)
 _, _, df_flights = load_flights(n=n)
@@ -51,9 +51,13 @@ col = 'SCHEDULED_DEPARTURE_HOUR'
 
 plot_stratpd(X, y, colname='SCHEDULED_DEPARTURE', targetname='delay',
              show_slope_lines=False,
-             show_impact=True)
+             show_impact=False,
+             show_x_counts=True,
+             pdp_marker_cmap='Purples'
+             )
              # yrange=(-10,100))
 plt.tight_layout()
+plt.savefig(f"/Users/parrt/Desktop/flight.pdf", pad_inches=0)
 plt.show()
 
 # plot_stratpd(X, y, colname='DEPARTURE_TIME_HOUR', targetname='delay',
@@ -120,7 +124,6 @@ plt.show()
 
 
 
-plt.tight_layout()
-# rent_pdp()
-# plt.savefig(f"/Users/parrt/Desktop/flight-{col}.png", pad_inches=0, dpi=150)
-plt.show()
+# plt.tight_layout()
+# # rent_pdp()
+# plt.show()

@@ -564,7 +564,7 @@ def load_bulldozer():
     df.loc[df.YearMade < 1950, 'YearMade'] = np.nan
     fix_missing_num(df, 'YearMade')
     df_split_dates(df, 'saledate')
-    # df['age'] = df['saleyear'] - df['YearMade']
+    df['age'] = df['saleyear'] - df['YearMade']
     df['YearMade'] = df['YearMade'].astype(int)
     sizes = {None: 0, 'Mini': 1, 'Compact': 1, 'Small': 2, 'Medium': 3,
              'Large / Medium': 4, 'Large': 5}
@@ -588,7 +588,7 @@ def load_bulldozer():
                     ]
     X = df[basefeatures+
            [
-               # 'age',
+            'age',
             'YearMade_na',
             'AC',
             'ProductSize',
