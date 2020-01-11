@@ -484,13 +484,18 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
     else:
         ax.set_ylim(min_y, max_y)
 
+    x_width = max(pdpx) - min(pdpx) + 1
+    count_bar_width = x_width / len(pdpx)
+    if count_bar_width/x_width < 0.002:
+        count_bar_width = x_width * 0.002 # don't make them so skinny they're invisible
+    print(f"x_width={x_width:.2f}, count_bar_width={count_bar_width}")
     if show_x_counts:
         ax2 = ax.twinx()
         # scale y axis so the max count height is 10% of overall chart
-        ax2.set_ylim(0, max(pdpx_counts) * 1.2/barchart_size)
+        ax2.set_ylim(0, max(pdpx_counts) * 1/barchart_size)
         # draw just 0 and max count
         ax2.yaxis.set_major_locator(plt.FixedLocator([0, max(pdpx_counts)]))
-        ax2.bar(x=pdpx, height=pdpx_counts, width=(max(pdpx)-min(pdpx)+1)/len(pdpx),
+        ax2.bar(x=pdpx, height=pdpx_counts, width=count_bar_width,
                 facecolor='#BABABA', align='edge', alpha=barchar_alpha)
         ax2.set_ylabel(f"$x$ point count", labelpad=-12, fontsize=label_fontsize,
                        fontstretch='extra-condensed',
@@ -516,7 +521,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         ax2.set_ylim(0, max(slope_counts_at_x) * 1/barchart_size)
         # draw just 0 and max count
         ax2.yaxis.set_major_locator(plt.FixedLocator([0, max(slope_counts_at_x)]))
-        ax2.bar(x=pdpx, height=slope_counts_at_x, width=(max(pdpx)-min(pdpx)+1)/len(pdpx),
+        ax2.bar(x=pdpx, height=slope_counts_at_x, width=count_bar_width,
                 facecolor='#BABABA', align='edge', alpha=barchar_alpha)
         ax2.set_ylabel(f"slope count", labelpad=-12, fontsize=label_fontsize,
                        fontstretch='extra-condensed',
