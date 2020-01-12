@@ -14,13 +14,50 @@ from stratx.partdep import *
 from stratx.ice import *
 
 
+'''
+def feature_rank(X: pd.DataFrame,
+                 y: pd.Series,
+                 catcolnames=set(),
+                 normalize=True,  # make imp values 0..1
+                 supervised=True,
+                 n_jobs=1,
+                 sort=True,  # sort by importance in descending order?
+                 min_slopes_per_x=5,
+                 # ignore pdp y values derived from too few slopes (usually at edges)
+                 # important for getting good starting point of PD so AUC isn't skewed.
+                 n_trials: int = 1,
+                 n_trees=1, min_samples_leaf=10, bootstrap=False, max_features=1.0,
+                 verbose=False) -> pd.DataFrame:
+    if not isinstance(X, pd.DataFrame):
+        raise ValueError("Can only operate on dataframes at the moment")
+
+    I = importances(X=X, y=y, catcolnames=catcolnames,
+                    normalize=normalize,
+                    supervised=supervised,
+                    n_jobs=n_jobs,
+                    sort=sort,
+                    min_slopes_per_x=min_slopes_per_x,
+                    n_trials=n_trials,
+                    pvalues=False,
+                    n_trees=n_trees, min_samples_leaf=min_samples_leaf,
+                    bootstrap=bootstrap, max_features=max_features,
+                    verbose=verbose)
+
+    F = I.copy()
+    F['Importance'] = F['Importance'] / F['Sigma']
+    F = F.drop('Sigma', axis=1)
+    if sort:
+        F = F.sort_values('Importance', ascending=False)
+    return F
+'''
+
 def importances(X: pd.DataFrame,
                 y: pd.Series,
                 catcolnames=set(),
                 normalize=True,  # make imp values 0..1
                 supervised=True,
                 n_jobs=1,
-                sort=True,  # sort by importance in descending order?
+                sort:('Rank','Importance',None)='Rank',  # sort by importance in descending order?
                 min_slopes_per_x=5,  # ignore pdp y values derived from too few slopes (usually at edges)
                 # important for getting good starting point of PD so AUC isn't skewed.
                 n_trials: int = 1,
@@ -73,8 +110,19 @@ def importances(X: pd.DataFrame,
                                            min_samples_leaf=min_samples_leaf,
                                            bootstrap=bootstrap,
                                            max_features=max_features)
+
+    # TODO: make 0.01 an argument or something; or maybe mean?
+    I['Rank'] = I['Importance'] / np.where(I['Sigma']<0.01, 1, I['Sigma'])
+    I['Rank'] /= np.sum(I['Rank']) # normalize to 0..1
+    I['Rank'] = I['Rank'].fillna(0)
+
+    if sort=='Rank':
+        I = I[['Rank','Importance','Sigma']]
+    else:
+        I = I[['Importance','Sigma','Rank']]
+
     if sort is not None:
-        I = I.sort_values('Importance', ascending=False)
+        I = I.sort_values(sort, ascending=False)
 
     return I
 
@@ -110,15 +158,13 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
             # some cats have NaN, such as 0th which is often for "missing values"
             # depending on label encoding scheme.
             # Used to be just this but now we weight by num of each cat:
-            avg_abs_pdp = np.nanmean(np.abs(avg_per_cat))
+            # avg_abs_pdp = np.nanmean(np.abs(avg_per_cat))
 
             # group by cat and get count
-            # not quite right so leave as simple avg for now
-            # TODO: Bug: cat_counts was len 56 and abs_avg_per_cat was 55
-            # uniq_cats = np.unique(X_col) # comes back sorted
-            # cat_counts = [len(np.where(X_col == cat)[0]) for cat in uniq_cats]
-            # abs_avg_per_cat = np.abs(avg_per_cat[~np.isnan(avg_per_cat)])
-            # avg_abs_pdp = np.sum(cat_counts * abs_avg_per_cat) / np.sum(cat_counts)
+            abs_avg_per_cat = np.abs(avg_per_cat[~np.isnan(avg_per_cat)])
+            uniq_cats = np.where(~np.isnan(avg_per_cat))[0]
+            cat_counts = [len(np.where(X_col == cat)[0]) for cat in uniq_cats]
+            avg_abs_pdp = np.sum(np.abs(abs_avg_per_cat * cat_counts)) / np.sum(cat_counts)
         else:
             leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored = \
                 partial_dependence(X=X, y=y, colname=colname,
@@ -244,6 +290,7 @@ class ImpViz:
 
 def plot_importances(df_importances,
                      xlabel=None,
+                     show: ('Rank', 'Importance') = 'Rank',
                      yrot=0,
                      title_fontsize=11,
                      label_fontsize=10,
@@ -304,12 +351,14 @@ def plot_importances(df_importances,
     """
     GREY = '#444443'
     I = df_importances
-    I = I.sort_values('Importance', ascending=True)
+    if show=='Rank' and 'Rank' not in I.columns:
+        show='Importance'
+    I = I.sort_values(show, ascending=True)
     n_features = len(I)
     left_padding = 0.01
 
     ppi = 72 # matplotlib has this hardcoded. E.g., see https://github.com/matplotlib/matplotlib/blob/40dfc353aa66b93fd0fbc55ca1f51701202c0549/lib/matplotlib/axes/_base.py#L694
-    imp = I.Importance.values
+    imp = I[show].values
 
     barcounts = np.array([f.count('\n')+1 for f in I.index])
     N = np.sum(barcounts)
@@ -371,7 +420,7 @@ def plot_importances(df_importances,
     ax.hlines(y=ypositions, xmin=left_padding, xmax=imp + left_padding, color=color,
               linewidth=bar_width, linestyles='solid')
 
-    if 'Sigma' in I.columns:
+    if show!='Rank' and 'Sigma' in I.columns:
         sigmas = I['Sigma'].values
         for fi,s,y in zip(imp, sigmas, ypositions):
             if fi < 0.005: continue

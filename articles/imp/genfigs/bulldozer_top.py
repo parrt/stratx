@@ -3,8 +3,8 @@ from support import *
 figsize = (3.5, 3.0)
 use_oob=False
 metric = mean_absolute_error
-n = 30_000
-model='GBM' # ('RF','SVM','GBM')
+n = 25_000
+model='RF' # ('RF','SVM','GBM')
 
 X, y = load_bulldozer()
 
@@ -19,12 +19,15 @@ X_, y_ = X.iloc[idxs], y.iloc[idxs]
 R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
     compare_top_features(X_, y_, n_shap=300,
                          catcolnames={'AC', 'ModelID',
-                                      #'YearMade',
-                                      'ProductSize'},
+                                      #'ProductSize'
+                                      },
                          metric=metric,
                          use_oob=use_oob,
-                         kfolds=5,
+                         kfolds=1,
+                         imp_n_trials=10,
                          model=model,
+                         stratpd_min_samples_leaf=5,
+                         # min_slopes_per_x=8,
                          top_features_range=(1, 8),
                          #include=['StratImpact']
                          drop=['Spearman','PCA']

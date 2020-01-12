@@ -387,6 +387,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  show_xlabel=True,
                  show_ylabel=True,
                  show_pdp_line=False,
+                 show_all_pdp=True,
                  show_slope_lines=True,
                  show_slope_counts=False,
                  show_x_counts=True,
@@ -401,7 +402,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  slope_line_alpha=.3,
                  pdp_line_color='black',
                  pdp_marker_color='black',
-                 pdp_marker_cmap='plasma',
+                 pdp_marker_cmap='coolwarm',
                  impact_fill_color='#FFE091',
                  impact_pdp_color='#D73028',
                  fontname='Arial',
@@ -459,7 +460,6 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
     all_pdpy = []
     n = len(X)
     for i in range(n_trials):
-        print(i)
         # idxs = resample(range(n), n_samples=n, replace=True) # bootstrap
         idxs = resample(range(n), n_samples=int(n * 2 / 3), replace=False)  # subset
         X_, y_ = X.iloc[idxs], y.iloc[idxs]
@@ -483,12 +483,13 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         else:
             fig, ax = plt.subplots(1, 1)
 
-    sorted_by_imp = np.argsort([np.mean(np.abs(v)) for v in all_pdpy])
-    cmap = plt.get_cmap(pdp_marker_cmap)
-    ax.set_prop_cycle(color=cmap(np.linspace(0,1,num=n_trials)))
-    for i in range(n_trials):
-        ax.scatter(all_pdpx[sorted_by_imp[i]], all_pdpy[sorted_by_imp[i]],
-                   s=pdp_marker_size, label=colname, alpha=pdp_marker_alpha)
+    if show_all_pdp:
+        sorted_by_imp = np.argsort([np.mean(np.abs(v)) for v in all_pdpy])
+        cmap = plt.get_cmap(pdp_marker_cmap)
+        ax.set_prop_cycle(color=cmap(np.linspace(0,1,num=n_trials)))
+        for i in range(n_trials):
+            ax.scatter(all_pdpx[sorted_by_imp[i]], all_pdpy[sorted_by_imp[i]],
+                       s=pdp_marker_size, label=colname, alpha=pdp_marker_alpha)
 
     # Get avg curve and display
     m = avg_pd_curve(all_pdpx, all_pdpy)

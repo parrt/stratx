@@ -4,7 +4,7 @@ figsize = (3.5, 3.0)
 use_oob=False
 n = 25_000
 metric = mean_absolute_error
-model='GBM' # ('RF','SVM','GBM')
+model='RF' # ('RF','SVM','GBM')
 
 X, y = load_rent(n=n)
 
@@ -12,10 +12,10 @@ R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
     compare_top_features(X, y, n_shap=300,
                          metric=metric,
                          use_oob=use_oob,
-                         kfolds=5,
+                         kfolds=1,
                          model=model,
-                         stratpd_min_samples_leaf=3,
-                         imp_n_trials=5,
+                         stratpd_min_samples_leaf=5, # overcome colinearity
+                         imp_n_trials=10,
                          catcolnames=['bathrooms'], # numeric version ignores too much data
                          top_features_range=(1, 8),
                          drop=['Spearman','PCA'])

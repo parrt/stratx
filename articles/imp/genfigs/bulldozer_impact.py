@@ -36,6 +36,7 @@ plot_stratpd(X_, y_, colname='age', targetname='SalePrice',
              ticklabel_fontsize=10,
              xrange=(0,30),
              yrange=(-8000,1000),
+             show_all_pdp=False,
              ax=ax
              )
 plt.tight_layout()
@@ -49,6 +50,7 @@ plot_stratpd(X_, y_, colname='MachineHours', targetname='SalePrice',
              show_impact=True,
              ticklabel_fontsize=10,
              xrange=(0,70_000),
+             show_all_pdp=False,
              ax=ax
              )
 plt.tight_layout()
@@ -60,6 +62,7 @@ plot_stratpd(X_, y_, colname='saledayofyear', targetname='SalePrice',
              show_slope_lines=False,
              show_impact=True,
              ticklabel_fontsize=10,
+             show_all_pdp=False,
              ax=ax
              )
 plt.tight_layout()
@@ -71,6 +74,7 @@ plot_stratpd(X_, y_, colname='YearMade', targetname='SalePrice',
              show_slope_lines=False,
              show_impact=True,
              ticklabel_fontsize=10,
+             show_all_pdp=False,
              ax=ax
              )
 plt.tight_layout()

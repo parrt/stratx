@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-n = 20_000
+n = 25_000
 
 X, y = load_bulldozer()
 
@@ -26,9 +26,15 @@ y = y.iloc[-50_000:]
 idxs = resample(range(50_000), n_samples=n, replace=False)
 X_, y_ = X.iloc[idxs], y.iloc[idxs]
 
-# I = importances(X_, y_,
-#                 catcolnames={'AC', 'ModelID', 'YearMade', 'ProductSize'})
-# print(I)
+I = importances(X_, y_,
+                min_samples_leaf=5,
+                # min_slopes_per_x=5,
+                n_trials=10,
+                sort='Rank',
+                catcolnames={'AC', 'ModelID'})
+print(I)
+I.to_csv("/tmp/t2.csv")
+
 #plot_catstratpd(X_, y_, colname='ProductSize', targetname='SalePrice')
 
 # plot_stratpd(X_, y_, colname='age', targetname='SalePrice',
@@ -40,15 +46,17 @@ X_, y_ = X.iloc[idxs], y.iloc[idxs]
 # plt.savefig(f"/Users/parrt/Desktop/james-age.pdf", pad_inches=0)
 # plt.show()
 #
-plot_stratpd(X_, y_, colname='YearMade', targetname='SalePrice',
-             show_slope_lines=False,
-             show_impact=False,
-             pdp_marker_cmap='coolwarm',#'YlGnBu',#'tab20b',
-             figsize=(4,3)
-             )
-plt.tight_layout()
-plt.savefig(f"/Users/parrt/Desktop/james-YearMade.pdf", pad_inches=0)
-plt.show()
+# plot_stratpd(X_, y_, colname='YearMade', targetname='SalePrice',
+#              show_slope_lines=False,
+#              show_impact=True,
+#              min_samples_leaf=5,
+#              min_slopes_per_x=8,
+#              pdp_marker_cmap='coolwarm',#'YlGnBu',#'tab20b',
+#              figsize=(4,3)
+#              )
+# plt.tight_layout()
+# plt.savefig(f"/Users/parrt/Desktop/james-YearMade.pdf", pad_inches=0)
+# plt.show()
 #
 # plot_stratpd(X_, y_, colname='saledayofyear', targetname='SalePrice',
 #              show_impact=True,
@@ -85,8 +93,8 @@ col = 'age'
 # col = 'ProductSize'
 col = 'YearMade'
 # plot_stratpd_gridsearch(X_, y_, colname=col, targetname='SalePrice',
-#                         min_samples_leaf_values=(3,5,8,10),
-#                         min_slopes_per_x_values=(5,8,10),
+#                         min_samples_leaf_values=(5,8,10),
+#                         min_slopes_per_x_values=(3,5,8,10),
 #                         show_slope_lines=False,
 #                         show_impact=True
 #                         #,yrange=(-20000,2000)
@@ -109,5 +117,5 @@ col = 'YearMade'
 #                 min_y_shifted_to_zero=False)
 
 plt.tight_layout()
-plt.savefig(f"/Users/parrt/Desktop/james-{col}-3.pdf", pad_inches=0)
+# plt.savefig(f"/Users/parrt/Desktop/james-{col}-3.pdf", pad_inches=0)
 plt.show()
