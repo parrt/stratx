@@ -30,6 +30,7 @@ for i in range(trials):
 
     I = importances(X_, y_,
                     catcolnames={'AC', 'ModelID'},
+                    n_trials=5,
                     min_samples_leaf=5,
                     # min_slopes_per_x=5
                     )

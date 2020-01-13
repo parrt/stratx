@@ -57,7 +57,7 @@ def importances(X: pd.DataFrame,
                 normalize=True,  # make imp values 0..1
                 supervised=True,
                 n_jobs=1,
-                sort:('Rank','Importance',None)='Rank',  # sort by importance in descending order?
+                sort=True,  # sort by importance in descending order?
                 min_slopes_per_x=5,  # ignore pdp y values derived from too few slopes (usually at edges)
                 # important for getting good starting point of PD so AUC isn't skewed.
                 n_trials: int = 1,
@@ -110,22 +110,24 @@ def importances(X: pd.DataFrame,
                                            bootstrap=bootstrap,
                                            max_features=max_features)
 
-    if n_trials>1:
-        # TODO: make 0.01 an argument or something; or maybe mean?
-        I['Rank'] = I['Importance'] / np.where(I['Sigma']<0.01, 1, I['Sigma'])
-        # I['Rank'] = I['Importance'] / I['Sigma']
-        I['Rank'] /= np.sum(I['Rank']) # normalize to 0..1
-        I['Rank'] = I['Rank'].fillna(0)
-    else:
-        I['Rank'] = I['Importance']
-
-    if sort=='Rank':
-        I = I[['Rank','Importance','Sigma']]
-    else:
-        I = I[['Importance','Sigma','Rank']]
+    # if n_trials>1:
+    #     # TODO: make 0.01 an argument or something; or maybe mean?
+    #     # I['Rank'] = I['Importance'] / np.where(I['Sigma']<0.01, 1, I['Sigma'])
+    #
+    #     # I['Rank'] = I['Importance'] / I['Sigma']
+    #     # I['Rank'] /= np.sum(I['Rank']) # normalize to 0..1
+    #     # I['Rank'] = I['Rank'].fillna(0)
+    #     I['Rank'] = I['Importance']
+    # else:
+    #     I['Rank'] = I['Importance']
+    #
+    # if sort=='Rank':
+    #     I = I[['Rank','Importance','Sigma']]
+    # else:
+    #     I = I[['Importance','Sigma','Rank']]
 
     if sort is not None:
-        I = I.sort_values(sort, ascending=False)
+        I = I.sort_values('Importance', ascending=False)
 
     return I
 
