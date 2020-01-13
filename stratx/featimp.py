@@ -96,8 +96,7 @@ def importances(X: pd.DataFrame,
     I = pd.DataFrame(data={'Feature': X.columns, 'Importance': avg_imps})
     I = I.set_index('Feature')
 
-    if n_trials>1:
-        I['Sigma'] = np.std(imps, axis=1)
+    I['Sigma'] = np.std(imps, axis=1)
 
     if pvalues:
         I['p-value'] = importances_pvalues(X, y, catcolnames,
@@ -111,10 +110,14 @@ def importances(X: pd.DataFrame,
                                            bootstrap=bootstrap,
                                            max_features=max_features)
 
-    # TODO: make 0.01 an argument or something; or maybe mean?
-    I['Rank'] = I['Importance'] / np.where(I['Sigma']<0.01, 1, I['Sigma'])
-    I['Rank'] /= np.sum(I['Rank']) # normalize to 0..1
-    I['Rank'] = I['Rank'].fillna(0)
+    if n_trials>1:
+        # TODO: make 0.01 an argument or something; or maybe mean?
+        I['Rank'] = I['Importance'] / np.where(I['Sigma']<0.01, 1, I['Sigma'])
+        # I['Rank'] = I['Importance'] / I['Sigma']
+        I['Rank'] /= np.sum(I['Rank']) # normalize to 0..1
+        I['Rank'] = I['Rank'].fillna(0)
+    else:
+        I['Rank'] = I['Importance']
 
     if sort=='Rank':
         I = I[['Rank','Importance','Sigma']]

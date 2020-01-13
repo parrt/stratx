@@ -405,6 +405,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  pdp_marker_cmap='coolwarm',
                  impact_fill_color='#FFE091',
                  impact_pdp_color='#D73028',
+                 impact_marker_size=3,
                  fontname='Arial',
                  title_fontsize=11,
                  label_fontsize=10,
@@ -448,34 +449,42 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                     c[x] += 1
         for x in m.keys():
             m[x] /= c[x]
-        return m
 
-    leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored = \
-        partial_dependence(X=X, y=y, colname=colname, min_slopes_per_x=min_slopes_per_x,
-                           n_trees=n_trees, min_samples_leaf=min_samples_leaf,
-                           bootstrap=bootstrap, max_features=max_features, supervised=supervised,
-                           verbose=verbose)
+        # We now have dict with average pdpy for each pdpx found in any curve
+        # but we need to ensure we get it back in pdpx order
+        pdpx = np.array(sorted(m.keys()))
+        pdpy = np.empty(shape=(len(m),))
+        for i,x in enumerate(pdpx):
+            pdpy[i] = m[x]
+        return pdpx, pdpy
 
+    # leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored = \
+    #     partial_dependence(X=X, y=y, colname=colname, min_slopes_per_x=min_slopes_per_x,
+    #                        n_trees=n_trees, min_samples_leaf=min_samples_leaf,
+    #                        bootstrap=bootstrap, max_features=max_features, supervised=supervised,
+    #                        verbose=verbose)
+    #
     all_pdpx = []
     all_pdpy = []
     n = len(X)
+    ignored = 0
     for i in range(n_trials):
         # idxs = resample(range(n), n_samples=n, replace=True) # bootstrap
         idxs = resample(range(n), n_samples=int(n * 2 / 3), replace=False)  # subset
         X_, y_ = X.iloc[idxs], y.iloc[idxs]
 
-        leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored = \
+        leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored_ = \
             partial_dependence(X=X_, y=y_, colname=colname,
                                min_slopes_per_x=min_slopes_per_x,
                                n_trees=n_trees, min_samples_leaf=min_samples_leaf,
                                bootstrap=bootstrap, max_features=max_features,
                                supervised=supervised,
                                verbose=verbose)
+        ignored += ignored_
         all_pdpx.append(pdpx)
         all_pdpy.append(pdpy)
 
-    X_col = X[colname]
-    _, pdpx_counts = np.unique(X_col[np.isin(X_col, pdpx)], return_counts=True)
+    ignored /= n_trials # average number of x values ignored across trials
 
     if ax is None:
         if figsize is not None:
@@ -491,10 +500,10 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
             ax.scatter(all_pdpx[sorted_by_imp[i]], all_pdpy[sorted_by_imp[i]],
                        s=pdp_marker_size, label=colname, alpha=pdp_marker_alpha)
 
-    # Get avg curve and display
-    m = avg_pd_curve(all_pdpx, all_pdpy)
-    # ax.plot(list(m.keys()), list(m.values()), 's', lw=0, c=pdp_marker_color, fillstyle='none', markersize=pdp_marker_size+2)
-    ax.scatter(m.keys(), m.values(), c=pdp_marker_color, s=pdp_marker_size+1)
+    # Get avg curve, reset pdpx and pdpy to the average
+    pdpx, pdpy = avg_pd_curve(all_pdpx, all_pdpy)
+    # pdpx, pdpy = np.array(list(m.keys())), np.array(list(m.values()))
+    ax.scatter(pdpx, pdpy, c=pdp_marker_color, s=pdp_marker_size+1)
 
     if show_pdp_line:
         ax.plot(pdpx, pdpy, lw=pdp_line_width, c=pdp_line_color)
@@ -503,7 +512,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
 
     min_y = min(pdpy)
     max_y = max(pdpy)
-    if show_slope_lines:
+    if n_trials==1 and show_slope_lines:
         segments = []
         for xr, slope in zip(leaf_xranges, leaf_slopes):
             w = np.abs(xr[1] - xr[0])
@@ -530,6 +539,9 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         ax.set_ylim(*yrange)
     else:
         ax.set_ylim(min_y, max_y)
+
+    X_col = X[colname]
+    _, pdpx_counts = np.unique(X_col[np.isin(X_col, pdpx)], return_counts=True)
 
     x_width = max(pdpx) - min(pdpx) + 1
     count_bar_width = x_width / len(pdpx)
@@ -562,7 +574,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         ax2.spines['left'].set_linewidth(.5)
         ax2.spines['bottom'].set_linewidth(.5)
 
-    if show_slope_counts:
+    if n_trials==1 and show_slope_counts:
         ax2 = ax.twinx()
         # scale y axis so the max count height is barchart_size of overall chart
         ax2.set_ylim(0, max(slope_counts_at_x) * 1/barchart_size)
@@ -607,7 +619,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         #         fontsize=label_fontsize, fontname=fontname)
         ax.fill_between(pdpx, weighted_pdpy, [0] * len(pdpx), color=impact_fill_color)
         if show_impact_dots:
-            ax.scatter(pdpx, weighted_pdpy, s=pdp_marker_size, c=impact_pdp_color)
+            ax.scatter(pdpx, weighted_pdpy, s=impact_marker_size, c=impact_pdp_color)
         if show_impact_line:
             ax.plot(pdpx, weighted_pdpy, lw=.3, c='grey')
 
@@ -633,7 +645,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         tick.set_fontname(fontname)
     ax.tick_params(axis='both', which='major', labelsize=ticklabel_fontsize)
 
-    return leaf_xranges, leaf_slopes, slope_counts_at_x, pdpx, pdpy, ignored
+    return pdpx, pdpy, ignored
 
 
 @jit(nopython=True)
@@ -885,6 +897,7 @@ def avg_values_at_x_nonparallel_jit(uniq_x, leaf_ranges, leaf_slopes):
 def plot_stratpd_gridsearch(X, y, colname, targetname,
                             min_samples_leaf_values=(2,5,10,20,30),
                             min_slopes_per_x_values=(5,), # Show default count only by default
+                            n_trials=10,
                             nbins_values=(1,2,3,4,5),
                             nbins_smoothing=None,
                             binned=False,
@@ -918,10 +931,11 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
             for msl in min_samples_leaf_values:
                 #print(f"---------- min_samples_leaf={msl} ----------- ")
                 try:
-                    leaf_xranges, leaf_slopes, slope_counts_at_x, pdpx, pdpy, ignored = \
+                    pdpx, pdpy, ignored = \
                         plot_stratpd(X, y, colname, targetname, ax=axes[row][col],
                                      min_samples_leaf=msl,
                                      min_slopes_per_x=min_slopes_per_x,
+                                     n_trials=n_trials,
                                      xrange=xrange,
                                      yrange=yrange,
                                      n_trees=1,
@@ -1059,20 +1073,30 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
         col += 1
 
 
-def catwise_leaves(rf, X_not_col, X_col, y):
+def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
     """
     Return a 2D array with the average y value for each category in each leaf
-    normalized by subtracting avg y value from all categories.
+    normalized by subtracting the overall avg y value from all categories.
+
     The columns are the y avg value changes per cat found in a single leaf as
-    they differ from the leaf y. Each row represents a category level. E.g.,
+    they differ from the overall y average. Each row represents a category level. E.g.,
 
     row           leaf0       leaf1
      0       166.430176  186.796956
      1       219.590349  176.448626
+
+    Cats are possibly noncontiguous with nan rows for cat codes not present.
+    Shape is (max cat + 1, num leaves).
+
+    Previously, we subtracted the average of the leaf y not the overall y avg,
+    but this failed to capture the relationship between categories when there are
+    many levels.  Within a single leave, there will typically only be a few categories
+    represented.
     """
     leaves = leaf_samples(rf, X_not_col)
+    y_mean = np.mean(y)
 
-    leaf_histos = np.full(shape=(max(X_col)+1, len(leaves)), fill_value=np.nan)
+    leaf_histos = np.full(shape=(max_catcode+1, len(leaves)), fill_value=np.nan)
     ignored = 0
     for leaf_i in range(len(leaves)):
         sample = leaves[leaf_i]
@@ -1087,8 +1111,7 @@ def catwise_leaves(rf, X_not_col, X_col, y):
 
         # record avg y value per cat above avg y in this leaf
         # leave cats w/o representation as nan
-        avg_leaf_y = np.mean(leaf_y)
-        delta_y_per_cat = avg_y_per_cat - avg_leaf_y
+        delta_y_per_cat = avg_y_per_cat - y_mean
         leaf_histos[uniq_cats, leaf_i] = delta_y_per_cat
 
     return leaf_histos, ignored
@@ -1096,15 +1119,17 @@ def catwise_leaves(rf, X_not_col, X_col, y):
 
 def cat_partial_dependence(X, y,
                            colname,  # X[colname] expected to be numeric codes
+                           max_catcode=None, # if we're bootstrapping, might see diff max's so normalize to one max
                            n_trees=1,
                            min_samples_leaf=10,
                            max_features=1.0,
                            bootstrap=False,
                            supervised=True,
-                           use_weighted_avg=False,  # not implemented
                            verbose=False):
     X_not_col = X.drop(colname, axis=1).values
     X_col = X[colname].values
+    if max_catcode is None:
+        max_catcode = np.max(X_col)
     if supervised:
         rf = RandomForestRegressor(n_estimators=n_trees,
                                    min_samples_leaf=min_samples_leaf,
@@ -1132,7 +1157,7 @@ def cat_partial_dependence(X, y,
     #     catwise_leaves(rf, X, y, colname, verbose=verbose)
 
     leaf_histos, ignored = \
-        catwise_leaves(rf, X_not_col, X_col, y.values)
+        catwise_leaves(rf, X_not_col, X_col, y.values, max_catcode)
 
     if verbose:
         print(f"CatStratPD Num samples ignored {ignored} for {colname}")
@@ -1156,6 +1181,7 @@ def plot_catstratpd(X, y,
                     # must pass dict or series if catcodes are not 1..n contiguous
                     # None implies use np.unique(X[colname]) values
                     # Must be 0-indexed list of names if list
+                    n_trials=10,
                     ax=None,
                     sort='ascending',
                     n_trees=1,
@@ -1168,6 +1194,7 @@ def plot_catstratpd(X, y,
                     use_weighted_avg=False,
                     show_impact=False,
                     show_all_deltas=True,
+                    show_x_counts=True,
                     alpha=.15,
                     color='#2c7fb8',
                     impact_color='#D73028',
@@ -1221,16 +1248,26 @@ def plot_catstratpd(X, y,
 
     catcodes, _, catcode2name = getcats(X, colname, catnames)
 
-    leaf_histos, avg_per_cat, ignored = \
-        cat_partial_dependence(X, y,
-                               colname=colname,
-                               n_trees=n_trees,
-                               min_samples_leaf=min_samples_leaf,
-                               max_features=max_features,
-                               bootstrap=bootstrap,
-                               supervised=supervised,
-                               use_weighted_avg=use_weighted_avg,
-                               verbose=verbose)
+    all_avg_per_cat = []
+    all_pdpy = []
+    n = len(X)
+    ignored = 0
+    for i in range(n_trials):
+        # idxs = resample(range(n), n_samples=n, replace=True) # bootstrap
+        idxs = resample(range(n), n_samples=int(n * 2 / 3), replace=False)  # subset
+        X_, y_ = X.iloc[idxs], y.iloc[idxs]
+
+        leaf_histos, avg_per_cat, ignored = \
+            cat_partial_dependence(X_, y_,
+                                   colname=colname,
+                                   n_trees=n_trees,
+                                   min_samples_leaf=min_samples_leaf,
+                                   max_features=max_features,
+                                   bootstrap=bootstrap,
+                                   supervised=supervised,
+                                   use_weighted_avg=use_weighted_avg,
+                                   verbose=verbose)
+        # all_avg_per_cat =
 
     if ax is None:
         if figsize is not None:
@@ -1298,6 +1335,35 @@ def plot_catstratpd(X, y,
     ax.spines['right'].set_linewidth(.5)
     ax.spines['left'].set_linewidth(.5)
     ax.spines['bottom'].set_linewidth(.5)
+
+    if show_x_counts:
+        X_col = X[colname]
+        _, pdpx_counts = np.unique(X_col[np.isin(X_col, pdpx)], return_counts=True)
+
+        ax2 = ax.twinx()
+        # scale y axis so the max count height is 10% of overall chart
+        ax2.set_ylim(0, max(pdpx_counts) * 1/barchart_size)
+        # draw just 0 and max count
+        ax2.yaxis.set_major_locator(plt.FixedLocator([0, max(pdpx_counts)]))
+        ax2.bar(x=pdpx, height=pdpx_counts, width=count_bar_width,
+                facecolor='#BABABA', align='edge', alpha=barchar_alpha)
+        ax2.set_ylabel(f"$x$ point count", labelpad=-12, fontsize=label_fontsize,
+                       fontstretch='extra-condensed',
+                       fontname=fontname)
+        # shift other y axis down barchart_size to make room
+        if yrange is not None:
+            ax.set_ylim(yrange[0]-(yrange[1]-yrange[0])*barchart_size, yrange[1])
+        else:
+            ax.set_ylim(min_y-(max_y-min_y)*barchart_size, max_y)
+        ax2.tick_params(axis='both', which='major', labelsize=ticklabel_fontsize)
+        for tick in ax2.get_xticklabels():
+            tick.set_fontname(fontname)
+        for tick in ax2.get_yticklabels():
+            tick.set_fontname(fontname)
+        ax2.spines['top'].set_linewidth(.5)
+        ax2.spines['right'].set_linewidth(.5)
+        ax2.spines['left'].set_linewidth(.5)
+        ax2.spines['bottom'].set_linewidth(.5)
 
     if show_impact:
         m = np.nanmean(np.abs(avg_per_cat))
