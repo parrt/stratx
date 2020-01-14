@@ -163,13 +163,22 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
             # some cats have NaN, such as 0th which is often for "missing values"
             # depending on label encoding scheme.
             # Used to be just this but now we weight by num of each cat:
-            # avg_abs_pdp = np.nanmean(np.abs(avg_per_cat))
+            # Ok, I'm back to this from the below because weight at each x really
+            # doesn't change how much an x location pushes on y.
+            avg_abs_pdp = np.nanmean(np.abs(avg_per_cat))
+
+            # avg_per_cat is currently deltas from mean(y) but we want to use min avg_per_cat
+            # as reference point, zeroing that one out. All others will be relative to that
+            # min cat value
+            # DON'T do this actually. seems to accentuate the impact; leave as relative to
+            # overall mean
+            #avg_per_cat -= np.nanmin(avg_per_cat)
 
             # group by cat and get count
-            abs_avg_per_cat = np.abs(avg_per_cat[~np.isnan(avg_per_cat)])
-            uniq_cats = np.where(~np.isnan(avg_per_cat))[0]
-            cat_counts = [len(np.where(X_col == cat)[0]) for cat in uniq_cats]
-            avg_abs_pdp = np.sum(np.abs(abs_avg_per_cat * cat_counts)) / np.sum(cat_counts)
+            # abs_avg_per_cat = np.abs(avg_per_cat[~np.isnan(avg_per_cat)])
+            # uniq_cats = np.where(~np.isnan(avg_per_cat))[0]
+            # cat_counts = [len(np.where(X_col == cat)[0]) for cat in uniq_cats]
+            # avg_abs_pdp = np.sum(abs_avg_per_cat * cat_counts) / np.sum(cat_counts)
         else:
             leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored = \
                 partial_dependence(X=X, y=y, colname=colname,
@@ -181,13 +190,15 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                                    verbose=verbose,
                                    parallel_jit=n_jobs == 1,
                                    supervised=supervised)
-            #         print(f"Ignored for {colname} = {ignored}")
-            _, pdpx_counts = np.unique(X_col[np.isin(X_col, pdpx)], return_counts=True)
-            if len(pdpx_counts)>0:
-                # weighted average of pdpy using pdpx_counts
-                avg_abs_pdp = np.sum(np.abs(pdpy * pdpx_counts)) / np.sum(pdpx_counts)
-            else:
-                avg_abs_pdp = np.mean(np.abs(pdpy))
+            avg_abs_pdp = np.mean(np.abs(pdpy))
+            # I used to weight by count at each x but weight at each x really
+            # doesn't change how much an x location pushes on y:
+            # _, pdpx_counts = np.unique(X_col[np.isin(X_col, pdpx)], return_counts=True)
+            # if len(pdpx_counts)>0:
+            #     # weighted average of pdpy using pdpx_counts
+            #     avg_abs_pdp = np.sum(np.abs(pdpy * pdpx_counts)) / np.sum(pdpx_counts)
+            # else:
+            #     avg_abs_pdp = np.mean(np.abs(pdpy))
         # print(f"{colname}:{avg_abs_pdp:.3f} mass")
         # print(f"Stop {colname}")
         return avg_abs_pdp

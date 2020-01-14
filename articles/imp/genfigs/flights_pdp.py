@@ -46,19 +46,33 @@ print(f"Avg arrival delay {df_flights['ARRIVAL_DELAY'].mean()}")
 #                         )
 
 col = 'TAXI_OUT'
-col = 'DEPARTURE_TIME_HOUR'
-col = 'SCHEDULED_DEPARTURE_HOUR'
+col = 'DEPARTURE_TIME'
+col = 'SCHEDULED_DEPARTURE'
 
-plot_stratpd(X, y, colname='SCHEDULED_DEPARTURE', targetname='delay',
+plot_stratpd(X, y, colname=col, targetname='delay',
              show_slope_lines=False,
-             show_impact=False,
+             show_impact=True,
              show_x_counts=True,
              pdp_marker_cmap='Purples'
              )
              # yrange=(-10,100))
 plt.tight_layout()
-plt.savefig(f"/Users/parrt/Desktop/flight.pdf", pad_inches=0)
+plt.savefig(f"/Users/parrt/Desktop/{col}.pdf", pad_inches=0)
 plt.show()
+
+# plot_catstratpd(X, y, 'FLIGHT_NUMBER', 'ARRIVAL_DELAY',
+#                 min_samples_leaf=10,
+#                 sort=None,
+#                 # yrange=(-110,250),
+#                 figsize=(20,4),
+#                 n_trials=1,
+#                 show_all_deltas=False,
+#                 show_xticks=False,
+#                 show_impact=True)
+# plt.tight_layout()
+# plt.savefig(f"/Users/parrt/Desktop/flight-fnum-cat.pdf", pad_inches=0)
+# plt.show()
+
 
 # plot_stratpd(X, y, colname='DEPARTURE_TIME_HOUR', targetname='delay',
 #              show_slope_lines=False,
@@ -74,17 +88,6 @@ plt.show()
 # plt.savefig(f"/Users/parrt/Desktop/flight-dep-time-4.pdf", pad_inches=0)
 # plt.show()
 
-# plot_catstratpd(X, y, 'FLIGHT_NUMBER', 'ARRIVAL_DELAY',
-#                 min_samples_leaf=10,
-#                 sort=None,
-#                 # yrange=(-110,250),
-#                 show_all_deltas=False,
-#                 show_xticks=False,
-#                 show_impact=True,
-#                 style='scatter')
-# plt.tight_layout()
-# plt.savefig(f"/Users/parrt/Desktop/flight-fnum-cat-10.pdf", pad_inches=0)
-# plt.show()
 
 # I = spearmans_importances(X, y)
 # print(I)

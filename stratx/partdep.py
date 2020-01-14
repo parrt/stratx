@@ -543,6 +543,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
     X_col = X[colname]
     _, pdpx_counts = np.unique(X_col[np.isin(X_col, pdpx)], return_counts=True)
 
+    leave_room_scaler = 1.3
     x_width = max(pdpx) - min(pdpx) + 1
     count_bar_width = x_width / len(pdpx)
     if count_bar_width/x_width < 0.002:
@@ -555,13 +556,13 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         # draw just 0 and max count
         ax2.yaxis.set_major_locator(plt.FixedLocator([0, max(pdpx_counts)]))
         ax2.bar(x=pdpx, height=pdpx_counts, width=count_bar_width,
-                facecolor='#BABABA', align='edge', alpha=barchar_alpha)
+                facecolor='#BABABA', align='center', alpha=barchar_alpha)
         ax2.set_ylabel(f"$x$ point count", labelpad=-12, fontsize=label_fontsize,
                        fontstretch='extra-condensed',
                        fontname=fontname)
         # shift other y axis down barchart_size to make room
         if yrange is not None:
-            ax.set_ylim(yrange[0]-(yrange[1]-yrange[0])*barchart_size, yrange[1])
+            ax.set_ylim(yrange[0] - (yrange[1]-yrange[0]) * barchart_size * leave_room_scaler, yrange[1])
         else:
             ax.set_ylim(min_y-(max_y-min_y)*barchart_size, max_y)
         ax2.tick_params(axis='both', which='major', labelsize=ticklabel_fontsize)
@@ -581,13 +582,13 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         # draw just 0 and max count
         ax2.yaxis.set_major_locator(plt.FixedLocator([0, max(slope_counts_at_x)]))
         ax2.bar(x=pdpx, height=slope_counts_at_x, width=count_bar_width,
-                facecolor='#BABABA', align='edge', alpha=barchar_alpha)
+                facecolor='#BABABA', align='center', alpha=barchar_alpha)
         ax2.set_ylabel(f"slope count", labelpad=-12, fontsize=label_fontsize,
                        fontstretch='extra-condensed',
                        fontname=fontname)
         # shift other y axis down barchart_size to make room
         if yrange is not None:
-            ax.set_ylim(yrange[0]-(yrange[1]-yrange[0])*barchart_size, yrange[1])
+            ax.set_ylim(yrange[0]-(yrange[1]-yrange[0])*barchart_size * leave_room_scaler, yrange[1])
         else:
             ax.set_ylim(min_y-(max_y-min_y)*barchart_size, max_y)
         ax2.tick_params(axis='both', which='major', labelsize=ticklabel_fontsize)
@@ -601,9 +602,6 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         ax2.spines['bottom'].set_linewidth(.5)
 
     if show_impact:
-        # Convert histo height at x to 0..1 and then attenuate pdpy
-        # for plotting purposes; not quite right scale but it's representative
-        weighted_pdpy = pdpy * (pdpx_counts / np.max(pdpx_counts))
         # r = max_y - min_y
         # if max(weighted_pdpy) > 0:
         #     verticalalignment = 'bottom'
@@ -617,16 +615,17 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         # ax.text((max(pdpx)+1+min(pdpx))/2, 0+y_text_shift, f"Impact {impact:.2f}",
         #         horizontalalignment='center', verticalalignment=verticalalignment,
         #         fontsize=label_fontsize, fontname=fontname)
-        ax.fill_between(pdpx, weighted_pdpy, [0] * len(pdpx), color=impact_fill_color)
+        ax.fill_between(pdpx, pdpy, [0] * len(pdpx), color=impact_fill_color)
         if show_impact_dots:
-            ax.scatter(pdpx, weighted_pdpy, s=impact_marker_size, c=impact_pdp_color)
+            ax.scatter(pdpx, pdpy, s=impact_marker_size, c=impact_pdp_color)
         if show_impact_line:
-            ax.plot(pdpx, weighted_pdpy, lw=.3, c='grey')
+            ax.plot(pdpx, pdpy, lw=.3, c='grey')
 
     if show_xlabel:
         xl = colname
         if show_impact:
-            impact = np.sum(np.abs(pdpy * pdpx_counts)) / np.sum(pdpx_counts)
+            # impact = np.sum(np.abs(pdpy * pdpx_counts)) / np.sum(pdpx_counts)
+            impact = np.mean(np.abs(pdpy))
             xl += f" (Impact {impact:.2f})"
         ax.set_xlabel(xl, fontsize=label_fontsize, fontname=fontname)
     if show_ylabel:
@@ -1053,7 +1052,7 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
         if yrange is not None:
             axes[col].set_ylim(yrange)
         try:
-            catcodes_, catnames_, curve, ignored = \
+            uniq_catcodes, avg_per_cat, ignored = \
                 plot_catstratpd(X, y, colname, targetname, ax=axes[col],
                                 min_samples_leaf=msl,
                                 catnames=catnames,
@@ -1207,10 +1206,10 @@ def plot_catstratpd(X, y,
                     barchart_size=0.20,
                     barchar_alpha=0.9,
                     ticklabel_fontsize=10,
-                    style: ('strip', 'scatter') = 'strip',
                     min_y_shifted_to_zero=True,
                     # easier to read if values are relative to 0 (usually); do this for high cardinality cat vars
                     show_xlabel=True,
+                    show_xticks=True,
                     show_ylabel=True,
                     verbose=False,
                     figsize=(5,3)):
@@ -1221,8 +1220,11 @@ def plot_catstratpd(X, y,
 
     only works for ints, not floats
     """
-
-    all_avg_per_cat = []
+    if ax is None:
+        if figsize is not None:
+            fig, ax = plt.subplots(1, 1, figsize=figsize)
+        else:
+            fig, ax = plt.subplots(1, 1)
 
     uniq_catcodes = np.unique(X[colname])
     max_catcode = max(uniq_catcodes)
@@ -1247,6 +1249,7 @@ def plot_catstratpd(X, y,
         m = np.where(c==0, np.nan, m) # cats w/o values should be nan, not 0
         return m
 
+    all_avg_per_cat = []
     ignored = 0
     for i in range(n_trials):
         print(i)
@@ -1258,10 +1261,16 @@ def plot_catstratpd(X, y,
             cat_partial_dependence(X_, y_,
                                    max_catcode=np.max(X_col),
                                    colname=colname,
-                                   n_trees=1,
+                                   n_trees=n_trees,
                                    min_samples_leaf=min_samples_leaf,
-                                   max_features=1.0,
+                                   max_features=max_features,
                                    bootstrap=False)
+        # avg_per_cat is currently deltas from mean(y) but we want to use min avg_per_cat
+        # as reference point, zeroing that one out. All others will be relative to that
+        # min cat value
+        if min_y_shifted_to_zero:
+            avg_per_cat -= np.nanmin(avg_per_cat)
+
         ignored += ignored_
         all_avg_per_cat.append( avg_per_cat )
 
@@ -1269,21 +1278,12 @@ def plot_catstratpd(X, y,
 
     combined_avg_per_cat = avg_pd_catvalues(all_avg_per_cat)
 
-    impacts = []
-    for i in range(n_trials):
-        avg_per_cat = all_avg_per_cat[i]
-        abs_avg_per_cat = np.abs(avg_per_cat[~np.isnan(avg_per_cat)])
-        trial_uniq_cats = np.where(~np.isnan(avg_per_cat))[0]
-        cat_counts = [len(np.where(X_col == cat)[0]) for cat in trial_uniq_cats]
-        impact = np.sum(np.abs(abs_avg_per_cat * cat_counts)) / np.sum(cat_counts)
-        impacts.append(impact)
+    impacts = [np.nanmean(np.abs(all_avg_per_cat[i])) for i in range(n_trials)]
     impact_order = np.argsort(impacts)
     print(impacts)
     print(impact_order)
-    avg_impact = np.mean(impacts)
+    avg_impact = np.nanmean(np.abs(combined_avg_per_cat))
     print(avg_impact)
-
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
 
     cmap = plt.get_cmap('coolwarm')
     colors=cmap(np.linspace(0, 1, num=n_trials))
@@ -1315,7 +1315,7 @@ def plot_catstratpd(X, y,
                 markersize=pdp_marker_size, alpha=pdp_marker_alpha)
 
     # show 0 line
-    ax.plot([0,len(uniq_catcodes)], [0,0], '--', c='grey', lw=.5)
+    # ax.plot([0,len(uniq_catcodes)], [0,0], '--', c='grey', lw=.5)
 
     # Show avg line
     xloc = 0
@@ -1334,9 +1334,10 @@ def plot_catstratpd(X, y,
                 transform=ax.transAxes,
                 color=impact_color)
 
+    leave_room_scaler = 1.3
+
     if show_x_counts:
-        combined_uniq_cats = np.where(~np.isnan(combined_avg_per_cat))[0]
-        _, cat_counts = np.unique(X_col[np.isin(X_col, combined_uniq_cats)], return_counts=True)
+        _, cat_counts = np.unique(X_col[np.isin(X_col, uniq_catcodes)], return_counts=True)
         # x_width = len(uniq_catcodes)
         # count_bar_width = x_width / len(pdpx)
         # if count_bar_width/x_width < 0.002:
@@ -1347,8 +1348,8 @@ def plot_catstratpd(X, y,
         ax2.set_ylim(0, max(cat_counts) * 1/barchart_size)
         # draw just 0 and max count
         ax2.yaxis.set_major_locator(plt.FixedLocator([0, max(cat_counts)]))
-        ax2.bar(x=range(len(combined_uniq_cats)), height=cat_counts, width=count_bar_width,
-                facecolor='#BABABA', align='edge', alpha=barchar_alpha)
+        ax2.bar(x=range(len(uniq_catcodes)), height=cat_counts, width=count_bar_width,
+                facecolor='#BABABA', align='center', alpha=barchar_alpha)
         ax2.set_ylabel(f"$x$ point count", labelpad=-12, fontsize=label_fontsize,
                        fontstretch='extra-condensed',
                        fontname=fontname)
@@ -1356,7 +1357,7 @@ def plot_catstratpd(X, y,
         if yrange is not None:
             ax.set_ylim(yrange[0]-(yrange[1]-yrange[0])*barchart_size, yrange[1])
         else:
-            ax.set_ylim(min_y-(max_y-min_y)*barchart_size, max_y)
+            ax.set_ylim(min_y-(max_y-min_y)*barchart_size * leave_room_scaler, max_y)
         # ax2.set_xticks(range(len(uniq_catcodes)))
         # ax2.set_xticklabels([])
         plt.setp(ax2.get_xticklabels(), visible=False)
@@ -1371,21 +1372,27 @@ def plot_catstratpd(X, y,
         ax2.spines['bottom'].set_linewidth(.5)
 
     # np.where(combined_avg_per_cat!=0)[0]
-    if show_xlabel:
+    ax.tick_params(axis='both', which='major', labelsize=ticklabel_fontsize)
+
+    if show_xticks:
         ax.set_xticks(range(len(uniq_catcodes)))
-        ax.set_xticklabels(uniq_catcodes)
-        ax.set_xlabel(colname, fontsize=label_fontsize, fontname=fontname)
+        if catnames is not None:
+            ax.set_xticklabels(catnames[uniq_catcodes])
+        else:
+            ax.set_xticklabels(uniq_catcodes)
+        for tick in ax.get_xticklabels():
+            tick.set_fontname(fontname)
     else:
         ax.set_xticks([])
         ax.set_xticklabels([])
 
+    if show_xlabel:
+        ax.set_xlabel(colname, fontsize=label_fontsize, fontname=fontname)
     if show_ylabel:
         ax.set_ylabel(targetname, fontsize=label_fontsize, fontname=fontname)
     if title is not None:
         ax.set_title(title, fontsize=title_fontsize, fontname=fontname)
 
-    for tick in ax.get_xticklabels():
-        tick.set_fontname(fontname)
     for tick in ax.get_yticklabels():
         tick.set_fontname(fontname)
 
@@ -1397,7 +1404,7 @@ def plot_catstratpd(X, y,
     ax.spines['left'].set_linewidth(.5)
     ax.spines['bottom'].set_linewidth(.5)
 
-    return uniq_catcodes, combined_avg_per_cat
+    return uniq_catcodes, combined_avg_per_cat, ignored
 
 # only works for ints, not floats
 def plot_catstratpd_OLD(X, y,
