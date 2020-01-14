@@ -46,17 +46,17 @@ X_, y_ = X.iloc[idxs], y.iloc[idxs]
 # plt.savefig(f"/Users/parrt/Desktop/james-age.pdf", pad_inches=0)
 # plt.show()
 #
-# plot_stratpd(X_, y_, colname='YearMade', targetname='SalePrice',
-#              show_slope_lines=False,
-#              show_impact=True,
-#              min_samples_leaf=5,
-#              min_slopes_per_x=7,
-#              pdp_marker_cmap='coolwarm',#'YlGnBu',#'tab20b',
-#              figsize=(4,3)
-#              )
-# plt.tight_layout()
-# plt.savefig(f"/Users/parrt/Desktop/james-YearMade.pdf", pad_inches=0)
-# plt.show()
+plot_stratpd(X_, y_, colname='YearMade', targetname='SalePrice',
+             show_slope_lines=False,
+             show_impact=True,
+             min_samples_leaf=5,
+             min_slopes_per_x=7,
+             pdp_marker_cmap='coolwarm',#'YlGnBu',#'tab20b',
+             figsize=(4,3)
+             )
+plt.tight_layout()
+plt.savefig(f"/Users/parrt/Desktop/james-YearMade.pdf", pad_inches=0)
+plt.show()
 
 # col = 'YearMade'
 # plot_stratpd_gridsearch(X_, y_, colname=col, targetname='SalePrice',

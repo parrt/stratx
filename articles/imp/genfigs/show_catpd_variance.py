@@ -54,6 +54,7 @@ uniq_catcodes, avg_per_cat, ignored = \
                     ticklabel_fontsize=6,
                     pdp_marker_size=10,
                     show_impact=True,
+                    min_y_shifted_to_zero=False,
                     ax=ax,
                     title=f"n={n}, mean(y)={y_bar :.1f}, true impact={np.mean(avgtemps['avgtemp']-np.min(avgtemps['avgtemp'])):.1f}")
 
