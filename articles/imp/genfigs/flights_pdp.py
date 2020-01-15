@@ -53,6 +53,7 @@ col = 'FLIGHT_NUMBER'
 plot_stratpd(X, y, colname=col, targetname='delay',
              show_slope_lines=False,
              n_trials=10,
+             min_slopes_per_x=20,
              show_impact=False,
              show_x_counts=True,
              )

@@ -470,8 +470,11 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
     ignored = 0
     for i in range(n_trials):
         # idxs = resample(range(n), n_samples=n, replace=True) # bootstrap
-        idxs = resample(range(n), n_samples=int(n * 2 / 3), replace=False)  # subset
-        X_, y_ = X.iloc[idxs], y.iloc[idxs]
+        if n_trials>1:
+            idxs = resample(range(n), n_samples=int(n * 2 / 3), replace=False)  # subset
+            X_, y_ = X.iloc[idxs], y.iloc[idxs]
+        else:
+            X_, y_ = X, y
 
         leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored_ = \
             partial_dependence(X=X_, y=y_, colname=colname,
