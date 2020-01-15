@@ -17,11 +17,24 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from rfpimp import plot_importances, dropcol_importances, importances
+# X, y = load_rent(n=30_000)
 
-X, y = load_rent(n=30_000)
+n = 20_000
+
+if True:
+    X, y = load_bulldozer()
+
+    # Most recent timeseries data is more relevant so get big recent chunk
+    # then we can sample from that to get n
+    X = X.iloc[-50_000:]
+    y = y.iloc[-50_000:]
+
+    idxs = resample(range(50_000), n_samples=n, replace=False)
+    X, y = X.iloc[idxs], y.iloc[idxs]
+
+# X, y, _ = load_flights(n=n)
 
 # importances_pvalues(X, y, n_trials=50)
-I = importances(X, y, pvalues=True, n_pvalue_trials=80, n_jobs=4)
+I = importances(X, y, pvalues=True, n_pvalue_trials=50, n_jobs=1)
 # I = impact_importances(X, y, stddev=True, n_stddev_trials=5, pvalues=True, n_pvalue_trials=5)
 print(I)

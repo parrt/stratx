@@ -147,7 +147,7 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
 
     def single_feature_importance(colname):
         # print(f"Start {colname}")
-        if False:#colname in catcolnames:
+        if colname in catcolnames:
             leaf_histos, avg_per_cat, ignored = \
                 cat_partial_dependence(X, y, colname=colname,
                                        n_trees=n_trees,
