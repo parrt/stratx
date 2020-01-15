@@ -48,12 +48,13 @@ print(f"Avg arrival delay {df_flights['ARRIVAL_DELAY'].mean()}")
 col = 'TAXI_OUT'
 col = 'DEPARTURE_TIME'
 col = 'SCHEDULED_DEPARTURE'
+col = 'FLIGHT_NUMBER'
 
 plot_stratpd(X, y, colname=col, targetname='delay',
              show_slope_lines=False,
-             show_impact=True,
+             n_trials=10,
+             show_impact=False,
              show_x_counts=True,
-             pdp_marker_cmap='Purples'
              )
              # yrange=(-10,100))
 plt.tight_layout()

@@ -564,7 +564,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         if yrange is not None:
             ax.set_ylim(yrange[0] - (yrange[1]-yrange[0]) * barchart_size * leave_room_scaler, yrange[1])
         else:
-            ax.set_ylim(min_y-(max_y-min_y)*barchart_size, max_y)
+            ax.set_ylim(min_y-(max_y-min_y)*barchart_size * leave_room_scaler, max_y)
         ax2.tick_params(axis='both', which='major', labelsize=ticklabel_fontsize)
         for tick in ax2.get_xticklabels():
             tick.set_fontname(fontname)
@@ -623,10 +623,9 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
 
     if show_xlabel:
         xl = colname
-        if show_impact:
-            # impact = np.sum(np.abs(pdpy * pdpx_counts)) / np.sum(pdpx_counts)
-            impact = np.mean(np.abs(pdpy))
-            xl += f" (Impact {impact:.2f})"
+        # impact = np.sum(np.abs(pdpy * pdpx_counts)) / np.sum(pdpx_counts)
+        impact = np.mean(np.abs(pdpy))
+        xl += f" (Impact {impact:.2f})"
         ax.set_xlabel(xl, fontsize=label_fontsize, fontname=fontname)
     if show_ylabel:
         ax.set_ylabel(targetname, fontsize=label_fontsize, fontname=fontname)
@@ -1101,12 +1100,13 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
         sample = leaves[leaf_i]
         leaf_cats = X_col[sample]
         leaf_y = y[sample]
-        uniq_cats = np.unique(leaf_cats)
+        uniq_cats = np.unique(leaf_cats) # comes back sorted
         avg_y_per_cat = np.array([leaf_y[leaf_cats==cat].mean() for cat in uniq_cats])
-        if len(avg_y_per_cat) < 2:
-            # print(f"ignoring {len(sample)} obs for {len(avg_y_per_cat)} cat(s) in leaf")
-            ignored += len(sample)
-            continue
+        # no longer relevant since reference point is mean(y)
+        # if len(uniq_cats) < 6:
+        #     print(f"ignoring {len(sample)} obs for {len(avg_y_per_cat)} cat(s) in leaf")
+        #     ignored += len(sample)
+        #     continue
 
         # record avg y value per cat above avg y in this leaf
         # leave cats w/o representation as nan
@@ -1157,6 +1157,10 @@ def cat_partial_dependence(X, y,
 
     leaf_histos, ignored = \
         catwise_leaves(rf, X_not_col, X_col, y.values, max_catcode)
+
+    # experimenting dropping those with too few averages
+    # slope_counts_at_cat = leaf_histos.shape[1] - np.isnan(leaf_histos).sum(axis=1)
+    # leaf_histos[slope_counts_at_cat<5,:] = np.nan # kill these
 
     if verbose:
         print(f"CatStratPD Num samples ignored {ignored} for {colname}")
@@ -1252,10 +1256,12 @@ def plot_catstratpd(X, y,
     all_avg_per_cat = []
     ignored = 0
     for i in range(n_trials):
-        print(i)
         # idxs = resample(range(n), n_samples=n, replace=True) # bootstrap
-        idxs = resample(range(n), n_samples=int(n*2/3), replace=False) # subset
-        X_, y_ = X.iloc[idxs], y.iloc[idxs]
+        if n_trials>1:
+            idxs = resample(range(n), n_samples=int(n*2/3), replace=False) # subset
+            X_, y_ = X.iloc[idxs], y.iloc[idxs]
+        else:
+            X_, y_ = X, y
 
         leaf_histos, avg_per_cat, ignored_ = \
             cat_partial_dependence(X_, y_,
@@ -1269,8 +1275,11 @@ def plot_catstratpd(X, y,
         # as reference point, zeroing that one out. All others will be relative to that
         # min cat value
         if min_y_shifted_to_zero:
-            avg_per_cat -= np.nanmin(avg_per_cat)
-
+            # min and mean don't work, though min is closest. really need average of
+            # first few valid avg_per_cat values.
+            pass
+            # avg_per_cat -= np.nanmin(avg_per_cat)
+            # avg_per_cat += 0#np.mean(y)
         ignored += ignored_
         all_avg_per_cat.append( avg_per_cat )
 
@@ -1280,10 +1289,9 @@ def plot_catstratpd(X, y,
 
     impacts = [np.nanmean(np.abs(all_avg_per_cat[i])) for i in range(n_trials)]
     impact_order = np.argsort(impacts)
-    print(impacts)
-    print(impact_order)
+    print("impacts", impacts)
     avg_impact = np.nanmean(np.abs(combined_avg_per_cat))
-    print(avg_impact)
+    print("avg impact", avg_impact)
 
     cmap = plt.get_cmap('coolwarm')
     colors=cmap(np.linspace(0, 1, num=n_trials))
@@ -1296,7 +1304,7 @@ def plot_catstratpd(X, y,
         if np.nanmax(avg_per_cat) > max_y:
             max_y = np.nanmax(avg_per_cat)
         trial_catcodes = np.where(~np.isnan(avg_per_cat))[0]
-        print("catcodes", trial_catcodes, "range", min(trial_catcodes), max(trial_catcodes))
+        # print("catcodes", trial_catcodes, "range", min(trial_catcodes), max(trial_catcodes))
         # walk each potential catcode but plot with x in 0..maxcode+1; ignore nan avg_per_cat values
         xloc = -1 # go from 0 but must count nan entries
         collect_cats = []
@@ -1308,7 +1316,7 @@ def plot_catstratpd(X, y,
             # ax.plot([xloc - .15, xloc + .15], [cat_delta] * 2, c=colors[impact_order[i]], linewidth=1)
             collect_cats.append(xloc)
             collect_deltas.append(cat_delta)
-        print("Got to xloc", xloc, "len(trial_catcodes)", len(trial_catcodes), "len(catcodes)", len(uniq_catcodes))
+        # print("Got to xloc", xloc, "len(trial_catcodes)", len(trial_catcodes), "len(catcodes)", len(uniq_catcodes))
         # ax.scatter(collect_cats, collect_deltas, c=mpl.colors.rgb2hex(colors[impact_order[i]]),
         #            s=pdp_marker_size, alpha=pdp_marker_alpha)
         ax.plot(collect_cats, collect_deltas, '.', c=mpl.colors.rgb2hex(colors[impact_order[i]]),
@@ -1325,7 +1333,9 @@ def plot_catstratpd(X, y,
         avg_delta.append(cat_delta)
         xloc += 1
 
-    ax.plot(range(len(uniq_catcodes)), avg_delta, '.', c='k', markersize=pdp_marker_size + 1)
+    if n_trials>1:
+        # Show combined cat values if more than one trials
+        ax.plot(range(len(uniq_catcodes)), avg_delta, '.', c='k', markersize=pdp_marker_size + 1)
 
     if show_impact:
         ax.text(0.5, .94, f"Impact {avg_impact:.2f}",
@@ -1337,6 +1347,7 @@ def plot_catstratpd(X, y,
     leave_room_scaler = 1.3
 
     if show_x_counts:
+        # Only show cat counts for those which are present in X[colname] (unlike stratpd plot)
         _, cat_counts = np.unique(X_col[np.isin(X_col, uniq_catcodes)], return_counts=True)
         # x_width = len(uniq_catcodes)
         # count_bar_width = x_width / len(pdpx)
@@ -1355,7 +1366,7 @@ def plot_catstratpd(X, y,
                        fontname=fontname)
         # shift other y axis down barchart_size to make room
         if yrange is not None:
-            ax.set_ylim(yrange[0]-(yrange[1]-yrange[0])*barchart_size, yrange[1])
+            ax.set_ylim(yrange[0]-(yrange[1]-yrange[0])*barchart_size * leave_room_scaler, yrange[1])
         else:
             ax.set_ylim(min_y-(max_y-min_y)*barchart_size * leave_room_scaler, max_y)
         # ax2.set_xticks(range(len(uniq_catcodes)))
