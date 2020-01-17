@@ -132,7 +132,27 @@ def test_two_leaves_with_two_refcats():
     # print("leaf_histos\n",leaf_histos)
     refcats = np.array([0,1])
     avg_per_cat, ignored = avg_values_at_cat(leaf_histos, refcats)
-    expected = np.array([0, 2, 6, 3, 0, np.nan])
+    expected = np.array([0, 1, 3, 1.5, 0, np.nan])
+    np.testing.assert_array_equal(avg_per_cat, expected)
+    assert ignored==0
+
+
+def test_two_leaves_with_non_0_and_1_catcodes():
+    leaf_histos = np.array([
+        [np.nan, np.nan],
+        [np.nan, np.nan],
+        [0,      np.nan],
+        [5,      np.nan],
+        [1,      0],
+        [2,      3],
+        [np.nan, 7],
+        [0,      np.nan],
+        [np.nan, np.nan]
+    ])
+    # print("leaf_histos\n",leaf_histos)
+    refcats = np.array([2,4])
+    avg_per_cat, ignored = avg_values_at_cat(leaf_histos, refcats)
+    expected = np.array([np.nan, np.nan, 0, 2.5, 1, 3, 4, 0, np.nan])
     np.testing.assert_array_equal(avg_per_cat, expected)
     assert ignored==0
 

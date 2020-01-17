@@ -1100,7 +1100,7 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
     # y_mean = np.mean(y)
 
     leaf_histos = np.full(shape=(max_catcode+1, len(leaves)), fill_value=np.nan)
-    refcats = np.empty(shape=(len(leaves),))
+    refcats = np.empty(shape=(len(leaves),), dtype=int)
 
     ignored = 0
     for leaf_i in range(len(leaves)):
@@ -1169,8 +1169,10 @@ def cat_partial_dependence(X, y,
     # leaf_histos, leaf_avgs, leaf_sizes, leaf_catcounts, ignored = \
     #     catwise_leaves(rf, X, y, colname, verbose=verbose)
 
-    leaf_histos, refcats, ignored = \
+    leaf_histos, refcats, ignored____ = \
         catwise_leaves(rf, X_not_col, X_col, y.values, max_catcode)
+
+    avg_per_cat, ignored = avg_values_at_cat(leaf_histos, refcats)
 
     # experimenting dropping those with too few averages
     # slope_counts_at_cat = leaf_histos.shape[1] - np.isnan(leaf_histos).sum(axis=1)
@@ -1179,9 +1181,9 @@ def cat_partial_dependence(X, y,
     if verbose:
         print(f"CatStratPD Num samples ignored {ignored} for {colname}")
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", category=RuntimeWarning)
-        avg_per_cat = np.nanmean(leaf_histos, axis=1)
+    # with warnings.catch_warnings():
+    #     warnings.simplefilter("ignore", category=RuntimeWarning)
+    #     avg_per_cat = np.nanmean(leaf_histos, axis=1)
         # slope_counts_at_cat = leaf_histos.shape[1] - np.isnan(leaf_histos).sum(axis=1)
 
     # print("slope_counts_at_cat", colname, list(slope_counts_at_cat)[:100])
@@ -1207,15 +1209,15 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
     will be much smaller than the number of categories total for speed.) Note these
     sum vectors might have np.nan values to represent unknown category info.
 
-    Now we have to create a result vector, avg_per_cat, that combines the
+    Now we have to create a result vector, sums_per_cat, that combines the
     relative vectors. The problem is of course the different reference categories.
-    We initialize avg_per_cat to be the average relative to the first unique
+    We initialize sums_per_cat to be the average relative to the first unique
     reference category. Let's assume that is 0, which means we take the first
-    element from the avg_per_uniq_cat list to initialize avg_per_cat. To add
+    element from the avg_for_refcats list to initialize sums_per_cat. To add
     in the next vector, we first have to compensate for the difference in
     reference category. min_cats[i] tells us which category the vector is
-    relative to so we take the value from the running sum, avg_per_cat, at
-    position min_cats[i] and add that to all elements of the avg_per_uniq_cat[i]
+    relative to so we take the value from the running sum, sums_per_cat, at
+    position min_cats[i] and add that to all elements of the avg_for_refcats[i]
     vector.
 
     It's possible that more than a single value within a leaf vector will be 0.
@@ -1235,7 +1237,7 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
 
     After collecting all of the vectors with the same reference category, we see:
 
-    sum_per_uniq_cat
+    sums_for_refcats
      [[ 0.  7.  1.]
       [ 4.  0.  0.]
       [ 2. 11.  0.]
@@ -1250,11 +1252,11 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
 
     Then to combine, we see a loop with an iteration per unique min cat:
 
-    0 :                   avg_per_cat = [nan  4.  2. nan]
-    1 : [7.5 nan 9.5 9. ] avg_per_cat = [ 7.5  4.  11.5  9. ]
-    3 : [10. nan nan nan] avg_per_cat = [17.5  4.  11.5  9. ]
+    0 :                   sums_per_cat = [nan  4.  2. nan]
+    1 : [7.5 nan 9.5 9. ] sums_per_cat = [ 7.5  4.  11.5  9. ]
+    3 : [10. nan nan nan] sums_per_cat = [17.5  4.  11.5  9. ]
 
-    So we get a final avg_per_cat = [17.5  4.  11.5  9. ]
+    So we get a final sums_per_cat = [17.5  4.  11.5  9. ]
 
     :param leaf_histos: A 2D matrix where rows are category levels/values and
                         columns hold y values for categories.
@@ -1282,8 +1284,8 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
 
     uniq_refcats = sorted(np.unique(refcats))
     # Track
-    sum_per_uniq_cat = []
-    counts = []
+    sums_for_refcats = []
+    counts_for_refcats = []
     # result = np.zeros(shape=(ncats,))
     for cat in uniq_refcats:
         # collect and add up vectors from all leaves with cat as a reference category
@@ -1296,29 +1298,34 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
         c = (~all_nan_entries).astype(int) # nan entries also get 0 count
         c[cat] = 0 # refcat doesn't get counted
         c = np.sum(c, axis=1)
-        counts.append(c)
-        sum_per_uniq_cat.append(s)
-    if verbose: print("sum_per_uniq_cat\n", np.array(sum_per_uniq_cat).T)
-    if verbose: print("counts\n", np.array(counts).T)
+        counts_for_refcats.append(c)
+        sums_for_refcats.append(s)
+    if verbose: print("sums_for_refcats\n", np.array(sums_for_refcats).T)
+    if verbose: print("counts\n", np.array(counts_for_refcats).T)
     if verbose: print("uniq r=", np.unique(refcats))
     # likely less memory to avoid creating 2D matrices
-    avg_per_uniq_cat = [sum_per_uniq_cat[i] / np.where(counts[i]==0, 1, counts[i]) for i in range(len(uniq_refcats))]
-    # avg_per_cat is the running sum vector
-    avg_per_cat = avg_per_uniq_cat[uniq_refcats[0]] # init with first ref category (column)
-    if verbose: print(uniq_refcats[0],": initial  =",avg_per_cat,"\tavg_per_cat =",avg_per_cat)
+    avg_for_refcats = [sums_for_refcats[i] / np.where(counts_for_refcats[i]==0, 1, counts_for_refcats[i]) for i in range(len(uniq_refcats))]
+    # sums_per_cat is the running sum vector
+    sums_per_cat = avg_for_refcats[0] # init with first ref category (column)
+    if verbose: print(uniq_refcats[0],": initial  =",sums_per_cat,"\tsums_per_cat =",sums_per_cat)
     ignored = 0
+    num_refcats_ignored = 0
     for i in range(1,len(uniq_refcats)):
         # Compensate for different reference category by adding the value
         # of this vector's reference category from the running sum
-        relative_to_value = avg_per_cat[uniq_refcats[i]]
+        relative_to_value = sums_per_cat[uniq_refcats[i]]
         if np.isnan(relative_to_value):
-            ignored += np.sum(~np.isnan(avg_per_uniq_cat[i]))
+            num_refcats_ignored += 1
+            ignored += np.sum(~np.isnan(avg_for_refcats[i]))
             if verbose: print(f"cat {uniq_refcats[i]} has no value in running sum; ignored={ignored}")
             continue
-        adjusted_vec = relative_to_value + avg_per_uniq_cat[i]
-        avg_per_cat = nanaddvec(avg_per_cat, adjusted_vec)
-        if verbose: print(uniq_refcats[i],": adjusted =",adjusted_vec,"\tavg_per_cat =",avg_per_cat)
+        adjusted_vec = relative_to_value + avg_for_refcats[i]
+        sums_per_cat = nanaddvec(sums_per_cat, adjusted_vec)
+        if verbose: print(uniq_refcats[i],": adjusted =",adjusted_vec,"\tsums_per_cat =",sums_per_cat)
 
+    counts_per_cat = np.sum(counts_for_refcats, axis=0)
+    # We've added vectors together for len(uniq_refcats), so get a generic average
+    avg_per_cat = sums_per_cat / (len(uniq_refcats)-num_refcats_ignored)
     return avg_per_cat, ignored
 
 

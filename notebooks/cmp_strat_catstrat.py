@@ -36,7 +36,7 @@ def synthetic_poly_data(n=1000,p=3,dtype=float):
 # plt.show()
 
 
-df, eqn = synthetic_poly_data(20000, p=2, dtype=int)
+df, eqn = synthetic_poly_data(20, p=2, dtype=int)
 X = df.drop('y', axis=1)
 y = df['y']
 uniq_catcodes, avg_per_cat, ignored = \
