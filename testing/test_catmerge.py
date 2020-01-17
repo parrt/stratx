@@ -131,7 +131,7 @@ def test_two_leaves_with_two_refcats():
     ])
     # print("leaf_histos\n",leaf_histos)
     refcats = np.array([0,1])
-    avg_per_cat, ignored = avg_values_at_cat(leaf_histos, refcats)
+    avg_per_cat, ignored = avg_values_at_cat(leaf_histos, refcats, verbose=True)
     expected = np.array([0, 1, 3, 1.5, 0, np.nan])
     np.testing.assert_array_equal(avg_per_cat, expected)
     assert ignored==0
@@ -176,14 +176,19 @@ def test_two_leaves_with_disconnected_2nd_leaf():
     assert ignored==2
 
 
-def foo_test_temperature():
-    X,y,states,df_avgs = toy_weather_data(n=10, p=4)
+def test_temperature():
+    X,y,states,df_avgs = toy_weather_data(n=9, p=4)
+    print("X\n",X)
 
-    leaf_histos, refcats, ignored = stratify_cats(X,y,colname="state")
+    leaf_histos, refcats, ignored = stratify_cats(X,y,colname="state",min_samples_leaf=3)
     print("refcats",refcats)
     print("leaf_histos\n",leaf_histos)
 
     avg_per_cat, ignored = avg_values_at_cat(leaf_histos, refcats)
+    print(avg_per_cat)
+    expected = np.array([0, -8.3, 7.02333333, 10.19333333])
+    np.testing.assert_array_almost_equal(avg_per_cat, expected)
+    assert ignored==0
 
 
 # test_single_leaf()
