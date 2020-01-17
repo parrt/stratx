@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-n = 25_000
+n = 50_000
 
 X, y = load_bulldozer()
 
@@ -46,17 +46,32 @@ X_, y_ = X.iloc[idxs], y.iloc[idxs]
 # plt.savefig(f"/Users/parrt/Desktop/james-age.pdf", pad_inches=0)
 # plt.show()
 #
-plot_stratpd(X_, y_, colname='YearMade', targetname='SalePrice',
-             show_slope_lines=False,
-             show_impact=True,
-             min_samples_leaf=5,
-             min_slopes_per_x=7,
-             pdp_marker_cmap='coolwarm',#'YlGnBu',#'tab20b',
-             figsize=(4,3)
-             )
+# plot_stratpd(X_, y_, colname='YearMade', targetname='SalePrice',
+#              show_slope_lines=False,
+#              show_impact=True,
+#              min_samples_leaf=5,
+#              min_slopes_per_x=7,
+#              pdp_marker_cmap='coolwarm',#'YlGnBu',#'tab20b',
+#              figsize=(4,3)
+#              )
+# plt.tight_layout()
+# plt.savefig(f"/Users/parrt/Desktop/james-YearMade.pdf", pad_inches=0)
+# plt.show()
+
+
+plot_catstratpd(X_, y_, colname='ModelID', targetname='SalePrice',
+                min_samples_leaf=5,
+                # sort=None,
+                alpha=.08,
+                show_all_deltas=False,
+                show_xticks=False,
+                show_impact=True,
+                min_y_shifted_to_zero=False,
+                figsize=(20,5))
 plt.tight_layout()
-plt.savefig(f"/Users/parrt/Desktop/james-YearMade.pdf", pad_inches=0)
+plt.savefig(f"/Users/parrt/Desktop/james-ModelID-50k.pdf", pad_inches=0)
 plt.show()
+
 
 # col = 'YearMade'
 # plot_stratpd_gridsearch(X_, y_, colname=col, targetname='SalePrice',
@@ -84,18 +99,7 @@ plt.show()
 # plt.show()
 
 
-plot_catstratpd(X_, y_, colname='ModelID', targetname='SalePrice',
-                min_samples_leaf=10,
-                # sort=None,
-                alpha=.08,
-                show_all_deltas=False,
-                show_xticks=False,
-                show_impact=True,
-                min_y_shifted_to_zero=False,
-                figsize=(4,3))
-plt.tight_layout()
-plt.savefig(f"/Users/parrt/Desktop/james-ModelID.pdf", pad_inches=0)
-plt.show()
+
 
 # I = importances(X_, y_, catcolnames={'AC', 'ModelID', 'ProductSize'},
 #                 min_samples_leaf=10,
