@@ -5,9 +5,6 @@ from sklearn.ensemble import RandomForestRegressor
 from timeit import default_timer as timer
 from sklearn.utils import resample
 
-import shap
-
-from stratx.featimp import *
 from stratx.partdep import *
 
 import numpy as np
