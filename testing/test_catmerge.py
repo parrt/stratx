@@ -114,7 +114,7 @@ def test_two_leaves_with_one_refcat():
     ])
     # print("leaf_histos\n",leaf_histos)
     refcats = np.array([0,0])
-    avg_per_cat, ignored = avg_values_at_cat(leaf_histos, refcats)
+    avg_per_cat, ignored = avg_values_at_cat(leaf_histos, refcats, verbose=True)
     expected = np.array([0,  3,  2.5, 2,  0,  np.nan])
     np.testing.assert_array_equal(avg_per_cat, expected)
     assert ignored==0
@@ -132,7 +132,7 @@ def test_two_leaves_with_two_refcats():
     # print("leaf_histos\n",leaf_histos)
     refcats = np.array([0,1])
     avg_per_cat, ignored = avg_values_at_cat(leaf_histos, refcats, verbose=True)
-    expected = np.array([0, 1, 3, 1.5, 0, np.nan])
+    expected = np.array([0, 1, 3, 3, 0, np.nan])
     np.testing.assert_array_equal(avg_per_cat, expected)
     assert ignored==0
 
