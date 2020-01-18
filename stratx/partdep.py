@@ -1277,67 +1277,69 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
     """
     In leaf_histos, we have information from the leaves indicating how much
     above or below each category was from the reference category of that leaf.
-    The reference category is the one with the minimum cat (not y) value, so it's
-    relative value in the leaf column will be 0. Categories not mentioned in the leaf,
-    will have nan values in the column.
+    The reference category is the one with the minimum cat code (not y value), so the
+    refcat's relative value in the leaf column will be 0. Categories not mentioned
+    in the leaf, will have nan values in that column.
 
     The goal is to combine all of these relative category bumps and drops,
     despite the fact that they do not have the same reference category. We
     collect all of the leaves with a reference category level i and average them
     together (for all unique categories mentioned in min_cats).  Now we have
     a list of relative value vectors, one per category level used as a reference.
+
     The list is sorted in order of unique reference category. (Hopefully this
     will be much smaller than the number of categories total for speed.) Note these
     sum vectors might have np.nan values to represent unknown category info.
+    I set all refcat values to np.nan to ease computation then set the smallest
+    refcat relative value to 0 right before function exit.  This sorting is important
+    so data can feed forward; refcat i uses the value of refcat i in the running sum
+    of refcat vectors. (see 2nd loop)
 
     Now we have to create a result vector, sums_per_cat, that combines the
     relative vectors. The problem is of course the different reference categories.
     We initialize sums_per_cat to be the average relative to the first unique
-    reference category. Let's assume that is 0, which means we take the first
-    element from the avg_for_refcats list to initialize sums_per_cat. To add
+    reference category. Let's assume that the first refcat is 0, which means we take
+    the first element from the avg_for_refcats list to initialize sums_per_cat. To add
     in the next vector, we first have to compensate for the difference in
-    reference category. min_cats[i] tells us which category the vector is
-    relative to so we take the value from the running sum, sums_per_cat, at
-    position min_cats[i] and add that to all elements of the avg_for_refcats[i]
+    reference category. refcats[i] tells us which category the vector is
+    relative to so we take the corresponding value from the running sum, sums_per_cat,
+    at position refcats[i] and add that to all elements of the avg_for_refcats[i]
     vector.
 
-    It's possible that more than a single value within a leaf vector will be 0.
+    BTW, it's possible that more than a single value within a leaf_histos vector will be 0.
     I.e., the reference category value is always 0 in the vector, but there might be
-    another category whose value was the same y, giving a 0 relative value.
+    another category whose value was the same y, giving a 0 relative value. I set them
+    to nan, however, when combining histos for same refcat.
 
     Example:
 
-    leaf_histos:
-        [[ 1.  0. nan  6.  1.]
-         [ 0.  4.  0.  0. nan]
-         [nan  2.  3.  8. nan]
-         [nan nan  5. nan  0.]]
-
-    min_cats:
-        [1,0,1,1,3]
-
-    After collecting all of the vectors with the same reference category, we see:
+    refcats:
+        [0,1]
 
     sums_for_refcats
-     [[ 0.  7.  1.]
-      [ 4.  0.  0.]
-      [ 2. 11.  0.]
-      [ 0.  5.  0.]]
+     [[nan nan]
+     [ 1. nan]
+     [ 2.  3.]
+     [nan  2.]
+     [ 0. nan]
+     [nan nan]]
 
     counts
-     [[0 2 1]
-      [1 0 0]
-      [1 2 0]
-      [0 1 0]]
-
+     [[0 0]
+     [1 0]
+     [1 1]
+     [0 1]
+     [1 0]
+     [0 0]]
 
     Then to combine, we see a loop with an iteration per unique min cat:
 
-    0 :                   sums_per_cat = [nan  4.  2. nan]
-    1 : [7.5 nan 9.5 9. ] sums_per_cat = [ 7.5  4.  11.5  9. ]
-    3 : [10. nan nan nan] sums_per_cat = [17.5  4.  11.5  9. ]
+    0 : initial  = [nan  1.  2. nan  0. nan] 	sums_per_cat = [nan  1.  2. nan  0. nan]
+    1 : adjusted = [nan nan  4.  3. nan nan] 	sums_per_cat = [nan  1.  6.  3.  0. nan]
 
-    So we get a final sums_per_cat = [17.5  4.  11.5  9. ]
+    Then divide by
+
+    So we get a final avg per cat of:  [ 0.  1.  3.  3.  0. nan]
 
     :param leaf_histos: A 2D matrix where rows are category levels/values and
                         columns hold y values for categories.
@@ -1356,14 +1358,11 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
     def nanmerge_matrix_cols(A):
         "Add all vertical vectors in A but support nan+x==x and nan+nan=nan"
         s = np.nansum(A, axis=1)
-        # count how many non-nan values and non-0 values across all leaves with
-        # cat as reference category
         all_nan_entries = np.isnan(A)
         # if all entries for a cat are nan, make sure sum s is nan for that cat
         s[all_nan_entries.all(axis=1)] = np.nan
         return s
 
-    ncats = leaf_histos.shape[0]
     uniq_refcats = sorted(np.unique(refcats))
     if verbose: print("uniq_refcats =", uniq_refcats)
     # Track
@@ -1388,7 +1387,6 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
     avg_for_refcats = [sums_for_refcats[i] / np.where(counts_for_refcats[i]==0, 1, counts_for_refcats[i]) for i in range(len(uniq_refcats))]
     # sums_per_cat is the running sum vector
     sums_per_cat = avg_for_refcats[0] # init with first ref category (column)
-    sums_per_cat[0] = np.nan # to avoid summation issues, leave this as nan
     if verbose: print(uniq_refcats[0],": initial  =",sums_per_cat,"\tsums_per_cat =",sums_per_cat)
     ignored = 0
     cats_with_values_added_to_running_sum = (~np.isnan(avg_for_refcats[0])).astype(int)
@@ -1402,9 +1400,6 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
             ignored += np.sum(~np.isnan(avg_for_refcats[i]))
             if verbose: print(f"cat {cat} has no value in running sum; ignored={ignored}")
             continue
-        # print
-        # n_beyond_cat = ncats - cat - 1
-        # n_notnan_beyond_cat
         adjusted_vec = relative_to_value + avg_for_refcats[i]
         # only add rel val to elems before after cat position (should be nan before cat and 0 for cat)
         adjusted_vec[cat] = np.nan
@@ -1414,11 +1409,9 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
         if verbose: print(cat, ": adjusted =", adjusted_vec, "\tsums_per_cat =", sums_per_cat)
 
     # We've added vectors together for len(uniq_refcats), so get a generic average
-    # count_per_cat = np.sum(np.array(counts_for_refcats).T, axis=1)
-    # for i in range(ncats)[avg_for_refcats[i][i] ]
-    # avg_for_refcats = [sums_for_refcats[i] / np.where(counts_for_refcats[i]==0, 1, counts_for_refcats[i]) for i in range(len(uniq_refcats))]
     avg_per_cat = sums_per_cat / np.where(count_per_cat==0, 1, count_per_cat)
     avg_per_cat[uniq_refcats[0]] = 0.0 # first refcat always has value 0 (was nan for summation purposes)
+    if verbose: print("final cat avgs", avg_per_cat)
     return avg_per_cat, ignored
 
 
