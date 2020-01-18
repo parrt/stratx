@@ -178,7 +178,6 @@ def test_two_leaves_with_disconnected_2nd_leaf():
 
 def test_temperature():
     X,y,states,df_avgs = toy_weather_data(n=9, p=4)
-    print("X\n",X)
 
     leaf_histos, refcats, ignored = stratify_cats(X,y,colname="state",min_samples_leaf=3)
 
