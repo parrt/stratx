@@ -1420,7 +1420,7 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
     # for i in range(ncats)[avg_for_refcats[i][i] ]
     # avg_for_refcats = [sums_for_refcats[i] / np.where(counts_for_refcats[i]==0, 1, counts_for_refcats[i]) for i in range(len(uniq_refcats))]
     avg_per_cat = sums_per_cat / np.where(count_per_cat==0, 1, count_per_cat)
-    avg_per_cat[0] = 0.0 # first refcat always has value 0 (was nan for summation purposes)
+    avg_per_cat[uniq_refcats[0]] = 0.0 # first refcat always has value 0 (was nan for summation purposes)
     return avg_per_cat, ignored
 
 
