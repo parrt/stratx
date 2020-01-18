@@ -165,7 +165,7 @@ def test_two_leaves_with_disconnected_2nd_leaf():
     leaf_histos = np.array([
         [0,      np.nan],
         [1,      np.nan],
-        [np.nan, 0],  # refcat is 2 which has no value in other leave
+        [np.nan, 0],  # refcat is 2 which has no value in other leaf
         [np.nan, 3]
     ])
     # print("leaf_histos\n",leaf_histos)
@@ -173,7 +173,27 @@ def test_two_leaves_with_disconnected_2nd_leaf():
     avg_per_cat, ignored = avg_values_at_cat(leaf_histos, refcats)
     expected = np.array([0, 1, np.nan, np.nan])
     np.testing.assert_array_equal(avg_per_cat, expected)
-    assert ignored==2
+    assert ignored==1
+
+
+def test_two_leaves_with_disconnected_2nd_leaf_followed_by_leaf_conn_to_disconnected_leaf():
+    """
+    It's possible for a leaf's refcat not to have a value in any earlier
+    refcats, leaving nan in the running sum. No way to connect, must just drop
+    """
+    leaf_histos = np.array([
+        [0,      np.nan, np.nan],
+        [1,      np.nan, np.nan],
+        [np.nan, 0,      np.nan],  # refcat is 2 which has no value in prev leaf
+        [np.nan, 3,      0],       # leave 3 is connected to leaf 2 but should be ignored
+        [np.nan, 3,      2]
+    ])
+    # print("leaf_histos\n",leaf_histos)
+    refcats = np.array([0,2,3])
+    avg_per_cat, ignored = avg_values_at_cat(leaf_histos, refcats)
+    expected = np.array([0, 1, np.nan, np.nan, np.nan])
+    np.testing.assert_array_equal(avg_per_cat, expected)
+    assert ignored==3
 
 
 def test_temperature():

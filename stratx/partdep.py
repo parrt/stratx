@@ -1345,7 +1345,7 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
                      I.e., which category had the smallest y value in the leaf?
     :return:
     """
-    def nanaddvec(a,b):
+    def nanmerge_vectors(a,b):
         "Add two vectors a+b but support nan+x==x and nan+nan=nan"
         all_nan_entries = np.isnan(a) & np.isnan(b)
         c = np.where(np.isnan(a), 0, a) + np.where(np.isnan(b), 0, b)
@@ -1353,7 +1353,7 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
         c[all_nan_entries] = np.nan
         return c
 
-    def nanaddvectors(A):
+    def nanmerge_matrix_cols(A):
         "Add all vertical vectors in A but support nan+x==x and nan+nan=nan"
         s = np.nansum(A, axis=1)
         # count how many non-nan values and non-0 values across all leaves with
@@ -1372,13 +1372,13 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
     for cat in uniq_refcats:
         # collect and add up vectors from all leaves with cat as a reference category
         leaves_with_same_refcat = leaf_histos[:, np.where(refcats == cat)[0]]
-        all_nan_entries = np.isnan(leaves_with_same_refcat)
+        # Turn all refcat locations from 0 to np.nan for computation purposes
+        # (reset first refcat value to 0 at end)
+        leaves_with_same_refcat[cat] = np.nan
         # if all entries for a cat are nan, make sure sum s is nan for that cat
-        s = nanaddvectors(leaves_with_same_refcat)
-        # count how many non-nan values and non-0 values across all leaves with
-        # cat as reference category
-        c = (~all_nan_entries).astype(int) # nan entries also get 0 count
-        c[cat] = 0 # refcat doesn't get counted
+        s = nanmerge_matrix_cols(leaves_with_same_refcat)
+        # count how many non-nan values values across all leaves with cat as ref category
+        c = (~np.isnan(leaves_with_same_refcat)).astype(int)
         c = np.sum(c, axis=1)
         counts_for_refcats.append(c)
         sums_for_refcats.append(s)
@@ -1391,7 +1391,6 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
     sums_per_cat[0] = np.nan # to avoid summation issues, leave this as nan
     if verbose: print(uniq_refcats[0],": initial  =",sums_per_cat,"\tsums_per_cat =",sums_per_cat)
     ignored = 0
-    num_refcats_ignored = 0
     cats_with_values_added_to_running_sum = (~np.isnan(avg_for_refcats[0])).astype(int)
     count_per_cat = cats_with_values_added_to_running_sum
     for i in range(1,len(uniq_refcats)):
@@ -1400,7 +1399,6 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
         cat = uniq_refcats[i]
         relative_to_value = sums_per_cat[cat]
         if np.isnan(relative_to_value):
-            num_refcats_ignored += 1
             ignored += np.sum(~np.isnan(avg_for_refcats[i]))
             if verbose: print(f"cat {cat} has no value in running sum; ignored={ignored}")
             continue
@@ -1412,7 +1410,7 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
         adjusted_vec[cat] = np.nan
         cats_with_values_added_to_running_sum = (~np.isnan(adjusted_vec)).astype(int)
         count_per_cat += cats_with_values_added_to_running_sum
-        sums_per_cat = nanaddvec(sums_per_cat, adjusted_vec)
+        sums_per_cat = nanmerge_vectors(sums_per_cat, adjusted_vec)
         if verbose: print(cat, ": adjusted =", adjusted_vec, "\tsums_per_cat =", sums_per_cat)
 
     # We've added vectors together for len(uniq_refcats), so get a generic average
