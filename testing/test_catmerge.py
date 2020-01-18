@@ -14,8 +14,6 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-np.random.seed(999)
-
 def stratify_cats(X, y,
                   colname,  # X[colname] expected to be numeric codes
                   max_catcode=None,
@@ -196,7 +194,8 @@ def test_two_leaves_with_disconnected_2nd_leaf_followed_by_leaf_conn_to_disconne
     assert ignored==3
 
 
-def test_temperature():
+def test_4state_temperature():
+    np.random.seed(999)
     X,y,states,df_avgs = toy_weather_data(n=9, p=4)
 
     leaf_histos, refcats, ignored = stratify_cats(X,y,colname="state",min_samples_leaf=3)
@@ -205,6 +204,18 @@ def test_temperature():
     print(avg_per_cat)
     expected = np.array([0, -24.9, 21.07, 15.29])
     np.testing.assert_array_almost_equal(avg_per_cat, expected)
+    assert ignored==0
+
+
+def test_temperature():
+    np.random.seed(999)
+    X,y,states,df_avgs = toy_weather_data(n=20, p=8)
+
+    leaf_histos, refcats, ignored = stratify_cats(X,y,colname="state",min_samples_leaf=5)
+
+    avg_per_cat, ignored = avg_values_at_cat(leaf_histos, refcats)
+    expected = np.array([0.00, -26.65, 3.42, -3.66, -1.53, -15.515, -11.00833, -8.845])
+    np.testing.assert_array_almost_equal(avg_per_cat, expected, decimal=3)
     assert ignored==0
 
 

@@ -1362,9 +1362,17 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
         s[all_nan_entries.all(axis=1)] = np.nan
         return s
 
+    def parray(a):
+        return '[ ' + (' '.join([f"{x:6.2f}" for x in a])).strip() + ' ]'
+    def parray3(a):
+        return '[ ' + (' '.join([f"{x:6.3f}" for x in a])).strip() + ' ]'
+
     # FIRST LOOP COMBINES LEAF VECTORS WITH SAME REFCAT
     uniq_refcats = sorted(np.unique(refcats))
-    if verbose: print("uniq_refcats =", uniq_refcats)
+    if verbose:
+        print("refcats =", refcats, "uniq_refcats =", uniq_refcats)
+        print("leaf_histos\n", leaf_histos)
+        print("leaf_histos reordered by refcat order\n", leaf_histos[:,np.argsort(refcats)])
     sums_for_refcats = []
     counts_for_refcats = []
     for cat in uniq_refcats:
@@ -1382,11 +1390,13 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
         sums_for_refcats.append(s)
     if verbose: print("sums_for_refcats (reordered by uniq_refcats)\n", np.array(sums_for_refcats).T)
     if verbose: print("counts\n", np.array(counts_for_refcats).T)
-    # likely less memory to avoid creating 2D matrices
+
+    # FROM SUMS FOR REFCATS, COMPUTE AVERAGE
+    # rather than 2D matrix, use list of arrays; likely less memory to avoid creating matrix
     avg_for_refcats = [sums_for_refcats[i] / np.where(counts_for_refcats[i]==0, 1, counts_for_refcats[i]) for i in range(len(uniq_refcats))]
     # sums_per_cat is the running sum vector
     sums_per_cat = avg_for_refcats[0] # init with first ref category (column)
-    if verbose: print(uniq_refcats[0],": initial  =",sums_per_cat,"\tsums_per_cat =",sums_per_cat)
+    if verbose: print(f"{uniq_refcats[0]:-2d} : initial    =",parray(sums_per_cat),"\n")
 
     # SECOND LOOP SUMS COMBINED VECTORS USING RELATIVE VALUE FROM RUNNING SUM
     ignored = 0
@@ -1407,12 +1417,16 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
         cats_with_values_added_to_running_sum = (~np.isnan(adjusted_vec)).astype(int)
         count_per_cat += cats_with_values_added_to_running_sum
         sums_per_cat = nanmerge_vectors(sums_per_cat, adjusted_vec)
-        if verbose: print(cat, ": adjusted =", adjusted_vec, "\tsums_per_cat =", sums_per_cat)
+        if verbose:
+            print(f"{cat:-2d} : vec to add =", parray(avg_for_refcats[i]), f" + {relative_to_value:.2f}")
+            print("     adjusted   =", parray(adjusted_vec))
+            print("     new sum    =", parray(sums_per_cat))
+            print()
 
     # We've added vectors together for len(uniq_refcats), so get a generic average
     avg_per_cat = sums_per_cat / np.where(count_per_cat==0, 1, count_per_cat)
     avg_per_cat[uniq_refcats[0]] = 0.0 # first refcat always has value 0 (was nan for summation purposes)
-    if verbose: print("final cat avgs", avg_per_cat)
+    if verbose: print("final cat avgs", parray3(avg_per_cat))
     return avg_per_cat, ignored
 
 
