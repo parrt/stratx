@@ -1313,8 +1313,7 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
 
     Example:
 
-    refcats:
-        [0,1]
+    refcats: [0,1]
 
     sums_for_refcats
      [[nan nan]
@@ -1363,9 +1362,9 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
         s[all_nan_entries.all(axis=1)] = np.nan
         return s
 
+    # FIRST LOOP COMBINES LEAF VECTORS WITH SAME REFCAT
     uniq_refcats = sorted(np.unique(refcats))
     if verbose: print("uniq_refcats =", uniq_refcats)
-    # Track
     sums_for_refcats = []
     counts_for_refcats = []
     for cat in uniq_refcats:
@@ -1388,6 +1387,8 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
     # sums_per_cat is the running sum vector
     sums_per_cat = avg_for_refcats[0] # init with first ref category (column)
     if verbose: print(uniq_refcats[0],": initial  =",sums_per_cat,"\tsums_per_cat =",sums_per_cat)
+
+    # SECOND LOOP SUMS COMBINED VECTORS USING RELATIVE VALUE FROM RUNNING SUM
     ignored = 0
     cats_with_values_added_to_running_sum = (~np.isnan(avg_for_refcats[0])).astype(int)
     count_per_cat = cats_with_values_added_to_running_sum
