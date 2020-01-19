@@ -47,7 +47,7 @@ uniq_catcodes, combined_avg_per_cat, ignored = \
                     show_impact=True,
                     min_y_shifted_to_zero=False,
                     figsize=(20,5),
-                    verbose=True)
+                    verbose=False)
 plt.title(f"n={n}, ignored ={ignored}")
 print("ignored",ignored)
 plt.tight_layout()

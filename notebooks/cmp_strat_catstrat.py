@@ -27,8 +27,11 @@ def synthetic_poly_data(n=1000,max_x=1000,p=2,dtype=float):
 def synthetic_poly_data_gaussian(n=1000,max_x=1000,p=2,dtype=float):
     df = pd.DataFrame()
     for i in range(p):
-        # shift mean up to 5 so it's all positive
-        df[f'x{i + 1}'] = ((np.random.standard_normal(size=n)+5) * max_x).astype(dtype)
+        v = np.random.normal(loc=0, scale=1, size=n)
+        v -= np.min(v)
+        v /= np.max(v) # should be 0..1 now
+        df[f'x{i + 1}'] = (v*max_x).astype(dtype)
+        df[f'x{i + 1}'] -= np.min(df[f'x{i + 1}']) # shift back so min is 0
     yintercept = 100
     df['y'] = np.sum(df, axis=1) + yintercept
     terms = [f"x_{i+1}" for i in range(p)] + [f"{yintercept:.0f}"]
@@ -48,19 +51,20 @@ def synthetic_poly_data_gaussian(n=1000,max_x=1000,p=2,dtype=float):
 # plt.show()
 
 
-df, eqn = synthetic_poly_data_gaussian(1000, p=2, max_x=10, dtype=int)
+df, eqn = synthetic_poly_data_gaussian(20000, p=2, max_x=25, dtype=int)
 # df, eqn = synthetic_poly_data(1000, p=2, max_x=10, dtype=int)
 X = df.drop('y', axis=1)
 y = df['y']
 uniq_catcodes, avg_per_cat, ignored = \
     plot_catstratpd(X, y, colname='x1', targetname='y',
                     n_trials=1,
-                    min_samples_leaf=10,
+                    min_samples_leaf=2,
                     show_x_counts=True,
                     show_xticks=True,
                     show_impact=True,
                     min_y_shifted_to_zero=True,
                     verbose=True,
+                    figsize=(10,4)
                     # yrange=(-1000,1000)
                     )
 

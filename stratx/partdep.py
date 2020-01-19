@@ -1130,8 +1130,10 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
         # whereas subtracting min cat code helps to reverse sort with uniform distros.
         # Real data sets see fewer uniq cat codes after combining common refcats,
         # with increased numbers of points of course.
-        refcats[leaf_i] = most_common_leaf_cat
-        # refcats[leaf_i] = np.min(uniq_leaf_cats)
+        # refcats[leaf_i] = most_common_leaf_cat
+
+        # TODO: turn off sorting as gotta use min cat for feedforward thing later
+        refcats[leaf_i] = np.min(uniq_leaf_cats)
 
         # record avg y value per cat above avg y in this leaf
         # leave cats w/o representation as nan
@@ -1393,7 +1395,7 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
         return '[ ' + (' '.join([f"{x:6.3f}" for x in a])).strip() + ' ]'
 
     # FIRST LOOP COMBINES LEAF VECTORS WITH SAME REFCAT
-    uniq_refcats = sorted(np.unique(refcats))
+    uniq_refcats = np.array(sorted(np.unique(refcats)))
     if verbose:
         print("refcats =", refcats)
         print("uniq_refcats =", uniq_refcats)
@@ -1407,7 +1409,7 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
         # Turn all refcat locations from 0 to np.nan for computation purposes
         # (reset first refcat value to 0 at end)
         # TODO: not sure we need
-        leaves_with_same_refcat[cat] = np.nan
+        #leaves_with_same_refcat[cat] = np.nan
         s = nanmerge_matrix_cols(leaves_with_same_refcat)
         # count how many non-nan values values across all leaves with cat as ref category
         c = (~np.isnan(leaves_with_same_refcat)).astype(int)
@@ -1425,9 +1427,11 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
     counts_for_refcats = np.array(counts_for_refcats).T
     weight_for_refcats = np.sum(counts_for_refcats, axis=0)
     # TODO: not sure it's worth sorting yet
+    # Sorting breaks feedforward thing
     uniq_refcats_by_weight_idxs = np.argsort(weight_for_refcats)[::-1]
     avg_for_refcats = avg_for_refcats[:,uniq_refcats_by_weight_idxs]
     weight_for_refcats = weight_for_refcats[uniq_refcats_by_weight_idxs]
+    uniq_refcats = uniq_refcats[uniq_refcats_by_weight_idxs]
 
     if verbose:
         print("counts\n", counts_for_refcats[0:30])
@@ -1442,6 +1446,73 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
 
     # SECOND LOOP SUMS COMBINED VECTORS USING RELATIVE VALUE FROM RUNNING SUM
     """
+    [[nan nan nan nan nan nan nan nan  0. nan]
+     [nan nan nan nan  0. nan nan nan nan nan]
+     [nan nan nan  0. nan nan nan nan nan nan]
+     [nan nan nan nan nan nan nan  0. nan nan]
+     [nan  0. nan nan nan nan nan nan nan nan]
+     [ 0. nan nan nan nan nan nan nan nan nan]
+     [ 1. nan nan nan nan nan  0. nan nan nan]
+     [ 2.  3.  0.  6.  7. nan  1. nan 13. nan]
+     [nan nan  1. nan nan nan nan  5. nan nan]
+     [ 4. nan nan  7.  8. nan nan nan nan nan]
+     [ 5.  6. nan nan nan  0.  4. nan nan nan]
+     [nan nan nan nan nan nan nan  8. 17.  0.]
+     [ 7. nan  5. nan nan  2. nan nan nan nan]
+     [ 8.  9.  6. nan nan nan nan nan nan nan]
+     [nan 10. nan nan nan nan nan nan nan nan]
+     [nan nan nan 11. nan nan nan nan nan nan]
+     [nan nan nan nan nan nan nan nan nan  5.]
+     [nan nan nan nan nan  7. nan nan nan nan]
+     [nan 12. nan nan nan nan nan nan nan nan]]
+    """
+    # catavg is the running sum vector
+    n = leaf_histos.shape[0]
+    catavg = avg_for_refcats[:,0] # init with first ref category (column)
+    # that's a view inside matrix so we'll be updating 1st column as running sum vector
+    # and modifying other columns in place to be mergeable
+    catavg_weight = weight_for_refcats[0]
+    ignored = 0
+    # Need a way to restrict
+    # valid_idxs = np.where(weight_for_refcats>=10)[0]
+    # last_refcat = -1
+    # if len(valid_idxs)>0:
+    #     last_refcat = valid_idxs[-1]
+    last_refcat = len(uniq_refcats)
+    for j in range(1,last_refcat):      # for each refcat, avg in the vectors
+        # TODO: ignore columns already processed if we add outer loop to this
+        cat = uniq_refcats[j]
+        v = avg_for_refcats[:,j]
+        intersection_idx = np.intersect1d(np.where(~np.isnan(catavg[cat:])),
+                                          np.where(~np.isnan(v[cat:])))
+        intersection_idx += cat   # those indexes are relative to cat
+        # print(intersection_idx)
+        if len(intersection_idx)==0: # found something to merge into catavg
+            ignored += weight_for_refcats[j]
+            if verbose: print(f"cat {cat} has no value in running sum; ignored={ignored}")
+            continue
+
+        ix = intersection_idx[0] # idx of first value in common
+        v -= v[ix]               # make i the common reference even though not first in v anymore
+        relative_value = catavg[ix]
+        v += relative_value     # now v is mergeable with catavg
+        cur_weight  = weight_for_refcats[j]
+        for i in range(cat,n):  # walk down a vector starting at refcat, first useful value
+            if np.isnan(catavg[i]) and np.isnan(v[i]):  # both nan
+                continue
+            if np.isnan(v[i]):  # new vector is nan, just used old value
+                continue
+            if np.isnan(catavg[i]):
+                catavg[i] = v[i] # copy good value from v into catavg
+            else:  # otherwise computed weighted average of two values
+                catavg[i] = (catavg[i] * catavg_weight + v[i] * cur_weight) / (catavg_weight+cur_weight)
+        # Update weight of running sum to incorporate "mass" from v
+        catavg_weight += cur_weight
+
+    catavg[uniq_refcats[0]] = 0.0 # first refcat always has value 0 (was nan for summation purposes)
+    if verbose: print("final cat avgs", parray3(catavg))
+    return catavg, ignored
+"""
     avgs per refcat
      [[   nan    nan    nan    nan    nan    nan]
       [-30.35    nan    nan    nan    nan    nan]
@@ -1456,17 +1527,17 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
      
     refcat weights
       [23 10 17  1  7  2]
-    """
     # catavg is the running sum vector
     n = leaf_histos.shape[0]
     catavg = avg_for_refcats[:,0] # init with first ref category (column)
     ignored = 0
     # Need a way to restrict
-    valid_idxs = np.where(weight_for_refcats>=10)[0]
-    last_refcat = -1
-    if len(valid_idxs)>0:
-        last_refcat = valid_idxs[-1]
-    # last_refcat = len(uniq_refcats)
+    # valid_idxs = np.where(weight_for_refcats>=10)[0]
+    # last_refcat = -1
+    # if len(valid_idxs)>0:
+    #     last_refcat = valid_idxs[-1]
+    last_refcat = len(uniq_refcats)
+    print("uniq_refcats",uniq_refcats)
     for j in range(1,last_refcat):      # for each refcat, avg in the vectors
         cat = uniq_refcats[j]
         relative_to_value = catavg[cat]
@@ -1491,6 +1562,7 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
     catavg[uniq_refcats[0]] = 0.0 # first refcat always has value 0 (was nan for summation purposes)
     if verbose: print("final cat avgs", parray3(catavg))
     return catavg, ignored
+    """
 
 """
     # SECOND LOOP SUMS COMBINED VECTORS USING RELATIVE VALUE FROM RUNNING SUM
