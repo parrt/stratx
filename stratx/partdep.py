@@ -1117,13 +1117,15 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
         #     ignored += len(sample)
         #     continue
 
+        refcats[leaf_i] = np.min(uniq_leaf_cats)
+
         # record avg y value per cat above avg y in this leaf
         # leave cats w/o representation as nan
         # Back to subtracting min of leaf_y
         # Always use smallest cat code as the reference point; since avg_y_per_cat
         # is sorted by uniq_leaf_cats, first value is the reference value
         delta_y_per_cat = avg_y_per_cat - avg_y_per_cat[0]
-        refcats[leaf_i] = uniq_leaf_cats[0]
+        # refcats[leaf_i] = uniq_leaf_cats[0]
         # Store into leaf i vector just those deltas we have data for
         leaf_histos[uniq_leaf_cats, leaf_i] = delta_y_per_cat
 
@@ -1172,7 +1174,7 @@ def cat_partial_dependence(X, y,
     leaf_histos, refcats, ignored____ = \
         catwise_leaves(rf, X_not_col, X_col, y.values, max_catcode)
 
-    avg_per_cat, ignored = avg_values_at_cat(leaf_histos, refcats)
+    avg_per_cat, ignored = avg_values_at_cat(leaf_histos, refcats, verbose=verbose)
 
     # experimenting dropping those with too few averages
     # slope_counts_at_cat = leaf_histos.shape[1] - np.isnan(leaf_histos).sum(axis=1)
@@ -1362,8 +1364,14 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
         s[all_nan_entries.all(axis=1)] = np.nan
         return s
 
+    def zero_as_one(a):
+        return np.where(a == 0, 1, a)
+
     def parray(a):
-        return '[ ' + (' '.join([f"{x:6.2f}" for x in a])).strip() + ' ]'
+        if type(a[0])==np.int64:
+            return '[ ' + (' '.join([f"{x:6d}" for x in a])).strip() + ' ]'
+        else:
+            return '[ ' + (' '.join([f"{x:6.2f}" for x in a])).strip() + ' ]'
     def parray3(a):
         return '[ ' + (' '.join([f"{x:6.3f}" for x in a])).strip() + ' ]'
 
@@ -1376,32 +1384,40 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
     sums_for_refcats = []
     counts_for_refcats = []
     for cat in uniq_refcats:
-        # collect and add up vectors from all leaves with cat as a reference category
+        # collect and add up vectors from all leaves with cat as the reference category
         leaves_with_same_refcat = leaf_histos[:, np.where(refcats == cat)[0]]
         # Turn all refcat locations from 0 to np.nan for computation purposes
         # (reset first refcat value to 0 at end)
         leaves_with_same_refcat[cat] = np.nan
-        # if all entries for a cat are nan, make sure sum s is nan for that cat
         s = nanmerge_matrix_cols(leaves_with_same_refcat)
         # count how many non-nan values values across all leaves with cat as ref category
         c = (~np.isnan(leaves_with_same_refcat)).astype(int)
         c = np.sum(c, axis=1)
         counts_for_refcats.append(c)
         sums_for_refcats.append(s)
-    if verbose: print("sums_for_refcats (reordered by uniq_refcats)\n", np.array(sums_for_refcats).T)
-    if verbose: print("counts\n", np.array(counts_for_refcats).T)
+    weight_for_refcats = np.sum(np.array(counts_for_refcats).T, axis=0)
+    # weight_for_refcats = np.max(np.array(counts_for_refcats).T, axis=0)
 
     # FROM SUMS FOR REFCATS, COMPUTE AVERAGE
     # rather than 2D matrix, use list of arrays; likely less memory to avoid creating matrix
-    avg_for_refcats = [sums_for_refcats[i] / np.where(counts_for_refcats[i]==0, 1, counts_for_refcats[i]) for i in range(len(uniq_refcats))]
-    # sums_per_cat is the running sum vector
-    sums_per_cat = avg_for_refcats[0] # init with first ref category (column)
-    if verbose: print(f"{uniq_refcats[0]:-2d} : initial    =",parray(sums_per_cat),"\n")
+    avg_for_refcats = [sums_for_refcats[i] / zero_as_one(counts_for_refcats[i])
+                       for i in range(len(uniq_refcats))]
+
+    if verbose:
+        print("sums_for_refcats (reordered by uniq_refcats)\n", np.array(sums_for_refcats).T)
+        print("counts\n", np.array(counts_for_refcats).T)
+        print("refcat weights\n", weight_for_refcats)
+        print("avgs per refcat\n", np.array(avg_for_refcats).T)
 
     # SECOND LOOP SUMS COMBINED VECTORS USING RELATIVE VALUE FROM RUNNING SUM
+    # sums_per_cat is the running sum vector
+    sums_per_cat = avg_for_refcats[0] # init with first ref category (column)
     ignored = 0
     cats_with_values_added_to_running_sum = (~np.isnan(avg_for_refcats[0])).astype(int)
-    count_per_cat = cats_with_values_added_to_running_sum
+    count_per_cat = cats_with_values_added_to_running_sum * weight_for_refcats[0]
+    if verbose:
+        print(f"{uniq_refcats[0]:-2d} : initial    =",parray(sums_per_cat))
+        print("     weights    =", parray(count_per_cat),"\n")
     for i in range(1,len(uniq_refcats)):
         # Compensate for different reference category by adding the value
         # of this vector's reference category from the running sum
@@ -1411,23 +1427,41 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
             ignored += np.sum(~np.isnan(avg_for_refcats[i]))
             if verbose: print(f"cat {cat} has no value in running sum; ignored={ignored}")
             continue
+
+        both_not_nan = (~np.isnan(avg_for_refcats[i]) & ~np.isnan(sums_per_cat)).astype(int)
+        weights = both_not_nan * weight_for_refcats[i]
+        prev_weights = both_not_nan * np.sum(weight_for_refcats[0:i])
+
         adjusted_vec = relative_to_value + avg_for_refcats[i]
-        # only add rel val to elems before after cat position (should be nan before cat and 0 for cat)
+        adjusted_vec = adjusted_vec * zero_as_one(weights)
         adjusted_vec[cat] = np.nan
+
+        cur_sum = sums_per_cat * zero_as_one(prev_weights)
+
         cats_with_values_added_to_running_sum = (~np.isnan(adjusted_vec)).astype(int)
         count_per_cat += cats_with_values_added_to_running_sum
-        sums_per_cat = nanmerge_vectors(sums_per_cat, adjusted_vec)
+        # sums_per_cat = nanmerge_vectors(sums_per_cat, adjusted_vec)
+        # Add weighted adjusted vec to current sum, then back to average
+        sums_per_cat = (nanmerge_vectors(cur_sum, adjusted_vec)) / np.sum(weight_for_refcats[0:i+1])
         if verbose:
             print(f"{cat:-2d} : vec to add =", parray(avg_for_refcats[i]), f" + {relative_to_value:.2f}")
-            print("     adjusted   =", parray(adjusted_vec))
-            print("     new sum    =", parray(sums_per_cat))
+            # print("     count      =", parray(cats_with_values_added_to_running_sum * weight_for_refcats[i]))
+            print("     adjusted   =", parray(avg_for_refcats[i]+relative_to_value))
+            print("     weights    =", parray(weights))
+            print("     weighted   =", parray(adjusted_vec))
+            print("     prev wghtd =", parray(cur_sum))
+            print("     new sum    =", parray(nanmerge_vectors(cur_sum, adjusted_vec)))
+            print("     new avg    =", parray(sums_per_cat))
             print()
 
     # We've added vectors together for len(uniq_refcats), so get a generic average
-    avg_per_cat = sums_per_cat / np.where(count_per_cat==0, 1, count_per_cat)
+    # avg_per_cat = sums_per_cat / zero_as_one(count_per_cat)
+    avg_per_cat = sums_per_cat / np.sum(weight_for_refcats)
     avg_per_cat[uniq_refcats[0]] = 0.0 # first refcat always has value 0 (was nan for summation purposes)
     if verbose: print("final cat avgs", parray3(avg_per_cat))
     return avg_per_cat, ignored
+    # avg_for_refcats[0][0] = 0.0
+    # return avg_for_refcats[0], ignored
 
 
 def plot_catstratpd(X, y,
@@ -1524,15 +1558,15 @@ def plot_catstratpd(X, y,
                                    n_trees=n_trees,
                                    min_samples_leaf=min_samples_leaf,
                                    max_features=max_features,
-                                   bootstrap=False)
+                                   bootstrap=False,
+                                   verbose=verbose)
         # avg_per_cat is currently deltas from mean(y) but we want to use min avg_per_cat
         # as reference point, zeroing that one out. All others will be relative to that
         # min cat value
         if min_y_shifted_to_zero:
             # min and mean don't work, though min is closest. really need average of
             # first few valid avg_per_cat values.
-            pass
-            # avg_per_cat -= np.nanmin(avg_per_cat)
+            avg_per_cat -= np.nanmin(avg_per_cat)
             # avg_per_cat += 0#np.mean(y)
         ignored += ignored_
         all_avg_per_cat.append( avg_per_cat )
@@ -1599,6 +1633,9 @@ def plot_catstratpd(X, y,
                 color=impact_color)
 
     leave_room_scaler = 1.3
+
+    if yrange is not None:
+        ax.set_ylim(*yrange)
 
     if show_x_counts:
         # Only show cat counts for those which are present in X[colname] (unlike stratpd plot)

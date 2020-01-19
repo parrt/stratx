@@ -5,6 +5,10 @@ figsize = (3.5, 3.0)
 use_oob=False
 metric = mean_absolute_error
 n = 25000
+import pickle
+
+np.set_printoptions(precision=2, suppress=True, linewidth=150)
+
 
 def toy_weather_data(n = 1000, p=50):
     """
@@ -37,8 +41,21 @@ def toy_weather_data(n = 1000, p=50):
 # y = y[constrained_years]
 # n = len(X)
 
-p = 50
-n = 5000
+# np.random.seed(1234)
+# state=np.random.get_state()
+# pickled = pickle.dump(state, open( "/tmp/seed5000.pkl", "wb" ))
+
+# This state causes AK to be lower than ID
+# prev_state = pickle.load(open("/tmp/seed5000.pkl", "rb"))
+# np.random.set_state(prev_state)
+
+# This state causes ID to be lower than AK...actually AK looks missing.
+# prev_state = pickle.load(open("/tmp/seed.pkl", "rb"))
+# np.random.set_state(prev_state)
+#print("seed",seed)
+
+p = 10
+n = 100
 X, y, catnames, avgtemps = toy_weather_data(n=n, p=p)
 y_bar = np.mean(y)
 print("overall mean(y)", y_bar)
@@ -46,18 +63,23 @@ print("avg temps = ", avgtemps)
 
 #title = f"n={n}\nstd(mean(abs(y)))={std_imp:.3f}\nmin_samples_leaf={min_samples_leaf}\nmin_slopes_per_x={min_slopes_per_x}", fontsize=9
 
-fig,ax = plt.subplots(1,1, figsize=(20,3))
+fig,ax = plt.subplots(1,1, figsize=(10,2))
 uniq_catcodes, avg_per_cat, ignored = \
     plot_catstratpd(X, y, colname='state', targetname="temp", catnames=catnames,
                     n_trials=1,
-                    show_x_counts=False,
+                    min_samples_leaf=3,
+                    show_x_counts=True,
                     ticklabel_fontsize=6,
                     pdp_marker_size=10,
                     show_impact=True,
-                    min_y_shifted_to_zero=False,
+                    yrange=(0,50),
+                    min_y_shifted_to_zero=True,
                     ax=ax,
-                    title=f"n={n}, mean(y)={y_bar :.1f}, true impact={np.mean(avgtemps['avgtemp']-np.min(avgtemps['avgtemp'])):.1f}")
-
+                    verbose=True,
+                    # title=
+                    )
+plt.title(f"n={n}, ignored={ignored},\nmean(y)={y_bar :.1f}, true impact={np.mean(avgtemps['avgtemp']-np.min(avgtemps['avgtemp'])):.1f}")
+print("ignored",ignored)
 min_cat_value = np.min(avg_per_cat)
 # for i in range(p):
 #     ax.text(i, np.max(avg_per_cat)*.90, f"{catnames[i]}={avgtemps.iloc[i]['avgtemp']:.1f}", fontsize=9,
