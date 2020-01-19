@@ -18,12 +18,14 @@ def toy_weather_data(n = 1000, p=50):
     def noise(state): return np.random.normal(-5, 5, sum(df['state'] == state))
 
     df_avgs = pd.read_csv("data/weather.csv")
-    df_avgs.head(3)
+    avgtemp = df_avgs['avgtemp']
+    print("avg of states' avg temps:", np.mean(avgtemp))
+    print("avg of states' avg temps minus min:", np.mean(avgtemp) - np.min(avgtemp))
 
     df = pd.DataFrame()
     df['dayofyear'] = np.random.randint(1, 365 + 1, size=n)
     df['state'] = np.random.randint(0, p, size=n) # get only p states
-    df['temp'] = .1 * df['dayofyear'] + df_avgs['avgtemp'].iloc[df['state']].values
+    df['temp'] = .1 * df['dayofyear'] + avgtemp.iloc[df['state']].values
     return df.drop('temp', axis=1), df['temp'], df_avgs['state'].values, df_avgs.iloc[0:p]
 
 # X, y = load_bulldozer()
@@ -54,8 +56,8 @@ def toy_weather_data(n = 1000, p=50):
 # np.random.set_state(prev_state)
 #print("seed",seed)
 
-p = 10
-n = 100
+p = 50
+n = 2000
 X, y, catnames, avgtemps = toy_weather_data(n=n, p=p)
 y_bar = np.mean(y)
 print("overall mean(y)", y_bar)
@@ -63,11 +65,11 @@ print("avg temps = ", avgtemps)
 
 #title = f"n={n}\nstd(mean(abs(y)))={std_imp:.3f}\nmin_samples_leaf={min_samples_leaf}\nmin_slopes_per_x={min_slopes_per_x}", fontsize=9
 
-fig,ax = plt.subplots(1,1, figsize=(10,2))
+fig,ax = plt.subplots(1,1, figsize=(10,3))
 uniq_catcodes, avg_per_cat, ignored = \
     plot_catstratpd(X, y, colname='state', targetname="temp", catnames=catnames,
                     n_trials=1,
-                    min_samples_leaf=3,
+                    min_samples_leaf=5,
                     show_x_counts=True,
                     ticklabel_fontsize=6,
                     pdp_marker_size=10,

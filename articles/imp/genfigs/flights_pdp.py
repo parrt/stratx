@@ -15,6 +15,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+np.set_printoptions(precision=2, suppress=True, linewidth=300)#, threshold=1e10)
+
 
 # def rent_pdp():
 #     X, y = load_rent(n=2_000)
@@ -28,7 +30,7 @@ import matplotlib.pyplot as plt
 
 #np.random.seed(999)
 
-n=2_000
+n=25_000
 #r = (500,600)
 # r = (0,500)
 _, _, df_flights = load_flights(n=n)
@@ -50,30 +52,31 @@ col = 'DEPARTURE_TIME'
 col = 'SCHEDULED_DEPARTURE'
 col = 'FLIGHT_NUMBER'
 
-plot_stratpd(X, y, colname=col, targetname='delay',
-             show_slope_lines=False,
-             n_trials=10,
-             min_slopes_per_x=20,
-             show_impact=False,
-             show_x_counts=True,
-             )
-             # yrange=(-10,100))
-plt.tight_layout()
-plt.savefig(f"/Users/parrt/Desktop/{col}.pdf", pad_inches=0)
-plt.show()
-
-# plot_catstratpd(X, y, 'FLIGHT_NUMBER', 'ARRIVAL_DELAY',
-#                 min_samples_leaf=10,
-#                 sort=None,
-#                 # yrange=(-110,250),
-#                 figsize=(20,4),
-#                 n_trials=1,
-#                 show_all_deltas=False,
-#                 show_xticks=False,
-#                 show_impact=True)
+# plot_stratpd(X, y, colname=col, targetname='delay',
+#              show_slope_lines=False,
+#              n_trials=10,
+#              min_slopes_per_x=20,
+#              show_impact=False,
+#              show_x_counts=True,
+#              )
+#              # yrange=(-10,100))
 # plt.tight_layout()
-# plt.savefig(f"/Users/parrt/Desktop/flight-fnum-cat.pdf", pad_inches=0)
+# plt.savefig(f"/Users/parrt/Desktop/{col}.pdf", pad_inches=0)
 # plt.show()
+
+plot_catstratpd(X, y, 'FLIGHT_NUMBER', 'ARRIVAL_DELAY',
+                min_samples_leaf=5,
+                sort=None,
+                # yrange=(-110,250),
+                figsize=(20,4),
+                n_trials=1,
+                show_all_deltas=False,
+                show_xticks=False,
+                show_impact=True,
+                verbose=False)
+plt.tight_layout()
+plt.savefig(f"/Users/parrt/Desktop/flight-fnum-cat.pdf", pad_inches=0)
+plt.show()
 
 
 # plot_stratpd(X, y, colname='DEPARTURE_TIME_HOUR', targetname='delay',

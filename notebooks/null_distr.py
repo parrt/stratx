@@ -35,6 +35,6 @@ if True:
 # X, y, _ = load_flights(n=n)
 
 # importances_pvalues(X, y, n_trials=50)
-I = importances(X, y, pvalues=True, n_pvalue_trials=50, n_jobs=1)
+I = importances(X, y, min_samples_leaf=5, pvalues=True, n_pvalue_trials=80, n_jobs=1)
 # I = impact_importances(X, y, stddev=True, n_stddev_trials=5, pvalues=True, n_pvalue_trials=5)
 print(I)

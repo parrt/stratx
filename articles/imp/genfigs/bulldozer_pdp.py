@@ -14,7 +14,9 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-n = 50_000
+np.set_printoptions(precision=2, suppress=True, linewidth=300)#, threshold=1e10)
+
+n = 200
 
 X, y = load_bulldozer()
 
@@ -59,17 +61,22 @@ X_, y_ = X.iloc[idxs], y.iloc[idxs]
 # plt.show()
 
 
-plot_catstratpd(X_, y_, colname='ModelID', targetname='SalePrice',
-                min_samples_leaf=5,
-                # sort=None,
-                alpha=.08,
-                show_all_deltas=False,
-                show_xticks=False,
-                show_impact=True,
-                min_y_shifted_to_zero=False,
-                figsize=(20,5))
+uniq_catcodes, combined_avg_per_cat, ignored = \
+    plot_catstratpd(X_, y_.sample(n=len(y_)), colname='ModelID', targetname='SalePrice',
+                    min_samples_leaf=5,
+                    # sort=None,
+                    alpha=.08,
+                    show_all_deltas=False,
+                    n_trials=1,
+                    show_xticks=False,
+                    show_impact=True,
+                    min_y_shifted_to_zero=False,
+                    figsize=(20,5),
+                    verbose=True)
+plt.title(f"n={n}, ignored ={ignored}")
+print("ignored",ignored)
 plt.tight_layout()
-plt.savefig(f"/Users/parrt/Desktop/james-ModelID-50k.pdf", pad_inches=0)
+plt.savefig(f"/Users/parrt/Desktop/james-ModelID-25k-shuffle.pdf", pad_inches=0)
 plt.show()
 
 

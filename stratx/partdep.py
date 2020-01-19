@@ -1110,12 +1110,10 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
         # perform a groupby(catname).mean()
         uniq_leaf_cats = np.unique(leaf_cats) # comes back sorted
         avg_y_per_cat = np.array([leaf_y[leaf_cats==cat].mean() for cat in uniq_leaf_cats])
-        # TODO: allow again?
-        # no longer relevant since reference point is mean(y)
-        # if len(uniq_leaf_cats) < 6:
-        #     print(f"ignoring {len(sample)} obs for {len(avg_y_per_cat)} cat(s) in leaf")
-        #     ignored += len(sample)
-        #     continue
+        if len(uniq_leaf_cats) < 2:
+            print(f"ignoring {len(sample)} obs for {len(avg_y_per_cat)} cat(s) in leaf")
+            ignored += len(sample)
+            continue
 
         refcats[leaf_i] = np.min(uniq_leaf_cats)
 
@@ -1137,6 +1135,7 @@ def cat_partial_dependence(X, y,
                            max_catcode=None, # if we're bootstrapping, might see diff max's so normalize to one max
                            n_trees=1,
                            min_samples_leaf=10,
+                           min_xxxxxxxxxdddddddddslopes_per_x=5,
                            max_features=1.0,
                            bootstrap=False,
                            supervised=True,
@@ -1378,7 +1377,8 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
     # FIRST LOOP COMBINES LEAF VECTORS WITH SAME REFCAT
     uniq_refcats = sorted(np.unique(refcats))
     if verbose:
-        print("refcats =", refcats, "uniq_refcats =", uniq_refcats)
+        print("refcats =", refcats)
+        print("uniq_refcats =", uniq_refcats)
         print("leaf_histos\n", leaf_histos)
         print("leaf_histos reordered by refcat order\n", leaf_histos[:,np.argsort(refcats)])
     sums_for_refcats = []
@@ -1409,6 +1409,59 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
         print("refcat weights\n", weight_for_refcats)
         print("avgs per refcat\n", np.array(avg_for_refcats).T)
 
+
+    # SECOND LOOP SUMS COMBINED VECTORS USING RELATIVE VALUE FROM RUNNING SUM
+    """
+    avgs per refcat
+     [[   nan    nan    nan    nan    nan    nan]
+      [-30.35    nan    nan    nan    nan    nan]
+      [  3.5     nan    nan    nan    nan    nan]
+      [ -2.78  28.46  -6.05    nan    nan    nan]
+      [ -1.23    nan  -4.82    nan    nan    nan]
+      [-15.84  14.94 -19.26    nan    nan    nan]
+      [-13.9   16.9  -16.57    nan -12.85    nan]
+      [   nan  21.98 -11.39    nan  -7.29    nan]
+      [  9.43    nan   5.7   11.41  10.43  26.44]
+      [ -0.23  29.57  -3.35    nan   0.78  17.04]]
+     
+    refcat weights
+      [23 10 17  1  7  2]
+    """
+    # catavg is the running sum vector
+    n = leaf_histos.shape[0]
+    catavg = avg_for_refcats[0] # init with first ref category (column)
+    ignored = 0
+    # Need a way to restrict
+    valid_idxs = np.where(weight_for_refcats>=10)[0]
+    last_refcat = -1
+    if len(valid_idxs)>0:
+        last_refcat = valid_idxs[-1]
+    # last_refcat = len(uniq_refcats)
+    for j in range(1,last_refcat):      # for each refcat, avg in the vectors
+        cat = uniq_refcats[j]
+        relative_to_value = catavg[cat]
+        v = avg_for_refcats[j]
+        if np.isnan(relative_to_value):
+            ignored += np.sum(~np.isnan(v))
+            weight_for_refcats[j] = 0 # wipe out weights as we don't count these
+            if verbose: print(f"cat {cat} has no value in running sum; ignored={ignored}")
+            continue
+        for i in range(n): # walk down a vector
+            if np.isnan(catavg[i]) and np.isnan(v[i]): # both nan
+                continue
+            if np.isnan(v[i]): # new vector is nan, just used old value
+                continue
+            # computed weighted average of two values
+            prev_weight = np.sum(weight_for_refcats[0:j])
+            cur_weight  = weight_for_refcats[j]
+            v_ = v[i] + relative_to_value
+            catavg[i] = (catavg[i] * prev_weight + v_ * cur_weight) / (prev_weight+cur_weight)
+
+    catavg[uniq_refcats[0]] = 0.0 # first refcat always has value 0 (was nan for summation purposes)
+    if verbose: print("final cat avgs", parray3(catavg))
+    return catavg, ignored
+
+"""
     # SECOND LOOP SUMS COMBINED VECTORS USING RELATIVE VALUE FROM RUNNING SUM
     # sums_per_cat is the running sum vector
     sums_per_cat = avg_for_refcats[0] # init with first ref category (column)
@@ -1462,7 +1515,7 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
     return avg_per_cat, ignored
     # avg_for_refcats[0][0] = 0.0
     # return avg_for_refcats[0], ignored
-
+"""
 
 def plot_catstratpd(X, y,
                     colname,  # X[colname] expected to be numeric codes

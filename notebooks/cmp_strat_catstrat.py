@@ -10,10 +10,11 @@ from stratx.partdep import *
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+np.set_printoptions(precision=2, suppress=True, linewidth=300, threshold=1e10)
 
-np.random.seed(999)
+#np.random.seed(999)
 
-def synthetic_poly_data(n=1000,p=3,dtype=float):
+def synthetic_poly_data(n=1000,p=2,dtype=float):
     df = pd.DataFrame()
     for i in range(p):
         df[f'x{i + 1}'] = (np.random.random_sample(size=n) * 1000).astype(dtype)
@@ -36,19 +37,22 @@ def synthetic_poly_data(n=1000,p=3,dtype=float):
 # plt.show()
 
 
-df, eqn = synthetic_poly_data(20, p=2, dtype=int)
+df, eqn = synthetic_poly_data(20000, p=2, dtype=int)
 X = df.drop('y', axis=1)
 y = df['y']
 uniq_catcodes, avg_per_cat, ignored = \
     plot_catstratpd(X, y, colname='x1', targetname='y',
                     n_trials=1,
-                    min_samples_leaf=1,
+                    min_samples_leaf=10,
                     show_x_counts=True,
                     show_xticks=False,
                     show_impact=True,
                     min_y_shifted_to_zero=True,
-                    yrange=(-1000,1000))
+                    verbose=False,
+                    # yrange=(-1000,1000)
+                    )
 
+print("ignored",ignored)
 print("avg pdp", np.nanmean(avg_per_cat), "std pdp", np.nanstd(avg_per_cat))
 plt.savefig(f"/Users/parrt/Desktop/linear-catstrat.pdf", pad_inches=0)
 plt.show()

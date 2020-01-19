@@ -20,7 +20,7 @@ R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
                          metric=mean_squared_error,
                          stratpd_min_samples_leaf=5, # overcome lots of collinearity
                          use_oob=use_oob,
-                         imp_n_trials=5,
+                         imp_n_trials=1,
                          top_features_range=(1, 8),
                          drop=['Spearman','PCA'])
 
