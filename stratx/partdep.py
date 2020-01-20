@@ -1122,7 +1122,7 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
         uniq_leaf_cats = np.unique(leaf_cats) # comes back sorted
         avg_y_per_cat = np.array([leaf_y[leaf_cats==cat].mean() for cat in uniq_leaf_cats])
         if len(uniq_leaf_cats) < 2:
-            print(f"ignoring {len(sample)} obs for {len(avg_y_per_cat)} cat(s) in leaf")
+            # print(f"ignoring {len(sample)} obs for {len(avg_y_per_cat)} cat(s) in leaf")
             ignored += len(sample)
             continue
 

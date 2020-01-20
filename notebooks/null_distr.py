@@ -19,9 +19,22 @@ import matplotlib.pyplot as plt
 
 # X, y = load_rent(n=30_000)
 
-n = 10_000
-
 if True:
+    n=25_000
+    _, _, df_flights = load_flights(n=n)
+    X, y = df_flights.drop('ARRIVAL_DELAY', axis=1), df_flights['ARRIVAL_DELAY']
+    I = importances(X, y, n_trials=5, min_samples_leaf=5, pvalues=True, n_pvalue_trials=50, n_jobs=1,
+                    catcolnames={'AIRLINE',
+                                 'ORIGIN_AIRPORT',
+                                 'DESTINATION_AIRPORT',
+                                 'FLIGHT_NUMBER',
+                                 'DAY_OF_WEEK'},
+                    normalize=False)
+    # I = impact_importances(X, y, stddev=True, n_stddev_trials=5, pvalues=True, n_pvalue_trials=5)
+    print(I)
+
+if False:
+    n = 10_000
     X, y = load_bulldozer()
 
     # Most recent timeseries data is more relevant so get big recent chunk
@@ -32,10 +45,10 @@ if True:
     idxs = resample(range(50_000), n_samples=n, replace=False)
     X, y = X.iloc[idxs], y.iloc[idxs]
 
-# X, y, _ = load_flights(n=n)
+    # X, y, _ = load_flights(n=n)
 
-# importances_pvalues(X, y, n_trials=50)
-I = importances(X, y, n_trials=5, min_samples_leaf=10, pvalues=True, n_pvalue_trials=50, n_jobs=1,
-                catcolnames={'AC','ModelID'}, normalize=False)
-# I = impact_importances(X, y, stddev=True, n_stddev_trials=5, pvalues=True, n_pvalue_trials=5)
-print(I)
+    # importances_pvalues(X, y, n_trials=50)
+    I = importances(X, y, n_trials=5, min_samples_leaf=10, pvalues=True, n_pvalue_trials=50, n_jobs=1,
+                    catcolnames={'AC','ModelID'}, normalize=False)
+    # I = impact_importances(X, y, stddev=True, n_stddev_trials=5, pvalues=True, n_pvalue_trials=5)
+    print(I)
