@@ -1091,22 +1091,27 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
     a leaf have values.
     Shape is (max cat + 1, num leaves).
 
-    Previously, we subtracted the average of the leaf y not the overall y avg,
-    but this failed to capture the relationship between categories when there are
-    many levels.  Within a single leave, there will typically only be a few categories
+    As reference cat, use the smallest cat in the leaf. Previously, we
+    subtracted the average of the leaf y not the overall y avg,  but this failed
+    to capture the relationship between categories when there are many levels. Tried
+    subtracting mean(y) but that was harder to interpret later in noisy environment;
+    couldn't get the proper zero PDP y value on left edge of PDP.
+
+    Within a single leave, there will typically only be a few categories
     represented.
     """
     leaves = leaf_samples(rf, X_not_col)
-    # y_mean = np.mean(y)
 
     leaf_histos = np.full(shape=(max_catcode+1, len(leaves)), fill_value=np.nan)
     refcats = np.empty(shape=(len(leaves),), dtype=int)
 
     # Rank the cat codes by most to least common and use the most common ref cat
     # in each leaf, given the cat codes available in the leaf.
-    uniq_cats, cat_counts = np.unique(X_col, return_counts=True)
-    revsort_idx = np.argsort(cat_counts)[::-1]
-    cats_by_most_common = list(uniq_cats[revsort_idx])
+    # I turned this off in the end as it complicates things and still works when
+    # we subtract the min leaf cat code's value.
+    # uniq_cats, cat_counts = np.unique(X_col, return_counts=True)
+    # revsort_idx = np.argsort(cat_counts)[::-1]
+    # cats_by_most_common = list(uniq_cats[revsort_idx])
 
     ignored = 0
     for leaf_i in range(len(leaves)):
@@ -1121,28 +1126,14 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
             ignored += len(sample)
             continue
 
-        # Find index of leaf cats in cats_by_most_common, then find min index, which
-        # will correspond to most common category in X_col. Finally grab catcode
-        leaf_cat_idxs = [list(cats_by_most_common).index(cat) for cat in leaf_cats]
-        most_common_leaf_cat = cats_by_most_common[np.min(leaf_cat_idxs)]
-
-        # Seems to help with grouping later by refcat for real X_col distributions
-        # whereas subtracting min cat code helps to reverse sort with uniform distros.
-        # Real data sets see fewer uniq cat codes after combining common refcats,
-        # with increased numbers of points of course.
-        # refcats[leaf_i] = most_common_leaf_cat
-
-        # TODO: turn off sorting as gotta use min cat for feedforward thing later
         refcats[leaf_i] = np.min(uniq_leaf_cats)
 
-        # record avg y value per cat above avg y in this leaf
-        # leave cats w/o representation as nan
-        # Back to subtracting min of leaf_y
-        # Always use smallest cat code as the reference point; since avg_y_per_cat
+        # Use smallest cat code as the reference point; since avg_y_per_cat
         # is sorted by uniq_leaf_cats, first value is the reference value
         delta_y_per_cat = avg_y_per_cat - avg_y_per_cat[0]
-        # refcats[leaf_i] = uniq_leaf_cats[0]
+
         # Store into leaf i vector just those deltas we have data for
+        # leave cats w/o representation as nan
         leaf_histos[uniq_leaf_cats, leaf_i] = delta_y_per_cat
 
     return leaf_histos, refcats, ignored
@@ -1153,7 +1144,6 @@ def cat_partial_dependence(X, y,
                            max_catcode=None, # if we're bootstrapping, might see diff max's so normalize to one max
                            n_trees=1,
                            min_samples_leaf=10,
-                           min_xxxxxxxxxdddddddddslopes_per_x=5,
                            max_features=1.0,
                            bootstrap=False,
                            supervised=True,
@@ -1184,114 +1174,18 @@ def cat_partial_dependence(X, y,
                                     oob_score=False)
         rf.fit(X_synth.drop(colname,axis=1), y_synth)
 
-    # rf = RandomForestRegressor(n_estimators=n_trees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X_not_col, y)
-    # print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
-    # leaf_histos, leaf_avgs, leaf_sizes, leaf_catcounts, ignored = \
-    #     catwise_leaves(rf, X, y, colname, verbose=verbose)
 
     leaf_histos, refcats, ignored____ = \
         catwise_leaves(rf, X_not_col, X_col, y.values, max_catcode)
 
     avg_per_cat, ignored = avg_values_at_cat(leaf_histos, refcats, verbose=verbose)
 
-    # experimenting dropping those with too few averages
-    # slope_counts_at_cat = leaf_histos.shape[1] - np.isnan(leaf_histos).sum(axis=1)
-    # leaf_histos[slope_counts_at_cat<5,:] = np.nan # kill these
-
     if verbose:
         print(f"CatStratPD Num samples ignored {ignored} for {colname}")
 
-    # with warnings.catch_warnings():
-    #     warnings.simplefilter("ignore", category=RuntimeWarning)
-    #     avg_per_cat = np.nanmean(leaf_histos, axis=1)
-        # slope_counts_at_cat = leaf_histos.shape[1] - np.isnan(leaf_histos).sum(axis=1)
-
-    # print("slope_counts_at_cat", colname, list(slope_counts_at_cat)[:100])
-    # print("avg_per_cat", colname, list(avg_per_cat)[:100])
-
+    # TODO: two diff ignores here: one for leaves with 1 cat and other for stuff we couldn't merge
     return leaf_histos, avg_per_cat, ignored
-
-
-def avg_values_at_cat_via_graph(leaf_histos, refcats, verbose=False):
-    """
-    In leaf_histos, we have information from the leaves indicating how much
-    above or below each category was from the reference category of that leaf.
-    The reference category is the one with the minimum cat (not y) value, so it's
-    relative value in the leaf column will be 0. Categories not mentioned in the leaf,
-    will have nan values in the column.
-
-    The goal is to combine all of these relative category bumps and drops,
-    despite the fact that they do not have the same reference category. We
-    collect all of the leaves with a reference category level i and average them
-    together (for all unique categories mentioned in refcats).  Now we have
-    a list of relative value vectors, one per unique category level used as a reference.
-    The list is sorted in order of unique reference category. (Hopefully this
-    will be much smaller than the number of categories total for speed.) Note these
-    sum vectors might have np.nan values to represent unknown category info.
-
-    Now we have to create a result vector that combines the relative vectors.
-    The problem is of course the different reference categories but if the vector for
-    a unique refcat, i, is mentioned in another vector whose refcat is less than i,
-    then we can use transitivity to combine.  E.g., for refcat 'a', we might have
-    vector [0, 2, 5] indicating b=a+2, c=a+5.  We then have refcat 'b' vector:
-    [nan, 0, 3] indicating c=b+3. The solution is to describe the relationships
-    with a graph and then use "avg of sum of weights along all paths" from u to v to
-    get the value of v relative to u:
-
-    a -2-> b --|
-    |          3
-    |--5-> c <-|
-
-    Walk all leaf vectors and combine to get an average for each unique refcat. From
-    these, we build a graph G.  For each avg vector, for all i positions > refcat,
-    add an edge from refcat -> i with weight avg_for_refcat[cat].
-    """
-    def nanaddvectors(A):
-        "Add all vertical vectors in A but support nan+x==x and nan+nan=nan"
-        s = np.nansum(A, axis=1)
-        # count how many non-nan values and non-0 values across all leaves with
-        # cat as reference category
-        all_nan_entries = np.isnan(A)
-        # if all entries for a cat are nan, make sure sum s is nan for that cat
-        s[all_nan_entries.all(axis=1)] = np.nan
-        return s
-
-    ignored = 0
-    avg_per_cat = None
-
-    uniq_refcats = sorted(np.unique(refcats))
-    if verbose: print("uniq_refcats =", uniq_refcats)
-    # Track
-    sums_for_refcats = []
-    counts_for_refcats = []
-    for cat in uniq_refcats:
-        # collect and add up vectors from all leaves with cat as a reference category
-        leaves_with_same_refcat = leaf_histos[:, np.where(refcats == cat)[0]]
-        all_nan_entries = np.isnan(leaves_with_same_refcat)
-        # if all entries for a cat are nan, make sure sum s is nan for that cat
-        s = nanaddvectors(leaves_with_same_refcat)
-        # count how many non-nan values and non-0 values across all leaves with
-        # cat as reference category
-        c = (~all_nan_entries).astype(int) # nan entries also get 0 count
-        c[cat] = 0 # refcat doesn't get counted
-        c = np.sum(c, axis=1)
-        counts_for_refcats.append(c)
-        sums_for_refcats.append(s)
-    if verbose: print("sums_for_refcats (reordered by uniq_refcats)\n", np.array(sums_for_refcats).T)
-    if verbose: print("counts\n", np.array(counts_for_refcats).T)
-    # likely less memory to avoid creating 2D matrices
-    avg_for_refcats = [sums_for_refcats[i] / np.where(counts_for_refcats[i]==0, 1, counts_for_refcats[i]) for i in range(len(uniq_refcats))]
-
-    for cat in uniq_refcats:
-        v = avg_for_refcats[cat]
-        notnan = ~np.isnan(v)
-        # beyond_cat = v[notnan]>
-        for i in range(cat,len(v)):
-            if np.isnan(v[i]): continue
-            print("edge", v[cat], '-', v[i],'->', i)
-
-    return avg_per_cat, ignored
 
 
 def avg_values_at_cat(leaf_histos, refcats, verbose=False):
@@ -1367,12 +1261,17 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
                      I.e., which category had the smallest y value in the leaf?
     :return:
     """
-    def nanmerge_vectors(a,b):
+    def nanmerge_vectors(a,b,wa,wb):
         "Add two vectors a+b but support nan+x==x and nan+nan=nan"
-        all_nan_entries = np.isnan(a) & np.isnan(b)
-        c = np.where(np.isnan(a), 0, a) + np.where(np.isnan(b), 0, b)
+        a_nan = np.isnan(a)
+        b_nan = np.isnan(b)
+        both_nan = a_nan & b_nan
+        c = a*wa + b*wb # weighted average where both are non-nan
+        c /= (wa+wb) # weighted avg
+        # c = np.where(a_nan, 0, a) * wa + np.where(b_nan, 0, b) * wb
         # if adding nan to nan, leave as nan
-        c[all_nan_entries] = np.nan
+        c[a_nan] = b[a_nan]   # copy b good stuff (unweighted into result)
+        c[~a_nan] = a[~a_nan] # copy a good back to result
         return c
 
     def nanmerge_matrix_cols(A):
@@ -1469,8 +1368,6 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
     # catavg is the running sum vector
     n = leaf_histos.shape[0]
     catavg = avg_for_refcats[:,0] # init with first ref category (column)
-    # that's a view inside matrix so we'll be updating 1st column as running sum vector
-    # and modifying other columns in place to be mergeable
     catavg_weight = weight_for_refcats[0]
     ignored = 0
     # Need a way to restrict
@@ -1492,24 +1389,26 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
             if verbose: print(f"cat {cat} has no value in running sum; ignored={ignored}")
             continue
 
+        # modifying columns in place to be mergeable
         ix = intersection_idx[0] # idx of first value in common
         v -= v[ix]               # make i the common reference even though not first in v anymore
         relative_value = catavg[ix]
         v += relative_value     # now v is mergeable with catavg
         cur_weight  = weight_for_refcats[j]
-        for i in range(cat,n):  # walk down a vector starting at refcat, first useful value
-            if np.isnan(catavg[i]) and np.isnan(v[i]):  # both nan
-                continue
-            if np.isnan(v[i]):  # new vector is nan, just used old value
-                continue
-            if np.isnan(catavg[i]):
-                catavg[i] = v[i] # copy good value from v into catavg
-            else:  # otherwise computed weighted average of two values
-                catavg[i] = (catavg[i] * catavg_weight + v[i] * cur_weight) / (catavg_weight+cur_weight)
+        catavg = nanmerge_vectors(catavg, v, catavg_weight, cur_weight)
+        # for i in range(cat,n):  # walk down a vector starting at refcat, first useful value
+        #     if np.isnan(catavg[i]) and np.isnan(v[i]):  # both nan
+        #         continue
+        #     if np.isnan(v[i]):  # new vector is nan, just used old value
+        #         continue
+        #     if np.isnan(catavg[i]):
+        #         catavg[i] = v[i] # copy good value from v into catavg
+        #     else:  # otherwise computed weighted average of two values
+        #         catavg[i] = (catavg[i] * catavg_weight + v[i] * cur_weight) / (catavg_weight+cur_weight)
         # Update weight of running sum to incorporate "mass" from v
         catavg_weight += cur_weight
 
-    catavg[uniq_refcats[0]] = 0.0 # first refcat always has value 0 (was nan for summation purposes)
+    #catavg[uniq_refcats[0]] = 0.0 # first refcat always has value 0 (was nan for summation purposes)
     if verbose: print("final cat avgs", parray3(catavg))
     return catavg, ignored
 """

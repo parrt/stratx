@@ -36,13 +36,18 @@ X_ = X_.copy()
 # X_['ModelID'] += 1
 
 
+I = importances(X_, y_, n_trials=3, normalize=False,
+                catcolnames={'AC','ModelID'})
+print(I)
+
+y_scrambled = y_.sample(n=len(y_))
 uniq_catcodes, combined_avg_per_cat, ignored = \
-    plot_catstratpd(X_, y_.sample(n=len(y_)), colname='ModelID', targetname='SalePrice',
+    plot_catstratpd(X_, y_, colname='ModelID', targetname='SalePrice',
                     min_samples_leaf=10,
                     # sort=None,
                     alpha=.08,
                     show_all_deltas=False,
-                    n_trials=1,
+                    n_trials=5,
                     show_xticks=False,
                     show_impact=True,
                     min_y_shifted_to_zero=False,
@@ -51,8 +56,18 @@ uniq_catcodes, combined_avg_per_cat, ignored = \
 plt.title(f"n={n}, ignored ={ignored}")
 print("ignored",ignored)
 plt.tight_layout()
-plt.savefig(f"/Users/parrt/Desktop/james-ModelID-25k-shuffle.pdf", pad_inches=0)
+plt.savefig(f"/Users/parrt/Desktop/james-ModelID-25k.pdf", pad_inches=0)
 plt.show()
+
+# plot_stratpd(X_, y_, colname='age', targetname='SalePrice',
+#              n_trials=3,
+#              show_slope_lines=False,
+#              show_impact=False,
+#              figsize=(3.8,3.2)
+#              )
+# plt.tight_layout()
+# plt.savefig(f"/Users/parrt/Desktop/james-age.pdf", pad_inches=0)
+# plt.show()
 
 
 # I = importances(X_, y_,
@@ -66,15 +81,7 @@ plt.show()
 
 #plot_catstratpd(X_, y_, colname='ProductSize', targetname='SalePrice')
 
-# plot_stratpd(X_, y_, colname='age', targetname='SalePrice',
-#              show_slope_lines=False,
-#              show_impact=False,
-#              figsize=(3.8,3.2)
-#              )
-# plt.tight_layout()
-# plt.savefig(f"/Users/parrt/Desktop/james-age.pdf", pad_inches=0)
-# plt.show()
-#
+
 # plot_stratpd(X_, y_, colname='YearMade', targetname='SalePrice',
 #              show_slope_lines=False,
 #              show_impact=True,

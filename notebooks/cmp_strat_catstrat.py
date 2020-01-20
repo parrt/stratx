@@ -6,6 +6,7 @@ from timeit import default_timer as timer
 from sklearn.utils import resample
 
 from stratx.partdep import *
+from stratx.featimp import *
 
 import numpy as np
 import pandas as pd
@@ -50,8 +51,8 @@ def synthetic_poly_data_gaussian(n=1000,max_x=1000,p=2,dtype=float):
 # plt.savefig(f"/Users/parrt/Desktop/linear-numeric.pdf", pad_inches=0)
 # plt.show()
 
-
-df, eqn = synthetic_poly_data_gaussian(20000, p=2, max_x=25, dtype=int)
+#np.random.seed(999)
+df, eqn = synthetic_poly_data_gaussian(1000, p=2, max_x=25, dtype=int)
 # df, eqn = synthetic_poly_data(1000, p=2, max_x=10, dtype=int)
 X = df.drop('y', axis=1)
 y = df['y']
@@ -67,6 +68,9 @@ uniq_catcodes, avg_per_cat, ignored = \
                     figsize=(10,4)
                     # yrange=(-1000,1000)
                     )
+
+I = importances(X, y, n_trials=3, normalize=False)
+print(I)
 
 print("ignored",ignored)
 print("avg pdp", np.nanmean(avg_per_cat), "std pdp", np.nanstd(avg_per_cat))
