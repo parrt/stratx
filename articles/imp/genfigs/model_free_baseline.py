@@ -18,7 +18,8 @@ def boston():
 
     R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
         compare_top_features(X, y, n_shap=300,
-                             min_slopes_per_x=5,
+                             kfolds=5,
+                             imp_n_trials=10,
                              top_features_range=(1, 8),
                              include=['Spearman','PCA', 'OLS', 'StratImpact'])
 
@@ -36,7 +37,7 @@ def boston():
 
 
 def bulldozer():
-    n = 30_000  # shap crashes above this; 20k works
+    n = 25_000 # shap crashes above this
 
     X, y = load_bulldozer()
     X = X.iloc[-n:]
@@ -44,7 +45,9 @@ def bulldozer():
 
     R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
         compare_top_features(X, y, n_shap=300,
-                             min_slopes_per_x=5,
+                             kfolds=5,
+                             imp_n_trials=10,
+                             stratpd_min_samples_leaf=5,
                              catcolnames={'AC', 'ModelID', 'YearMade', 'ProductSize'},
                              top_features_range=(1, 8),
                              include=['Spearman','PCA', 'OLS', 'StratImpact'])
@@ -63,12 +66,14 @@ def bulldozer():
 
 
 def rent():
-    n = 30_000  # more and shap gets bus error it seems
+    n = 25_000
     X, y = load_rent(n=n)
 
     R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
         compare_top_features(X, y, n_shap=300,
-                             min_slopes_per_x=5,
+                             kfolds=5,
+                             imp_n_trials=10,
+                             stratpd_min_samples_leaf=5,
                              top_features_range=(1, 8),
                              include=['Spearman','PCA','OLS','StratImpact'])
 
@@ -83,7 +88,7 @@ def rent():
 
 
 def flight():
-    n = 30_000
+    n = 25_000
 
     X, y, _ = load_flights(n=n)
 
@@ -95,7 +100,9 @@ def flight():
                                           'FLIGHT_NUMBER',
                                           'DAY_OF_WEEK'},
                              metric=mean_squared_error,
-                             min_slopes_per_x=5,
+                             kfolds=5,
+                             imp_n_trials=10,
+                             stratpd_min_samples_leaf=10,
                              # a bit less than usual (gridsearch showed how to get value)
                              top_features_range=(1, 8),
                              include=['Spearman','PCA','OLS','StratImpact'])

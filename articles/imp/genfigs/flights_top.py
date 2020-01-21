@@ -17,10 +17,11 @@ R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
                                       'DAY_OF_WEEK'},
                          kfolds=1,
                          model=model,
-                         metric=mean_squared_error,
-                         stratpd_min_samples_leaf=5, # overcome lots of collinearity
+                         metric=mean_absolute_error,
+                         stratpd_min_samples_leaf=5,
+                         stratpd_cat_min_samples_leaf=2,
                          use_oob=use_oob,
-                         imp_n_trials=1,
+                         imp_n_trials=3,
                          top_features_range=(1, 8),
                          drop=['Spearman','PCA'])
 

@@ -471,7 +471,8 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
     for i in range(n_trials):
         # idxs = resample(range(n), n_samples=n, replace=True) # bootstrap
         if n_trials>1:
-            idxs = resample(range(n), n_samples=int(n * 2 / 3), replace=False)  # subset
+            # idxs = resample(range(n), n_samples=int(n * 2 / 3), replace=False)  # subset
+            idxs = resample(range(n), n_samples=n, replace=True)
             X_, y_ = X.iloc[idxs], y.iloc[idxs]
         else:
             X_, y_ = X, y
@@ -1601,7 +1602,8 @@ def plot_catstratpd(X, y,
     for i in range(n_trials):
         # idxs = resample(range(n), n_samples=n, replace=True) # bootstrap
         if n_trials>1:
-            idxs = resample(range(n), n_samples=int(n*2/3), replace=False) # subset
+            # idxs = resample(range(n), n_samples=int(n*2/3), replace=False) # subset
+            idxs = resample(range(n), n_samples=n, replace=True)
             X_, y_ = X.iloc[idxs], y.iloc[idxs]
         else:
             X_, y_ = X, y

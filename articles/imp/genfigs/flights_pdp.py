@@ -47,15 +47,27 @@ print(f"Avg arrival delay {df_flights['ARRIVAL_DELAY'].mean()}")
 #                         yrange=(-10,90)
 #                         )
 
-col = 'TAXI_OUT'
 col = 'DEPARTURE_TIME'
 col = 'SCHEDULED_DEPARTURE'
 col = 'FLIGHT_NUMBER'
+col = 'TAXI_OUT'
+
+# I = importances(X, y,
+#                 catcolnames={'AIRLINE',
+#                              'ORIGIN_AIRPORT',
+#                              'DESTINATION_AIRPORT',
+#                              'FLIGHT_NUMBER',
+#                              'DAY_OF_WEEK'},
+#                 min_samples_leaf=5,
+#                 cat_min_samples_leaf=2,
+#                 n_trials=1,
+#                 normalize=False)
+# print(I)
 
 # plot_stratpd(X, y, colname=col, targetname='delay',
 #              show_slope_lines=False,
-#              n_trials=10,
-#              min_slopes_per_x=20,
+#              min_samples_leaf=5,
+#              n_trials=3,
 #              show_impact=False,
 #              show_x_counts=True,
 #              )
@@ -69,13 +81,13 @@ plot_catstratpd(X, y, 'FLIGHT_NUMBER', 'ARRIVAL_DELAY',
                 sort=None,
                 # yrange=(-110,250),
                 figsize=(20,4),
-                n_trials=1,
+                n_trials=5,
                 show_all_deltas=False,
                 show_xticks=False,
                 show_impact=True,
                 verbose=False)
 plt.tight_layout()
-plt.savefig(f"/Users/parrt/Desktop/flight-fnum-cat.pdf", pad_inches=0)
+plt.savefig(f"/Users/parrt/Desktop/flight-fnum-cat-5-bootstrap.pdf", pad_inches=0)
 plt.show()
 
 

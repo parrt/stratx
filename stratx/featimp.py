@@ -63,7 +63,10 @@ def importances(X: pd.DataFrame,
                 n_trials: int = 1,
                 pvalues=False,  # use to get p-values for each importance; it's number trials
                 n_pvalue_trials=50,  # how many trials to do to get p-values
-                n_trees=1, min_samples_leaf=10, bootstrap=False, max_features=1.0,
+                n_trees=1,
+                min_samples_leaf=10,
+                cat_min_samples_leaf=10,
+                bootstrap=False, max_features=1.0,
                 verbose=False) -> pd.DataFrame:
     if not isinstance(X, pd.DataFrame):
         raise ValueError("Can only operate on dataframes at the moment")
@@ -85,6 +88,7 @@ def importances(X: pd.DataFrame,
                          n_jobs=n_jobs,
                          n_trees=n_trees,
                          min_samples_leaf=min_samples_leaf,
+                         cat_min_samples_leaf=cat_min_samples_leaf,
                          min_slopes_per_x=min_slopes_per_x,
                          bootstrap=bootstrap,
                          max_features=max_features,
@@ -107,6 +111,7 @@ def importances(X: pd.DataFrame,
                                            min_slopes_per_x=min_slopes_per_x,
                                            n_trees=n_trees,
                                            min_samples_leaf=min_samples_leaf,
+                                           cat_min_samples_leaf=cat_min_samples_leaf,
                                            bootstrap=bootstrap,
                                            max_features=max_features)
 
@@ -136,7 +141,9 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                  normalize=True,
                  supervised=True,
                  n_jobs=1,
-                 n_trees=1, min_samples_leaf=10,
+                 n_trees=1,
+                 min_samples_leaf=10,
+                 cat_min_samples_leaf=10,
                  min_slopes_per_x=5,
                  bootstrap=False, max_features=1.0,
                  verbose=False) -> np.ndarray:
@@ -151,7 +158,7 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
             leaf_histos, avg_per_cat, ignored = \
                 cat_partial_dependence(X, y, colname=colname,
                                        n_trees=n_trees,
-                                       min_samples_leaf=min_samples_leaf,
+                                       min_samples_leaf=cat_min_samples_leaf,
                                        bootstrap=bootstrap,
                                        max_features=max_features,
                                        verbose=verbose,
@@ -230,7 +237,10 @@ def importances_pvalues(X: pd.DataFrame,
                         n_jobs=1,
                         n_trials: int = 1,
                         min_slopes_per_x=5,
-                        n_trees=1, min_samples_leaf=10, bootstrap=False,
+                        n_trees=1,
+                        min_samples_leaf=10,
+                        cat_min_samples_leaf=10,
+                        bootstrap=False,
                         max_features=1.0):
     """
     For each feature, compute and return empirical p-values.  The idea is to shuffle y
@@ -247,6 +257,7 @@ def importances_pvalues(X: pd.DataFrame,
                                  n_jobs=n_jobs,
                                  n_trees=n_trees,
                                  min_samples_leaf=min_samples_leaf,
+                                 cat_min_samples_leaf=cat_min_samples_leaf,
                                  bootstrap=bootstrap,
                                  max_features=max_features)
 
@@ -259,6 +270,7 @@ def importances_pvalues(X: pd.DataFrame,
                         n_jobs=n_jobs,
                         n_trees=n_trees,
                         min_samples_leaf=min_samples_leaf,
+                        cat_min_samples_leaf=cat_min_samples_leaf,
                         bootstrap=bootstrap,
                         max_features=max_features)
         counts += I['Importance'].values >= I_baseline['Importance'].values
