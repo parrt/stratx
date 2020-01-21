@@ -1262,38 +1262,6 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
                      I.e., which category had the smallest y value in the leaf?
     :return:
     """
-    def nanmerge_vectors(a,b,wa,wb):
-        "Add two vectors a+b but support nan+x==x and nan+nan=nan"
-        a_nan = np.isnan(a)
-        b_nan = np.isnan(b)
-        both_nan = a_nan & b_nan
-        c = a*wa + b*wb # weighted average where both are non-nan
-        c /= (wa+wb) # weighted avg
-        # c = np.where(a_nan, 0, a) * wa + np.where(b_nan, 0, b) * wb
-        # if adding nan to nan, leave as nan
-        c[a_nan] = b[a_nan]   # copy b good stuff (unweighted into result)
-        c[~a_nan] = a[~a_nan] # copy a good back to result
-        return c
-
-    def nanmerge_matrix_cols(A):
-        "Add all vertical vectors in A but support nan+x==x and nan+nan=nan"
-        s = np.nansum(A, axis=1)
-        all_nan_entries = np.isnan(A)
-        # if all entries for a cat are nan, make sure sum s is nan for that cat
-        s[all_nan_entries.all(axis=1)] = np.nan
-        return s
-
-    def zero_as_one(a):
-        return np.where(a == 0, 1, a)
-
-    def parray(a):
-        if type(a[0])==np.int64:
-            return '[ ' + (' '.join([f"{x:6d}" for x in a])).strip() + ' ]'
-        else:
-            return '[ ' + (' '.join([f"{x:6.2f}" for x in a])).strip() + ' ]'
-    def parray3(a):
-        return '[ ' + (' '.join([f"{x:6.3f}" for x in a])).strip() + ' ]'
-
     # FIRST LOOP COMBINES LEAF VECTORS WITH SAME REFCAT
     uniq_refcats = np.array(sorted(np.unique(refcats)))
     if verbose:
@@ -1326,12 +1294,12 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
     # E.g., weight_for_refcats = [ 8  8  6  4  4 27  5 11  5  5  4 34 17  8  9  3  5]
     counts_for_refcats = np.array(counts_for_refcats).T
     weight_for_refcats = np.sum(counts_for_refcats, axis=0)
-    # TODO: not sure it's worth sorting yet
-    # Sorting breaks feedforward thing
+    # Sort to get most populated vectors to the left of matrix; more chance of intersection
     uniq_refcats_by_weight_idxs = np.argsort(weight_for_refcats)[::-1]
     avg_for_refcats = avg_for_refcats[:,uniq_refcats_by_weight_idxs]
     weight_for_refcats = weight_for_refcats[uniq_refcats_by_weight_idxs]
     uniq_refcats = uniq_refcats[uniq_refcats_by_weight_idxs]
+    counts_for_refcats = counts_for_refcats[:,uniq_refcats_by_weight_idxs]
 
     if verbose:
         print("counts\n", counts_for_refcats[0:30])
@@ -1392,11 +1360,12 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
 
         # modifying columns in place to be mergeable
         ix = intersection_idx[0] # idx of first value in common
-        v -= v[ix]               # make i the common reference even though not first in v anymore
-        relative_value = catavg[ix]
-        v += relative_value     # now v is mergeable with catavg
+        shifted_v = v - v[ix]        # make i the common reference even though not first in v anymore
+        relative_to_value = catavg[ix]
+        adjusted_v = shifted_v + relative_to_value     # now v is mergeable with catavg
         cur_weight  = weight_for_refcats[j]
-        catavg = nanmerge_vectors(catavg, v, catavg_weight, cur_weight)
+        prev_catavg = catavg
+        catavg = nanmerge_vectors(catavg, adjusted_v, catavg_weight, cur_weight)
         # for i in range(cat,n):  # walk down a vector starting at refcat, first useful value
         #     if np.isnan(catavg[i]) and np.isnan(v[i]):  # both nan
         #         continue
@@ -1408,6 +1377,15 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
         #         catavg[i] = (catavg[i] * catavg_weight + v[i] * cur_weight) / (catavg_weight+cur_weight)
         # Update weight of running sum to incorporate "mass" from v
         catavg_weight += cur_weight
+        if verbose:
+            print(f"{cat:-2d} : vec to add =", parray(v), f"- {v[ix]:.2f}")
+            # print("     count      =", parray(cats_with_values_added_to_running_sum * weight_for_refcats[i]))
+            print("     shifted    =", parray(shifted_v), f"+ {relative_to_value:.2f}")
+            # print(f"     sum weight = {catavg_weight-cur_weight}, cur weight = {cur_weight:d}")
+            print("     adjusted   =", parray(adjusted_v), "*", cur_weight)
+            print("     prev avg   =", parray(prev_catavg),"*",catavg_weight-cur_weight)
+            print("     new avg    =", parray(catavg))
+            print()
 
     #catavg[uniq_refcats[0]] = 0.0 # first refcat always has value 0 (was nan for summation purposes)
     if verbose: print("final cat avgs", parray3(catavg))
@@ -2063,3 +2041,38 @@ def conjure_twoclass(X):
     y_synth = np.concatenate([np.zeros(len(X)),
                               np.ones(len(X_rand))], axis=0)
     return X_synth, pd.Series(y_synth)
+
+
+def nanmerge_vectors(a,b,wa=1.0,wb=1.0):
+    "Add two vectors a+b but support nan+x==x and nan+nan=nan"
+    a_nan = np.isnan(a)
+    b_nan = np.isnan(b)
+    # both_nan = a_nan & b_nan
+    c = a*wa + b*wb # weighted average where both are non-nan
+    c /= (wa+wb) # weighted avg
+    # c = np.where(a_nan, 0, a) * wa + np.where(b_nan, 0, b) * wb
+    # if adding nan to nan, leave as nan
+    c[a_nan] = b[a_nan]   # copy any stuff where b has only value (unweighted into result)
+    in_a_not_b = (~a_nan) & b_nan
+    c[in_a_not_b] = a[in_a_not_b] # copy stuff where a has only value
+    return c
+
+def nanmerge_matrix_cols(A):
+    "Add all vertical vectors in A but support nan+x==x and nan+nan=nan"
+    s = np.nansum(A, axis=1)
+    all_nan_entries = np.isnan(A)
+    # if all entries for a cat are nan, make sure sum s is nan for that cat
+    s[all_nan_entries.all(axis=1)] = np.nan
+    return s
+
+def zero_as_one(a):
+    return np.where(a == 0, 1, a)
+
+def parray(a):
+    if type(a[0])==np.int64:
+        return '[ ' + (' '.join([f"{x:6d}" for x in a])).strip() + ' ]'
+    else:
+        return '[ ' + (' '.join([f"{x:6.2f}" for x in a])).strip() + ' ]'
+def parray3(a):
+    return '[ ' + (' '.join([f"{x:6.3f}" for x in a])).strip() + ' ]'
+
