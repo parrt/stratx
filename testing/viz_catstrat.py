@@ -7,6 +7,7 @@ from PIL import Image
 from stratx.partdep import *
 
 SAVE_EXPECTED = True # turn this on to regen expected subdir of images
+SAVE_EXPECTED = False
 
 np.set_printoptions(precision=2, suppress=True, linewidth=150)
 
@@ -30,8 +31,6 @@ def toy_weather_data(n = 1000, p=50, seed=None, n_outliers=None):
 
     df_avgs = pd.read_csv("../articles/imp/genfigs/data/weather.csv")
     avgtemp = df_avgs['avgtemp']
-    print("avg of states' avg temps:", np.mean(avgtemp))
-    print("avg of states' avg temps minus min:", np.mean(avgtemp) - np.min(avgtemp))
 
     if seed is not None:
         save_state = np.random.get_state()
@@ -48,12 +47,17 @@ def toy_weather_data(n = 1000, p=50, seed=None, n_outliers=None):
         outliers_vals = np.random.normal(loc=0, scale=15, size=n_outliers)
         df.iloc[outliers_idx, 2] += outliers_vals
 
+    avgtemp = df_avgs.iloc[np.unique(df['state'])]['avgtemp']
+    print("avg of states' avg temps:", np.mean(avgtemp))
+    true_impact = np.mean(avgtemp) - np.min(avgtemp)
+    print("avg of states' avg temps minus min:", true_impact)
+
     if seed is not None:
         np.random.set_state(save_state)
 
     X = df.drop('temp', axis=1)
     y = df['temp']
-    return X, y, df_avgs['state'].values, df_avgs.iloc[0:p]
+    return X, y, df_avgs['state'].values, df_avgs.iloc[0:p], true_impact
 
 
 def synthetic_poly_data(n=1000,max_x=1000,p=2,dtype=float, seed=None):
@@ -170,7 +174,8 @@ def viz_clean_synth_gauss_n3000_xrange10_minleaf2():
 
 
 def viz_weather(n, p, min_samples_leaf, n_outliers=0, seed=None, show_truth=True):
-    X, y, catnames, avgtemps = toy_weather_data(n=n, p=p, seed=seed, n_outliers=n_outliers)
+    X, y, catnames, avgtemps, true_impact = \
+        toy_weather_data(n=n, p=p, seed=seed, n_outliers=n_outliers)
     y_bar = np.mean(y)
     print("overall mean(y)", y_bar)
     print("avg temps = ", avgtemps)
@@ -196,7 +201,7 @@ def viz_weather(n, p, min_samples_leaf, n_outliers=0, seed=None, show_truth=True
         for i in range(len(avgtemps)):
             rel_avgtemp = avgtemps.iloc[i]['avgtemp'] - np.min(avgtemps['avgtemp'])
             ax.text(i, rel_avgtemp, f"{rel_avgtemp :.1f}")
-    title = f"ignored={ignored},\nmean(y)={np.mean(y) :.1f}, true impact={np.mean(avgtemps['avgtemp']-np.min(avgtemps['avgtemp'])):.1f}"
+    title = f"ignored={ignored},\nmean(y)={np.mean(y) :.1f}, true impact={true_impact:.1f}"
     caller_fname = traceback.extract_stack(None, 2)[0][2]
     plt.title(f"{caller_fname} {title}")
     plt.tight_layout()

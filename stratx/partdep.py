@@ -1110,7 +1110,7 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
     # print(list(cat_counts))
 
     USE_MOST_COMMON_REFCAT = False
-    USE_RANDOM_REFCAT = False
+    USE_RANDOM_REFCAT = True
 
     if USE_MOST_COMMON_REFCAT:
         # Rank the cat codes by most to least common and use the most common ref cat
