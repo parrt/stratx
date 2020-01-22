@@ -1271,6 +1271,22 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
 
     So we get a final avg per cat of:  [ 0.  1.  3.  3.  0. nan]
 
+    Notes:
+
+    * 2 diff ignores
+    * num values per leaf isn't super important; want min to remove effects of
+      other vars but big enough not to find just one cat in the leaf
+    * refcat choice isn't big deal except for efficiency. want to merge
+      leaves with same refcat quickly; more with same refcat reduces vectors
+      to process
+    * if unlucky and refcat y value in leaf is outlier, it biases all
+      cat deltas in that leaf. Gotta rotate and get more estimates.
+      imagine people heights with same height but ref person is sitting.
+      all deltas will look huge instead of 0.
+    * number of values we average for each cat matters; more values means
+      noise should cancel out or we get better estimate one way or another
+    * might need min_values_per_cat hyperparameter akin to min_slopes_per_x
+
     :param leaf_histos: A 2D matrix where rows are category levels/values and
                         columns hold y values for categories.
     :param refcats: For each leaf, we must know what category was used as the reference.
@@ -1321,7 +1337,7 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
         print("counts\n", counts_for_refcats[0:30])
         cats_with_values_count = np.sum(counts_for_refcats, axis=1)
         nonzero_idx = np.where(cats_with_values_count>0)[0]
-        print("counts per cat>0\n", cats_with_values_count[nonzero_idx])
+        print(f"{len(cats_with_values_count)} values, counts per cat>0: ", cats_with_values_count[nonzero_idx])
         # print("counts per cat\n", counts_for_refcats[np.where(np.sum(counts_for_refcats, axis=1)>0)[0]])
         print("refcat weights\n", weight_for_refcats)
         print("sums_for_refcats (reordered by weight)\n", sums_for_refcats[:30])
