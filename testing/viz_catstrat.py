@@ -2,16 +2,24 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import traceback
+from PIL import Image
 
 from stratx.partdep import *
+
+SAVE_EXPECTED = True # turn this on to regen expected subdir of images
 
 np.set_printoptions(precision=2, suppress=True, linewidth=150)
 
 def savefig(title="", dir="expected"):
     caller_fname = traceback.extract_stack(None, 2)[0][2]
     plt.title(f"{caller_fname} {title}")
-    plt.savefig(f"{dir}/{caller_fname}.pdf", pad_inches=0, bbox_inches=0)
+    plt.savefig(f"{dir}/{caller_fname}.png", pad_inches=0, bbox_inches=0, dpi=100)
 
+def compare(caller_fname):
+    plt.savefig(f"/tmp/{caller_fname}.png", pad_inches=0, bbox_inches=0, dpi=100)
+    expected = Image.open(f"expected/{caller_fname}.png")
+    found = Image.open(f"/tmp/{caller_fname}.png")
+    Image.fromarray(np.hstack((np.array(expected), np.array(found)))).show()
 
 def toy_weather_data(n = 1000, p=50, seed=None, n_outliers=None):
     """
@@ -48,7 +56,11 @@ def toy_weather_data(n = 1000, p=50, seed=None, n_outliers=None):
     return X, y, df_avgs['state'].values, df_avgs.iloc[0:p]
 
 
-def synthetic_poly_data(n=1000,max_x=1000,p=2,dtype=float):
+def synthetic_poly_data(n=1000,max_x=1000,p=2,dtype=float, seed=None):
+    if seed is not None:
+        save_state = np.random.get_state()
+        np.random.seed(seed)
+
     df = pd.DataFrame()
     for i in range(p):
         df[f'x{i + 1}'] = (np.random.random_sample(size=n) * max_x).astype(dtype)
@@ -56,10 +68,18 @@ def synthetic_poly_data(n=1000,max_x=1000,p=2,dtype=float):
     df['y'] = np.sum(df, axis=1) + yintercept
     terms = [f"x_{i+1}" for i in range(p)] + [f"{yintercept:.0f}"]
     eqn = "y = " + ' + '.join(terms) + " where x_i ~ U(0,10)"
+
+    if seed is not None:
+        np.random.set_state(save_state)
+
     return df, eqn
 
 
-def synthetic_poly_data_gaussian(n=1000,max_x=1000,p=2,dtype=float):
+def synthetic_poly_data_gaussian(n=1000,max_x=1000,p=2,dtype=float, seed=None):
+    if seed is not None:
+        save_state = np.random.get_state()
+        np.random.seed(seed)
+
     df = pd.DataFrame()
     for i in range(p):
         v = np.random.normal(loc=0, scale=1, size=n)
@@ -71,11 +91,15 @@ def synthetic_poly_data_gaussian(n=1000,max_x=1000,p=2,dtype=float):
     df['y'] = np.sum(df, axis=1) + yintercept
     terms = [f"x_{i+1}" for i in range(p)] + [f"{yintercept:.0f}"]
     eqn = "y = " + ' + '.join(terms) + " where x_i ~ U(0,10)"
+
+    if seed is not None:
+        np.random.set_state(save_state)
+
     return df, eqn
 
 
-def viz_clean_synth_uniform(n,p,max_x,min_samples_leaf):
-    df, eqn = synthetic_poly_data(n, p=p, max_x=max_x, dtype=int)
+def viz_clean_synth_uniform(n,p,max_x,min_samples_leaf, seed=None):
+    df, eqn = synthetic_poly_data(n, p=p, max_x=max_x, dtype=int, seed=seed)
     X = df.drop('y', axis=1)
     y = df['y']
     uniq_catcodes, avg_per_cat, ignored = \
@@ -93,17 +117,19 @@ def viz_clean_synth_uniform(n,p,max_x,min_samples_leaf):
     caller_fname = traceback.extract_stack(None, 2)[0][2]
     plt.title(f"{caller_fname} ignored={ignored}, mean(y)={np.mean(y):.1f}")
     plt.tight_layout()
-    plt.savefig(f"expected/{caller_fname}.pdf", pad_inches=0, bbox_inches=0)
-    plt.show()
+    if SAVE_EXPECTED:
+        plt.savefig(f"expected/{caller_fname}.png", pad_inches=0, bbox_inches=0, dpi=100)
+    else:
+        compare(caller_fname)
 
 def viz_clean_synth_uniform_n1000_xrange10_minleaf2():
-    viz_clean_synth_gauss(1000,2,10,2)
+    viz_clean_synth_gauss(1000,2,10,2, seed=222)
 
 def viz_clean_synth_uniform_n1000_xrange100_minleaf2():
-    viz_clean_synth_gauss(1000,2,100,2)
+    viz_clean_synth_gauss(1000,2,100,2, seed=222)
 
-def viz_clean_synth_gauss(n,p,max_x,min_samples_leaf):
-    df, eqn = synthetic_poly_data_gaussian(n, p=p, max_x=max_x, dtype=int)
+def viz_clean_synth_gauss(n,p,max_x,min_samples_leaf, seed=None):
+    df, eqn = synthetic_poly_data_gaussian(n, p=p, max_x=max_x, dtype=int, seed=seed)
     X = df.drop('y', axis=1)
     y = df['y']
     uniq_catcodes, avg_per_cat, ignored = \
@@ -121,24 +147,26 @@ def viz_clean_synth_gauss(n,p,max_x,min_samples_leaf):
     caller_fname = traceback.extract_stack(None, 2)[0][2]
     plt.title(f"{caller_fname} ignored={ignored}, mean(y)={np.mean(y):.1f}")
     plt.tight_layout()
-    plt.savefig(f"expected/{caller_fname}.pdf", pad_inches=0, bbox_inches=0)
-    plt.show()
+    if SAVE_EXPECTED:
+        plt.savefig(f"expected/{caller_fname}.png", pad_inches=0, bbox_inches=0, dpi=100)
+    else:
+        compare(caller_fname)
 
 
 def viz_clean_synth_gauss_n1000_xrange25_minleaf2():
-    viz_clean_synth_gauss(1000,2,25,2)
+    viz_clean_synth_gauss(1000,2,25,2, seed=222)
 
 def viz_clean_synth_gauss_n20_xrange12_minleaf2():
-    viz_clean_synth_gauss(20,2,12,2)
+    viz_clean_synth_gauss(20,2,12,2, seed=222)
 
 def viz_clean_synth_gauss_n20_xrange10_minleaf5():
-    viz_clean_synth_gauss(20,2,10,5)
+    viz_clean_synth_gauss(20,2,10,5, seed=222)
 
 def viz_clean_synth_gauss_n1000_xrange100_minleaf10():
-    viz_clean_synth_gauss(1000,2,100,10)
+    viz_clean_synth_gauss(1000,2,100,10, seed=222)
 
 def viz_clean_synth_gauss_n3000_xrange10_minleaf2():
-    viz_clean_synth_gauss(3000,2,10,2)
+    viz_clean_synth_gauss(3000,2,10,2, seed=222)
 
 
 def viz_weather(n, p, min_samples_leaf, n_outliers=0, seed=None, show_truth=True):
@@ -172,8 +200,10 @@ def viz_weather(n, p, min_samples_leaf, n_outliers=0, seed=None, show_truth=True
     caller_fname = traceback.extract_stack(None, 2)[0][2]
     plt.title(f"{caller_fname} {title}")
     plt.tight_layout()
-    plt.savefig(f"expected/{caller_fname}.pdf", pad_inches=0, bbox_inches=0)
-    plt.show()
+    if SAVE_EXPECTED:
+        plt.savefig(f"expected/{caller_fname}.png", pad_inches=0, bbox_inches=0, dpi=100)
+    else:
+        compare(caller_fname)
 
 def viz_clean_weather_n100_p4_minleaf5():
     viz_weather(100, 4, 5, seed=222)

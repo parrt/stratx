@@ -1109,9 +1109,10 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
     uniq_cats, cat_counts = np.unique(X_col, return_counts=True)
     # print(list(cat_counts))
 
-    USE_MOST_COMMON = False
+    USE_MOST_COMMON_REFCAT = False
+    USE_RANDOM_REFCAT = False
 
-    if USE_MOST_COMMON:
+    if USE_MOST_COMMON_REFCAT:
         # Rank the cat codes by most to least common and use the most common ref cat
         # in each leaf, given the cat codes available in the leaf.
         # I turned this off in the end as it complicates things and still works when
@@ -1134,7 +1135,7 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
             ignored += len(sample)
             continue
 
-        if USE_MOST_COMMON:
+        if USE_MOST_COMMON_REFCAT:
             # Find index of leaf cats in cats_by_most_common, then find min index, which
             # will correspond to most common category in X_col. Finally grab, store catcode
             leaf_cat_idxs = [cats_by_most_common.index(cat) for cat in leaf_cats]
@@ -1144,14 +1145,15 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
 
             # Subtract avg_y_per_cat for most common cat
             delta_y_per_cat = avg_y_per_cat - avg_y_per_cat[uniq_leaf_cats==most_common_leaf_cat]
+        elif USE_RANDOM_REFCAT:
+            # Use random cat code as refcat
+            idx_of_random_cat_in_leaf = np.random.randint(0, len(uniq_leaf_cats), size=1)
+            refcats[leaf_i] = uniq_leaf_cats[idx_of_random_cat_in_leaf]
+            delta_y_per_cat = avg_y_per_cat - avg_y_per_cat[idx_of_random_cat_in_leaf]
         else:
             # Use min cat code as refcat
             refcats[leaf_i] = np.min(uniq_leaf_cats)
             delta_y_per_cat = avg_y_per_cat - avg_y_per_cat[0]
-            # Use random cat code as refcat
-            # idx_of_random_cat_in_leaf = np.random.randint(0, len(uniq_leaf_cats), size=1)
-            # refcats[leaf_i] = uniq_leaf_cats[idx_of_random_cat_in_leaf]
-            # delta_y_per_cat = avg_y_per_cat - avg_y_per_cat[idx_of_random_cat_in_leaf]
 
         # Store into leaf i vector just those deltas we have data for
         # leave cats w/o representation as nan
