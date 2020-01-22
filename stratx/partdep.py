@@ -1106,13 +1106,20 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
     leaf_histos = np.full(shape=(max_catcode+1, len(leaves)), fill_value=np.nan)
     refcats = np.empty(shape=(len(leaves),), dtype=int)
 
-    # Rank the cat codes by most to least common and use the most common ref cat
-    # in each leaf, given the cat codes available in the leaf.
-    # I turned this off in the end as it complicates things and still works when
-    # we subtract the min leaf cat code's value.
-    # uniq_cats, cat_counts = np.unique(X_col, return_counts=True)
-    # revsort_idx = np.argsort(cat_counts)[::-1]
-    # cats_by_most_common = list(uniq_cats[revsort_idx])
+    uniq_cats, cat_counts = np.unique(X_col, return_counts=True)
+    # print(list(cat_counts))
+
+    USE_MOST_COMMON = False
+
+    if USE_MOST_COMMON:
+        # Rank the cat codes by most to least common and use the most common ref cat
+        # in each leaf, given the cat codes available in the leaf.
+        # I turned this off in the end as it complicates things and still works when
+        # we subtract the min leaf cat code's value.
+        # Nope, we need most accurate initial vectors as possible and using most
+        # common cat as refcat helps to group things better later when we merge
+        revsort_idx = np.argsort(cat_counts)[::-1]
+        cats_by_most_common = list(uniq_cats[revsort_idx])
 
     ignored = 0
     for leaf_i in range(len(leaves)):
@@ -1127,11 +1134,19 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
             ignored += len(sample)
             continue
 
-        refcats[leaf_i] = np.min(uniq_leaf_cats)
+        if USE_MOST_COMMON:
+            # Find index of leaf cats in cats_by_most_common, then find min index, which
+            # will correspond to most common category in X_col. Finally grab, store catcode
+            leaf_cat_idxs = [cats_by_most_common.index(cat) for cat in leaf_cats]
+            index_of_leaf_cats_in_most_common = np.min(leaf_cat_idxs)
+            most_common_leaf_cat = cats_by_most_common[index_of_leaf_cats_in_most_common]
+            refcats[leaf_i] = most_common_leaf_cat
 
-        # Use smallest cat code as the reference point; since avg_y_per_cat
-        # is sorted by uniq_leaf_cats, first value is the reference value
-        delta_y_per_cat = avg_y_per_cat - avg_y_per_cat[0]
+            # Subtract avg_y_per_cat for most common cat
+            delta_y_per_cat = avg_y_per_cat - avg_y_per_cat[uniq_leaf_cats==most_common_leaf_cat]
+        else:
+            refcats[leaf_i] = np.min(uniq_leaf_cats)
+            delta_y_per_cat = avg_y_per_cat - avg_y_per_cat[0]
 
         # Store into leaf i vector just those deltas we have data for
         # leave cats w/o representation as nan
@@ -1274,10 +1289,6 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
     for cat in uniq_refcats:
         # collect and add up vectors from all leaves with cat as the reference category
         leaves_with_same_refcat = leaf_histos[:, np.where(refcats == cat)[0]]
-        # Turn all refcat locations from 0 to np.nan for computation purposes
-        # (reset first refcat value to 0 at end)
-        # TODO: not sure we need
-        #leaves_with_same_refcat[cat] = np.nan
         s = nanmerge_matrix_cols(leaves_with_same_refcat)
         # count how many non-nan values values across all leaves with cat as ref category
         c = (~np.isnan(leaves_with_same_refcat)).astype(int)

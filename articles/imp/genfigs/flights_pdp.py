@@ -28,9 +28,9 @@ np.set_printoptions(precision=2, suppress=True, linewidth=300)#, threshold=1e10)
 #     # plot_stratpd_gridsearch(X, y, 'longitude', 'price')
 
 
-#np.random.seed(999)
+np.random.seed(999)
 
-n=25_000
+n=20_000
 #r = (500,600)
 # r = (0,500)
 _, _, df_flights = load_flights(n=n)
@@ -76,18 +76,22 @@ col = 'TAXI_OUT'
 # plt.savefig(f"/Users/parrt/Desktop/{col}.pdf", pad_inches=0)
 # plt.show()
 
-plot_catstratpd(X, y, 'FLIGHT_NUMBER', 'ARRIVAL_DELAY',
-                min_samples_leaf=5,
-                sort=None,
-                # yrange=(-110,250),
-                figsize=(20,4),
-                n_trials=5,
-                show_all_deltas=False,
-                show_xticks=False,
-                show_impact=True,
-                verbose=False)
+uniq_catcodes, combined_avg_per_cat, ignored = \
+    plot_catstratpd(X, y, 'FLIGHT_NUMBER', 'ARRIVAL_DELAY',
+                    min_samples_leaf=10,
+                    sort=None,
+                    # yrange=(-110,250),
+                    figsize=(20,4),
+                    n_trials=1,
+                    show_all_deltas=False,
+                    show_xticks=False,
+                    show_impact=True,
+                    verbose=False)
+
+print("IGNORED", ignored)
 plt.tight_layout()
-plt.savefig(f"/Users/parrt/Desktop/flight-fnum-cat-5-bootstrap.pdf", pad_inches=0)
+# plt.savefig(f"/Users/parrt/Desktop/flight-fnum-cat-most_common.pdf", pad_inches=0)
+plt.savefig(f"/Users/parrt/Desktop/flight-fnum-cat-min-small.pdf", pad_inches=0)
 plt.show()
 
 
