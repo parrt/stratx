@@ -1297,14 +1297,19 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
         sums_for_refcats.append(s)
 
     # FROM SUMS FOR REFCATS, COMPUTE AVERAGE
-    avg_for_refcats = [sums_for_refcats[j] / zero_as_one(counts_for_refcats[j])
-                       for j in range(len(uniq_refcats))]
-    avg_for_refcats = np.array(avg_for_refcats).T
+    sums_for_refcats = np.array(sums_for_refcats).T
+    counts_for_refcats = np.array(counts_for_refcats).T
+    weight_for_refcats = np.sum(counts_for_refcats, axis=0)
+    avg_for_refcats = sums_for_refcats / zero_as_one(counts_for_refcats)
+    # avg_for_refcats = [sums_for_refcats[j] / zero_as_one(counts_for_refcats[j])
+    #                    for j in range(len(uniq_refcats))]
+    # avg_for_refcats = np.array(avg_for_refcats).T
 
     # SORT REV BY WEIGHT
     # E.g., weight_for_refcats = [ 8  8  6  4  4 27  5 11  5  5  4 34 17  8  9  3  5]
-    counts_for_refcats = np.array(counts_for_refcats).T
-    weight_for_refcats = np.sum(counts_for_refcats, axis=0)
+    # counts_for_refcats = np.array(counts_for_refcats).T
+    count_per_cat = np.sum(counts_for_refcats, axis=1)
+
     # Sort to get most populated vectors to the left of matrix; more chance of intersection
     uniq_refcats_by_weight_idxs = np.argsort(weight_for_refcats)[::-1]
     avg_for_refcats = avg_for_refcats[:,uniq_refcats_by_weight_idxs]
@@ -1319,7 +1324,7 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
         print("counts per cat>0\n", cats_with_values_count[nonzero_idx])
         # print("counts per cat\n", counts_for_refcats[np.where(np.sum(counts_for_refcats, axis=1)>0)[0]])
         print("refcat weights\n", weight_for_refcats)
-        # print("sums_for_refcats (reordered by weight)\n", np.array(sums_for_refcats).T[:30])
+        print("sums_for_refcats (reordered by weight)\n", sums_for_refcats[:30])
         print("avgs per refcat\n", avg_for_refcats[0:30])
 
 
