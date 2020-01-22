@@ -76,7 +76,7 @@ col = 'TAXI_OUT'
 # plt.savefig(f"/Users/parrt/Desktop/{col}.pdf", pad_inches=0)
 # plt.show()
 
-uniq_catcodes, combined_avg_per_cat, ignored = \
+uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored = \
     plot_catstratpd(X, y, 'FLIGHT_NUMBER', 'ARRIVAL_DELAY',
                     min_samples_leaf=10,
                     sort=None,
@@ -88,7 +88,7 @@ uniq_catcodes, combined_avg_per_cat, ignored = \
                     show_impact=True,
                     verbose=False)
 
-print("IGNORED", ignored)
+print("IGNORED", ignored, "merge ignored", merge_ignored)
 plt.tight_layout()
 # plt.savefig(f"/Users/parrt/Desktop/flight-fnum-cat-most_common.pdf", pad_inches=0)
 plt.savefig(f"/Users/parrt/Desktop/flight-fnum-cat.pdf", pad_inches=0)
