@@ -1145,8 +1145,13 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
             # Subtract avg_y_per_cat for most common cat
             delta_y_per_cat = avg_y_per_cat - avg_y_per_cat[uniq_leaf_cats==most_common_leaf_cat]
         else:
+            # Use min cat code as refcat
             refcats[leaf_i] = np.min(uniq_leaf_cats)
             delta_y_per_cat = avg_y_per_cat - avg_y_per_cat[0]
+            # Use random cat code as refcat
+            # idx_of_random_cat_in_leaf = np.random.randint(0, len(uniq_leaf_cats), size=1)
+            # refcats[leaf_i] = uniq_leaf_cats[idx_of_random_cat_in_leaf]
+            # delta_y_per_cat = avg_y_per_cat - avg_y_per_cat[idx_of_random_cat_in_leaf]
 
         # Store into leaf i vector just those deltas we have data for
         # leave cats w/o representation as nan
@@ -1286,6 +1291,7 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
     * number of values we average for each cat matters; more values means
       noise should cancel out or we get better estimate one way or another
     * might need min_values_per_cat hyperparameter akin to min_slopes_per_x
+    * wow. choosing random refcat helps avoid focusing on some outliers by accident
 
     :param leaf_histos: A 2D matrix where rows are category levels/values and
                         columns hold y values for categories.
