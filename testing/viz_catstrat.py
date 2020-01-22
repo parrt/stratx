@@ -13,7 +13,7 @@ def savefig(title="", dir="expected"):
     plt.savefig(f"{dir}/{caller_fname}.pdf", pad_inches=0, bbox_inches=0)
 
 
-def toy_weather_data(n = 1000, p=50):
+def toy_weather_data(n = 1000, p=50, seed=None, n_outliers=None):
     """
     For each state, create a (fictional) ramp of data from day 1 to 365 so mean is not
     0, as we'd get from a sinusoid.
@@ -25,11 +25,27 @@ def toy_weather_data(n = 1000, p=50):
     print("avg of states' avg temps:", np.mean(avgtemp))
     print("avg of states' avg temps minus min:", np.mean(avgtemp) - np.min(avgtemp))
 
+    if seed is not None:
+        save_state = np.random.get_state()
+        np.random.seed(seed)
+
     df = pd.DataFrame()
     df['dayofyear'] = np.random.randint(1, 365 + 1, size=n)
     df['state'] = np.random.randint(0, p, size=n) # get only p states
     df['temp'] = .1 * df['dayofyear'] + avgtemp.iloc[df['state']].values
-    return df.drop('temp', axis=1), df['temp'], df_avgs['state'].values, df_avgs.iloc[0:p]
+
+    if n_outliers>0:
+        # bump up or down some y to create outliers
+        outliers_idx = np.random.randint(0, len(df), size=n_outliers)
+        outliers_vals = np.random.normal(loc=0, scale=15, size=n_outliers)
+        df.iloc[outliers_idx, 2] += outliers_vals
+
+    if seed is not None:
+        np.random.set_state(save_state)
+
+    X = df.drop('temp', axis=1)
+    y = df['temp']
+    return X, y, df_avgs['state'].values, df_avgs.iloc[0:p]
 
 
 def synthetic_poly_data(n=1000,max_x=1000,p=2,dtype=float):
@@ -125,8 +141,8 @@ def viz_clean_synth_gauss_n3000_xrange10_minleaf2():
     viz_clean_synth_gauss(3000,2,10,2)
 
 
-def viz_clean_weather(n,p,min_samples_leaf,show_truth=True):
-    X, y, catnames, avgtemps = toy_weather_data(n=n, p=p)
+def viz_weather(n, p, min_samples_leaf, n_outliers=0, seed=None, show_truth=True):
+    X, y, catnames, avgtemps = toy_weather_data(n=n, p=p, seed=seed, n_outliers=n_outliers)
     y_bar = np.mean(y)
     print("overall mean(y)", y_bar)
     print("avg temps = ", avgtemps)
@@ -160,13 +176,17 @@ def viz_clean_weather(n,p,min_samples_leaf,show_truth=True):
     plt.show()
 
 def viz_clean_weather_n100_p4_minleaf5():
-    viz_clean_weather(100,4,5)
+    viz_weather(100, 4, 5)
 
 def viz_clean_weather_n100_p10_minleaf5():
-    viz_clean_weather(100,10,5)
+    viz_weather(100, 10, 5)
 
 def viz_clean_weather_n100_p20_minleaf10():
-    viz_clean_weather(100,20,10)
+    viz_weather(100, 20, 10)
+
+def viz_outlier8_weather_n100_p10_minleaf5():
+    viz_weather(100, 10, 8, n_outliers=5, seed=222)
+
 
 viz_clean_synth_uniform_n1000_xrange10_minleaf2()
 viz_clean_synth_gauss_n20_xrange12_minleaf2()
@@ -178,3 +198,4 @@ viz_clean_synth_gauss_n1000_xrange100_minleaf10()
 viz_clean_weather_n100_p4_minleaf5()
 viz_clean_weather_n100_p10_minleaf5()
 viz_clean_weather_n100_p20_minleaf10()
+viz_outlier8_weather_n100_p10_minleaf5()
