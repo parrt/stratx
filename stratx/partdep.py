@@ -1199,16 +1199,16 @@ def cat_partial_dependence(X, y,
 
     rf.fit(X_not_col, y)
 
-    leaf_histos, refcats, ignored____ = \
+    leaf_histos, refcats, ignored = \
         catwise_leaves(rf, X_not_col, X_col, y.values, max_catcode)
 
-    avg_per_cat, ignored = avg_values_at_cat(leaf_histos, refcats, verbose=verbose)
+    avg_per_cat, merge_ignored = avg_values_at_cat(leaf_histos, refcats, verbose=verbose)
 
     if verbose:
         print(f"CatStratPD Num samples ignored {ignored} for {colname}")
 
     # TODO: two diff ignores here: one for leaves with 1 cat and other for stuff we couldn't merge
-    return leaf_histos, avg_per_cat, ignored
+    return leaf_histos, avg_per_cat, ignored, merge_ignored
 
 
 def avg_values_at_cat(leaf_histos, refcats, verbose=False):
@@ -1345,7 +1345,7 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
         print("counts\n", counts_for_refcats[0:30])
         cats_with_values_count = np.sum(counts_for_refcats, axis=1)
         nonzero_idx = np.where(cats_with_values_count>0)[0]
-        print(f"{len(cats_with_values_count)} values, counts per cat>0: ", cats_with_values_count[nonzero_idx])
+        print(f"counts per cat>0 ({len(cats_with_values_count[nonzero_idx])}/{len(cats_with_values_count)}): ", cats_with_values_count[nonzero_idx])
         # print("counts per cat\n", counts_for_refcats[np.where(np.sum(counts_for_refcats, axis=1)>0)[0]])
         print("refcat weights\n", weight_for_refcats)
         print("sums_for_refcats (reordered by weight)\n", sums_for_refcats[:30])
@@ -1429,7 +1429,7 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
 
     #catavg[uniq_refcats[0]] = 0.0 # first refcat always has value 0 (was nan for summation purposes)
     if verbose: print("final cat avgs", parray3(catavg))
-    return catavg, ignored
+    return catavg, ignored,
 """
     avgs per refcat
      [[   nan    nan    nan    nan    nan    nan]
@@ -1617,6 +1617,7 @@ def plot_catstratpd(X, y,
 
     all_avg_per_cat = []
     ignored = 0
+    merge_ignored = 0
     for i in range(n_trials):
         # idxs = resample(range(n), n_samples=n, replace=True) # bootstrap
         if n_trials>1:
@@ -1626,7 +1627,7 @@ def plot_catstratpd(X, y,
         else:
             X_, y_ = X, y
 
-        leaf_histos, avg_per_cat, ignored_ = \
+        leaf_histos, avg_per_cat, ignored_, merge_ignored_ = \
             cat_partial_dependence(X_, y_,
                                    max_catcode=np.max(X_col),
                                    colname=colname,
@@ -1644,9 +1645,11 @@ def plot_catstratpd(X, y,
             avg_per_cat -= np.nanmin(avg_per_cat)
             # avg_per_cat += 0#np.mean(y)
         ignored += ignored_
+        merge_ignored += merge_ignored_
         all_avg_per_cat.append( avg_per_cat )
 
     ignored /= n_trials # average number of x values ignored across trials
+    merge_ignored /= n_trials # average number of x values ignored across trials
 
     combined_avg_per_cat = avg_pd_catvalues(all_avg_per_cat)
 
@@ -1781,7 +1784,7 @@ def plot_catstratpd(X, y,
     ax.spines['left'].set_linewidth(.5)
     ax.spines['bottom'].set_linewidth(.5)
 
-    return uniq_catcodes, combined_avg_per_cat, ignored
+    return uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored
 
 # only works for ints, not floats
 def plot_catstratpd_OLD(X, y,

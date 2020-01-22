@@ -6,8 +6,8 @@ from PIL import Image
 
 from stratx.partdep import *
 
-SAVE_EXPECTED = True # turn this on to regen expected subdir of images
 SAVE_EXPECTED = False
+SAVE_EXPECTED = True # turn this on to regen expected subdir of images
 
 np.set_printoptions(precision=2, suppress=True, linewidth=150)
 
@@ -60,11 +60,7 @@ def toy_weather_data(n = 1000, p=50, seed=None, n_outliers=None):
     return X, y, df_avgs['state'].values, df_avgs.iloc[0:p], true_impact
 
 
-def synthetic_poly_data(n=1000,max_x=1000,p=2,dtype=float, seed=None):
-    if seed is not None:
-        save_state = np.random.get_state()
-        np.random.seed(seed)
-
+def synthetic_poly_data(n=1000,max_x=1000,p=2,dtype=float):
     df = pd.DataFrame()
     for i in range(p):
         df[f'x{i + 1}'] = (np.random.random_sample(size=n) * max_x).astype(dtype)
@@ -72,18 +68,10 @@ def synthetic_poly_data(n=1000,max_x=1000,p=2,dtype=float, seed=None):
     df['y'] = np.sum(df, axis=1) + yintercept
     terms = [f"x_{i+1}" for i in range(p)] + [f"{yintercept:.0f}"]
     eqn = "y = " + ' + '.join(terms) + " where x_i ~ U(0,10)"
-
-    if seed is not None:
-        np.random.set_state(save_state)
-
     return df, eqn
 
 
-def synthetic_poly_data_gaussian(n=1000,max_x=1000,p=2,dtype=float, seed=None):
-    if seed is not None:
-        save_state = np.random.get_state()
-        np.random.seed(seed)
-
+def synthetic_poly_data_gaussian(n=1000,max_x=1000,p=2,dtype=float):
     df = pd.DataFrame()
     for i in range(p):
         v = np.random.normal(loc=0, scale=1, size=n)
@@ -95,15 +83,15 @@ def synthetic_poly_data_gaussian(n=1000,max_x=1000,p=2,dtype=float, seed=None):
     df['y'] = np.sum(df, axis=1) + yintercept
     terms = [f"x_{i+1}" for i in range(p)] + [f"{yintercept:.0f}"]
     eqn = "y = " + ' + '.join(terms) + " where x_i ~ U(0,10)"
-
-    if seed is not None:
-        np.random.set_state(save_state)
-
     return df, eqn
 
 
 def viz_clean_synth_uniform(n,p,max_x,min_samples_leaf, seed=None):
-    df, eqn = synthetic_poly_data(n, p=p, max_x=max_x, dtype=int, seed=seed)
+    if seed is not None:
+        save_state = np.random.get_state()
+        np.random.seed(seed)
+
+    df, eqn = synthetic_poly_data(n, p=p, max_x=max_x, dtype=int)
     X = df.drop('y', axis=1)
     y = df['y']
     uniq_catcodes, avg_per_cat, ignored = \
@@ -118,6 +106,10 @@ def viz_clean_synth_uniform(n,p,max_x,min_samples_leaf, seed=None):
                         figsize=(10, 4)
                         # yrange=(-1000,1000)
                         )
+
+    if seed is not None:
+        np.random.set_state(save_state)
+
     caller_fname = traceback.extract_stack(None, 2)[0][2]
     plt.title(f"{caller_fname} ignored={ignored}, mean(y)={np.mean(y):.1f}")
     plt.tight_layout()
@@ -133,10 +125,14 @@ def viz_clean_synth_uniform_n1000_xrange100_minleaf2():
     viz_clean_synth_gauss(1000,2,100,2, seed=222)
 
 def viz_clean_synth_gauss(n,p,max_x,min_samples_leaf, seed=None):
-    df, eqn = synthetic_poly_data_gaussian(n, p=p, max_x=max_x, dtype=int, seed=seed)
+    if seed is not None:
+        save_state = np.random.get_state()
+        np.random.seed(seed)
+
+    df, eqn = synthetic_poly_data_gaussian(n, p=p, max_x=max_x, dtype=int)
     X = df.drop('y', axis=1)
     y = df['y']
-    uniq_catcodes, avg_per_cat, ignored = \
+    uniq_catcodes, avg_per_cat, ignored, merge_ignored = \
         plot_catstratpd(X, y, colname='x1', targetname='y',
                         n_trials=1,
                         min_samples_leaf=min_samples_leaf,
@@ -148,8 +144,12 @@ def viz_clean_synth_gauss(n,p,max_x,min_samples_leaf, seed=None):
                         figsize=(10, 4)
                         # yrange=(-1000,1000)
                         )
+
+    if seed is not None:
+        np.random.set_state(save_state)
+
     caller_fname = traceback.extract_stack(None, 2)[0][2]
-    plt.title(f"{caller_fname} ignored={ignored}, mean(y)={np.mean(y):.1f}")
+    plt.title(f"{caller_fname}\nstrat ignored={ignored}, merge ignored = {merge_ignored}\nmean(y)={np.mean(y):.1f}")
     plt.tight_layout()
     if SAVE_EXPECTED:
         plt.savefig(f"expected/{caller_fname}.png", pad_inches=0, bbox_inches=0, dpi=100)
@@ -183,7 +183,7 @@ def viz_weather(n, p, min_samples_leaf, n_outliers=0, seed=None, show_truth=True
     #title = f"n={n}\nstd(mean(abs(y)))={std_imp:.3f}\nmin_samples_leaf={min_samples_leaf}\nmin_slopes_per_x={min_slopes_per_x}", fontsize=9
 
     fig,ax = plt.subplots(1,1, figsize=(10,3))
-    uniq_catcodes, avg_per_cat, ignored = \
+    uniq_catcodes, avg_per_cat, ignored, merge_ignored = \
         plot_catstratpd(X, y, colname='state', targetname="temp", catnames=catnames,
                         n_trials=1,
                         min_samples_leaf=min_samples_leaf,
@@ -201,9 +201,9 @@ def viz_weather(n, p, min_samples_leaf, n_outliers=0, seed=None, show_truth=True
         for i in range(len(avgtemps)):
             rel_avgtemp = avgtemps.iloc[i]['avgtemp'] - np.min(avgtemps['avgtemp'])
             ax.text(i, rel_avgtemp, f"{rel_avgtemp :.1f}")
-    title = f"ignored={ignored},\nmean(y)={np.mean(y) :.1f}, true impact={true_impact:.1f}"
+    title = f"strat ignored={ignored}, merge ignored = {merge_ignored}\nmean(y)={np.mean(y):.1f}"
     caller_fname = traceback.extract_stack(None, 2)[0][2]
-    plt.title(f"{caller_fname} {title}")
+    plt.title(f"{caller_fname}\n{title}")
     plt.tight_layout()
     if SAVE_EXPECTED:
         plt.savefig(f"expected/{caller_fname}.png", pad_inches=0, bbox_inches=0, dpi=100)
