@@ -1104,7 +1104,7 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
     leaves = leaf_samples(rf, X_not_col)
 
     leaf_deltas = np.full(shape=(max_catcode+1, len(leaves)), fill_value=np.nan)
-    leaf_counts = np.full(shape=(max_catcode+1, len(leaves)), fill_value=np.nan)
+    leaf_counts = np.zeros(shape=(max_catcode+1, len(leaves)), dtype=int)
     refcats = np.empty(shape=(len(leaves),), dtype=int)
 
     uniq_cats, cat_counts = np.unique(X_col, return_counts=True)
@@ -1132,7 +1132,6 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
         uniq_leaf_cats, count_leaf_cats = np.unique(leaf_cats, return_counts=True) # comes back sorted
         avg_y_per_cat = np.array([leaf_y[leaf_cats==cat].mean() for cat in uniq_leaf_cats])
         print("uniq_leaf_cats",uniq_leaf_cats,"count_y_per_cat",count_leaf_cats)
-        print("avg_y_per_cat",avg_y_per_cat)
 
         if len(uniq_leaf_cats) < 2:
             # print(f"ignoring {len(sample)} obs for {len(avg_y_per_cat)} cat(s) in leaf")
@@ -1158,6 +1157,8 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
             # Use min cat code as refcat
             refcats[leaf_i] = np.min(uniq_leaf_cats)
             delta_y_per_cat = avg_y_per_cat - avg_y_per_cat[0]
+
+        # print("delta_y_per_cat",delta_y_per_cat)
 
         # Store into leaf i vector just those deltas we have data for
         # leave cats w/o representation as nan
@@ -1207,16 +1208,15 @@ def cat_partial_dependence(X, y,
     leaf_deltas, leaf_counts, refcats, ignored = \
         catwise_leaves(rf, X_not_col, X_col, y.values, max_catcode)
 
-    avg_per_cat, merge_ignored = avg_values_at_cat(leaf_deltas, refcats, verbose=verbose)
+    avg_per_cat, merge_ignored = avg_values_at_cat(leaf_deltas, leaf_counts, refcats, verbose=verbose)
 
     if verbose:
         print(f"CatStratPD Num samples ignored {ignored} for {colname}")
 
-    # TODO: two diff ignores here: one for leaves with 1 cat and other for stuff we couldn't merge
     return leaf_deltas, avg_per_cat, ignored, merge_ignored
 
 
-def avg_values_at_cat(leaf_deltas, refcats, verbose=False):
+def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, verbose=False):
     """
     In leaf_deltas, we have information from the leaves indicating how much
     above or below each category was from the reference category of that leaf.
@@ -1306,30 +1306,34 @@ def avg_values_at_cat(leaf_deltas, refcats, verbose=False):
                      I.e., which category had the smallest y value in the leaf?
     :return:
     """
-    # FIRST LOOP COMBINES LEAF VECTORS WITH SAME REFCAT
+    # FIRST LOOP COMBINES LEAF VECTORS WITH SAME REFCAT FOR EFFICIENCY
     uniq_refcats = np.array(sorted(np.unique(refcats)))
     if verbose:
         print("refcats =", refcats)
         print("uniq_refcats =", uniq_refcats)
         print("leaf_deltas\n", leaf_deltas[0:30])
+        print("leaf_counts\n", leaf_counts[0:30])
         # print("leaf_deltas reordered by refcat order\n", leaf_deltas[0:30,np.argsort(refcats)])
-    sums_for_refcats = []
-    counts_for_refcats = []
-    for cat in uniq_refcats:
-        # collect and add up vectors from all leaves with cat as the reference category
-        leaves_with_same_refcat = leaf_deltas[:, np.where(refcats == cat)[0]]
-        s = nanmerge_matrix_cols(leaves_with_same_refcat)
-        # count how many non-nan values values across all leaves with cat as ref category
-        c = (~np.isnan(leaves_with_same_refcat)).astype(int)
-        c = np.sum(c, axis=1)
-        counts_for_refcats.append(c)
-        sums_for_refcats.append(s)
 
-    # FROM SUMS FOR REFCATS, COMPUTE AVERAGE
-    sums_for_refcats = np.array(sums_for_refcats).T
-    counts_for_refcats = np.array(counts_for_refcats).T
+    avg_for_refcats = np.empty(shape=(len(leaf_deltas), len(uniq_refcats)))
+    counts_for_refcats = np.empty(shape=(len(leaf_deltas), len(uniq_refcats)), dtype=int)
+
+    for j,cat in enumerate(uniq_refcats):
+        # collect and add up vectors from all leaves with cat as the reference category
+        idxs_of_same_cat = np.where(refcats == cat)[0]
+        leaves_with_same_refcat = leaf_deltas[:, idxs_of_same_cat]
+        counts_with_same_refcat = leaf_counts[:, idxs_of_same_cat]
+        s = nanmerge_matrix_cols(leaves_with_same_refcat*counts_with_same_refcat)
+        # count how many non-nan values values across all leaves with cat as ref category
+        c = np.sum(counts_with_same_refcat, axis=1)
+        avg_for_refcats[:,j] = s / c
+        counts_for_refcats[:,j] = c
+
+    print("unsorted counts\n", counts_for_refcats[0:30])
+    # We want to initial group to be one with most weight in hopes of merging
+    # more vectors in a single pass
     weight_for_refcats = np.sum(counts_for_refcats, axis=0)
-    avg_for_refcats = sums_for_refcats / zero_as_one(counts_for_refcats)
+    # avg_for_refcats = sums_for_refcats# / zero_as_one(counts_for_refcats)
     # avg_for_refcats = [sums_for_refcats[j] / zero_as_one(counts_for_refcats[j])
     #                    for j in range(len(uniq_refcats))]
     # avg_for_refcats = np.array(avg_for_refcats).T
@@ -1337,7 +1341,7 @@ def avg_values_at_cat(leaf_deltas, refcats, verbose=False):
     # SORT REV BY WEIGHT
     # E.g., weight_for_refcats = [ 8  8  6  4  4 27  5 11  5  5  4 34 17  8  9  3  5]
     # counts_for_refcats = np.array(counts_for_refcats).T
-    count_per_cat = np.sum(counts_for_refcats, axis=1)
+    # count_per_cat = np.sum(counts_for_refcats, axis=1)
 
     # Sort to get most populated vectors to the left of matrix; more chance of intersection
     uniq_refcats_by_weight_idxs = np.argsort(weight_for_refcats)[::-1]
@@ -1353,7 +1357,7 @@ def avg_values_at_cat(leaf_deltas, refcats, verbose=False):
         print(f"counts per cat>0 ({len(cats_with_values_count[nonzero_idx])}/{len(cats_with_values_count)}): ", cats_with_values_count[nonzero_idx])
         # print("counts per cat\n", counts_for_refcats[np.where(np.sum(counts_for_refcats, axis=1)>0)[0]])
         print("refcat weights\n", weight_for_refcats)
-        print("sums_for_refcats (reordered by weight)\n", sums_for_refcats[:30])
+        # print("sums_for_refcats (reordered by weight)\n", sums_for_refcats[:30])
         print("avgs per refcat\n", avg_for_refcats[0:30])
 
 
@@ -2106,7 +2110,9 @@ def nanmerge_vectors(a,b,wa=1.0,wb=1.0):
     return c
 
 def nanmerge_matrix_cols(A):
-    "Add all vertical vectors in A but support nan+x==x and nan+nan=nan"
+    """
+    Add all vertical vectors in A but support nan+x==x and nan+nan=nan.
+    """
     s = np.nansum(A, axis=1)
     all_nan_entries = np.isnan(A)
     # if all entries for a cat are nan, make sure sum s is nan for that cat
