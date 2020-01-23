@@ -1378,7 +1378,7 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
     n = leaf_histos.shape[0]
     catavg = avg_for_refcats[:,0] # init with first ref category (column)
     catavg_weight = weight_for_refcats[0]
-    ignored = 0
+    merge_ignored = 0
     # Need a way to restrict
     # valid_idxs = np.where(weight_for_refcats>=10)[0]
     # last_refcat = -1
@@ -1394,8 +1394,8 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
         intersection_idx += cat   # those indexes are relative to cat
         # print(intersection_idx)
         if len(intersection_idx)==0: # found something to merge into catavg
-            ignored += weight_for_refcats[j]
-            if verbose: print(f"cat {cat} has no value in running sum; ignored={ignored}")
+            merge_ignored += weight_for_refcats[j]
+            if verbose: print(f"cat {cat} has no value in running sum; ignored={merge_ignored}")
             continue
 
         # modifying columns in place to be mergeable
@@ -1429,7 +1429,7 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
 
     #catavg[uniq_refcats[0]] = 0.0 # first refcat always has value 0 (was nan for summation purposes)
     if verbose: print("final cat avgs", parray3(catavg))
-    return catavg, ignored,
+    return catavg, merge_ignored
 """
     avgs per refcat
      [[   nan    nan    nan    nan    nan    nan]

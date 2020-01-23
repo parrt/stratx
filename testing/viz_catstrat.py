@@ -6,8 +6,8 @@ from PIL import Image
 
 from stratx.partdep import *
 
-SAVE_EXPECTED = False
 SAVE_EXPECTED = True # turn this on to regen expected subdir of images
+SAVE_EXPECTED = False
 
 np.set_printoptions(precision=2, suppress=True, linewidth=150)
 
@@ -22,7 +22,7 @@ def compare(caller_fname):
     found = Image.open(f"/tmp/{caller_fname}.png")
     Image.fromarray(np.hstack((np.array(expected), np.array(found)))).show()
 
-def toy_weather_data(n = 1000, p=50, seed=None, n_outliers=None):
+def toy_weather_data(n = 1000, p=50, n_outliers=None):
     """
     For each state, create a (fictional) ramp of data from day 1 to 365 so mean is not
     0, as we'd get from a sinusoid.
@@ -31,10 +31,6 @@ def toy_weather_data(n = 1000, p=50, seed=None, n_outliers=None):
 
     df_avgs = pd.read_csv("../articles/imp/genfigs/data/weather.csv")
     avgtemp = df_avgs['avgtemp']
-
-    if seed is not None:
-        save_state = np.random.get_state()
-        np.random.seed(seed)
 
     df = pd.DataFrame()
     df['dayofyear'] = np.random.randint(1, 365 + 1, size=n)
@@ -51,9 +47,6 @@ def toy_weather_data(n = 1000, p=50, seed=None, n_outliers=None):
     print("avg of states' avg temps:", np.mean(avgtemp))
     true_impact = np.mean(avgtemp) - np.min(avgtemp)
     print("avg of states' avg temps minus min:", true_impact)
-
-    if seed is not None:
-        np.random.set_state(save_state)
 
     X = df.drop('temp', axis=1)
     y = df['temp']
@@ -174,8 +167,12 @@ def viz_clean_synth_gauss_n3000_xrange10_minleaf2():
 
 
 def viz_weather(n, p, min_samples_leaf, n_outliers=0, seed=None, show_truth=True):
+    if seed is not None:
+        save_state = np.random.get_state()
+        np.random.seed(seed)
+
     X, y, catnames, avgtemps, true_impact = \
-        toy_weather_data(n=n, p=p, seed=seed, n_outliers=n_outliers)
+        toy_weather_data(n=n, p=p, n_outliers=n_outliers)
     y_bar = np.mean(y)
     print("overall mean(y)", y_bar)
     print("avg temps = ", avgtemps)
@@ -197,6 +194,10 @@ def viz_weather(n, p, min_samples_leaf, n_outliers=0, seed=None, show_truth=True
                         verbose=True,
                         # title=
                         )
+
+    if seed is not None:
+        np.random.set_state(save_state)
+
     if show_truth:
         for i in range(len(avgtemps)):
             rel_avgtemp = avgtemps.iloc[i]['avgtemp'] - np.min(avgtemps['avgtemp'])
@@ -223,13 +224,13 @@ def viz_outlier8_weather_n100_p10_minleaf5():
     viz_weather(100, 10, 8, n_outliers=5, seed=222)
 
 
-viz_clean_synth_uniform_n1000_xrange10_minleaf2()
-viz_clean_synth_gauss_n20_xrange12_minleaf2()
-viz_clean_synth_gauss_n20_xrange10_minleaf5()
-viz_clean_synth_uniform_n1000_xrange100_minleaf2()
-viz_clean_synth_gauss_n1000_xrange25_minleaf2()
-viz_clean_synth_gauss_n3000_xrange10_minleaf2()
-viz_clean_synth_gauss_n1000_xrange100_minleaf10()
+# viz_clean_synth_uniform_n1000_xrange10_minleaf2()
+# viz_clean_synth_gauss_n20_xrange12_minleaf2()
+# viz_clean_synth_gauss_n20_xrange10_minleaf5()
+# viz_clean_synth_uniform_n1000_xrange100_minleaf2()
+# viz_clean_synth_gauss_n1000_xrange25_minleaf2()
+# viz_clean_synth_gauss_n3000_xrange10_minleaf2()
+# viz_clean_synth_gauss_n1000_xrange100_minleaf10()
 viz_clean_weather_n100_p4_minleaf5()
 viz_clean_weather_n100_p10_minleaf5()
 viz_clean_weather_n100_p20_minleaf10()
