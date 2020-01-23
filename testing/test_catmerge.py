@@ -51,13 +51,13 @@ def stratify_cats(X, y,
     # rf = RandomForestRegressor(n_estimators=n_trees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X_not_col, y)
     # print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
-    # leaf_histos, leaf_avgs, leaf_sizes, leaf_catcounts, ignored = \
+    # leaf_deltas, leaf_avgs, leaf_sizes, leaf_catcounts, ignored = \
     #     catwise_leaves(rf, X, y, colname, verbose=verbose)
 
-    leaf_histos, refcats, ignored = \
+    leaf_deltas, refcats, ignored = \
         catwise_leaves(rf, X_not_col, X_col, y.values, max_catcode)
 
-    return leaf_histos, refcats, ignored
+    return leaf_deltas, refcats, ignored
 
 def synthetic_poly_data(n=1000,p=3,dtype=float):
     df = pd.DataFrame()
@@ -86,7 +86,7 @@ def toy_weather_data(n = 1000, p=50):
     return df.drop('temp', axis=1), df['temp'], df_avgs['state'].values, df_avgs.iloc[0:p]
 
 def test_single_leaf():
-    leaf_histos = np.array([
+    leaf_deltas = np.array([
         [0],
         [1],
         [2],
@@ -94,14 +94,14 @@ def test_single_leaf():
         [0]
     ])
     refcats = np.array([0])
-    avg_per_cat, ignored = avg_values_at_cat(leaf_histos, refcats)
+    avg_per_cat, ignored = avg_values_at_cat(leaf_deltas, refcats)
     expected = np.array([0, 1, 2, np.nan, 0])
     np.testing.assert_array_almost_equal(avg_per_cat, expected, decimal=2)
     assert ignored==0
 
 
 def test_two_leaves_with_one_refcat():
-    leaf_histos = np.array([
+    leaf_deltas = np.array([
         [0,0],
         [1,5],
         [2,3],
@@ -109,16 +109,16 @@ def test_two_leaves_with_one_refcat():
         [0,np.nan],
         [np.nan, np.nan]
     ])
-    # print("leaf_histos\n",leaf_histos)
+    # print("leaf_deltas\n",leaf_deltas)
     refcats = np.array([0,0])
-    avg_per_cat, ignored = avg_values_at_cat(leaf_histos, refcats)
+    avg_per_cat, ignored = avg_values_at_cat(leaf_deltas, refcats)
     expected = np.array([0,  3,  2.5, 2,  0,  np.nan])
     np.testing.assert_array_almost_equal(avg_per_cat, expected, decimal=2)
     assert ignored==0
 
 
 def test_two_leaves_with_two_refcats():
-    leaf_histos = np.array([
+    leaf_deltas = np.array([
         [0,np.nan],
         [1,0],
         [2,3],
@@ -126,16 +126,16 @@ def test_two_leaves_with_two_refcats():
         [0,np.nan],
         [np.nan, np.nan]
     ])
-    # print("leaf_histos\n",leaf_histos)
+    # print("leaf_deltas\n",leaf_deltas)
     refcats = np.array([0,1])
-    avg_per_cat, ignored = avg_values_at_cat(leaf_histos, refcats)
+    avg_per_cat, ignored = avg_values_at_cat(leaf_deltas, refcats)
     expected = np.array([0, 1, 2.86, 3, 0, np.nan])
     np.testing.assert_array_almost_equal(avg_per_cat, expected, decimal=2)
     assert ignored==0
 
 
 def test_two_leaves_with_non_0_and_1_catcodes():
-    leaf_histos = np.array([
+    leaf_deltas = np.array([
         [np.nan, np.nan],
         [np.nan, np.nan],
         [0,      np.nan],
@@ -146,9 +146,9 @@ def test_two_leaves_with_non_0_and_1_catcodes():
         [0,      np.nan],
         [np.nan, np.nan]
     ])
-    # print("leaf_histos\n",leaf_histos)
+    # print("leaf_deltas\n",leaf_deltas)
     refcats = np.array([2,4])
-    avg_per_cat, ignored = avg_values_at_cat(leaf_histos, refcats)
+    avg_per_cat, ignored = avg_values_at_cat(leaf_deltas, refcats)
     expected = np.array([np.nan, np.nan, 0, 5, 1, 2.75, 8, 0, np.nan])
     np.testing.assert_array_almost_equal(avg_per_cat, expected, decimal=2)
     assert ignored==0
@@ -159,16 +159,16 @@ def test_two_leaves_with_disconnected_2nd_leaf():
     It's possible for a leaf's refcat not to have a value in any earlier
     refcats, leaving nan in the running sum. No way to connect, must just drop
     """
-    leaf_histos = np.array([
+    leaf_deltas = np.array([
         [0,      np.nan],
         [1,      np.nan],
         [2,      np.nan],
         [np.nan, 0],  # refcat is 3 which has no value in other leaf
         [np.nan, 3]
     ])
-    # print("leaf_histos\n",leaf_histos)
+    # print("leaf_deltas\n",leaf_deltas)
     refcats = np.array([0,3])
-    avg_per_cat, ignored = avg_values_at_cat(leaf_histos, refcats)
+    avg_per_cat, ignored = avg_values_at_cat(leaf_deltas, refcats)
     expected = np.array([0, 1, 2, np.nan, np.nan])
     np.testing.assert_array_almost_equal(avg_per_cat, expected, decimal=2)
     assert ignored==2
@@ -179,7 +179,7 @@ def test_3_leaves_with_disconnected_2nd_leaf_followed_by_leaf_conn_to_disconnect
     It's possible for a leaf's refcat not to have a value in any earlier
     refcats, leaving nan in the running sum. No way to connect, must just drop
     """
-    leaf_histos = np.array([
+    leaf_deltas = np.array([
         [0,      np.nan, np.nan],
         [1,      np.nan, np.nan],
         [np.nan, 0,      np.nan],  # refcat is 2 which has no value in prev leaf
@@ -188,9 +188,9 @@ def test_3_leaves_with_disconnected_2nd_leaf_followed_by_leaf_conn_to_disconnect
         [4, np.nan, np.nan],       # we sort by weight so add some to bottom
         [5, np.nan, np.nan],
     ])
-    # print("leaf_histos\n",leaf_histos)
+    # print("leaf_deltas\n",leaf_deltas)
     refcats = np.array([0,2,3])
-    avg_per_cat, ignored = avg_values_at_cat(leaf_histos, refcats)
+    avg_per_cat, ignored = avg_values_at_cat(leaf_deltas, refcats)
     expected = np.array([0, 1, np.nan, np.nan, np.nan, 4, 5])
     np.testing.assert_array_almost_equal(avg_per_cat, expected, decimal=2)
     assert ignored==5
@@ -201,7 +201,7 @@ def test_3_leaves_with_disconnected_2nd_leaf_followed_by_leaf_conn_to_first_leaf
     It's possible for a leaf's refcat not to have a value in any earlier
     refcats, leaving nan in the running sum. No way to connect, must just drop
     """
-    leaf_histos = np.array([
+    leaf_deltas = np.array([
         [0,      np.nan, np.nan],
         [1,      np.nan, np.nan],
         [np.nan, 0,      np.nan],  # refcat is 2 which has no value in prev leaf
@@ -210,9 +210,9 @@ def test_3_leaves_with_disconnected_2nd_leaf_followed_by_leaf_conn_to_first_leaf
         [4, np.nan,      0],
         [5, np.nan,      1],
     ])
-    # print("leaf_histos\n",leaf_histos)
+    # print("leaf_deltas\n",leaf_deltas)
     refcats = np.array([0,2,3])
-    avg_per_cat, ignored = avg_values_at_cat(leaf_histos, refcats)
+    avg_per_cat, ignored = avg_values_at_cat(leaf_deltas, refcats)
     expected = np.array([0, 1, np.nan, np.nan, np.nan, 4, 5])
     np.testing.assert_array_almost_equal(avg_per_cat, expected, decimal=2)
     assert ignored==3
@@ -230,9 +230,9 @@ def test_4state_temperature():
      [ 38.19  -3.78    nan]]
     """
 
-    leaf_histos, refcats, ignored = stratify_cats(X,y,colname="state",min_samples_leaf=3)
+    leaf_deltas, refcats, ignored = stratify_cats(X,y,colname="state",min_samples_leaf=3)
 
-    avg_per_cat, ignored = avg_values_at_cat(leaf_histos, refcats)
+    avg_per_cat, ignored = avg_values_at_cat(leaf_deltas, refcats)
     print(avg_per_cat)
     expected = np.array([24.9,    0, 45.97, 39.79])
     np.testing.assert_array_almost_equal(avg_per_cat, expected)
@@ -243,9 +243,9 @@ def test_temperature():
     np.random.seed(999)
     X,y,states,df_avgs = toy_weather_data(n=20, p=8)
 
-    leaf_histos, refcats, ignored = stratify_cats(X,y,colname="state",min_samples_leaf=5)
+    leaf_deltas, refcats, ignored = stratify_cats(X,y,colname="state",min_samples_leaf=5)
 
-    avg_per_cat, ignored = avg_values_at_cat(leaf_histos, refcats)
+    avg_per_cat, ignored = avg_values_at_cat(leaf_deltas, refcats)
     expected = np.array([3.66, -22.99, 7.08,  0.00, 3.109, -11.86, -8.15, -5.57])
     np.testing.assert_array_almost_equal(avg_per_cat, expected, decimal=2)
     assert ignored==0

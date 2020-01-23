@@ -34,7 +34,7 @@ for i in range(1):
     #                        min_samples_leaf=min_samples_leaf,
     #                        min_slopes_per_x=min_slopes_per_x)
 
-    # leaf_histos, avg_per_cat, ignored = \
+    # leaf_deltas, avg_per_cat, ignored = \
     #     cat_partial_dependence(X, y, colname="ModelID",
     #                            min_samples_leaf=10)
 

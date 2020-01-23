@@ -1103,7 +1103,8 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
     """
     leaves = leaf_samples(rf, X_not_col)
 
-    leaf_histos = np.full(shape=(max_catcode+1, len(leaves)), fill_value=np.nan)
+    leaf_deltas = np.full(shape=(max_catcode+1, len(leaves)), fill_value=np.nan)
+    leaf_counts = np.full(shape=(max_catcode+1, len(leaves)), fill_value=np.nan)
     refcats = np.empty(shape=(len(leaves),), dtype=int)
 
     uniq_cats, cat_counts = np.unique(X_col, return_counts=True)
@@ -1128,8 +1129,10 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
         leaf_cats = X_col[sample]
         leaf_y = y[sample]
         # perform a groupby(catname).mean()
-        uniq_leaf_cats = np.unique(leaf_cats) # comes back sorted
+        uniq_leaf_cats, count_leaf_cats = np.unique(leaf_cats, return_counts=True) # comes back sorted
         avg_y_per_cat = np.array([leaf_y[leaf_cats==cat].mean() for cat in uniq_leaf_cats])
+        # print("uniq_leaf_cats",uniq_leaf_cats,"count_y_per_cat",count_leaf_cats)
+
         if len(uniq_leaf_cats) < 2:
             # print(f"ignoring {len(sample)} obs for {len(avg_y_per_cat)} cat(s) in leaf")
             ignored += len(sample)
@@ -1157,9 +1160,9 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
 
         # Store into leaf i vector just those deltas we have data for
         # leave cats w/o representation as nan
-        leaf_histos[uniq_leaf_cats, leaf_i] = delta_y_per_cat
+        leaf_deltas[uniq_leaf_cats, leaf_i] = delta_y_per_cat
 
-    return leaf_histos, refcats, ignored
+    return leaf_deltas, refcats, ignored
 
 
 def cat_partial_dependence(X, y,
@@ -1199,21 +1202,21 @@ def cat_partial_dependence(X, y,
 
     rf.fit(X_not_col, y)
 
-    leaf_histos, refcats, ignored = \
+    leaf_deltas, refcats, ignored = \
         catwise_leaves(rf, X_not_col, X_col, y.values, max_catcode)
 
-    avg_per_cat, merge_ignored = avg_values_at_cat(leaf_histos, refcats, verbose=verbose)
+    avg_per_cat, merge_ignored = avg_values_at_cat(leaf_deltas, refcats, verbose=verbose)
 
     if verbose:
         print(f"CatStratPD Num samples ignored {ignored} for {colname}")
 
     # TODO: two diff ignores here: one for leaves with 1 cat and other for stuff we couldn't merge
-    return leaf_histos, avg_per_cat, ignored, merge_ignored
+    return leaf_deltas, avg_per_cat, ignored, merge_ignored
 
 
-def avg_values_at_cat(leaf_histos, refcats, verbose=False):
+def avg_values_at_cat(leaf_deltas, refcats, verbose=False):
     """
-    In leaf_histos, we have information from the leaves indicating how much
+    In leaf_deltas, we have information from the leaves indicating how much
     above or below each category was from the reference category of that leaf.
     The reference category is the one with the minimum cat code (not y value), so the
     refcat's relative value in the leaf column will be 0. Categories not mentioned
@@ -1244,7 +1247,7 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
     at position refcats[i] and add that to all elements of the avg_for_refcats[i]
     vector.
 
-    BTW, it's possible that more than a single value within a leaf_histos vector will be 0.
+    BTW, it's possible that more than a single value within a leaf_deltas vector will be 0.
     I.e., the reference category value is always 0 in the vector, but there might be
     another category whose value was the same y, giving a 0 relative value. I set them
     to nan, however, when combining histos for same refcat.
@@ -1295,7 +1298,7 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
     * might need min_values_per_cat hyperparameter akin to min_slopes_per_x
     * wow. choosing random refcat helps avoid focusing on some outliers by accident
 
-    :param leaf_histos: A 2D matrix where rows are category levels/values and
+    :param leaf_deltas: A 2D matrix where rows are category levels/values and
                         columns hold y values for categories.
     :param refcats: For each leaf, we must know what category was used as the reference.
                      I.e., which category had the smallest y value in the leaf?
@@ -1306,13 +1309,13 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
     if verbose:
         print("refcats =", refcats)
         print("uniq_refcats =", uniq_refcats)
-        # print("leaf_histos\n", leaf_histos[0:30])
-        # print("leaf_histos reordered by refcat order\n", leaf_histos[0:30,np.argsort(refcats)])
+        print("leaf_deltas\n", leaf_deltas[0:30])
+        # print("leaf_deltas reordered by refcat order\n", leaf_deltas[0:30,np.argsort(refcats)])
     sums_for_refcats = []
     counts_for_refcats = []
     for cat in uniq_refcats:
         # collect and add up vectors from all leaves with cat as the reference category
-        leaves_with_same_refcat = leaf_histos[:, np.where(refcats == cat)[0]]
+        leaves_with_same_refcat = leaf_deltas[:, np.where(refcats == cat)[0]]
         s = nanmerge_matrix_cols(leaves_with_same_refcat)
         # count how many non-nan values values across all leaves with cat as ref category
         c = (~np.isnan(leaves_with_same_refcat)).astype(int)
@@ -1375,7 +1378,7 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
      [nan 12. nan nan nan nan nan nan nan nan]]
     """
     # catavg is the running sum vector
-    n = leaf_histos.shape[0]
+    n = leaf_deltas.shape[0]
     catavg = avg_for_refcats[:,0] # init with first ref category (column)
     catavg_weight = weight_for_refcats[0]
     merge_ignored = 0
@@ -1446,7 +1449,7 @@ def avg_values_at_cat(leaf_histos, refcats, verbose=False):
     refcat weights
       [23 10 17  1  7  2]
     # catavg is the running sum vector
-    n = leaf_histos.shape[0]
+    n = leaf_deltas.shape[0]
     catavg = avg_for_refcats[:,0] # init with first ref category (column)
     ignored = 0
     # Need a way to restrict
@@ -1627,7 +1630,7 @@ def plot_catstratpd(X, y,
         else:
             X_, y_ = X, y
 
-        leaf_histos, avg_per_cat, ignored_, merge_ignored_ = \
+        leaf_deltas, avg_per_cat, ignored_, merge_ignored_ = \
             cat_partial_dependence(X_, y_,
                                    max_catcode=np.max(X_col),
                                    colname=colname,
@@ -1870,7 +1873,7 @@ def plot_catstratpd_OLD(X, y,
         idxs = resample(range(n), n_samples=int(n * 2 / 3), replace=False)  # subset
         X_, y_ = X.iloc[idxs], y.iloc[idxs]
 
-        leaf_histos, avg_per_cat, ignored = \
+        leaf_deltas, avg_per_cat, ignored = \
             cat_partial_dependence(X_, y_,
                                    colname=colname,
                                    n_trees=n_trees,
@@ -1889,7 +1892,7 @@ def plot_catstratpd_OLD(X, y,
             fig, ax = plt.subplots(1, 1)
 
     ncats = len(catcodes)
-    nleaves = leaf_histos.shape[1]
+    nleaves = leaf_deltas.shape[1]
 
     sorted_catcodes = catcodes
     if sort == 'ascending':
@@ -1905,9 +1908,9 @@ def plot_catstratpd_OLD(X, y,
     if min_y_shifted_to_zero:
         min_avg_value = np.nanmin(avg_per_cat)
 
-    # print(leaf_histos.iloc[np.nonzero(catcounts)])
-    # # print(leaf_histos.notna().multiply(leaf_sizes, axis=1))
-    # # print(np.sum(leaf_histos.notna().multiply(leaf_sizes, axis=1), axis=1))
+    # print(leaf_deltas.iloc[np.nonzero(catcounts)])
+    # # print(leaf_deltas.notna().multiply(leaf_sizes, axis=1))
+    # # print(np.sum(leaf_deltas.notna().multiply(leaf_sizes, axis=1), axis=1))
     # print(f"leaf_sizes: {list(leaf_sizes)}")
     # print(f"weighted_sum_per_cat: {list(weighted_sum_per_cat[np.nonzero(weighted_sum_per_cat)])}")
     # # print(f"catcounts: {list(catcounts[np.nonzero(catcounts)])}")
@@ -1925,7 +1928,7 @@ def plot_catstratpd_OLD(X, y,
     for cat in sorted_catcodes:
         if catcode2name[cat] is None: continue
         if show_all_deltas:
-            ax.scatter(x_noise + xloc, leaf_histos[catcode2name[cat]] - min_avg_value,
+            ax.scatter(x_noise + xloc, leaf_deltas[catcode2name[cat]] - min_avg_value,
                        alpha=alpha, marker='o', s=marker_size,
                        c=color)
         if style == 'strip':
