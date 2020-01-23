@@ -17,6 +17,9 @@ def savefig(title="", dir="expected"):
     plt.savefig(f"{dir}/{caller_fname}.png", pad_inches=0, bbox_inches=0, dpi=100)
 
 def compare(caller_fname):
+    if not os.path.exists(f"expected/{caller_fname}.png"):
+        plt.show()
+        return
     plt.savefig(f"/tmp/{caller_fname}.png", pad_inches=0, bbox_inches=0, dpi=100)
     expected = Image.open(f"expected/{caller_fname}.png")
     found = Image.open(f"/tmp/{caller_fname}.png")
@@ -199,10 +202,13 @@ def viz_weather(n, p, min_samples_leaf, n_outliers=0, seed=None, show_truth=True
         np.random.set_state(save_state)
 
     if show_truth:
-        for i in range(len(avgtemps)):
-            rel_avgtemp = avgtemps.iloc[i]['avgtemp'] - np.min(avgtemps['avgtemp'])
-            ax.text(i, rel_avgtemp, f"{rel_avgtemp :.1f}")
-    title = f"strat ignored={ignored}, merge ignored = {merge_ignored}\nmean(y)={np.mean(y):.1f}"
+        xloc = 0
+        for cat in uniq_catcodes:
+        # for i in range(len(avgtemps)):
+            rel_avgtemp = avgtemps.iloc[cat]['avgtemp'] - np.min(avgtemps['avgtemp'])
+            ax.text(xloc, rel_avgtemp, f"{rel_avgtemp :.1f}")
+            xloc += 1
+    title = f"strat ignored={ignored}, merge ignored = {merge_ignored}\nmean(y)={np.mean(y):.1f}, true_impact={true_impact:.1f}"
     caller_fname = traceback.extract_stack(None, 2)[0][2]
     plt.title(f"{caller_fname}\n{title}")
     plt.tight_layout()
@@ -217,11 +223,17 @@ def viz_clean_weather_n100_p4_minleaf5():
 def viz_clean_weather_n100_p10_minleaf5():
     viz_weather(100, 10, 5, seed=222)
 
+def viz_clean_weather_n100_p20_minleaf5():
+    viz_weather(100, 20, 5, seed=222)
+
 def viz_clean_weather_n100_p20_minleaf10():
     viz_weather(100, 20, 10, seed=222)
 
 def viz_outlier8_weather_n100_p10_minleaf5():
     viz_weather(100, 10, 8, n_outliers=5, seed=222)
+
+def viz_outlier8_weather_n100_p17_minleaf5(): # play
+    viz_weather(100, 17, 5, seed=222)
 
 
 # viz_clean_synth_uniform_n1000_xrange10_minleaf2()
@@ -233,5 +245,7 @@ def viz_outlier8_weather_n100_p10_minleaf5():
 # viz_clean_synth_gauss_n1000_xrange100_minleaf10()
 # viz_clean_weather_n100_p4_minleaf5()
 # viz_clean_weather_n100_p10_minleaf5()
+# viz_outlier8_weather_n100_p17_minleaf5()
 # viz_clean_weather_n100_p20_minleaf10()
-viz_outlier8_weather_n100_p10_minleaf5()
+viz_clean_weather_n100_p20_minleaf5()
+# viz_outlier8_weather_n100_p10_minleaf5()

@@ -1357,6 +1357,7 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, verbose=False):
         print(f"counts per cat>0 ({len(cats_with_values_count[nonzero_idx])}/{len(cats_with_values_count)}): ", cats_with_values_count[nonzero_idx])
         # print("counts per cat\n", counts_for_refcats[np.where(np.sum(counts_for_refcats, axis=1)>0)[0]])
         print("refcat weights\n", weight_for_refcats)
+        print("sorted refcats", uniq_refcats)
         # print("sums_for_refcats (reordered by weight)\n", sums_for_refcats[:30])
         print("avgs per refcat\n", avg_for_refcats[0:30])
 
@@ -1386,7 +1387,7 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, verbose=False):
     # catavg is the running sum vector
     n = leaf_deltas.shape[0]
     catavg = avg_for_refcats[:,0] # init with first ref category (column)
-    catavg_weight = weight_for_refcats[0]
+    catavg_weight = counts_for_refcats[:,0]
     merge_ignored = 0
     # Need a way to restrict
     # valid_idxs = np.where(weight_for_refcats>=10)[0]
@@ -1398,9 +1399,10 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, verbose=False):
         # TODO: ignore columns already processed if we add outer loop to this
         cat = uniq_refcats[j]
         v = avg_for_refcats[:,j]
-        intersection_idx = np.intersect1d(np.where(~np.isnan(catavg[cat:])),
-                                          np.where(~np.isnan(v[cat:])))
-        intersection_idx += cat   # those indexes are relative to cat
+        intersection_idx = np.where(~np.isnan(catavg) & ~np.isnan(v))[0]
+        # intersection_idx = np.intersect1d(np.where(~np.isnan(catavg)),
+        #                                   np.where(~np.isnan(v)))
+        # intersection_idx += cat   # those indexes are relative to cat
         # print(intersection_idx)
         if len(intersection_idx)==0: # found something to merge into catavg
             merge_ignored += weight_for_refcats[j]
@@ -1412,18 +1414,9 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, verbose=False):
         shifted_v = v - v[ix]        # make i the common reference even though not first in v anymore
         relative_to_value = catavg[ix]
         adjusted_v = shifted_v + relative_to_value     # now v is mergeable with catavg
-        cur_weight  = weight_for_refcats[j]
+        cur_weight  = counts_for_refcats[:,j]
         prev_catavg = catavg
         catavg = nanmerge_vectors(catavg, adjusted_v, catavg_weight, cur_weight)
-        # for i in range(cat,n):  # walk down a vector starting at refcat, first useful value
-        #     if np.isnan(catavg[i]) and np.isnan(v[i]):  # both nan
-        #         continue
-        #     if np.isnan(v[i]):  # new vector is nan, just used old value
-        #         continue
-        #     if np.isnan(catavg[i]):
-        #         catavg[i] = v[i] # copy good value from v into catavg
-        #     else:  # otherwise computed weighted average of two values
-        #         catavg[i] = (catavg[i] * catavg_weight + v[i] * cur_weight) / (catavg_weight+cur_weight)
         # Update weight of running sum to incorporate "mass" from v
         catavg_weight += cur_weight
         if verbose:
@@ -1687,7 +1680,6 @@ def plot_catstratpd(X, y,
         for cat in uniq_catcodes:
             cat_delta = avg_per_cat[cat]
             xloc += 1
-            if np.isnan(cat_delta): continue
             # ax.plot([xloc - .15, xloc + .15], [cat_delta] * 2, c=colors[impact_order[i]], linewidth=1)
             collect_cats.append(xloc)
             collect_deltas.append(cat_delta)
@@ -1701,14 +1693,13 @@ def plot_catstratpd(X, y,
     # ax.plot([0,len(uniq_catcodes)], [0,0], '--', c='grey', lw=.5)
 
     # Show avg line
-    xloc = 0
-    avg_delta = []
-    for cat in uniq_catcodes:
-        cat_delta = combined_avg_per_cat[cat]
-        avg_delta.append(cat_delta)
-        xloc += 1
-
     if n_trials>1:
+        xloc = 0
+        avg_delta = []
+        for cat in uniq_catcodes:
+            cat_delta = combined_avg_per_cat[cat]
+            avg_delta.append(cat_delta)
+            xloc += 1
         # Show combined cat values if more than one trials
         ax.plot(range(len(uniq_catcodes)), avg_delta, '.', c='k', markersize=pdp_marker_size + 1)
 
@@ -1764,7 +1755,7 @@ def plot_catstratpd(X, y,
     ax.tick_params(axis='both', which='major', labelsize=ticklabel_fontsize)
 
     if show_xticks:
-        ax.set_xticks(range(len(uniq_catcodes)))
+        ax.set_xticks(uniq_catcodes)
         if catnames is not None:
             ax.set_xticklabels(catnames[uniq_catcodes])
         else:
