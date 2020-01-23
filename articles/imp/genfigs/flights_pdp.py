@@ -30,7 +30,7 @@ np.set_printoptions(precision=2, suppress=True, linewidth=300)#, threshold=1e10)
 
 #np.random.seed(999)
 
-n=20_000
+n=500_000
 #r = (500,600)
 # r = (0,500)
 _, _, df_flights = load_flights(n=n)
@@ -78,11 +78,11 @@ col = 'TAXI_OUT'
 
 uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored = \
     plot_catstratpd(X, y, 'FLIGHT_NUMBER', 'ARRIVAL_DELAY',
-                    min_samples_leaf=10,
+                    min_samples_leaf=3,
                     sort=None,
                     # yrange=(-110,250),
                     figsize=(20,4),
-                    n_trials=3,
+                    n_trials=1,
                     show_all_deltas=False,
                     show_xticks=False,
                     show_impact=True,
@@ -91,7 +91,7 @@ uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored = \
 print("IGNORED", ignored, "merge ignored", merge_ignored)
 plt.tight_layout()
 # plt.savefig(f"/Users/parrt/Desktop/flight-fnum-cat-most_common.pdf", pad_inches=0)
-plt.savefig(f"/Users/parrt/Desktop/flight-fnum-cat.pdf", pad_inches=0)
+plt.savefig(f"/Users/parrt/Desktop/flight-fnum-cat-minleaf3.pdf", pad_inches=0)
 plt.show()
 
 
