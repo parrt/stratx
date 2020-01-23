@@ -1131,7 +1131,8 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
         # perform a groupby(catname).mean()
         uniq_leaf_cats, count_leaf_cats = np.unique(leaf_cats, return_counts=True) # comes back sorted
         avg_y_per_cat = np.array([leaf_y[leaf_cats==cat].mean() for cat in uniq_leaf_cats])
-        # print("uniq_leaf_cats",uniq_leaf_cats,"count_y_per_cat",count_leaf_cats)
+        print("uniq_leaf_cats",uniq_leaf_cats,"count_y_per_cat",count_leaf_cats)
+        print("avg_y_per_cat",avg_y_per_cat)
 
         if len(uniq_leaf_cats) < 2:
             # print(f"ignoring {len(sample)} obs for {len(avg_y_per_cat)} cat(s) in leaf")
@@ -1161,8 +1162,9 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
         # Store into leaf i vector just those deltas we have data for
         # leave cats w/o representation as nan
         leaf_deltas[uniq_leaf_cats, leaf_i] = delta_y_per_cat
+        leaf_counts[uniq_leaf_cats, leaf_i] = count_leaf_cats
 
-    return leaf_deltas, refcats, ignored
+    return leaf_deltas, leaf_counts, refcats, ignored
 
 
 def cat_partial_dependence(X, y,
@@ -1202,7 +1204,7 @@ def cat_partial_dependence(X, y,
 
     rf.fit(X_not_col, y)
 
-    leaf_deltas, refcats, ignored = \
+    leaf_deltas, leaf_counts, refcats, ignored = \
         catwise_leaves(rf, X_not_col, X_col, y.values, max_catcode)
 
     avg_per_cat, merge_ignored = avg_values_at_cat(leaf_deltas, refcats, verbose=verbose)

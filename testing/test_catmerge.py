@@ -51,10 +51,10 @@ def stratify_cats(X, y,
     # rf = RandomForestRegressor(n_estimators=n_trees, min_samples_leaf=min_samples_leaf, oob_score=True)
     rf.fit(X_not_col, y)
     # print(f"Model wo {colname} OOB R^2 {rf.oob_score_:.5f}")
-    # leaf_deltas, leaf_avgs, leaf_sizes, leaf_catcounts, ignored = \
+    # leaf_deltas, leaf_counts, leaf_avgs, leaf_sizes, leaf_catcounts, ignored = \
     #     catwise_leaves(rf, X, y, colname, verbose=verbose)
 
-    leaf_deltas, refcats, ignored = \
+    leaf_deltas, leaf_counts, refcats, ignored = \
         catwise_leaves(rf, X_not_col, X_col, y.values, max_catcode)
 
     return leaf_deltas, refcats, ignored
