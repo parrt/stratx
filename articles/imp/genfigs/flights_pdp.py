@@ -30,7 +30,7 @@ np.set_printoptions(precision=2, suppress=True, linewidth=300)#, threshold=1e10)
 
 #np.random.seed(999)
 
-n=500_000
+n=10_000
 #r = (500,600)
 # r = (0,500)
 _, _, df_flights = load_flights(n=n)
