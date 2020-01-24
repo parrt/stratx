@@ -1400,9 +1400,6 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, verbose=False):
         cat = uniq_refcats[j]
         v = avg_for_refcats[:,j]
         intersection_idx = np.where(~np.isnan(catavg) & ~np.isnan(v))[0]
-        # intersection_idx = np.intersect1d(np.where(~np.isnan(catavg)),
-        #                                   np.where(~np.isnan(v)))
-        # intersection_idx += cat   # those indexes are relative to cat
         # print(intersection_idx)
         if len(intersection_idx)==0: # found something to merge into catavg
             merge_ignored += weight_for_refcats[j]
