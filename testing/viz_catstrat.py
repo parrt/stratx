@@ -198,6 +198,7 @@ def viz_weather(n, p, min_samples_leaf, n_outliers=0, seed=None, show_truth=True
                         # title=
                         )
 
+    print("ignored", ignored, "merge_ignored", merge_ignored)
     if seed is not None:
         np.random.set_state(save_state)
 
@@ -236,16 +237,16 @@ def viz_outlier8_weather_n100_p17_minleaf5(): # play
     viz_weather(100, 17, 5, seed=222)
 
 
-# viz_clean_synth_uniform_n1000_xrange10_minleaf2()
-# viz_clean_synth_gauss_n20_xrange12_minleaf2()
-# viz_clean_synth_gauss_n20_xrange10_minleaf5()
-# viz_clean_synth_uniform_n1000_xrange100_minleaf2()
-# viz_clean_synth_gauss_n1000_xrange25_minleaf2()
-# viz_clean_synth_gauss_n3000_xrange10_minleaf2()
-# viz_clean_synth_gauss_n1000_xrange100_minleaf10()
-# viz_clean_weather_n100_p4_minleaf5()
-# viz_clean_weather_n100_p10_minleaf5()
-# viz_outlier8_weather_n100_p17_minleaf5()
-# viz_clean_weather_n100_p20_minleaf10()
+viz_clean_synth_uniform_n1000_xrange10_minleaf2()
+viz_clean_synth_gauss_n20_xrange12_minleaf2()
+viz_clean_synth_gauss_n20_xrange10_minleaf5()
+viz_clean_synth_uniform_n1000_xrange100_minleaf2()
+viz_clean_synth_gauss_n1000_xrange25_minleaf2()
+viz_clean_synth_gauss_n3000_xrange10_minleaf2()
+viz_clean_synth_gauss_n1000_xrange100_minleaf10()
+viz_clean_weather_n100_p4_minleaf5()
+viz_clean_weather_n100_p10_minleaf5()
+viz_outlier8_weather_n100_p17_minleaf5()
+viz_clean_weather_n100_p20_minleaf10()
 viz_clean_weather_n100_p20_minleaf5()
-# viz_outlier8_weather_n100_p10_minleaf5()
+viz_outlier8_weather_n100_p10_minleaf5()

@@ -1111,8 +1111,8 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
     # print(list(cat_counts))
 
     USE_MOST_COMMON_REFCAT = False
-    USE_RANDOM_REFCAT = False
-    USE_MEAN_Y = True
+    USE_RANDOM_REFCAT = True
+    USE_MEAN_Y = False
 
     if USE_MOST_COMMON_REFCAT:
         # Rank the cat codes by most to least common and use the most common ref cat
@@ -1149,7 +1149,6 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
             index_of_leaf_cats_in_most_common = np.min(leaf_cat_idxs)
             most_common_leaf_cat = cats_by_most_common[index_of_leaf_cats_in_most_common]
             refcats[leaf_i] = most_common_leaf_cat
-
             # Subtract avg_y_per_cat for most common cat
             delta_y_per_cat = avg_y_per_cat - avg_y_per_cat[uniq_leaf_cats==most_common_leaf_cat]
         elif USE_RANDOM_REFCAT:
@@ -1217,14 +1216,16 @@ def cat_partial_dependence(X, y,
     leaf_deltas, leaf_counts, refcats, ignored = \
         catwise_leaves(rf, X_not_col, X_col, y.values, max_catcode)
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", category=RuntimeWarning)
-        avg_per_cat = np.nanmean(leaf_deltas, axis=1)
-        merge_ignored = 0
-        # slope_counts_at_cat = leaf_histos.shape[1] - np.isnan(leaf_histos).sum(axis=1)
-
-    # avg_per_cat, merge_ignored = \
-    #     avg_values_at_cat(leaf_deltas, leaf_counts, refcats, verbose=verbose)
+    USE_MEAN_Y=False
+    if USE_MEAN_Y:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            avg_per_cat = np.nanmean(leaf_deltas, axis=1)
+            merge_ignored = 0
+            # slope_counts_at_cat = leaf_histos.shape[1] - np.isnan(leaf_histos).sum(axis=1)
+    else:
+        avg_per_cat, merge_ignored = \
+            avg_values_at_cat(leaf_deltas, leaf_counts, refcats, verbose=verbose)
 
     if verbose:
         print(f"CatStratPD Num samples ignored {ignored} for {colname}")
@@ -1416,14 +1417,17 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, verbose=False):
         cat = uniq_refcats[j]
         v = avg_for_refcats[:,j]
         intersection_idx = np.where(~np.isnan(catavg) & ~np.isnan(v))[0]
+
         # print(intersection_idx)
         if len(intersection_idx)==0: # found something to merge into catavg
             merge_ignored += weight_for_refcats[j]
             if verbose: print(f"cat {cat} has no value in running sum; ignored={merge_ignored}")
             continue
 
+        # pick random category in intersection to use as common refcat
+        ix = np.random.choice(intersection_idx, size=1)[0]
+
         # modifying columns in place to be mergeable
-        ix = intersection_idx[0] # idx of first value in common
         shifted_v = v - v[ix]        # make i the common reference even though not first in v anymore
         relative_to_value = catavg[ix]
         adjusted_v = shifted_v + relative_to_value     # now v is mergeable with catavg
