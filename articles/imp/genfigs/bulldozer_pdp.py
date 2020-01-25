@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 
 np.set_printoptions(precision=2, suppress=True, linewidth=300, threshold=2000)
 
-n = 15000
+n = 30000
 
 X, y = load_bulldozer()
 
@@ -41,7 +41,7 @@ I = importances(X_, y_, n_trials=3, normalize=False,
 print(I)
 
 y_scrambled = y_.sample(n=len(y_))
-uniq_catcodes, combined_avg_per_cat, ignored = \
+uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored = \
     plot_catstratpd(X_, y_, colname='ModelID', targetname='SalePrice',
                     min_samples_leaf=10,
                     # sort=None,
