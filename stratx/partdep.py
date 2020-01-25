@@ -1346,7 +1346,7 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, verbose=False):
         avg_for_refcats[:,j] = s / c
         counts_for_refcats[:,j] = c
 
-    print("unsorted counts\n", counts_for_refcats[0:30])
+    # print("unsorted counts\n", counts_for_refcats[0:30])
     # We want to initial group to be one with most weight in hopes of merging
     # more vectors in a single pass
     weight_for_refcats = np.sum(counts_for_refcats, axis=0)
@@ -1634,6 +1634,7 @@ def plot_catstratpd(X, y,
         m = np.where(c==0, np.nan, m) # cats w/o values should be nan, not 0
         return m
 
+    impacts = []
     all_avg_per_cat = []
     ignored = 0
     merge_ignored = 0
@@ -1655,14 +1656,9 @@ def plot_catstratpd(X, y,
                                    max_features=max_features,
                                    bootstrap=False,
                                    verbose=verbose)
-        # avg_per_cat is currently deltas from mean(y) but we want to use min avg_per_cat
-        # as reference point, zeroing that one out. All others will be relative to that
-        # min cat value
+        impacts.append( np.nanmean(np.abs(avg_per_cat)) )
         if min_y_shifted_to_zero:
-            # min and mean don't work, though min is closest. really need average of
-            # first few valid avg_per_cat values.
             avg_per_cat -= np.nanmin(avg_per_cat)
-            # avg_per_cat += 0#np.mean(y)
         ignored += ignored_
         merge_ignored += merge_ignored_
         all_avg_per_cat.append( avg_per_cat )
@@ -1673,7 +1669,7 @@ def plot_catstratpd(X, y,
     combined_avg_per_cat = avg_pd_catvalues(all_avg_per_cat)
     print("mean(pdpy)", np.nanmean(combined_avg_per_cat))
 
-    impacts = [np.nanmean(np.abs(all_avg_per_cat[i])) for i in range(n_trials)]
+    # impacts = [np.nanmean(np.abs(all_avg_per_cat[i])) for i in range(n_trials)]
     impact_order = np.argsort(impacts)
     print("impacts", impacts)
     avg_impact = np.nanmean(np.abs(combined_avg_per_cat))
