@@ -1111,7 +1111,8 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
     # print(list(cat_counts))
 
     USE_MOST_COMMON_REFCAT = False
-    USE_RANDOM_REFCAT = True
+    USE_RANDOM_REFCAT = False
+    USE_MEAN_Y = True
 
     if USE_MOST_COMMON_REFCAT:
         # Rank the cat codes by most to least common and use the most common ref cat
@@ -1123,6 +1124,9 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
         revsort_idx = np.argsort(cat_counts)[::-1]
         cats_by_most_common = list(uniq_cats[revsort_idx])
 
+    if USE_MEAN_Y:
+        mean_y = np.mean(y)
+
     ignored = 0
     for leaf_i in range(len(leaves)):
         sample = leaves[leaf_i]
@@ -1131,7 +1135,7 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
         # perform a groupby(catname).mean()
         uniq_leaf_cats, count_leaf_cats = np.unique(leaf_cats, return_counts=True) # comes back sorted
         avg_y_per_cat = np.array([leaf_y[leaf_cats==cat].mean() for cat in uniq_leaf_cats])
-        print("uniq_leaf_cats",uniq_leaf_cats,"count_y_per_cat",count_leaf_cats)
+        # print("uniq_leaf_cats",uniq_leaf_cats,"count_y_per_cat",count_leaf_cats)
 
         if len(uniq_leaf_cats) < 2:
             # print(f"ignoring {len(sample)} obs for {len(avg_y_per_cat)} cat(s) in leaf")
@@ -1153,6 +1157,11 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
             idx_of_random_cat_in_leaf = np.random.randint(0, len(uniq_leaf_cats), size=1)
             refcats[leaf_i] = uniq_leaf_cats[idx_of_random_cat_in_leaf]
             delta_y_per_cat = avg_y_per_cat - avg_y_per_cat[idx_of_random_cat_in_leaf]
+        elif USE_MEAN_Y:
+            refcats[leaf_i] = mean_y
+            delta_y_per_cat = avg_y_per_cat - mean_y
+            # refcats[leaf_i] = min(y)
+            # delta_y_per_cat = avg_y_per_cat - min(y)
         else:
             # Use min cat code as refcat
             refcats[leaf_i] = np.min(uniq_leaf_cats)
@@ -1208,7 +1217,14 @@ def cat_partial_dependence(X, y,
     leaf_deltas, leaf_counts, refcats, ignored = \
         catwise_leaves(rf, X_not_col, X_col, y.values, max_catcode)
 
-    avg_per_cat, merge_ignored = avg_values_at_cat(leaf_deltas, leaf_counts, refcats, verbose=verbose)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+        avg_per_cat = np.nanmean(leaf_deltas, axis=1)
+        merge_ignored = 0
+        # slope_counts_at_cat = leaf_histos.shape[1] - np.isnan(leaf_histos).sum(axis=1)
+
+    # avg_per_cat, merge_ignored = \
+    #     avg_values_at_cat(leaf_deltas, leaf_counts, refcats, verbose=verbose)
 
     if verbose:
         print(f"CatStratPD Num samples ignored {ignored} for {colname}")
@@ -1651,6 +1667,7 @@ def plot_catstratpd(X, y,
     merge_ignored /= n_trials # average number of x values ignored across trials
 
     combined_avg_per_cat = avg_pd_catvalues(all_avg_per_cat)
+    print("mean(pdpy)", np.nanmean(combined_avg_per_cat))
 
     impacts = [np.nanmean(np.abs(all_avg_per_cat[i])) for i in range(n_trials)]
     impact_order = np.argsort(impacts)
