@@ -30,7 +30,7 @@ np.set_printoptions(precision=2, suppress=True, linewidth=300)#, threshold=1e10)
 
 #np.random.seed(999)
 
-n=10_000
+n=25_000
 #r = (500,600)
 # r = (0,500)
 _, _, df_flights = load_flights(n=n)
@@ -80,7 +80,7 @@ uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored = \
     plot_catstratpd(X, y, 'FLIGHT_NUMBER', 'ARRIVAL_DELAY',
                     min_samples_leaf=3,
                     sort=None,
-                    # yrange=(-110,250),
+                    yrange=(-150,150),
                     figsize=(20,4),
                     n_trials=1,
                     min_y_shifted_to_zero=False,

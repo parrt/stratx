@@ -290,6 +290,22 @@ def compare_top_features(X, y, top_features_range=None,
     return (R, Rstddev, *all_importances.values())
 
 
+def best_single_feature(X, y, kfolds=5, model='RF'):
+    means = []
+    for colname in X.columns:
+        scores = cv_features(X, y, [colname],
+                             # metric=mean_squared_error,
+                             metric=mean_absolute_error,
+                             kfolds=kfolds, model=model)
+        print(colname, scores, np.mean(scores))
+        means.append(np.mean(scores))
+    df = pd.DataFrame()
+    df['Feature'] = X.columns
+    df['MAE'] = means
+    df = df.sort_values(by='MAE', ascending=True)
+    return df
+
+
 def get_multiple_imps(X_train, y_train, X_test, y_test, n_shap=300, n_estimators=50,
                       stratpd_min_samples_leaf=10,
                       stratpd_cat_min_samples_leaf=10,
