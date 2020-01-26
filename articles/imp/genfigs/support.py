@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 
-from sklearn.preprocessing import normalize
 import statsmodels.api as sm
 from scipy.stats import spearmanr
 from sklearn.decomposition import PCA
@@ -15,7 +14,6 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.utils import resample
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import normalize
 from timeit import default_timer as timer
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import GridSearchCV
@@ -200,6 +198,8 @@ def compare_top_features(X, y, top_features_range=None,
                          stratpd_cat_min_samples_leaf=10,
                          min_slopes_per_x=5,
                          catcolnames=set(),
+                         normalize=True,
+                         density_weighted=False,
                          supervised=True,
                          include=['Spearman', 'PCA', 'OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact'],
                          drop=()):
@@ -237,7 +237,9 @@ def compare_top_features(X, y, top_features_range=None,
                                         catcolnames=catcolnames,
                                         min_slopes_per_x=min_slopes_per_x,
                                         supervised=supervised,
-                                        include=include)
+                                        include=include,
+                                        normalize=normalize,
+                                        density_weighted=density_weighted)
 
     print("Spearman\n", all_importances['Spearman'])
     print("PCA\n", all_importances['PCA'])
@@ -315,7 +317,9 @@ def get_multiple_imps(X_train, y_train, X_test, y_test, n_shap=300, n_estimators
                       catcolnames=set(),
                       min_slopes_per_x=10,
                       supervised=True,
-                      include=['Spearman', 'PCA', 'OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']):
+                      include=['Spearman', 'PCA', 'OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact'],
+                      normalize=True,
+                      density_weighted=False):
     spear_I = pca_I = ols_I = ols_shap_I = rf_I = perm_I = ours_I = None
 
     if 'Spearman' in include:
@@ -344,7 +348,7 @@ def get_multiple_imps(X_train, y_train, X_test, y_test, n_shap=300, n_estimators
         y_train_ = y_train[:min(20_000,len(X_train))]
         rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=True)
         rf.fit(X_train_, y_train_)
-        rf_I = shap_importances(rf, X_train_, X_test, n_shap)
+        rf_I = shap_importances(rf, X_train_, X_test, n_shap, normalize=normalize)
 
     if "RF perm" in include:
         rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=True)
@@ -357,6 +361,7 @@ def get_multiple_imps(X_train, y_train, X_test, y_test, n_shap=300, n_estimators
         # let this method see all data as well
         # X_full = pd.concat([X_train, X_test], axis=0)
         # y_full = pd.concat([y_train, y_test], axis=0)
+        # Actually use just X_train
         X_full = X_train
         y_full = y_train
         ours_I = importances(X_full, y_full, verbose=False,
@@ -367,7 +372,9 @@ def get_multiple_imps(X_train, y_train, X_test, y_test, n_shap=300, n_estimators
                              bootstrap=bootstrap,
                              catcolnames=catcolnames,
                              min_slopes_per_x=min_slopes_per_x,
-                             supervised=supervised)
+                             supervised=supervised,
+                             normalize=normalize,
+                             density_weighted=density_weighted)
     d = OrderedDict()
     d['Spearman'] = spear_I
     d['PCA'] = pca_I

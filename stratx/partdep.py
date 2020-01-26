@@ -458,12 +458,6 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
             pdpy[i] = m[x]
         return pdpx, pdpy
 
-    # leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored = \
-    #     partial_dependence(X=X, y=y, colname=colname, min_slopes_per_x=min_slopes_per_x,
-    #                        n_trees=n_trees, min_samples_leaf=min_samples_leaf,
-    #                        bootstrap=bootstrap, max_features=max_features, supervised=supervised,
-    #                        verbose=verbose)
-    #
     all_pdpx = []
     all_pdpy = []
     n = len(X)
@@ -1343,22 +1337,13 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, verbose=False):
         s = nanmerge_matrix_cols(leaves_with_same_refcat*counts_with_same_refcat)
         # count how many non-nan values values across all leaves with cat as ref category
         c = np.sum(counts_with_same_refcat, axis=1)
-        avg_for_refcats[:,j] = s / c
+        avg_for_refcats[:,j] = s / zero_as_one(c)
         counts_for_refcats[:,j] = c
 
     # print("unsorted counts\n", counts_for_refcats[0:30])
     # We want to initial group to be one with most weight in hopes of merging
     # more vectors in a single pass
     weight_for_refcats = np.sum(counts_for_refcats, axis=0)
-    # avg_for_refcats = sums_for_refcats# / zero_as_one(counts_for_refcats)
-    # avg_for_refcats = [sums_for_refcats[j] / zero_as_one(counts_for_refcats[j])
-    #                    for j in range(len(uniq_refcats))]
-    # avg_for_refcats = np.array(avg_for_refcats).T
-
-    # SORT REV BY WEIGHT
-    # E.g., weight_for_refcats = [ 8  8  6  4  4 27  5 11  5  5  4 34 17  8  9  3  5]
-    # counts_for_refcats = np.array(counts_for_refcats).T
-    # count_per_cat = np.sum(counts_for_refcats, axis=1)
 
     # Sort to get most populated vectors to the left of matrix; more chance of intersection
     uniq_refcats_by_weight_idxs = np.argsort(weight_for_refcats)[::-1]
@@ -1383,8 +1368,6 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, verbose=False):
     """
     [[nan nan nan nan nan nan nan nan  0. nan]
      [nan nan nan nan  0. nan nan nan nan nan]
-     [nan nan nan  0. nan nan nan nan nan nan]
-     [nan nan nan nan nan nan nan  0. nan nan]
      [nan  0. nan nan nan nan nan nan nan nan]
      [ 0. nan nan nan nan nan nan nan nan nan]
      [ 1. nan nan nan nan nan  0. nan nan nan]
@@ -1394,168 +1377,58 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, verbose=False):
      [ 5.  6. nan nan nan  0.  4. nan nan nan]
      [nan nan nan nan nan nan nan  8. 17.  0.]
      [ 7. nan  5. nan nan  2. nan nan nan nan]
-     [ 8.  9.  6. nan nan nan nan nan nan nan]
-     [nan 10. nan nan nan nan nan nan nan nan]
-     [nan nan nan 11. nan nan nan nan nan nan]
-     [nan nan nan nan nan nan nan nan nan  5.]
-     [nan nan nan nan nan  7. nan nan nan nan]
-     [nan 12. nan nan nan nan nan nan nan nan]]
     """
     # catavg is the running sum vector
-    n = leaf_deltas.shape[0]
     catavg = avg_for_refcats[:,0] # init with first ref category (column)
     catavg_weight = counts_for_refcats[:,0]
     merge_ignored = 0
-    # Need a way to restrict
-    # valid_idxs = np.where(weight_for_refcats>=10)[0]
-    # last_refcat = -1
-    # if len(valid_idxs)>0:
-    #     last_refcat = valid_idxs[-1]
-    last_refcat = len(uniq_refcats)
-    for j in range(1,last_refcat):      # for each refcat, avg in the vectors
-        # TODO: ignore columns already processed if we add outer loop to this
-        cat = uniq_refcats[j]
-        v = avg_for_refcats[:,j]
-        intersection_idx = np.where(~np.isnan(catavg) & ~np.isnan(v))[0]
+    work = set(range(1,len(uniq_refcats)))
+    completed = {-1} # init to any nonempty set to enter loop
+    passnum = 1
+    while len(work)>0 and len(completed)>0:
+        print(f"PASS {passnum} len(work)", len(work))
+        completed = set()
+        for j in work:      # for each refcat, avg in the vectors
+            cat = uniq_refcats[j]
+            v = avg_for_refcats[:,j]
+            intersection_idx = np.where(~np.isnan(catavg) & ~np.isnan(v))[0]
 
-        # print(intersection_idx)
-        if len(intersection_idx)==0: # found something to merge into catavg
+            # print(intersection_idx)
+            if len(intersection_idx)==0: # found something to merge into catavg?
+                continue
+
+            # pick random category in intersection to use as common refcat
+            ix = np.random.choice(intersection_idx, size=1)[0]
+
+            # modifying columns in place to be mergeable
+            shifted_v = v - v[ix]        # make ix the reference cat in common
+            relative_to_value = catavg[ix]
+            adjusted_v = shifted_v + relative_to_value     # now v is mergeable with catavg
+            cur_weight  = counts_for_refcats[:,j]
+            prev_catavg = catavg
+            catavg = nanavg_vectors(catavg, adjusted_v, catavg_weight, cur_weight)
+            # Update weight of running sum to incorporate "mass" from v
+            catavg_weight += cur_weight
+            if verbose:
+                print(f"{cat:-2d} : vec to add =", parray(v), f"- {v[ix]:.2f}")
+                print("     shifted    =", parray(shifted_v), f"+ {relative_to_value:.2f}")
+                print("     adjusted   =", parray(adjusted_v), "*", cur_weight)
+                print("     prev avg   =", parray(prev_catavg),"*",catavg_weight-cur_weight)
+                print("     new avg    =", parray(catavg))
+                print()
+            completed.add(j)
+        passnum += 1
+        work = work - completed
+
+    if len(work)>0:
+        # hmm..couldn't merge some vectors; total up the samples we ignored
+        for j in work:
             merge_ignored += weight_for_refcats[j]
-            if verbose: print(f"cat {cat} has no value in running sum; ignored={merge_ignored}")
-            continue
+        if verbose: print(f"cats {uniq_refcats[list(work)]} couldn't be merged into running sum; ignored={merge_ignored}")
 
-        # pick random category in intersection to use as common refcat
-        ix = np.random.choice(intersection_idx, size=1)[0]
-
-        # modifying columns in place to be mergeable
-        shifted_v = v - v[ix]        # make i the common reference even though not first in v anymore
-        relative_to_value = catavg[ix]
-        adjusted_v = shifted_v + relative_to_value     # now v is mergeable with catavg
-        cur_weight  = counts_for_refcats[:,j]
-        prev_catavg = catavg
-        catavg = nanmerge_vectors(catavg, adjusted_v, catavg_weight, cur_weight)
-        # Update weight of running sum to incorporate "mass" from v
-        catavg_weight += cur_weight
-        if verbose:
-            print(f"{cat:-2d} : vec to add =", parray(v), f"- {v[ix]:.2f}")
-            # print("     count      =", parray(cats_with_values_added_to_running_sum * weight_for_refcats[i]))
-            print("     shifted    =", parray(shifted_v), f"+ {relative_to_value:.2f}")
-            # print(f"     sum weight = {catavg_weight-cur_weight}, cur weight = {cur_weight:d}")
-            print("     adjusted   =", parray(adjusted_v), "*", cur_weight)
-            print("     prev avg   =", parray(prev_catavg),"*",catavg_weight-cur_weight)
-            print("     new avg    =", parray(catavg))
-            print()
-
-    #catavg[uniq_refcats[0]] = 0.0 # first refcat always has value 0 (was nan for summation purposes)
     if verbose: print("final cat avgs", parray3(catavg))
     return catavg, merge_ignored
-"""
-    avgs per refcat
-     [[   nan    nan    nan    nan    nan    nan]
-      [-30.35    nan    nan    nan    nan    nan]
-      [  3.5     nan    nan    nan    nan    nan]
-      [ -2.78  28.46  -6.05    nan    nan    nan]
-      [ -1.23    nan  -4.82    nan    nan    nan]
-      [-15.84  14.94 -19.26    nan    nan    nan]
-      [-13.9   16.9  -16.57    nan -12.85    nan]
-      [   nan  21.98 -11.39    nan  -7.29    nan]
-      [  9.43    nan   5.7   11.41  10.43  26.44]
-      [ -0.23  29.57  -3.35    nan   0.78  17.04]]
-     
-    refcat weights
-      [23 10 17  1  7  2]
-    # catavg is the running sum vector
-    n = leaf_deltas.shape[0]
-    catavg = avg_for_refcats[:,0] # init with first ref category (column)
-    ignored = 0
-    # Need a way to restrict
-    # valid_idxs = np.where(weight_for_refcats>=10)[0]
-    # last_refcat = -1
-    # if len(valid_idxs)>0:
-    #     last_refcat = valid_idxs[-1]
-    last_refcat = len(uniq_refcats)
-    print("uniq_refcats",uniq_refcats)
-    for j in range(1,last_refcat):      # for each refcat, avg in the vectors
-        cat = uniq_refcats[j]
-        relative_to_value = catavg[cat]
-        v = avg_for_refcats[:,j]
-        if np.isnan(relative_to_value):
-            ignored += np.sum(~np.isnan(v))
-            weight_for_refcats[j] = 0 # wipe out weights as we don't count these
-            if verbose: print(f"cat {cat} has no value in running sum; ignored={ignored}")
-            continue
-        # TODO: can start at uniq_refcats[j]+1 right?
-        for i in range(n): # walk down a vector
-            if np.isnan(catavg[i]) and np.isnan(v[i]): # both nan
-                continue
-            if np.isnan(v[i]): # new vector is nan, just used old value
-                continue
-            # computed weighted average of two values
-            prev_weight = np.sum(weight_for_refcats[0:j])
-            cur_weight  = weight_for_refcats[j]
-            v_ = v[i] + relative_to_value
-            catavg[i] = (catavg[i] * prev_weight + v_ * cur_weight) / (prev_weight+cur_weight)
 
-    catavg[uniq_refcats[0]] = 0.0 # first refcat always has value 0 (was nan for summation purposes)
-    if verbose: print("final cat avgs", parray3(catavg))
-    return catavg, ignored
-    """
-
-"""
-    # SECOND LOOP SUMS COMBINED VECTORS USING RELATIVE VALUE FROM RUNNING SUM
-    # sums_per_cat is the running sum vector
-    sums_per_cat = avg_for_refcats[0] # init with first ref category (column)
-    ignored = 0
-    cats_with_values_added_to_running_sum = (~np.isnan(avg_for_refcats[0])).astype(int)
-    count_per_cat = cats_with_values_added_to_running_sum * weight_for_refcats[0]
-    if verbose:
-        print(f"{uniq_refcats[0]:-2d} : initial    =",parray(sums_per_cat))
-        print("     weights    =", parray(count_per_cat),"\n")
-    for i in range(1,len(uniq_refcats)):
-        # Compensate for different reference category by adding the value
-        # of this vector's reference category from the running sum
-        cat = uniq_refcats[i]
-        relative_to_value = sums_per_cat[cat]
-        if np.isnan(relative_to_value):
-            ignored += np.sum(~np.isnan(avg_for_refcats[i]))
-            if verbose: print(f"cat {cat} has no value in running sum; ignored={ignored}")
-            continue
-
-        both_not_nan = (~np.isnan(avg_for_refcats[i]) & ~np.isnan(sums_per_cat)).astype(int)
-        weights = both_not_nan * weight_for_refcats[i]
-        prev_weights = both_not_nan * np.sum(weight_for_refcats[0:i])
-
-        adjusted_vec = relative_to_value + avg_for_refcats[i]
-        adjusted_vec = adjusted_vec * zero_as_one(weights)
-        adjusted_vec[cat] = np.nan
-
-        cur_sum = sums_per_cat * zero_as_one(prev_weights)
-
-        cats_with_values_added_to_running_sum = (~np.isnan(adjusted_vec)).astype(int)
-        count_per_cat += cats_with_values_added_to_running_sum
-        # sums_per_cat = nanmerge_vectors(sums_per_cat, adjusted_vec)
-        # Add weighted adjusted vec to current sum, then back to average
-        sums_per_cat = (nanmerge_vectors(cur_sum, adjusted_vec)) / np.sum(weight_for_refcats[0:i+1])
-        if verbose:
-            print(f"{cat:-2d} : vec to add =", parray(avg_for_refcats[i]), f" + {relative_to_value:.2f}")
-            # print("     count      =", parray(cats_with_values_added_to_running_sum * weight_for_refcats[i]))
-            print("     adjusted   =", parray(avg_for_refcats[i]+relative_to_value))
-            print("     weights    =", parray(weights))
-            print("     weighted   =", parray(adjusted_vec))
-            print("     prev wghtd =", parray(cur_sum))
-            print("     new sum    =", parray(nanmerge_vectors(cur_sum, adjusted_vec)))
-            print("     new avg    =", parray(sums_per_cat))
-            print()
-
-    # We've added vectors together for len(uniq_refcats), so get a generic average
-    # avg_per_cat = sums_per_cat / zero_as_one(count_per_cat)
-    avg_per_cat = sums_per_cat / np.sum(weight_for_refcats)
-    avg_per_cat[uniq_refcats[0]] = 0.0 # first refcat always has value 0 (was nan for summation purposes)
-    if verbose: print("final cat avgs", parray3(avg_per_cat))
-    return avg_per_cat, ignored
-    # avg_for_refcats[0][0] = 0.0
-    # return avg_for_refcats[0], ignored
-"""
 
 def plot_catstratpd(X, y,
                     colname,  # X[colname] expected to be numeric codes
@@ -2100,13 +1973,13 @@ def conjure_twoclass(X):
     return X_synth, pd.Series(y_synth)
 
 
-def nanmerge_vectors(a,b,wa=1.0,wb=1.0):
+def nanavg_vectors(a, b, wa=1.0, wb=1.0):
     "Add two vectors a+b but support nan+x==x and nan+nan=nan"
     a_nan = np.isnan(a)
     b_nan = np.isnan(b)
     # both_nan = a_nan & b_nan
     c = a*wa + b*wb # weighted average where both are non-nan
-    c /= (wa+wb) # weighted avg
+    c /= zero_as_one(wa+wb) # weighted avg
     # c = np.where(a_nan, 0, a) * wa + np.where(b_nan, 0, b) * wb
     # if adding nan to nan, leave as nan
     c[a_nan] = b[a_nan]   # copy any stuff where b has only value (unweighted into result)

@@ -4,7 +4,7 @@ figsize = (3.5, 3.0)
 use_oob=False
 metric = mean_absolute_error
 n = 25_000
-model='RF' # ('RF','SVM','GBM')
+model='GBM' # ('RF','SVM','GBM')
 
 X, y, _ = load_flights(n=n)
 
@@ -18,10 +18,11 @@ R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
                          kfolds=1,
                          model=model,
                          metric=mean_absolute_error,
-                         stratpd_min_samples_leaf=5,
+                         stratpd_min_samples_leaf=10,
                          stratpd_cat_min_samples_leaf=3,
                          use_oob=use_oob,
                          imp_n_trials=3,
+                         normalize=False,
                          top_features_range=(1, 8),
                          drop=['Spearman','PCA'])
 

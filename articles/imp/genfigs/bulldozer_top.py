@@ -1,10 +1,13 @@
 from support import *
+import numpy as np
 
 figsize = (3.5, 3.0)
 use_oob=False
 metric = mean_absolute_error
 n = 25_000
-model='RF' # ('RF','SVM','GBM')
+model='GBM' # ('RF','SVM','GBM')
+
+# np.seterr(divide='raise')
 
 X, y = load_bulldozer()
 
@@ -22,11 +25,13 @@ R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
                                       #'ProductSize'
                                       },
                          metric=metric,
+                         density_weighted=True,
                          use_oob=use_oob,
                          kfolds=1,
                          imp_n_trials=3,
                          model=model,
-                         stratpd_min_samples_leaf=5,
+                         stratpd_min_samples_leaf=10,
+                         stratpd_cat_min_samples_leaf=3,
                          # min_slopes_per_x=8,
                          top_features_range=(1, 8),
                          #include=['StratImpact']
