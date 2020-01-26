@@ -226,7 +226,7 @@ def test_3_leaves_with_disconnected_2nd_leaf_followed_by_leaf_conn_to_first_leaf
     # print("leaf_deltas\n",leaf_deltas)
     leaf_counts = (~np.isnan(leaf_deltas)).astype(int)
     refcats = np.array([0,2,3])
-    avg_per_cat, ignored = avg_values_at_cat(leaf_deltas, leaf_counts, refcats)
+    avg_per_cat, ignored = avg_values_at_cat(leaf_deltas, leaf_counts, refcats, verbose=True)
     expected = np.array([0, 1, np.nan, np.nan, np.nan, 4, 5])
     np.testing.assert_array_almost_equal(avg_per_cat, expected, decimal=2)
     assert ignored==3

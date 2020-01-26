@@ -1101,6 +1101,10 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
     leaf_counts = np.zeros(shape=(max_catcode+1, len(leaves)), dtype=int)
     refcats = np.empty(shape=(len(leaves),), dtype=int)
 
+    # leaf_deltas = []
+    # leaf_counts = []
+    # refcats = []
+
     uniq_cats, cat_counts = np.unique(X_col, return_counts=True)
     # print(list(cat_counts))
 
@@ -1134,6 +1138,7 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
         if len(uniq_leaf_cats) < 2:
             # print(f"ignoring {len(sample)} obs for {len(avg_y_per_cat)} cat(s) in leaf")
             ignored += len(sample)
+            refcats[leaf_i] = -1 # cat codes are assumed to be positive integers
             continue
 
         if USE_MOST_COMMON_REFCAT:
@@ -1167,6 +1172,11 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
         leaf_deltas[uniq_leaf_cats, leaf_i] = delta_y_per_cat
         leaf_counts[uniq_leaf_cats, leaf_i] = count_leaf_cats
 
+    # refcat[i]=-1 for all leaves i we ignored so remove those and return
+    keep_leaves_idxs = np.where(refcats>=0)[0]
+    leaf_deltas = leaf_deltas[:,keep_leaves_idxs]
+    leaf_counts = leaf_counts[:,keep_leaves_idxs]
+    refcats = refcats[keep_leaves_idxs]
     return leaf_deltas, leaf_counts, refcats, ignored
 
 
@@ -1424,7 +1434,7 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=2, verbose=Fal
         # hmm..couldn't merge some vectors; total up the samples we ignored
         for j in work:
             merge_ignored += weight_for_refcats[j]
-        #print(f"cats {uniq_refcats[list(work)]} couldn't be merged into running sum; ignored={merge_ignored}")
+        print(f"cats {uniq_refcats[list(work)]} couldn't be merged into running sum; ignored={merge_ignored}")
         if verbose: print(f"cats {uniq_refcats[list(work)]} couldn't be merged into running sum; ignored={merge_ignored}")
 
     if verbose: print("final cat avgs", parray3(catavg))

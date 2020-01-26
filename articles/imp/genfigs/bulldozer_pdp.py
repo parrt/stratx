@@ -16,7 +16,8 @@ import matplotlib.pyplot as plt
 
 np.set_printoptions(precision=2, suppress=True, linewidth=300, threshold=2000)
 
-n = 30000
+np.random.seed(2)
+n = 3000
 
 X, y = load_bulldozer()
 
