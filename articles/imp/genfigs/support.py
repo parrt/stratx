@@ -20,6 +20,8 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.datasets import load_boston
 from pandas.api.types import is_string_dtype, is_object_dtype, is_categorical_dtype, is_bool_dtype
 from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn import linear_model
 
 import xgboost as xgb
 from sklearn import svm
@@ -150,7 +152,7 @@ def shap_importances(model, X_train, X_test, n_shap, normalize=True, sort=True):
     return shapI
 
 
-def cv_features(X, y, features, metric, time_sensitive=False, kfolds=5, model='RF'):
+def cv_features(X, y, features, metric, catcolnames=None, time_sensitive=False, kfolds=5, model='RF'):
     # if time_sensitive:
     #     n_test = int(0.20 * len(X))
     #     n_train = len(X) - n_test
@@ -173,7 +175,29 @@ def cv_features(X, y, features, metric, time_sensitive=False, kfolds=5, model='R
             y_pred = m.predict(X_test[features])
             s = metric(y_test, y_pred)
         elif model == 'GBM':
-            m = xgb.XGBRegressor(objective='reg:squarederror')
+            m = xgb.XGBRegressor(objective='reg:squarederror',
+                                 learning_rate=0.7, # default is 1
+                                 max_depth=4, # default is 3
+                                 n_estimators=100 # default is 100
+                                 )
+            m.fit(X_train[features], y_train)
+            y_pred = m.predict(X_test[features])
+            s = metric(y_test, y_pred)
+        elif model == 'OLS':
+            if catcolnames is not None:
+                # TODO: this is broken: doesn't apply training cats to X_test
+                X_train = todummies(X_train[features], features, catcolnames)
+                X_test = todummies(X_test[features], features, catcolnames)
+            else:
+                X_train = X_train[features]
+                X_test = X_test[features]
+
+            m = LinearRegression()
+            m.fit(X_train, y_train)
+            y_pred = m.predict(X_test)
+            s = metric(y_test, y_pred)
+        elif model == 'Lasso':
+            m = Lasso(normalize=True)
             m.fit(X_train[features], y_train)
             y_pred = m.predict(X_test[features])
             s = metric(y_test, y_pred)
@@ -182,6 +206,22 @@ def cv_features(X, y, features, metric, time_sensitive=False, kfolds=5, model='R
         scores.append(s)
 
     return np.array(scores)
+
+
+def todummies(X, features, catcolnames):
+    df = pd.DataFrame(X, columns=features)
+    converted = set()
+    for cat in catcolnames:
+        if cat in features:
+            df[cat] = df[cat].astype('category').cat.as_ordered()
+            converted.add(cat)
+    if len(converted)>0:
+        dummies = pd.get_dummies(df)
+        X = pd.concat([df, dummies], axis=1)
+        X = X.drop(converted, axis=1)
+        X = X.values
+
+    return X
 
 
 def compare_top_features(X, y, top_features_range=None,
@@ -272,7 +312,8 @@ def compare_top_features(X, y, top_features_range=None,
             # print(f"Train with {features} from {technique_name}")
             # Train RF model with top-k features
             # Do 5-fold cross validation using original X, y passed in to this method
-            scores = cv_features(X, y, features, metric=metric, kfolds=kfolds, model=model)
+            scores = cv_features(X, y, features, metric=metric, kfolds=kfolds, model=model,
+                                 catcolnames=catcolnames)
             results.append(np.mean(scores))
             stddevs.append(np.std(scores))
             # print(f"{technique_name} valid R^2 {s:.3f}")

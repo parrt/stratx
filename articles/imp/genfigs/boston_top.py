@@ -2,7 +2,7 @@ from support import *
 
 figsize = (3.5, 3.0)
 use_oob=False
-model='RF' # ('RF','SVM','GBM')
+model='OLS' # ('RF','SVM','GBM','OLS','Lasso')
 
 boston = load_boston()
 X = pd.DataFrame(boston.data, columns=boston.feature_names)

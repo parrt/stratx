@@ -5,7 +5,7 @@ figsize = (3.5, 3.0)
 use_oob=False
 metric = mean_absolute_error
 n = 25_000
-model='GBM' # ('RF','SVM','GBM')
+model='GBM' # ('RF','SVM','GBM','OLS','Lasso')
 
 # np.seterr(divide='raise')
 

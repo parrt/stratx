@@ -1227,7 +1227,7 @@ def cat_partial_dependence(X, y,
     return leaf_deltas, avg_per_cat, ignored, merge_ignored
 
 
-def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, verbose=False):
+def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=2, verbose=False):
     """
     In leaf_deltas, we have information from the leaves indicating how much
     above or below each category was from the reference category of that leaf.
@@ -1384,9 +1384,9 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, verbose=False):
     merge_ignored = 0
     work = set(range(1,len(uniq_refcats)))
     completed = {-1} # init to any nonempty set to enter loop
-    passnum = 1
-    while len(work)>0 and len(completed)>0:
-        print(f"PASS {passnum} len(work)", len(work))
+    iteration = 1
+    while len(work)>0 and len(completed)>0 and iteration<=max_iter:
+        print(f"PASS {iteration} len(work)", len(work))
         completed = set()
         for j in work:      # for each refcat, avg in the vectors
             cat = uniq_refcats[j]
@@ -1417,13 +1417,14 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, verbose=False):
                 print("     new avg    =", parray(catavg))
                 print()
             completed.add(j)
-        passnum += 1
+        iteration += 1
         work = work - completed
 
     if len(work)>0:
         # hmm..couldn't merge some vectors; total up the samples we ignored
         for j in work:
             merge_ignored += weight_for_refcats[j]
+        #print(f"cats {uniq_refcats[list(work)]} couldn't be merged into running sum; ignored={merge_ignored}")
         if verbose: print(f"cats {uniq_refcats[list(work)]} couldn't be merged into running sum; ignored={merge_ignored}")
 
     if verbose: print("final cat avgs", parray3(catavg))
