@@ -159,7 +159,7 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
         # print(f"Start {colname}")
         X_col = X[colname]
         if colname in catcolnames:
-            leaf_deltas, avg_per_cat, ignored, merge_ignored = \
+            leaf_deltas, leaf_counts, avg_per_cat, ignored, merge_ignored = \
                 cat_partial_dependence(X, y, colname=colname,
                                        n_trees=n_trees,
                                        min_samples_leaf=cat_min_samples_leaf,

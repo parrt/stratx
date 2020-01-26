@@ -1232,13 +1232,13 @@ def cat_partial_dependence(X, y,
             merge_ignored = 0
             # slope_counts_at_cat = leaf_histos.shape[1] - np.isnan(leaf_histos).sum(axis=1)
     else:
-        avg_per_cat, merge_ignored = \
+        avg_per_cat, merge_ignored, unprocessed_leaf_idxs = \
             avg_values_at_cat(leaf_deltas, leaf_counts, refcats, verbose=verbose)
 
     if verbose:
         print(f"CatStratPD Num samples ignored {ignored} for {colname}")
 
-    return leaf_deltas, avg_per_cat, ignored, merge_ignored
+    return leaf_deltas, leaf_counts, avg_per_cat, ignored, merge_ignored
 
 
 def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=2, verbose=False):
@@ -1442,7 +1442,7 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=2, verbose=Fal
         if verbose: print(f"cats {uniq_refcats[list(work)]} couldn't be merged into running sum; ignored={merge_ignored}")
 
     if verbose: print("final cat avgs", parray3(catavg))
-    return catavg, merge_ignored
+    return catavg, merge_ignored, work
 
 
 def plot_catstratpd(X, y,
@@ -1535,7 +1535,7 @@ def plot_catstratpd(X, y,
         else:
             X_, y_ = X, y
 
-        leaf_deltas, avg_per_cat, ignored_, merge_ignored_ = \
+        leaf_deltas, leaf_counts, avg_per_cat, ignored_, merge_ignored_ = \
             cat_partial_dependence(X_, y_,
                                    max_catcode=np.max(X_col),
                                    colname=colname,
