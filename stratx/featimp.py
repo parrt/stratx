@@ -220,7 +220,7 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                     avg_abs_pdp = np.mean(np.abs(pdpy))
             else:
                 avg_abs_pdp = np.mean(np.abs(pdpy))
-        # print(f"{colname}:{avg_abs_pdp:.3f} mass")
+        print(f"{colname}:{avg_abs_pdp:.3f} mass")
         # print(f"Stop {colname}")
         return avg_abs_pdp
 

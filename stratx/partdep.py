@@ -621,9 +621,13 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
 
     if show_xlabel:
         xl = colname
-        # impact = np.sum(np.abs(pdpy * pdpx_counts)) / np.sum(pdpx_counts)
         impact = np.mean(np.abs(pdpy))
-        xl += f" (Impact {impact:.2f})"
+        if len(pdpx_counts) > 0:
+            # weighted average of pdpy using pdpx_counts
+            weighted_impact = np.sum(np.abs(pdpy * pdpx_counts)) / np.sum(pdpx_counts)
+        else:
+            weighted_impact = impact
+        xl += f" (Impact {impact:.2f}, weighted {weighted_impact:.2f})"
         ax.set_xlabel(xl, fontsize=label_fontsize, fontname=fontname)
     if show_ylabel:
         ax.set_ylabel(targetname, fontsize=label_fontsize, fontname=fontname)
@@ -1431,10 +1435,10 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=2, verbose=Fal
         work = work - completed
 
     if len(work)>0:
+        print(f"Left {len(work)} leaves in work list")
         # hmm..couldn't merge some vectors; total up the samples we ignored
         for j in work:
             merge_ignored += weight_for_refcats[j]
-        print(f"cats {uniq_refcats[list(work)]} couldn't be merged into running sum; ignored={merge_ignored}")
         if verbose: print(f"cats {uniq_refcats[list(work)]} couldn't be merged into running sum; ignored={merge_ignored}")
 
     if verbose: print("final cat avgs", parray3(catavg))

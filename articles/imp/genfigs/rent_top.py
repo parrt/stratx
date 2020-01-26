@@ -6,7 +6,7 @@ n = 25_000
 metric = mean_absolute_error
 model='GBM' # ('RF','SVM','GBM','OLS','Lasso')
 
-np.random.seed(999) # set for testing effects
+# np.random.seed(999) # set for testing effects
 
 X, y = load_rent(n=n)
 

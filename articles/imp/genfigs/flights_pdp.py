@@ -30,7 +30,7 @@ np.set_printoptions(precision=2, suppress=True, linewidth=300)#, threshold=1e10)
 
 #np.random.seed(999)
 
-n=25_000
+n=20_000
 #r = (500,600)
 # r = (0,500)
 _, _, df_flights = load_flights(n=n)
@@ -40,18 +40,32 @@ X, y = df_flights.drop('ARRIVAL_DELAY', axis=1), df_flights['ARRIVAL_DELAY']
 
 print(f"Avg arrival delay {df_flights['ARRIVAL_DELAY'].mean()}")
 
-col = 'DEPARTURE_TIME'
-col = 'SCHEDULED_DEPARTURE'
-col = 'FLIGHT_NUMBER'
-col = 'TAXI_OUT'
+I = importances(X, y,
+                catcolnames={'AIRLINE',
+                             'ORIGIN_AIRPORT',
+                             'DESTINATION_AIRPORT',
+                             'FLIGHT_NUMBER',
+                             'DAY_OF_WEEK'},
+                n_trials=5,
+                normalize=False,
+                density_weighted=True,
+                min_samples_leaf=10,
+                cat_min_samples_leaf=3)
+print(I)
 
-plot_stratpd(X, y, colname='DEPARTURE_TIME', targetname='delay',
+col = 'FLIGHT_NUMBER'
+col = 'SCHEDULED_DEPARTURE'
+col = 'TAXI_OUT'
+col = 'DEPARTURE_TIME'
+
+plot_stratpd(X, y, colname=col, targetname='delay',
              min_samples_leaf=5,
              n_trials=3,
              show_slope_lines=False,
              show_impact=False)
              # yrange=(-10,100))
 plt.tight_layout()
+plt.savefig(f"/Users/parrt/Desktop/flight-{col}-out.pdf", pad_inches=0)
 plt.show()
 
 # uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored = \
