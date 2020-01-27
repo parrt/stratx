@@ -20,16 +20,20 @@ import matplotlib.pyplot as plt
 # X, y = load_rent(n=30_000)
 
 if True:
-    n=25_000
+    n=20_000
     _, _, df_flights = load_flights(n=n)
     X, y = df_flights.drop('ARRIVAL_DELAY', axis=1), df_flights['ARRIVAL_DELAY']
-    I = importances(X, y, n_trials=5, min_samples_leaf=5, pvalues=True, n_pvalue_trials=50, n_jobs=1,
+    I = importances(X, y, n_trials=5,
+                    pvalues=True, n_pvalue_trials=50, n_jobs=1,
                     catcolnames={'AIRLINE',
                                  'ORIGIN_AIRPORT',
                                  'DESTINATION_AIRPORT',
                                  'FLIGHT_NUMBER',
                                  'DAY_OF_WEEK'},
-                    normalize=False)
+                    normalize=False,
+                    density_weighted=True,
+                    min_samples_leaf=10,
+                    cat_min_samples_leaf=2)
     # I = impact_importances(X, y, stddev=True, n_stddev_trials=5, pvalues=True, n_pvalue_trials=5)
     print(I)
 
