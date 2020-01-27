@@ -14,6 +14,18 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+def get_leaves(X, y, colname):
+    X_not_col = X.drop(colname, axis=1).values
+    rf = RandomForestRegressor(n_estimators=1,
+                               min_samples_leaf=2,
+                               bootstrap=False,
+                               max_features=1.0,
+                               oob_score=False)
+    rf.fit(X_not_col, y)
+    leaves = leaf_samples(rf, X_not_col)
+    return leaves
+
+
 def stratify_cats(X, y,
                   colname,  # X[colname] expected to be numeric codes
                   max_catcode=None,

@@ -67,7 +67,7 @@ def leaf_samples(rf, X_not_col:np.ndarray):
     for t in range(n_trees):
         # Group by id and return sample indexes
         uniq_ids = np.unique(leaf_ids[:,t])
-        sample_idxs_in_leaves = [np.where(leaf_ids[:, t] == id) for id in uniq_ids]
+        sample_idxs_in_leaves = [np.where(leaf_ids[:, t] == id)[0] for id in uniq_ids]
         leaf_samples.extend(sample_idxs_in_leaves)
     return leaf_samples
 
