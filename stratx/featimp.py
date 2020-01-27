@@ -55,7 +55,7 @@ def importances(X: pd.DataFrame,
                 y: pd.Series,
                 catcolnames=set(),
                 normalize=True,  # make imp values 0..1
-                density_weighted=False,
+                density_weighted=True,
                 supervised=True,
                 n_jobs=1,
                 sort=True,  # sort by importance in descending order?
@@ -72,7 +72,6 @@ def importances(X: pd.DataFrame,
     if not isinstance(X, pd.DataFrame):
         raise ValueError("Can only operate on dataframes at the moment")
 
-    resample_with_replacement = n_trials>1
     n,p = X.shape
     imps = np.zeros(shape=(p, n_trials))
     # track p var importances for ntrials; cols are trials
@@ -80,8 +79,8 @@ def importances(X: pd.DataFrame,
         if n_trials==1: # don't shuffle if not bootstrapping
             bootstrap_sample_idxs = range(n)
         else:
-            bootstrap_sample_idxs = resample(range(n), n_samples=n,
-                                             replace=resample_with_replacement)
+            # bootstrap_sample_idxs = resample(range(n), n_samples=n, replace=True)
+            bootstrap_sample_idxs = resample(range(n), n_samples=int(n*.75), replace=False)
         X_, y_ = X.iloc[bootstrap_sample_idxs], y.iloc[bootstrap_sample_idxs]
         I = importances_(X_, y_, catcolnames=catcolnames,
                          normalize=normalize,
@@ -141,7 +140,7 @@ def importances(X: pd.DataFrame,
 
 def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                  normalize=True,
-                 density_weighted=False,
+                 density_weighted=True,
                  supervised=True,
                  n_jobs=1,
                  n_trees=1,
@@ -159,7 +158,7 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
         # print(f"Start {colname}")
         X_col = X[colname]
         if colname in catcolnames:
-            leaf_deltas, leaf_counts, avg_per_cat, ignored, merge_ignored = \
+            leaf_deltas, leaf_counts, avg_per_cat, count_per_cat, ignored, merge_ignored = \
                 cat_partial_dependence(X, y, colname=colname,
                                        n_trees=n_trees,
                                        min_samples_leaf=cat_min_samples_leaf,
@@ -168,11 +167,9 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                                        verbose=verbose,
                                        supervised=supervised)
             if density_weighted:
-                # group by cat and get count
-                abs_avg_per_cat = np.abs(avg_per_cat[~np.isnan(avg_per_cat)])
-                uniq_cats = np.where(~np.isnan(avg_per_cat))[0]
-                cat_counts = [len(np.where(X_col == cat)[0]) for cat in uniq_cats]
-                avg_abs_pdp = np.sum(abs_avg_per_cat * cat_counts) / np.sum(cat_counts)
+                # weight each cat value by how many were used to create it
+                abs_avg_per_cat = np.abs(avg_per_cat)
+                avg_abs_pdp = np.nansum(abs_avg_per_cat * count_per_cat) / np.sum(count_per_cat)
             else:
                 # some cats have NaN, such as 0th which is often for "missing values"
                 # depending on label encoding scheme.

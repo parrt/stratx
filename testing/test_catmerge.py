@@ -96,10 +96,10 @@ def test_single_leaf():
     ])
     leaf_counts = np.array([1,1,1,0,1]).reshape(-1,1)
     refcats = np.array([0])
-    avg_per_cat, ignored, unprocessed_leaf_idxs = avg_values_at_cat(leaf_deltas, leaf_counts, refcats)
+    avg_per_cat, count_per_cat, merge_ignored = avg_values_at_cat(leaf_deltas, leaf_counts, refcats)
     expected = np.array([0, 1, 2, np.nan, 0])
     np.testing.assert_array_almost_equal(avg_per_cat, expected, decimal=2)
-    assert ignored==0
+    assert merge_ignored==0
 
 
 def test_two_leaves_with_one_refcat():
@@ -115,10 +115,10 @@ def test_two_leaves_with_one_refcat():
     # print("leaf_deltas\n",leaf_deltas)
     leaf_counts = (~np.isnan(leaf_deltas)).astype(int)
     refcats = np.array([0,0])
-    avg_per_cat, ignored, unprocessed_leaf_idxs = avg_values_at_cat(leaf_deltas, leaf_counts, refcats)
+    avg_per_cat, count_per_cat, merge_ignored = avg_values_at_cat(leaf_deltas, leaf_counts, refcats)
     expected = np.array([0,  3,  2.5, 2,  0,  np.nan])
     np.testing.assert_array_almost_equal(avg_per_cat, expected, decimal=2)
-    assert ignored==0
+    assert merge_ignored==0
 
 
 def test_two_leaves_with_two_refcats():
@@ -134,10 +134,10 @@ def test_two_leaves_with_two_refcats():
     # print("leaf_deltas\n",leaf_deltas)
     leaf_counts = (~np.isnan(leaf_deltas)).astype(int)
     refcats = np.array([0,1])
-    avg_per_cat, ignored, unprocessed_leaf_idxs = avg_values_at_cat(leaf_deltas, leaf_counts, refcats)
+    avg_per_cat, count_per_cat, merge_ignored = avg_values_at_cat(leaf_deltas, leaf_counts, refcats)
     expected = np.array([0, 1, 3, 3, 0, np.nan])
     np.testing.assert_array_almost_equal(avg_per_cat, expected, decimal=2)
-    assert ignored==0
+    assert merge_ignored==0
 
 
 def test_two_leaves_with_non_0_and_1_catcodes():
@@ -156,10 +156,10 @@ def test_two_leaves_with_non_0_and_1_catcodes():
     # print("leaf_deltas\n",leaf_deltas)
     leaf_counts = (~np.isnan(leaf_deltas)).astype(int)
     refcats = np.array([2,4])
-    avg_per_cat, ignored, unprocessed_leaf_idxs = avg_values_at_cat(leaf_deltas, leaf_counts, refcats)
+    avg_per_cat, count_per_cat, merge_ignored = avg_values_at_cat(leaf_deltas, leaf_counts, refcats)
     expected = np.array([np.nan, np.nan, 0, 5, 1, 3, 8, 0, np.nan])
     np.testing.assert_array_almost_equal(avg_per_cat, expected, decimal=2)
-    assert ignored==0
+    assert merge_ignored==0
 
 
 def test_two_leaves_with_disconnected_2nd_leaf():
@@ -178,10 +178,10 @@ def test_two_leaves_with_disconnected_2nd_leaf():
     # print("leaf_deltas\n",leaf_deltas)
     leaf_counts = (~np.isnan(leaf_deltas)).astype(int)
     refcats = np.array([0,3])
-    avg_per_cat, ignored, unprocessed_leaf_idxs = avg_values_at_cat(leaf_deltas, leaf_counts, refcats)
+    avg_per_cat, count_per_cat, merge_ignored = avg_values_at_cat(leaf_deltas, leaf_counts, refcats)
     expected = np.array([0, 1, 2, np.nan, np.nan])
     np.testing.assert_array_almost_equal(avg_per_cat, expected, decimal=2)
-    assert ignored==2
+    assert merge_ignored==2
 
 
 def test_3_leaves_with_disconnected_2nd_leaf_followed_by_leaf_conn_to_disconnected_leaf():
@@ -202,10 +202,10 @@ def test_3_leaves_with_disconnected_2nd_leaf_followed_by_leaf_conn_to_disconnect
     # print("leaf_deltas\n",leaf_deltas)
     leaf_counts = (~np.isnan(leaf_deltas)).astype(int)
     refcats = np.array([0,2,3])
-    avg_per_cat, ignored, unprocessed_leaf_idxs = avg_values_at_cat(leaf_deltas, leaf_counts, refcats)
+    avg_per_cat, count_per_cat, merge_ignored = avg_values_at_cat(leaf_deltas, leaf_counts, refcats)
     expected = np.array([0, 1, np.nan, np.nan, np.nan, 4, 5])
     np.testing.assert_array_almost_equal(avg_per_cat, expected, decimal=2)
-    assert ignored==5
+    assert merge_ignored==5
 
 
 def test_3_leaves_with_disconnected_2nd_leaf_followed_by_leaf_conn_to_first_leaf():
@@ -226,10 +226,10 @@ def test_3_leaves_with_disconnected_2nd_leaf_followed_by_leaf_conn_to_first_leaf
     # print("leaf_deltas\n",leaf_deltas)
     leaf_counts = (~np.isnan(leaf_deltas)).astype(int)
     refcats = np.array([0,2,3])
-    avg_per_cat, ignored, unprocessed_leaf_idxs = avg_values_at_cat(leaf_deltas, leaf_counts, refcats, verbose=True)
+    avg_per_cat, count_per_cat, merge_ignored = avg_values_at_cat(leaf_deltas, leaf_counts, refcats, verbose=True)
     expected = np.array([0, 1, np.nan, np.nan, np.nan, 4, 5])
     np.testing.assert_array_almost_equal(avg_per_cat, expected, decimal=2)
-    assert ignored==3
+    assert merge_ignored==3
 
 
 def test_4state_temperature():
@@ -252,11 +252,11 @@ def test_4state_temperature():
     """
     leaf_deltas, leaf_counts, refcats, ignored = stratify_cats(X,y,colname="state",min_samples_leaf=3)
 
-    avg_per_cat, ignored, unprocessed_leaf_idxs = avg_values_at_cat(leaf_deltas, leaf_counts, refcats)
+    avg_per_cat, count_per_cat, merge_ignored = avg_values_at_cat(leaf_deltas, leaf_counts, refcats)
     print(avg_per_cat)
     expected = np.array([-13.29, -38.19, 5.78, 0])
     np.testing.assert_array_almost_equal(avg_per_cat, expected)
-    assert ignored==0
+    assert merge_ignored==0
 
 
 def test_temperature():
@@ -286,7 +286,7 @@ def test_temperature():
 
     leaf_deltas, leaf_counts, refcats, ignored = stratify_cats(X,y,colname="state",min_samples_leaf=5)
 
-    avg_per_cat, ignored, unprocessed_leaf_idxs = avg_values_at_cat(leaf_deltas, leaf_counts, refcats)
+    avg_per_cat, count_per_cat, merge_ignored = avg_values_at_cat(leaf_deltas, leaf_counts, refcats)
     expected = np.array([7.17, -19.48, 10.59, 4.26, 3.79, -8.52, -4.78, 0])
     np.testing.assert_array_almost_equal(avg_per_cat, expected, decimal=2)
-    assert ignored==0
+    assert merge_ignored==0

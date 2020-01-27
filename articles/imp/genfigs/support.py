@@ -239,7 +239,7 @@ def compare_top_features(X, y, top_features_range=None,
                          min_slopes_per_x=5,
                          catcolnames=set(),
                          normalize=True,
-                         density_weighted=False,
+                         density_weighted=True,
                          supervised=True,
                          include=['Spearman', 'PCA', 'OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact'],
                          drop=()):
@@ -360,7 +360,7 @@ def get_multiple_imps(X_train, y_train, X_test, y_test, n_shap=300, n_estimators
                       supervised=True,
                       include=['Spearman', 'PCA', 'OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact'],
                       normalize=True,
-                      density_weighted=False):
+                      density_weighted=True):
     spear_I = pca_I = ols_I = ols_shap_I = rf_I = perm_I = ours_I = None
 
     if 'Spearman' in include:

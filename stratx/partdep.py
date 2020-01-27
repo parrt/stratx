@@ -466,7 +466,8 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         # idxs = resample(range(n), n_samples=n, replace=True) # bootstrap
         if n_trials>1:
             # idxs = resample(range(n), n_samples=int(n * 2 / 3), replace=False)  # subset
-            idxs = resample(range(n), n_samples=n, replace=True)
+            # idxs = resample(range(n), n_samples=n, replace=True)
+            idxs = resample(range(n), n_samples=int(n*.75), replace=False)
             X_, y_ = X.iloc[idxs], y.iloc[idxs]
         else:
             X_, y_ = X, y
@@ -1226,22 +1227,23 @@ def cat_partial_dependence(X, y,
 
     USE_MEAN_Y=False
     if USE_MEAN_Y:
+        count_per_cat = None
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=RuntimeWarning)
             avg_per_cat = np.nanmean(leaf_deltas, axis=1)
             merge_ignored = 0
             # slope_counts_at_cat = leaf_histos.shape[1] - np.isnan(leaf_histos).sum(axis=1)
     else:
-        avg_per_cat, merge_ignored, unprocessed_leaf_idxs = \
+        avg_per_cat, count_per_cat, merge_ignored = \
             avg_values_at_cat(leaf_deltas, leaf_counts, refcats, verbose=verbose)
 
     if verbose:
         print(f"CatStratPD Num samples ignored {ignored} for {colname}")
 
-    return leaf_deltas, leaf_counts, avg_per_cat, ignored, merge_ignored
+    return leaf_deltas, leaf_counts, avg_per_cat, count_per_cat, ignored, merge_ignored
 
 
-def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=2, verbose=False):
+def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose=False):
     """
     In leaf_deltas, we have information from the leaves indicating how much
     above or below each category was from the reference category of that leaf.
@@ -1442,8 +1444,7 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=2, verbose=Fal
         if verbose: print(f"cats {uniq_refcats[list(work)]} couldn't be merged into running sum; ignored={merge_ignored}")
 
     if verbose: print("final cat avgs", parray3(catavg))
-    return catavg, merge_ignored, work
-
+    return catavg, catavg_weight, merge_ignored # last one is count of values per cat actually incorporated
 
 def plot_catstratpd(X, y,
                     colname,  # X[colname] expected to be numeric codes
@@ -1479,7 +1480,7 @@ def plot_catstratpd(X, y,
                     barchart_size=0.20,
                     barchar_alpha=0.9,
                     ticklabel_fontsize=10,
-                    min_y_shifted_to_zero=True,
+                    min_y_shifted_to_zero=False,
                     # easier to read if values are relative to 0 (usually); do this for high cardinality cat vars
                     show_xlabel=True,
                     show_xticks=True,
@@ -1523,6 +1524,7 @@ def plot_catstratpd(X, y,
         return m
 
     impacts = []
+    weighted_impacts = []
     all_avg_per_cat = []
     ignored = 0
     merge_ignored = 0
@@ -1530,12 +1532,13 @@ def plot_catstratpd(X, y,
         # idxs = resample(range(n), n_samples=n, replace=True) # bootstrap
         if n_trials>1:
             # idxs = resample(range(n), n_samples=int(n*2/3), replace=False) # subset
-            idxs = resample(range(n), n_samples=n, replace=True)
+            # idxs = resample(range(n), n_samples=n, replace=True)
+            idxs = resample(range(n), n_samples=int(n*.75), replace=False)
             X_, y_ = X.iloc[idxs], y.iloc[idxs]
         else:
             X_, y_ = X, y
 
-        leaf_deltas, leaf_counts, avg_per_cat, ignored_, merge_ignored_ = \
+        leaf_deltas, leaf_counts, avg_per_cat, count_per_cat, ignored_, merge_ignored_ = \
             cat_partial_dependence(X_, y_,
                                    max_catcode=np.max(X_col),
                                    colname=colname,
@@ -1544,7 +1547,12 @@ def plot_catstratpd(X, y,
                                    max_features=max_features,
                                    bootstrap=False,
                                    verbose=verbose)
-        impacts.append( np.nanmean(np.abs(avg_per_cat)) )
+        # compute regular impact
+        abs_avg_per_cat = np.abs(avg_per_cat)
+        impacts.append( np.nanmean(abs_avg_per_cat) )
+        # weight by counter_per_cat
+        weighted_impact = np.nansum(abs_avg_per_cat * count_per_cat) / np.sum(count_per_cat)
+        weighted_impacts.append(weighted_impact)
         if min_y_shifted_to_zero:
             avg_per_cat -= np.nanmin(avg_per_cat)
         ignored += ignored_
@@ -1560,8 +1568,9 @@ def plot_catstratpd(X, y,
     # impacts = [np.nanmean(np.abs(all_avg_per_cat[i])) for i in range(n_trials)]
     impact_order = np.argsort(impacts)
     print("impacts", impacts)
-    avg_impact = np.nanmean(np.abs(combined_avg_per_cat))
-    print("avg impact", avg_impact)
+    print("weighted impacts", weighted_impacts)
+    print("avg impact", np.mean(impacts))
+    print("avg weighted impact", np.mean(weighted_impacts))
 
     cmap = plt.get_cmap('coolwarm')
     colors=cmap(np.linspace(0, 1, num=n_trials))
@@ -1604,13 +1613,6 @@ def plot_catstratpd(X, y,
             xloc += 1
         # Show combined cat values if more than one trials
         ax.plot(range(len(uniq_catcodes)), avg_delta, '.', c='k', markersize=pdp_marker_size + 1)
-
-    if show_impact:
-        ax.text(0.5, .94, f"Impact {avg_impact:.2f}",
-                horizontalalignment='center',
-                fontsize=label_fontsize, fontname=fontname,
-                transform=ax.transAxes,
-                color=impact_color)
 
     leave_room_scaler = 1.3
 
@@ -1669,7 +1671,8 @@ def plot_catstratpd(X, y,
         ax.set_xticklabels([])
 
     if show_xlabel:
-        ax.set_xlabel(colname, fontsize=label_fontsize, fontname=fontname)
+        label = colname+f" (Impact {np.mean(impacts):.1f}, weighted {np.mean(weighted_impacts):.1f})"
+        ax.set_xlabel(label, fontsize=label_fontsize, fontname=fontname)
     if show_ylabel:
         ax.set_ylabel(targetname, fontsize=label_fontsize, fontname=fontname)
     if title is not None:

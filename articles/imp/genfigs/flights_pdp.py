@@ -50,22 +50,33 @@ I = importances(X, y,
                 normalize=False,
                 density_weighted=True,
                 min_samples_leaf=10,
-                cat_min_samples_leaf=3)
+                cat_min_samples_leaf=2)
 print(I)
 
-col = 'FLIGHT_NUMBER'
 col = 'SCHEDULED_DEPARTURE'
 col = 'TAXI_OUT'
+col = 'ORIGIN_AIRPORT'
+col = 'FLIGHT_NUMBER'
 col = 'DEPARTURE_TIME'
 
-plot_stratpd(X, y, colname=col, targetname='delay',
-             min_samples_leaf=5,
-             n_trials=3,
-             show_slope_lines=False,
-             show_impact=False)
-             # yrange=(-10,100))
+# plot_stratpd(X, y, colname=col, targetname='delay',
+#              show_slope_lines=False,
+#              min_samples_leaf=10,
+#              n_trials=5,
+#              show_impact=False,
+#              show_x_counts=True,
+#              min_slopes_per_x=1
+#              )
+
+col = 'FLIGHT_NUMBER'
+plot_catstratpd(X, y, colname=col, targetname='delay',
+                min_samples_leaf=2,
+                n_trials=5,
+                show_xticks=False,
+                show_impact=True,
+                yrange=(-150,150))
 plt.tight_layout()
-plt.savefig(f"/Users/parrt/Desktop/flight-{col}-out.pdf", pad_inches=0)
+plt.savefig(f"/Users/parrt/Desktop/flight-{col}.pdf", pad_inches=0)
 plt.show()
 
 # uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored = \
