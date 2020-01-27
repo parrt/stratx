@@ -1179,6 +1179,7 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
         leaf_counts[uniq_leaf_cats, leaf_i] = count_leaf_cats
 
     # refcat[i]=-1 for all leaves i we ignored so remove those and return
+    # See unit test test_catwise_leaves:test_two_leaves_with_2nd_ignored()
     keep_leaves_idxs = np.where(refcats>=0)[0]
     leaf_deltas = leaf_deltas[:,keep_leaves_idxs]
     leaf_counts = leaf_counts[:,keep_leaves_idxs]
