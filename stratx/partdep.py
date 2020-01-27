@@ -1157,6 +1157,7 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
             delta_y_per_cat = avg_y_per_cat - avg_y_per_cat[uniq_leaf_cats==most_common_leaf_cat]
         elif USE_RANDOM_REFCAT:
             # Use random cat code as refcat
+            # TODO: use choice(); faster?
             idx_of_random_cat_in_leaf = np.random.randint(0, len(uniq_leaf_cats), size=1)
             refcats[leaf_i] = uniq_leaf_cats[idx_of_random_cat_in_leaf]
             delta_y_per_cat = avg_y_per_cat - avg_y_per_cat[idx_of_random_cat_in_leaf]

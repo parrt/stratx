@@ -45,6 +45,10 @@ def test_single_leaf():
     assert ignored==0
 
 
+def test_ignored_leaf():
+    assert 0==1
+
+
 def test_two_leaves():
     np.random.seed(999)
     df = pd.DataFrame([
@@ -79,3 +83,47 @@ def test_two_leaves():
     np.testing.assert_array_equal(refcats, expected_refcats)
     assert ignored==0
 
+
+def test_three_leaves_no_overlap():
+    np.random.seed(999)
+    df = pd.DataFrame([
+        # x1, x2, y         stratify x1, consider y ~ x2
+         [1,  2,  9],
+         [1,  3,  7],
+         [3,  4,  6],
+         [3,  5,  5],
+         [4,  6,  4],
+         [4,  7,  3]
+    ], columns=['x1','x2','y'])
+    X = df.drop('y', axis=1)
+    y = df['y']
+
+    leaves = get_leaves(X, y, 'x2', min_samples_leaf=2) # get index of samples in each leaf
+    expected_leaves = [np.array([0, 1]),  # leaf 0
+                       np.array([2, 3]),  # leaf 1
+                       np.array([4, 5])]  # leaf 2
+    np.testing.assert_array_equal(leaves, expected_leaves)
+
+    leaf_deltas, leaf_counts, refcats, ignored = stratify_cats(X,y,colname="x2", min_samples_leaf=2)
+    print(leaf_deltas, leaf_counts, refcats)
+    expected_leaf_deltas = np.array([[nan,  nan,  nan],    # cat 0
+                                     [nan,  nan,  nan],    # cat 2
+                                     [2,    nan,  nan],    # cat 3
+                                     [0,    nan,  nan],
+                                     [nan,    0,  nan],
+                                     [nan,   -1,  nan],
+                                     [nan,  nan,  1],
+                                     [nan,  nan,  0]])
+    expected_leaf_counts = np.array([[0,   0,   0],
+                                     [0,   0,   0],
+                                     [1,   0,   0],
+                                     [1,   0,   0],
+                                     [0,   1,   0],
+                                     [0,   1,   0],
+                                     [0,   0,   1],
+                                     [0,   0,   1]])
+    expected_refcats = np.array([3, 4, 7])
+    np.testing.assert_array_almost_equal(leaf_deltas, expected_leaf_deltas, decimal=1)
+    np.testing.assert_array_equal(leaf_counts, expected_leaf_counts)
+    np.testing.assert_array_equal(refcats, expected_refcats)
+    assert ignored==0
