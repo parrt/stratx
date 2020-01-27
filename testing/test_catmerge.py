@@ -232,6 +232,30 @@ def test_3_leaves_with_disconnected_2nd_leaf_followed_by_leaf_conn_to_first_leaf
     assert merge_ignored==3
 
 
+def test_3_leaves_with_2nd_incorporated_in_pass_2():
+    """
+    It's possible for a leaf's refcat not to have a value in any earlier
+    refcats, leaving nan in the running sum. No way to connect, must just drop
+    """
+    np.random.seed(999)
+    leaf_deltas = np.array([
+        [0,      np.nan, np.nan],
+        [1,      np.nan, np.nan],
+        [np.nan, 0,      np.nan],  # refcat is 2 which has no value in prev leaf
+        [np.nan, 3,      np.nan],  # leave 3 is connected to leaf 1 don't ignored
+        [np.nan, 3,      0],       # leaf 2 will appear in pass 2
+        [4, np.nan,      9],
+        [5, np.nan,      8],
+    ])
+    # print("leaf_deltas\n",leaf_deltas)
+    leaf_counts = (~np.isnan(leaf_deltas)).astype(int)
+    refcats = np.array([0,2,3])
+    avg_per_cat, count_per_cat, merge_ignored = avg_values_at_cat(leaf_deltas, leaf_counts, refcats, verbose=True)
+    expected = np.array([0, 1, np.nan, np.nan, np.nan, 4, 5])
+    np.testing.assert_array_almost_equal(avg_per_cat, expected, decimal=2)
+    assert merge_ignored==3
+
+
 def test_4state_temperature():
     np.random.seed(999)
     X,y,states,df_avgs = toy_weather_data(n=9, p=4)
