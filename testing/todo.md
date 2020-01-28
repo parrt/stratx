@@ -1,10 +1,9 @@
 # Notes and checklists
 
-* min val per cat option like min slopes per x? outliers?
-* if p-values, don't do trials or instead combine to get stddev
-* p-values seems to get totally messed up importances
-* combine pvalue=True and n_trials to get pvalues; no sep count
+* min val per cat option like min slopes per x? outliers? didn't help ModelID
 * add ignored to plots
-* yearmade and modelid get reversed with density_weighted; see compute_importance()
+* yearmade and modelid get reversed with density_weighted; see compute_importance(); pvalue=1.0?
+  Seems that modelid with shuffled y is random and large
 * if mean - 2sigma <=0 then can discard feature
-* could weight features by scaled version of sigma to lower importance if higher variance
+* timing experiment to see empirical complexity
+* plots can't handle unnormalized data

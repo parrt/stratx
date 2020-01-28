@@ -6,6 +6,7 @@ from timeit import default_timer as timer
 from sklearn.utils import resample
 
 import shap
+from sympy.simplify.radsimp import fraction_expand
 
 from stratx.featimp import *
 from support import *
@@ -46,9 +47,10 @@ X_ = X_.copy()
 #                 catcolnames={'AC','ModelID'})
 # print(I)
 
+#y_ = y_.sample(frac=1.0, replace=False)
 uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored = \
     plot_catstratpd(X_, y_, colname='ModelID', targetname='SalePrice',
-                    min_samples_leaf=10,
+                    min_samples_leaf=3,
                     # sort=None,
                     alpha=.08,
                     show_all_deltas=False,
@@ -62,6 +64,7 @@ plt.title(f"n={n}, ignored ={ignored}")
 print("ignored",ignored)
 plt.tight_layout()
 plt.savefig(f"/Users/parrt/Desktop/james-ModelID-25k.pdf", pad_inches=0)
+# plt.savefig(f"/Users/parrt/Desktop/james-ModelID-25k-shuffled.pdf", pad_inches=0)
 plt.show()
 
 # plot_stratpd(X_, y_, colname='age', targetname='SalePrice',

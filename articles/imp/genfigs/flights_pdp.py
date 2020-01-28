@@ -20,7 +20,7 @@ np.set_printoptions(precision=2, suppress=True, linewidth=300)#, threshold=1e10)
 
 #np.random.seed(999)
 
-n=8_000
+n=15_000
 #r = (500,600)
 # r = (0,500)
 _, _, df_flights = load_flights(n=n)
@@ -40,9 +40,10 @@ I = importances(X, y,
                 normalize=False,
                 n_jobs=1,
                 pvalues=True,
-                pvalues_n_trials=50,
+                pvalues_n_trials=10,
                 min_samples_leaf=10,
-                cat_min_samples_leaf=3)
+                cat_min_samples_leaf=3,
+                sortby='Rank')
 print(I)
 
 col = 'SCHEDULED_DEPARTURE'

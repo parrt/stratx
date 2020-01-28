@@ -20,7 +20,7 @@ def importances(X: pd.DataFrame,
                 normalize=True,  # make imp values 0..1
                 supervised=True,
                 n_jobs=1,
-                sort='Importance',  # sort by importance or impact
+                sortby='Rank',  # sort by importance or impact
                 min_slopes_per_x=5,  # ignore pdp y values derived from too few slopes (usually at edges)
                 # important for getting good starting point of PD so AUC isn't skewed.
                 n_trials: int = 1,
@@ -68,6 +68,7 @@ def importances(X: pd.DataFrame,
 
     I['Impact p-value'] = 0.0
     I['Importance p-value'] = 0.0
+    I['Rank'] = 0
     if pvalues:
         impact_pvalues, importance_pvalues = \
             importances_pvalues(X, y, catcolnames,
@@ -85,17 +86,20 @@ def importances(X: pd.DataFrame,
                                 max_features=max_features)
         I['Impact p-value'] = importance_pvalues
         I['Importance p-value'] = importance_pvalues
+        I['Rank'] = I['Importance'] * (1.0 - importance_pvalues)
 
-    if sort:
-        I = I.sort_values(sort, ascending=False)
+    if sortby:
+        if not pvalues and sortby=='Rank':
+            sortby='Importance'
+        I = I.sort_values(sortby, ascending=False)
 
     # Set reasonable column order
-    I = I[['Importance', 'Importance sigma', 'Importance p-value',
+    I = I[['Rank', 'Importance', 'Importance sigma', 'Importance p-value',
            'Impact', 'Impact sigma', 'Impact p-value']]
     if n_trials==1:
         I = I.drop(['Importance sigma', 'Impact sigma'], axis=1)
     if not pvalues:
-        I = I.drop(['Importance p-value', 'Impact p-value'], axis=1)
+        I = I.drop(['Rank', 'Importance p-value', 'Impact p-value'], axis=1)
     return I
 
 def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
@@ -215,6 +219,8 @@ def compute_importance(X_col, pdpx, pdpy):
 def cat_compute_importance(avg_per_cat, count_per_cat):
     # weight each cat value by how many were used to create it
     weighted_abs_avg_per_cat = np.abs(avg_per_cat)
+    # above_threshold = np.where(count_per_cat>6)[0]
+    # weighted_avg_abs_pdp = np.nansum(weighted_abs_avg_per_cat[above_threshold] * count_per_cat[above_threshold]) / np.sum(count_per_cat[above_threshold])
     weighted_avg_abs_pdp = np.nansum(weighted_abs_avg_per_cat * count_per_cat) / np.sum(count_per_cat)
 
     # do unweighted

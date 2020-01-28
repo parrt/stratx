@@ -229,6 +229,7 @@ def compare_top_features(X, y, top_features_range=None,
                          metric = mean_absolute_error,
                          model='RF',
                          imp_n_trials=1,
+                         imp_pvalues_n_trials=1,
                          use_oob = False,
                          #time_sensitive=False,
                          kfolds=5,
@@ -239,7 +240,6 @@ def compare_top_features(X, y, top_features_range=None,
                          min_slopes_per_x=5,
                          catcolnames=set(),
                          normalize=True,
-                         density_weighted=True,
                          supervised=True,
                          include=['Spearman', 'PCA', 'OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact'],
                          drop=()):
@@ -269,6 +269,7 @@ def compare_top_features(X, y, top_features_range=None,
     all_importances = get_multiple_imps(X_train, y_train, X_test, y_test,
                                         n_stratpd_trees=n_stratpd_trees,
                                         imp_n_trials=imp_n_trials,
+                                        imp_pvalues_n_trials=imp_pvalues_n_trials,
                                         bootstrap=bootstrap,
                                         stratpd_min_samples_leaf=stratpd_min_samples_leaf,
                                         stratpd_cat_min_samples_leaf=stratpd_cat_min_samples_leaf,
@@ -278,8 +279,7 @@ def compare_top_features(X, y, top_features_range=None,
                                         min_slopes_per_x=min_slopes_per_x,
                                         supervised=supervised,
                                         include=include,
-                                        normalize=normalize,
-                                        density_weighted=density_weighted)
+                                        normalize=normalize)\
 
     print("Spearman\n", all_importances['Spearman'])
     print("PCA\n", all_importances['PCA'])
@@ -353,14 +353,14 @@ def get_multiple_imps(X_train, y_train, X_test, y_test, n_shap=300, n_estimators
                       stratpd_min_samples_leaf=10,
                       stratpd_cat_min_samples_leaf=10,
                       imp_n_trials=1,
+                      imp_pvalues_n_trials=0,
                       n_stratpd_trees=1,
                       bootstrap=False,
                       catcolnames=set(),
                       min_slopes_per_x=10,
                       supervised=True,
                       include=['Spearman', 'PCA', 'OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact'],
-                      normalize=True,
-                      density_weighted=True):
+                      normalize=True):
     spear_I = pca_I = ols_I = ols_shap_I = rf_I = perm_I = ours_I = None
 
     if 'Spearman' in include:
@@ -409,13 +409,14 @@ def get_multiple_imps(X_train, y_train, X_test, y_test, n_shap=300, n_estimators
                              min_samples_leaf=stratpd_min_samples_leaf,
                              cat_min_samples_leaf=stratpd_cat_min_samples_leaf,
                              n_trials=imp_n_trials,
+                             pvalues=imp_pvalues_n_trials>0,
+                             pvalues_n_trials=imp_pvalues_n_trials,
                              n_trees=n_stratpd_trees,
                              bootstrap=bootstrap,
                              catcolnames=catcolnames,
                              min_slopes_per_x=min_slopes_per_x,
                              supervised=supervised,
-                             normalize=normalize,
-                             density_weighted=density_weighted)
+                             normalize=normalize)
     d = OrderedDict()
     d['Spearman'] = spear_I
     d['PCA'] = pca_I
