@@ -9,9 +9,6 @@ This code was built just to generate ICE plots for comparison in the paper.
 We just hacked it together.
 """
 
-from stratx.partdep import getcats
-
-
 def original_pdp(model, X, colname):
     """
     Return an ndarray with relative partial dependence line (average of ICE lines).
@@ -204,6 +201,7 @@ def plot_catice(ice, colname, targetname,
     nobs = lines.shape[0]
     nx = lines.shape[1]
 
+    from stratx.partdep import getcats
     catcodes, _, catcode2name = getcats(None, colname, catnames)
     sorted_catcodes = catcodes
     if sort == 'ascending':

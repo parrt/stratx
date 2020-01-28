@@ -20,6 +20,7 @@ from snowballstemmer.dutch_stemmer import lab0
 from numba import jit, prange
 import numba
 
+from featimp import compute_importance, cat_compute_importance
 
 def leaf_samples(rf, X_not_col:np.ndarray) -> Sequence:
     """
@@ -194,153 +195,6 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
     pdpy = np.concatenate([np.array([0]), pdpy])  # add back the 0 we lost
 
     return leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored
-
-
-def plot_stratpd_binned(X, y, colname, targetname,
-                 n_trees=1, min_samples_leaf=10, bootstrap=False,
-                 max_features=1.0,
-                 nbins=3,  # piecewise binning
-                 nbins_smoothing=None,  # binning of overall X[colname] space in plot
-                 supervised=True,
-                 ax=None,
-                 xrange=None,
-                 yrange=None,
-                 title=None,
-                 nlines=None,
-                 show_xlabel=True,
-                 show_ylabel=True,
-                 show_pdp_line=False,
-                 show_slope_lines=True,
-                 pdp_marker_size=5,
-                 pdp_line_width=.5,
-                 slope_line_color='#2c7fb8',
-                 slope_line_width=.5,
-                 slope_line_alpha=.3,
-                 pdp_line_color='black',
-                 pdp_marker_color='black',
-                 verbose=False
-                 ):
-    if supervised:
-        rf = RandomForestRegressor(n_estimators=n_trees,
-                                   min_samples_leaf=min_samples_leaf,
-                                   bootstrap=bootstrap,
-                                   max_features=max_features)
-        rf.fit(X.drop(colname, axis=1), y)
-        if verbose:
-            print(f"Strat Partition RF: dropping {colname} training R^2 {rf.score(X.drop(colname, axis=1), y):.2f}")
-
-    else:
-        """
-        Wow. Breiman's trick works in most cases. Falls apart on Boston housing MEDV target vs AGE
-        """
-        if verbose: print("USING UNSUPERVISED MODE")
-        X_synth, y_synth = conjure_twoclass(X)
-        rf = RandomForestClassifier(n_estimators=n_trees,
-                                    min_samples_leaf=min_samples_leaf * 2,
-                                    # there are 2x as many samples (X,X') so must double leaf size
-                                    bootstrap=bootstrap,
-                                    max_features=max_features,
-                                    oob_score=False)
-        rf.fit(X_synth.drop(colname, axis=1), y_synth)
-
-    leaves = leaf_samples(rf, X.drop(colname, axis=1))
-    nnodes = rf.estimators_[0].tree_.node_count
-    if verbose:
-        print(f"Partitioning 'x not {colname}': {nnodes} nodes in (first) tree, "
-              f"{len(rf.estimators_)} trees, {len(leaves)} total leaves")
-
-    leaf_xranges, leaf_slopes, point_betas, ignored = \
-        collect_point_betas(X, y, colname, leaves, nbins)
-    Xbetas = np.vstack([X[colname].values, point_betas]).T # get x_c, beta matrix
-    # Xbetas = Xbetas[Xbetas[:,0].argsort()] # sort by x coordinate (not needed)
-
-    #print(f"StratPD num samples ignored {ignored}/{len(X)} for {colname}")
-
-    x = Xbetas[:, 0]
-    domain = (np.min(x), np.max(x))  # ignores any max(x) points as no slope info after that
-    if nbins_smoothing is None:
-        # use all unique values as bin edges if no bin width
-        bins_smoothing = np.array(sorted(np.unique(x)))
-    else:
-        bins_smoothing = np.linspace(*domain, num=nbins_smoothing + 1, endpoint=True)
-
-    noinfo = np.isnan(Xbetas[:, 1])
-    Xbetas = Xbetas[~noinfo]
-
-    avg_slopes_per_bin, _, _ = binned_statistic(x=Xbetas[:, 0], values=Xbetas[:, 1],
-                                                bins=bins_smoothing, statistic='mean')
-
-    # beware: avg_slopes_per_bin might have nan for empty bins
-    bin_deltas = np.diff(bins_smoothing)
-    delta_ys = avg_slopes_per_bin * bin_deltas  # compute y delta across bin width to get up/down bump for this bin
-
-    # print('bins_smoothing', bins_smoothing, ', deltas', bin_deltas)
-    # print('avgslopes', delta_ys)
-
-    # manual cumsum
-    delta_ys = np.concatenate([np.array([0]), delta_ys])  # we start at 0 for min(x)
-    pdpx = []
-    pdpy = []
-    cumslope = 0.0
-    # delta_ys_ = np.concatenate([np.array([0]), delta_ys])  # we start at 0 for min(x)
-    for x, slope in zip(bins_smoothing, delta_ys):
-        if np.isnan(slope):
-            # print(f"{x:5.3f},{cumslope:5.1f},{slope:5.1f} SKIP")
-            continue
-        cumslope += slope
-        pdpx.append(x)
-        pdpy.append(cumslope)
-        # print(f"{x:5.3f},{cumslope:5.1f},{slope:5.1f}")
-    pdpx = np.array(pdpx)
-    pdpy = np.array(pdpy)
-
-    # PLOT
-
-    if ax is None:
-        fig, ax = plt.subplots(1,1)
-
-    # Draw bin left edge markers; ignore bins with no data (nan)
-    ax.scatter(pdpx, pdpy,
-               s=pdp_marker_size, c=pdp_marker_color)
-
-    if show_pdp_line:
-        ax.plot(pdpx, pdpy,
-                lw=pdp_line_width, c=pdp_line_color)
-
-    if xrange is not None:
-        ax.set_xlim(*xrange)
-    else:
-        ax.set_xlim(*domain)
-    if yrange is not None:
-        ax.set_ylim(*yrange)
-
-    if show_slope_lines:
-        segments = []
-        for xr, slope in zip(leaf_xranges, leaf_slopes):
-            w = np.abs(xr[1] - xr[0])
-            delta_y = slope * w
-            closest_x_i = np.abs(pdpx - xr[0]).argmin() # find curve point for xr[0]
-            closest_x = pdpx[closest_x_i]
-            closest_y = pdpy[closest_x_i]
-            one_line = [(closest_x, closest_y), (closest_x+w, closest_y + delta_y)]
-            segments.append( one_line )
-
-        # if nlines is not None:
-        #     nlines = min(nlines, len(segments))
-        #     idxs = np.random.randint(low=0, high=len(segments), size=nlines)
-        #     segments = np.array(segments)[idxs]
-
-        lines = LineCollection(segments, alpha=slope_line_alpha, color=slope_line_color, linewidths=slope_line_width)
-        ax.add_collection(lines)
-
-    if show_xlabel:
-        ax.set_xlabel(colname)
-    if show_ylabel:
-        ax.set_ylabel(targetname)
-    if title is not None:
-        ax.set_title(title)
-
-    return leaf_xranges, leaf_slopes, Xbetas, pdpx, pdpy, ignored
 
 
 def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
@@ -592,13 +446,8 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
 
     if show_xlabel:
         xl = colname
-        impact = np.mean(np.abs(pdpy))
-        if len(pdpx_counts) > 0:
-            # weighted average of pdpy using pdpx_counts
-            weighted_impact = np.sum(np.abs(pdpy * pdpx_counts)) / np.sum(pdpx_counts)
-        else:
-            weighted_impact = impact
-        xl += f" (Impact {impact:.2f}, weighted {weighted_impact:.2f})"
+        impact, importance = compute_importance(X_col, pdpx, pdpy)
+        xl += f" (Impact {impact:.2f}, importance {importance:.2f})"
         ax.set_xlabel(xl, fontsize=label_fontsize, fontname=fontname)
     if show_ylabel:
         ax.set_ylabel(targetname, fontsize=label_fontsize, fontname=fontname)
@@ -1169,7 +1018,7 @@ def cat_partial_dependence(X, y,
 
     return leaf_deltas, leaf_counts, avg_per_cat, count_per_cat, ignored, merge_ignored
 
-
+# currently unused
 @jit(nopython=True)
 def avg_values_at_cat_jit(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose=False):
     """
@@ -1689,12 +1538,9 @@ def plot_catstratpd(X, y,
                                    max_features=max_features,
                                    bootstrap=False,
                                    verbose=verbose)
-        # compute regular impact
-        abs_avg_per_cat = np.abs(avg_per_cat)
-        impacts.append( np.nanmean(abs_avg_per_cat) )
-        # weight by counter_per_cat
-        weighted_impact = np.nansum(abs_avg_per_cat * count_per_cat) / np.sum(count_per_cat)
-        weighted_impacts.append(weighted_impact)
+        impact, importance = cat_compute_importance(avg_per_cat, count_per_cat)
+        impacts.append(impact)
+        weighted_impacts.append(importance)
         if min_y_shifted_to_zero:
             avg_per_cat -= np.nanmin(avg_per_cat)
         ignored += ignored_
@@ -1707,7 +1553,6 @@ def plot_catstratpd(X, y,
     combined_avg_per_cat = avg_pd_catvalues(all_avg_per_cat)
     print("mean(pdpy)", np.nanmean(combined_avg_per_cat))
 
-    # impacts = [np.nanmean(np.abs(all_avg_per_cat[i])) for i in range(n_trials)]
     impact_order = np.argsort(impacts)
     print("impacts", impacts)
     print("weighted impacts", weighted_impacts)
@@ -1724,21 +1569,14 @@ def plot_catstratpd(X, y,
             min_y = np.nanmin(avg_per_cat)
         if np.nanmax(avg_per_cat) > max_y:
             max_y = np.nanmax(avg_per_cat)
-        trial_catcodes = np.where(~np.isnan(avg_per_cat))[0]
-        # print("catcodes", trial_catcodes, "range", min(trial_catcodes), max(trial_catcodes))
-        # walk each potential catcode but plot with x in 0..maxcode+1; ignore nan avg_per_cat values
         xloc = -1 # go from 0 but must count nan entries
         collect_cats = []
         collect_deltas = []
         for cat in uniq_catcodes:
             cat_delta = avg_per_cat[cat]
             xloc += 1
-            # ax.plot([xloc - .15, xloc + .15], [cat_delta] * 2, c=colors[impact_order[i]], linewidth=1)
             collect_cats.append(xloc)
             collect_deltas.append(cat_delta)
-        # print("Got to xloc", xloc, "len(trial_catcodes)", len(trial_catcodes), "len(catcodes)", len(uniq_catcodes))
-        # ax.scatter(collect_cats, collect_deltas, c=mpl.colors.rgb2hex(colors[impact_order[i]]),
-        #            s=pdp_marker_size, alpha=pdp_marker_alpha)
         ax.plot(collect_cats, collect_deltas, '.', c=mpl.colors.rgb2hex(colors[impact_order[i]]),
                 markersize=pdp_marker_size, alpha=pdp_marker_alpha)
 
