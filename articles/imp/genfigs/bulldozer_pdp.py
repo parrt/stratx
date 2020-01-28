@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 np.set_printoptions(precision=2, suppress=True, linewidth=300, threshold=2000)
 
 np.random.seed(2)
-n = 3000
+n = 20_000
 
 X, y = load_bulldozer()
 
@@ -38,6 +38,7 @@ X_ = X_.copy()
 
 
 I = importances(X_, y_, n_trials=3, normalize=False,
+                cat_min_samples_leaf=3,
                 catcolnames={'AC','ModelID'})
 print(I)
 

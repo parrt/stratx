@@ -14,43 +14,6 @@ from stratx.partdep import *
 from stratx.ice import *
 
 
-'''
-def feature_rank(X: pd.DataFrame,
-                 y: pd.Series,
-                 catcolnames=set(),
-                 normalize=True,  # make imp values 0..1
-                 supervised=True,
-                 n_jobs=1,
-                 sort=True,  # sort by importance in descending order?
-                 min_slopes_per_x=5,
-                 # ignore pdp y values derived from too few slopes (usually at edges)
-                 # important for getting good starting point of PD so AUC isn't skewed.
-                 n_trials: int = 1,
-                 n_trees=1, min_samples_leaf=10, bootstrap=False, max_features=1.0,
-                 verbose=False) -> pd.DataFrame:
-    if not isinstance(X, pd.DataFrame):
-        raise ValueError("Can only operate on dataframes at the moment")
-
-    I = importances(X=X, y=y, catcolnames=catcolnames,
-                    normalize=normalize,
-                    supervised=supervised,
-                    n_jobs=n_jobs,
-                    sort=sort,
-                    min_slopes_per_x=min_slopes_per_x,
-                    n_trials=n_trials,
-                    pvalues=False,
-                    n_trees=n_trees, min_samples_leaf=min_samples_leaf,
-                    bootstrap=bootstrap, max_features=max_features,
-                    verbose=verbose)
-
-    F = I.copy()
-    F['Importance'] = F['Importance'] / F['Sigma']
-    F = F.drop('Sigma', axis=1)
-    if sort:
-        F = F.sort_values('Importance', ascending=False)
-    return F
-'''
-
 def importances(X: pd.DataFrame,
                 y: pd.Series,
                 catcolnames=set(),
