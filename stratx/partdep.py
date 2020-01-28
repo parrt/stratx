@@ -21,7 +21,7 @@ from numba import jit, prange
 import numba
 
 
-def leaf_samples(rf, X_not_col:np.ndarray):
+def leaf_samples(rf, X_not_col:np.ndarray) -> Sequence:
     """
     Return a list of arrays where each array is the set of X sample indexes
     residing in a single leaf of some tree in rf forest. For example, if there
@@ -1024,7 +1024,7 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
         if yrange is not None:
             axes[col].set_ylim(yrange)
         try:
-            uniq_catcodes, avg_per_cat, ignored = \
+            uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored = \
                 plot_catstratpd(X, y, colname, targetname, ax=axes[col],
                                 min_samples_leaf=msl,
                                 catnames=catnames,
@@ -1076,30 +1076,6 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
     leaf_counts = np.zeros(shape=(max_catcode+1, len(leaves)), dtype=int)
     refcats = np.empty(shape=(len(leaves),), dtype=int)
 
-    # leaf_deltas = []
-    # leaf_counts = []
-    # refcats = []
-
-    uniq_cats, cat_counts = np.unique(X_col, return_counts=True)
-    # print(list(cat_counts))
-
-    USE_MOST_COMMON_REFCAT = False
-    USE_RANDOM_REFCAT = True
-    USE_MEAN_Y = False
-
-    if USE_MOST_COMMON_REFCAT:
-        # Rank the cat codes by most to least common and use the most common ref cat
-        # in each leaf, given the cat codes available in the leaf.
-        # I turned this off in the end as it complicates things and still works when
-        # we subtract the min leaf cat code's value.
-        # Nope, we need most accurate initial vectors as possible and using most
-        # common cat as refcat helps to group things better later when we merge
-        revsort_idx = np.argsort(cat_counts)[::-1]
-        cats_by_most_common = list(uniq_cats[revsort_idx])
-
-    if USE_MEAN_Y:
-        mean_y = np.mean(y)
-
     ignored = 0
     for leaf_i in range(len(leaves)):
         sample = leaves[leaf_i]
@@ -1116,31 +1092,10 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
             refcats[leaf_i] = -1 # cat codes are assumed to be positive integers
             continue
 
-        if USE_MOST_COMMON_REFCAT:
-            # Find index of leaf cats in cats_by_most_common, then find min index, which
-            # will correspond to most common category in X_col. Finally grab, store catcode
-            leaf_cat_idxs = [cats_by_most_common.index(cat) for cat in leaf_cats]
-            index_of_leaf_cats_in_most_common = np.min(leaf_cat_idxs)
-            most_common_leaf_cat = cats_by_most_common[index_of_leaf_cats_in_most_common]
-            refcats[leaf_i] = most_common_leaf_cat
-            # Subtract avg_y_per_cat for most common cat
-            delta_y_per_cat = avg_y_per_cat - avg_y_per_cat[uniq_leaf_cats==most_common_leaf_cat]
-        elif USE_RANDOM_REFCAT:
-            # Use random cat code as refcat
-            # TODO: use choice(); faster?
-            idx_of_random_cat_in_leaf = np.random.randint(0, len(uniq_leaf_cats), size=1)
-            refcats[leaf_i] = uniq_leaf_cats[idx_of_random_cat_in_leaf]
-            delta_y_per_cat = avg_y_per_cat - avg_y_per_cat[idx_of_random_cat_in_leaf]
-        elif USE_MEAN_Y:
-            refcats[leaf_i] = mean_y
-            delta_y_per_cat = avg_y_per_cat - mean_y
-            # refcats[leaf_i] = min(y)
-            # delta_y_per_cat = avg_y_per_cat - min(y)
-        else:
-            # Use min cat code as refcat
-            refcats[leaf_i] = np.min(uniq_leaf_cats)
-            delta_y_per_cat = avg_y_per_cat - avg_y_per_cat[0]
-
+        # Use random cat code as refcat
+        idx_of_random_cat_in_leaf = np.random.randint(0, len(uniq_leaf_cats), size=1)
+        refcats[leaf_i] = uniq_leaf_cats[idx_of_random_cat_in_leaf]
+        delta_y_per_cat = avg_y_per_cat - avg_y_per_cat[idx_of_random_cat_in_leaf]
         # print("delta_y_per_cat",delta_y_per_cat)
 
         # Store into leaf i vector just those deltas we have data for
@@ -1662,227 +1617,6 @@ def plot_catstratpd(X, y,
     ax.spines['bottom'].set_linewidth(.5)
 
     return uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored
-
-# only works for ints, not floats
-def plot_catstratpd_OLD(X, y,
-                    colname,  # X[colname] expected to be numeric codes
-                    targetname,
-                    catnames=None,  # map of catcodes to catnames; converted to map if sequence passed
-                    # must pass dict or series if catcodes are not 1..n contiguous
-                    # None implies use np.unique(X[colname]) values
-                    # Must be 0-indexed list of names if list
-                    n_trials=10,
-                    ax=None,
-                    sort='ascending',
-                    n_trees=1,
-                    min_samples_leaf=10,
-                    max_features=1.0,
-                    bootstrap=False,
-                    yrange=None,
-                    title=None,
-                    supervised=True,
-                    use_weighted_avg=False,
-                    show_impact=False,
-                    show_all_deltas=True,
-                    show_x_counts=True,
-                    alpha=.15,
-                    color='#2c7fb8',
-                    impact_color='#D73028',
-                    pdp_marker_size=.5,
-                    marker_size=5,
-                    pdp_color='black',
-                    fontname='Arial',
-                    title_fontsize=11,
-                    label_fontsize=10,
-                    ticklabel_fontsize=10,
-                    style:('strip','scatter')='strip',
-                    min_y_shifted_to_zero=True,  # easier to read if values are relative to 0 (usually); do this for high cardinality cat vars
-                    show_xlabel=True,
-                    show_ylabel=True,
-                    show_xticks=True,
-                    verbose=False,
-                    figsize=None):
-    """
-    Warning: cat columns are assumed to be label encoded as unique integers. This
-    function uses the cat code as a raw index internally. So if you have two cat
-    codes 1 and 1000, this function allocates internal arrays of size 1000+1.
-
-    :param X:
-    :param y:
-    :param colname:
-    :param targetname:
-    :param catnames:
-    :param ax:
-    :param sort:
-    :param n_trees:
-    :param min_samples_leaf:
-    :param max_features:
-    :param bootstrap:
-    :param yrange:
-    :param title:
-    :param supervised:
-    :param use_weighted_avg:
-    :param alpha:
-    :param color:
-    :param pdp_marker_size:
-    :param marker_size:
-    :param pdp_color:
-    :param style:
-    :param min_y_shifted_to_zero:
-    :param show_xlabel:
-    :param show_ylabel:
-    :param show_xticks:
-    :param verbose:
-    :return:
-    """
-
-    catcodes, _, catcode2name = getcats(X, colname, catnames)
-
-    all_avg_per_cat = []
-    all_pdpy = []
-    n = len(X)
-    ignored = 0
-    for i in range(n_trials):
-        # idxs = resample(range(n), n_samples=n, replace=True) # bootstrap
-        idxs = resample(range(n), n_samples=int(n * 2 / 3), replace=False)  # subset
-        X_, y_ = X.iloc[idxs], y.iloc[idxs]
-
-        leaf_deltas, avg_per_cat, ignored = \
-            cat_partial_dependence(X_, y_,
-                                   colname=colname,
-                                   n_trees=n_trees,
-                                   min_samples_leaf=min_samples_leaf,
-                                   max_features=max_features,
-                                   bootstrap=bootstrap,
-                                   supervised=supervised,
-                                   use_weighted_avg=use_weighted_avg,
-                                   verbose=verbose)
-        # all_avg_per_cat =
-
-    if ax is None:
-        if figsize is not None:
-            fig, ax = plt.subplots(1,1,figsize=figsize)
-        else:
-            fig, ax = plt.subplots(1, 1)
-
-    ncats = len(catcodes)
-    nleaves = leaf_deltas.shape[1]
-
-    sorted_catcodes = catcodes
-    if sort == 'ascending':
-        sorted_indexes = avg_per_cat[~np.isnan(avg_per_cat)].argsort()
-        sorted_catcodes = catcodes[sorted_indexes]
-    elif sort == 'descending':
-        sorted_indexes = avg_per_cat.argsort()[::-1]  # reversed
-        sorted_catcodes = catcodes[sorted_indexes]
-
-    min_avg_value = 0
-    # The category y deltas straddle 0 but it's easier to understand if we normalize
-    # so lowest y delta is 0
-    if min_y_shifted_to_zero:
-        min_avg_value = np.nanmin(avg_per_cat)
-
-    # print(leaf_deltas.iloc[np.nonzero(catcounts)])
-    # # print(leaf_deltas.notna().multiply(leaf_sizes, axis=1))
-    # # print(np.sum(leaf_deltas.notna().multiply(leaf_sizes, axis=1), axis=1))
-    # print(f"leaf_sizes: {list(leaf_sizes)}")
-    # print(f"weighted_sum_per_cat: {list(weighted_sum_per_cat[np.nonzero(weighted_sum_per_cat)])}")
-    # # print(f"catcounts: {list(catcounts[np.nonzero(catcounts)])}")
-    # # print(f"Avg per cat: {list(avg_per_cat[np.nonzero(catcounts)]-min_avg_value)}")
-    # print(f"Avg per cat: {list(avg_per_cat[~np.isnan(avg_per_cat)]-min_avg_value)}")
-
-    # if too many categories, can't do strip plot
-    xloc = 0
-    sigma = .02
-    mu = 0
-    if style == 'strip':
-        x_noise = np.random.normal(mu, sigma, size=nleaves) # to make strip plot
-    else:
-        x_noise = np.zeros(shape=(nleaves,))
-    for cat in sorted_catcodes:
-        if catcode2name[cat] is None: continue
-        if show_all_deltas:
-            ax.scatter(x_noise + xloc, leaf_deltas[catcode2name[cat]] - min_avg_value,
-                       alpha=alpha, marker='o', s=marker_size,
-                       c=color)
-        if style == 'strip':
-            ax.plot([xloc - .1, xloc + .1], [avg_per_cat[catcode2name[cat]]-min_avg_value] * 2,
-                    c='black', linewidth=2)
-        else:
-            ax.scatter(xloc, avg_per_cat[catcode2name[cat]]-min_avg_value, c=pdp_color, s=pdp_marker_size)
-        xloc += 1
-
-    ax.set_xticks(range(0, ncats))
-    if show_xticks: # sometimes too many
-        ax.set_xticklabels(catcode2name[sorted_catcodes])
-        ax.tick_params(axis='x', which='major', labelsize=ticklabel_fontsize)
-    else:
-        ax.set_xticklabels([])
-        ax.tick_params(axis='x', which='major', labelsize=ticklabel_fontsize, bottom=False)
-    ax.tick_params(axis='y', which='major', labelsize=ticklabel_fontsize)
-
-    ax.spines['top'].set_linewidth(.5)
-    ax.spines['right'].set_linewidth(.5)
-    ax.spines['left'].set_linewidth(.5)
-    ax.spines['bottom'].set_linewidth(.5)
-
-    if show_x_counts:
-        X_col = X[colname]
-        _, pdpx_counts = np.unique(X_col[np.isin(X_col, pdpx)], return_counts=True)
-
-        ax2 = ax.twinx()
-        # scale y axis so the max count height is 10% of overall chart
-        ax2.set_ylim(0, max(pdpx_counts) * 1/barchart_size)
-        # draw just 0 and max count
-        ax2.yaxis.set_major_locator(plt.FixedLocator([0, max(pdpx_counts)]))
-        ax2.bar(x=pdpx, height=pdpx_counts, width=count_bar_width,
-                facecolor='#BABABA', align='edge', alpha=barchar_alpha)
-        ax2.set_ylabel(f"$x$ point count", labelpad=-12, fontsize=label_fontsize,
-                       fontstretch='extra-condensed',
-                       fontname=fontname)
-        # shift other y axis down barchart_size to make room
-        if yrange is not None:
-            ax.set_ylim(yrange[0]-(yrange[1]-yrange[0])*barchart_size, yrange[1])
-        else:
-            ax.set_ylim(min_y-(max_y-min_y)*barchart_size, max_y)
-        ax2.tick_params(axis='both', which='major', labelsize=ticklabel_fontsize)
-        for tick in ax2.get_xticklabels():
-            tick.set_fontname(fontname)
-        for tick in ax2.get_yticklabels():
-            tick.set_fontname(fontname)
-        ax2.spines['top'].set_linewidth(.5)
-        ax2.spines['right'].set_linewidth(.5)
-        ax2.spines['left'].set_linewidth(.5)
-        ax2.spines['bottom'].set_linewidth(.5)
-
-    if show_impact:
-        m = np.nanmean(np.abs(avg_per_cat))
-        ax.plot([0, len(sorted_catcodes)], [m,m], '--', lw=.7, c=impact_color)
-        # add a tick for the mean in y axis
-        # ax.set_yticks(list(ax.get_yticks()) + [m])
-        ax.text(0.5, .94, f"Impact {m:.2f}",
-                horizontalalignment='center',
-                fontsize=label_fontsize, fontname=fontname,
-                transform=ax.transAxes,
-                color=impact_color)
-
-    if show_xlabel:
-        ax.set_xlabel(colname, fontsize=label_fontsize, fontname=fontname)
-    if show_ylabel:
-        ax.set_ylabel(targetname, fontsize=label_fontsize, fontname=fontname)
-    if title is not None:
-        ax.set_title(title, fontsize=title_fontsize, fontname=fontname)
-
-    for tick in ax.get_xticklabels():
-        tick.set_fontname(fontname)
-    for tick in ax.get_yticklabels():
-        tick.set_fontname(fontname)
-
-    if yrange is not None:
-        ax.set_ylim(*yrange)
-
-    ycats = avg_per_cat[sorted_catcodes] - min_avg_value
-    return catcodes, catcode2name[sorted_catcodes], ycats, ignored
 
 
 def getcats(X, colname, incoming_cats):
