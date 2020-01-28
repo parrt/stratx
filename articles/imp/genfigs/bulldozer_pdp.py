@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 np.set_printoptions(precision=2, suppress=True, linewidth=300, threshold=2000)
 
 np.random.seed(2)
-n = 20_000
+n = 10_000
 
 X, y = load_bulldozer()
 
@@ -37,31 +37,32 @@ X_ = X_.copy()
 # X_['ModelID'] += 1
 
 
-I = importances(X_, y_, n_trials=3,
-                normalize=False,
-                density_weighted=False,
-                min_samples_leaf=10,
-                cat_min_samples_leaf=3,
-                catcolnames={'AC','ModelID'})
-print(I)
+# I = importances(X_, y_, n_trials=3,
+#                 normalize=False,
+#                 min_samples_leaf=10,
+#                 cat_min_samples_leaf=3,
+#                 pvalues=True,
+#                 pvalues_n_trials=10,
+#                 catcolnames={'AC','ModelID'})
+# print(I)
 
-# uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored = \
-#     plot_catstratpd(X_, y_, colname='ModelID', targetname='SalePrice',
-#                     min_samples_leaf=10,
-#                     # sort=None,
-#                     alpha=.08,
-#                     show_all_deltas=False,
-#                     n_trials=1,
-#                     show_xticks=False,
-#                     show_impact=True,
-#                     min_y_shifted_to_zero=False,
-#                     figsize=(20,5),
-#                     verbose=False)
-# plt.title(f"n={n}, ignored ={ignored}")
-# print("ignored",ignored)
-# plt.tight_layout()
-# plt.savefig(f"/Users/parrt/Desktop/james-ModelID-25k.pdf", pad_inches=0)
-# plt.show()
+uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored = \
+    plot_catstratpd(X_, y_, colname='ModelID', targetname='SalePrice',
+                    min_samples_leaf=10,
+                    # sort=None,
+                    alpha=.08,
+                    show_all_deltas=False,
+                    n_trials=1,
+                    show_xticks=False,
+                    show_impact=True,
+                    min_y_shifted_to_zero=False,
+                    figsize=(20,5),
+                    verbose=False)
+plt.title(f"n={n}, ignored ={ignored}")
+print("ignored",ignored)
+plt.tight_layout()
+plt.savefig(f"/Users/parrt/Desktop/james-ModelID-25k.pdf", pad_inches=0)
+plt.show()
 
 # plot_stratpd(X_, y_, colname='age', targetname='SalePrice',
 #              n_trials=3,

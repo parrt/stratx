@@ -18,7 +18,6 @@ def importances(X: pd.DataFrame,
                 y: pd.Series,
                 catcolnames=set(),
                 normalize=True,  # make imp values 0..1
-                density_weighted=True,
                 supervised=True,
                 n_jobs=1,
                 sort='Importance',  # sort by importance or impact
@@ -26,6 +25,7 @@ def importances(X: pd.DataFrame,
                 # important for getting good starting point of PD so AUC isn't skewed.
                 n_trials: int = 1,
                 pvalues=False,  # use to get p-values for each importance; it's number trials
+                pvalues_n_trials=80,
                 n_trees=1,
                 min_samples_leaf=10,
                 cat_min_samples_leaf=10,
@@ -47,7 +47,6 @@ def importances(X: pd.DataFrame,
         X_, y_ = X.iloc[bootstrap_sample_idxs], y.iloc[bootstrap_sample_idxs]
         impacts, importances = importances_(X_, y_, catcolnames=catcolnames,
                                             normalize=normalize,
-                                            density_weighted=density_weighted,
                                             supervised=supervised,
                                             n_jobs=n_jobs,
                                             n_trees=n_trees,
@@ -60,60 +59,47 @@ def importances(X: pd.DataFrame,
         impact_trials[:,i] = impacts
         importance_trials[:,i] = importances
 
-    avg_importance = np.mean(importance_trials, axis=1)
-    avg_impact = np.mean(impact_trials, axis=1)
-
     I = pd.DataFrame(data={'Feature': X.columns})
-    I['Importance'] = avg_importance
-    I['Importance Sigma'] = np.std(importance_trials, axis=1)
-    I['Impact'] = avg_impact
-    I['Impact Sigma'] = np.std(impact_trials, axis=1)
     I = I.set_index('Feature')
+    I['Importance'] = np.mean(importance_trials, axis=1)
+    I['Impact'] = np.mean(impact_trials, axis=1)
+    I['Importance sigma'] = np.std(importance_trials, axis=1)
+    I['Impact sigma'] = np.std(impact_trials, axis=1)
 
+    I['Impact p-value'] = 0.0
+    I['Importance p-value'] = 0.0
     if pvalues:
-        print("--------------- START PVALUES --------------------------------------")
-        I['p-value'] = importances_pvalues(X, y, catcolnames,
-                                           baseline_importances=I,
-                                           supervised=supervised,
-                                           normalize=normalize,
-                                           density_weighted=density_weighted,
-                                           n_jobs=n_jobs,
-                                           n_trials=n_trials,
-                                           min_slopes_per_x=min_slopes_per_x,
-                                           n_trees=n_trees,
-                                           min_samples_leaf=min_samples_leaf,
-                                           cat_min_samples_leaf=cat_min_samples_leaf,
-                                           bootstrap=bootstrap,
-                                           max_features=max_features)
+        impact_pvalues, importance_pvalues = \
+            importances_pvalues(X, y, catcolnames,
+                                baseline_impacts=I['Impact'].values,
+                                baseline_importances=I['Importance'].values,
+                                supervised=supervised,
+                                normalize=normalize,
+                                n_jobs=n_jobs,
+                                n_trials=pvalues_n_trials,
+                                min_slopes_per_x=min_slopes_per_x,
+                                n_trees=n_trees,
+                                min_samples_leaf=min_samples_leaf,
+                                cat_min_samples_leaf=cat_min_samples_leaf,
+                                bootstrap=bootstrap,
+                                max_features=max_features)
+        I['Impact p-value'] = importance_pvalues
+        I['Importance p-value'] = importance_pvalues
 
-    # if n_trials>1:
-    #     # TODO: make 0.01 an argument or something; or maybe mean?
-    #     # I['Rank'] = I['Importance'] / np.where(I['Sigma']<0.01, 1, I['Sigma'])
-    #
-    #     # I['Rank'] = I['Importance'] / I['Sigma']
-    #     # I['Rank'] /= np.sum(I['Rank']) # normalize to 0..1
-    #     # I['Rank'] = I['Rank'].fillna(0)
-    #     I['Rank'] = I['Importance']
-    # else:
-    #     I['Rank'] = I['Importance']
-    #
-    # if sort=='Rank':
-    #     I = I[['Rank','Importance','Sigma']]
-    # else:
-    #     I = I[['Importance','Sigma','Rank']]
+    if sort:
+        I = I.sort_values(sort, ascending=False)
 
-    if sort is not None:
-        if sort=='Importance':
-            I = I.sort_values('Importance', ascending=False)
-        elif sort == 'Impact':
-            I = I.sort_values('Impact', ascending=False)
-
+    # Set reasonable column order
+    I = I[['Importance', 'Importance sigma', 'Importance p-value',
+           'Impact', 'Impact sigma', 'Impact p-value']]
+    if n_trials==1:
+        I = I.drop(['Importance sigma', 'Impact sigma'], axis=1)
+    if not pvalues:
+        I = I.drop(['Importance p-value', 'Impact p-value'], axis=1)
     return I
-
 
 def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                  normalize=True,
-                 density_weighted=True,
                  supervised=True,
                  n_jobs=1,
                  n_trees=1,
@@ -132,7 +118,6 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
         impacts_importances = Parallel(verbose=0, n_jobs=n_jobs, mmap_mode='r')\
             (delayed(single_feature_importance)(X,y,colname,
                                                  catcolnames=catcolnames,
-                                                 density_weighted=density_weighted,
                                                  supervised=supervised,
                                                  n_jobs=n_jobs,
                                                  n_trees=n_trees,
@@ -145,7 +130,6 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
     else:
         impacts_importances = [single_feature_importance(X,y,colname,
                                                  catcolnames=catcolnames,
-                                                 density_weighted=density_weighted,
                                                  supervised=supervised,
                                                  n_jobs=n_jobs,
                                                  n_trees=n_trees,
@@ -176,7 +160,6 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
 def single_feature_importance(X: pd.DataFrame, y: pd.Series,
                               colname,
                               catcolnames=set(),
-                              density_weighted=True,
                               supervised=True,
                               n_jobs=1,
                               n_trees=1,
@@ -245,10 +228,10 @@ def cat_compute_importance(avg_per_cat, count_per_cat):
 def importances_pvalues(X: pd.DataFrame,
                         y: pd.Series,
                         catcolnames=set(),
+                        baseline_impacts=None,
                         baseline_importances=None, # importances to use as baseline; must be in X column order!
                         supervised=True,
                         normalize=True,
-                        density_weighted=True,
                         n_jobs=1,
                         n_trials: int = 1,
                         min_slopes_per_x=5,
@@ -264,35 +247,38 @@ def importances_pvalues(X: pd.DataFrame,
     importance value (obtained with shuffled y) reaches the importance value computed
     using unshuffled y.
     """
-    I_baseline = baseline_importances
-    if baseline_importances is None:
-        I_baseline = importances(X, y, catcolnames=catcolnames, sort=False,
-                                 min_slopes_per_x=min_slopes_per_x,
-                                 supervised=supervised,
-                                 normalize=normalize,
-                                 density_weighted=density_weighted,
-                                 n_jobs=n_jobs,
-                                 n_trees=n_trees,
-                                 min_samples_leaf=min_samples_leaf,
-                                 cat_min_samples_leaf=cat_min_samples_leaf,
-                                 bootstrap=bootstrap,
-                                 max_features=max_features)
+    if baseline_importances is None or baseline_impacts is None:
+        baseline_impacts, baseline_importances = \
+            importances_(X, y, catcolnames=catcolnames,
+                         normalize=normalize,
+                         supervised=supervised,
+                         n_jobs=n_jobs,
+                         n_trees=n_trees,
+                         min_samples_leaf=min_samples_leaf,
+                         cat_min_samples_leaf=cat_min_samples_leaf,
+                         min_slopes_per_x=min_slopes_per_x,
+                         bootstrap=bootstrap,
+                         max_features=max_features)
 
-    counts = np.zeros(shape=X.shape[1])
+    impact_counts = np.zeros(shape=X.shape[1])
+    importance_counts = np.zeros(shape=X.shape[1])
     for i in range(n_trials):
-        I = importances(X, y.sample(frac=1.0, replace=False),
-                        catcolnames=catcolnames, sort=False,
-                        min_slopes_per_x=min_slopes_per_x,
-                        supervised=supervised,
-                        normalize=normalize,
-                        density_weighted=density_weighted,
-                        n_jobs=n_jobs,
-                        n_trees=n_trees,
-                        min_samples_leaf=min_samples_leaf,
-                        cat_min_samples_leaf=cat_min_samples_leaf,
-                        bootstrap=bootstrap,
-                        max_features=max_features)
-        counts += I['Importance'].values >= I_baseline['Importance'].values
+        impacts, importances = importances_(X, y.sample(frac=1.0, replace=False),
+                                            catcolnames=catcolnames,
+                                            normalize=normalize,
+                                            supervised=supervised,
+                                            n_jobs=n_jobs,
+                                            n_trees=n_trees,
+                                            min_samples_leaf=min_samples_leaf,
+                                            cat_min_samples_leaf=cat_min_samples_leaf,
+                                            min_slopes_per_x=min_slopes_per_x,
+                                            bootstrap=bootstrap,
+                                            max_features=max_features)
+        # print("Shuffled impacts\n",impacts)
+        # print("Shuffled importances\n",importances)
+        # print("Counts\n", impacts >= I_baseline['Impact'].values)
+        impact_counts += impacts >= baseline_impacts
+        importance_counts += importances >= baseline_importances
 
     # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC379178/ says don't use r/n
     # "Typically, the estimate of the P value is obtained as equation p_hat = r/n, where n
@@ -300,11 +286,10 @@ def importances_pvalues(X: pd.DataFrame,
     # of these replicates that produce a test statistic greater than or equal to that
     # calculated for the actual data. However, Davison and Hinkley (1997) give the
     # correct formula for obtaining an empirical P value as (r+1)/(n+1)."
-    pvalue = (counts + 1) / (n_trials + 1)
+    impact_pvalues = (impact_counts + 1) / (n_trials + 1)
+    importance_pvalues = (importance_counts + 1) / (n_trials + 1)
 
-    # print(counts)
-    # print(pvalue)
-    return pvalue
+    return impact_pvalues, importance_pvalues
 
 
 class ImpViz:

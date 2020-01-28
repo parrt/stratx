@@ -1651,7 +1651,7 @@ def plot_catstratpd(X, y,
         ax.set_xticklabels([])
 
     if show_xlabel:
-        label = colname+f" (Impact {np.mean(impacts):.1f}, weighted {np.mean(weighted_impacts):.1f})"
+        label = colname+f" (Impact {np.mean(impacts):.1f}, importance {np.mean(weighted_impacts):.1f})"
         ax.set_xlabel(label, fontsize=label_fontsize, fontname=fontname)
     if show_ylabel:
         ax.set_ylabel(targetname, fontsize=label_fontsize, fontname=fontname)

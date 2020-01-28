@@ -18,19 +18,9 @@ import matplotlib.pyplot as plt
 np.set_printoptions(precision=2, suppress=True, linewidth=300)#, threshold=1e10)
 
 
-# def rent_pdp():
-#     X, y = load_rent(n=2_000)
-#     # plot_stratpd_gridsearch(X, y, 'bedrooms', 'price')
-#     # plot_stratpd_gridsearch(X, y, 'bathrooms', 'price')
-#     plot_stratpd_gridsearch(X, y, 'Wvillage', 'price',
-#                             min_samples_leaf_values=(2,3,5,8,10,15))
-#     # plot_stratpd_gridsearch(X, y, 'latitude', 'price')
-#     # plot_stratpd_gridsearch(X, y, 'longitude', 'price')
-
-
 #np.random.seed(999)
 
-n=3_000
+n=8_000
 #r = (500,600)
 # r = (0,500)
 _, _, df_flights = load_flights(n=n)
@@ -48,10 +38,11 @@ I = importances(X, y,
                              'DAY_OF_WEEK'},
                 n_trials=2,
                 normalize=False,
-                density_weighted=True,
                 n_jobs=1,
+                pvalues=True,
+                pvalues_n_trials=50,
                 min_samples_leaf=10,
-                cat_min_samples_leaf=2)
+                cat_min_samples_leaf=3)
 print(I)
 
 col = 'SCHEDULED_DEPARTURE'
@@ -68,17 +59,18 @@ col = 'DEPARTURE_TIME'
 #              show_x_counts=True,
 #              min_slopes_per_x=1
 #              )
+# plt.show()
 
-col = 'FLIGHT_NUMBER'
-plot_catstratpd(X, y, colname=col, targetname='delay',
-                min_samples_leaf=2,
-                n_trials=5,
-                show_xticks=False,
-                show_impact=True,
-                yrange=(-150,150))
-plt.tight_layout()
-plt.savefig(f"/Users/parrt/Desktop/flight-{col}.pdf", pad_inches=0)
-plt.show()
+# col = 'FLIGHT_NUMBER'
+# plot_catstratpd(X, y, colname=col, targetname='delay',
+#                 min_samples_leaf=2,
+#                 n_trials=5,
+#                 show_xticks=False,
+#                 show_impact=True,
+#                 yrange=(-150,150))
+# plt.tight_layout()
+# plt.savefig(f"/Users/parrt/Desktop/flight-{col}.pdf", pad_inches=0)
+# plt.show()
 
 # uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored = \
 #     plot_catstratpd(X, y, 'FLIGHT_NUMBER', 'ARRIVAL_DELAY',
