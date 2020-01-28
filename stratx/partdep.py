@@ -1949,6 +1949,12 @@ def parray3(a):
 
 '''
 @jit(nopython=True)
+def set_random_seed(s):
+    # numpy and numba seeds are diff; gotta make sure they are same
+    np.random.seed(s)
+
+
+@jit(nopython=True)
 def nanavg_vectors(a, b, wa=1.0, wb=1.0) -> np.ndarray:
     "Add two vectors a+b but support nan+x==x and nan+nan=nan"
     a_nan = np.isnan(a)
@@ -1971,7 +1977,7 @@ def nanmerge_matrix_cols(A) -> np.ndarray:
     n, p = A.shape
     # Simulate s = np.nansum(A, axis=1)
     s = np.zeros(shape=(n,))
-    all_nan_entries = np.zeros(shape=(n,), dtype=np.int8)
+    all_nan_entries = np.empty(shape=(n,), dtype=np.bool_)
     for i in range(n):
         all_nan_entries[i] = np.isnan(A[i,:]).all()
         s[i] = np.nansum(A[i, :])
@@ -1997,5 +2003,4 @@ def parray(a:np.ndarray):
 @jit(nopython=True)
 def parray3(a:np.ndarray):
     return '[ ' + (' '.join(["%6.3f" % (x,) for x in a])).strip() + ' ]'
-
 '''

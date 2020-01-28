@@ -101,7 +101,7 @@ def toy_weather_data(n = 1000, p=50):
     return df.drop('temp', axis=1), df['temp'], df_avgs['state'].values, df_avgs.iloc[0:p]
 
 def test_single_leaf():
-    np.random.seed(999)
+    set_random_seed(999)
     leaf_deltas = np.array([
         [0],
         [1],
@@ -118,7 +118,7 @@ def test_single_leaf():
 
 
 def test_two_leaves_with_one_refcat():
-    np.random.seed(999)
+    set_random_seed(999)
     leaf_deltas = np.array([
         [0,0],
         [1,5],
@@ -139,7 +139,7 @@ def test_two_leaves_with_one_refcat():
 
 
 def test_two_leaves_with_two_refcats():
-    np.random.seed(999)
+    set_random_seed(999)
     leaf_deltas = np.array([
         [0,nan],
         [1,0],
@@ -160,7 +160,7 @@ def test_two_leaves_with_two_refcats():
 
 
 def test_two_leaves_with_non_0_and_1_catcodes():
-    np.random.seed(999)
+    set_random_seed(999)
     leaf_deltas = np.array([
         [nan, nan],
         [nan, nan],
@@ -188,7 +188,7 @@ def test_two_leaves_with_disconnected_2nd_leaf():
     It's possible for a leaf's refcat not to have a value in any earlier
     refcats, leaving nan in the running sum. No way to connect, must just drop
     """
-    np.random.seed(999)
+    set_random_seed(999)
     leaf_deltas = np.array([
         [0,      nan],
         [1,      nan],
@@ -212,7 +212,7 @@ def test_3_leaves_with_disconnected_2nd_leaf_followed_by_leaf_conn_to_disconnect
     It's possible for a leaf's refcat not to have a value in any earlier
     refcats, leaving nan in the running sum. No way to connect, must just drop
     """
-    np.random.seed(999)
+    set_random_seed(999)
     leaf_deltas = np.array([
         [0,      nan, nan],
         [1,      nan, nan],
@@ -238,7 +238,7 @@ def test_3_leaves_with_disconnected_2nd_leaf_followed_by_leaf_conn_to_first_leaf
     It's possible for a leaf's refcat not to have a value in any earlier
     refcats, leaving nan in the running sum. No way to connect, must just drop
     """
-    np.random.seed(999)
+    set_random_seed(999)
     leaf_deltas = np.array([
         [0,      nan, nan],
         [1,      nan, nan],
@@ -264,7 +264,7 @@ def test_3_leaves_with_2nd_incorporated_in_pass_2():
     It's possible for a leaf's refcat not to have a value in any earlier
     refcats, leaving nan in the running sum. No way to connect, must just drop
     """
-    np.random.seed(999)
+    set_random_seed(999)
     leaf_deltas = np.array([
         [0,      nan, nan],
         [1,      nan, nan],
@@ -288,7 +288,7 @@ def test_3_leaves_with_2nd_incorporated_in_pass_2():
 
 
 def test_4state_temperature():
-    np.random.seed(999)
+    set_random_seed(999)
     X,y,states,df_avgs = toy_weather_data(n=9, p=4)
 
     """
@@ -335,7 +335,7 @@ def test_temperature():
      [1 1 1 1]
      [1 0 1 0]]
     """
-    np.random.seed(999)
+    set_random_seed(999)
     X,y,states,df_avgs = toy_weather_data(n=20, p=8)
 
     leaf_deltas, leaf_counts, refcats, ignored = stratify_cats(X,y,colname="state",min_samples_leaf=5)
@@ -344,3 +344,7 @@ def test_temperature():
     expected = np.array([7.17, -19.48, 10.59, 4.26, 3.79, -8.52, -4.78, 0])
     np.testing.assert_array_almost_equal(avg_per_cat, expected, decimal=2)
     assert merge_ignored==0
+
+
+def set_random_seed(s):
+    np.random.seed(s)
