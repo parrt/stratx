@@ -148,17 +148,18 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                                                  max_features=max_features,
                                                  verbose=verbose) for colname in X.columns]
 
+    # nor
     avg_abs_pdp = np.array(avg_abs_pdp)
     total_avg_pdpy = np.sum(avg_abs_pdp)
 
-    normalized_importances = avg_abs_pdp
+    importances = avg_abs_pdp
     if normalize:
-        normalized_importances = avg_abs_pdp / total_avg_pdpy
+        importances = avg_abs_pdp / total_avg_pdpy
 
     all_stop = timer()
     print(f"Impact importance time {(all_stop-all_start):.0f}s")
 
-    return normalized_importances
+    return importances
 
 
 def single_feature_importance(X: pd.DataFrame, y: pd.Series,
@@ -184,15 +185,7 @@ def single_feature_importance(X: pd.DataFrame, y: pd.Series,
                                    max_features=max_features,
                                    verbose=verbose,
                                    supervised=supervised)
-        if density_weighted:
-            # weight each cat value by how many were used to create it
-            abs_avg_per_cat = np.abs(avg_per_cat)
-            avg_abs_pdp = np.nansum(abs_avg_per_cat * count_per_cat) / np.sum(count_per_cat)
-        else:
-            # some cats have NaN, such as 0th which is often for "missing values"
-            # depending on label encoding scheme.
-            # no need to shift as abs(avg_per_cat) deals with negatives.
-            avg_abs_pdp = np.nanmean(np.abs(avg_per_cat))
+        avg_abs_pdp = cat_compute_importance(avg_per_cat, count_per_cat, density_weighted)
     else:
         leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored = \
             partial_dependence(X=X, y=y, colname=colname,
@@ -204,17 +197,36 @@ def single_feature_importance(X: pd.DataFrame, y: pd.Series,
                                verbose=verbose,
                                parallel_jit=n_jobs == 1,
                                supervised=supervised)
-        if density_weighted:
-            _, pdpx_counts = np.unique(X_col[np.isin(X_col, pdpx)], return_counts=True)
-            if len(pdpx_counts)>0:
-                # weighted average of pdpy using pdpx_counts
-                avg_abs_pdp = np.sum(np.abs(pdpy * pdpx_counts)) / np.sum(pdpx_counts)
-            else:
-                avg_abs_pdp = np.mean(np.abs(pdpy))
-        else:
-            avg_abs_pdp = np.mean(np.abs(pdpy))
+        avg_abs_pdp = compute_importance(X_col, pdpx, pdpy, density_weighted)
     # print(f"{colname}:{avg_abs_pdp:.3f} mass")
     # print(f"Stop {colname}")
+    return avg_abs_pdp
+
+
+def compute_importance(X_col, pdpx, pdpy, density_weighted):
+    if density_weighted:
+        # TODO: might include samples not included in pdpy due to thresholding, ignored
+        _, pdpx_counts = np.unique(X_col[np.isin(X_col, pdpx)], return_counts=True)
+        if len(pdpx_counts) > 0:
+            # weighted average of pdpy using pdpx_counts
+            avg_abs_pdp = np.sum(np.abs(pdpy * pdpx_counts)) / np.sum(pdpx_counts)
+        else:
+            avg_abs_pdp = np.mean(np.abs(pdpy))
+    else:
+        avg_abs_pdp = np.mean(np.abs(pdpy))
+    return avg_abs_pdp
+
+
+def cat_compute_importance(avg_per_cat, count_per_cat, density_weighted):
+    if density_weighted:
+        # weight each cat value by how many were used to create it
+        abs_avg_per_cat = np.abs(avg_per_cat)
+        avg_abs_pdp = np.nansum(abs_avg_per_cat * count_per_cat) / np.sum(count_per_cat)
+    else:
+        # some cats have NaN, such as 0th which is often for "missing values"
+        # depending on label encoding scheme.
+        # no need to shift as abs(avg_per_cat) deals with negatives.
+        avg_abs_pdp = np.nanmean(np.abs(avg_per_cat))
     return avg_abs_pdp
 
 
