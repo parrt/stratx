@@ -119,57 +119,34 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
 
     all_start = timer()
 
-    def single_feature_importance(colname):
-        # print(f"Start {colname}")
-        X_col = X[colname]
-        if colname in catcolnames:
-            leaf_deltas, leaf_counts, avg_per_cat, count_per_cat, ignored, merge_ignored = \
-                cat_partial_dependence(X, y, colname=colname,
-                                       n_trees=n_trees,
-                                       min_samples_leaf=cat_min_samples_leaf,
-                                       bootstrap=bootstrap,
-                                       max_features=max_features,
-                                       verbose=verbose,
-                                       supervised=supervised)
-            if density_weighted:
-                # weight each cat value by how many were used to create it
-                abs_avg_per_cat = np.abs(avg_per_cat)
-                avg_abs_pdp = np.nansum(abs_avg_per_cat * count_per_cat) / np.sum(count_per_cat)
-            else:
-                # some cats have NaN, such as 0th which is often for "missing values"
-                # depending on label encoding scheme.
-                # no need to shift as abs(avg_per_cat) deals with negatives.
-                avg_abs_pdp = np.nanmean(np.abs(avg_per_cat))
-        else:
-            leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored = \
-                partial_dependence(X=X, y=y, colname=colname,
-                                   n_trees=n_trees,
-                                   min_samples_leaf=min_samples_leaf,
-                                   min_slopes_per_x=min_slopes_per_x,
-                                   bootstrap=bootstrap,
-                                   max_features=max_features,
-                                   verbose=verbose,
-                                   parallel_jit=n_jobs == 1,
-                                   supervised=supervised)
-            if density_weighted:
-                _, pdpx_counts = np.unique(X_col[np.isin(X_col, pdpx)], return_counts=True)
-                if len(pdpx_counts)>0:
-                    # weighted average of pdpy using pdpx_counts
-                    avg_abs_pdp = np.sum(np.abs(pdpy * pdpx_counts)) / np.sum(pdpx_counts)
-                else:
-                    avg_abs_pdp = np.mean(np.abs(pdpy))
-            else:
-                avg_abs_pdp = np.mean(np.abs(pdpy))
-        print(f"{colname}:{avg_abs_pdp:.3f} mass")
-        # print(f"Stop {colname}")
-        return avg_abs_pdp
-
     if n_jobs>1 or n_jobs==-1:
         # Do n_jobs in parallel; in case it flips to shared mem, make it readonly
         avg_abs_pdp = Parallel(verbose=0, n_jobs=n_jobs, mmap_mode='r')\
-            (delayed(single_feature_importance)(colname) for colname in X.columns)
+            (delayed(single_feature_importance)(X,y,colname,
+                                                 catcolnames=catcolnames,
+                                                 density_weighted=density_weighted,
+                                                 supervised=supervised,
+                                                 n_jobs=n_jobs,
+                                                 n_trees=n_trees,
+                                                 min_samples_leaf=min_samples_leaf,
+                                                 cat_min_samples_leaf=cat_min_samples_leaf,
+                                                 min_slopes_per_x=min_slopes_per_x,
+                                                 bootstrap=bootstrap,
+                                                 max_features=max_features,
+                                                 verbose=verbose) for colname in X.columns)
     else:
-        avg_abs_pdp = [single_feature_importance(colname) for colname in X.columns]
+        avg_abs_pdp = [single_feature_importance(X,y,colname,
+                                                 catcolnames=catcolnames,
+                                                 density_weighted=density_weighted,
+                                                 supervised=supervised,
+                                                 n_jobs=n_jobs,
+                                                 n_trees=n_trees,
+                                                 min_samples_leaf=min_samples_leaf,
+                                                 cat_min_samples_leaf=cat_min_samples_leaf,
+                                                 min_slopes_per_x=min_slopes_per_x,
+                                                 bootstrap=bootstrap,
+                                                 max_features=max_features,
+                                                 verbose=verbose) for colname in X.columns]
 
     avg_abs_pdp = np.array(avg_abs_pdp)
     total_avg_pdpy = np.sum(avg_abs_pdp)
@@ -182,6 +159,63 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
     print(f"Impact importance time {(all_stop-all_start):.0f}s")
 
     return normalized_importances
+
+
+def single_feature_importance(X: pd.DataFrame, y: pd.Series,
+                              colname,
+                              catcolnames=set(),
+                              density_weighted=True,
+                              supervised=True,
+                              n_jobs=1,
+                              n_trees=1,
+                              min_samples_leaf=10,
+                              cat_min_samples_leaf=10,
+                              min_slopes_per_x=5,
+                              bootstrap=False, max_features=1.0,
+                              verbose=False):
+    # print(f"Start {colname}")
+    X_col = X[colname]
+    if colname in catcolnames:
+        leaf_deltas, leaf_counts, avg_per_cat, count_per_cat, ignored, merge_ignored = \
+            cat_partial_dependence(X, y, colname=colname,
+                                   n_trees=n_trees,
+                                   min_samples_leaf=cat_min_samples_leaf,
+                                   bootstrap=bootstrap,
+                                   max_features=max_features,
+                                   verbose=verbose,
+                                   supervised=supervised)
+        if density_weighted:
+            # weight each cat value by how many were used to create it
+            abs_avg_per_cat = np.abs(avg_per_cat)
+            avg_abs_pdp = np.nansum(abs_avg_per_cat * count_per_cat) / np.sum(count_per_cat)
+        else:
+            # some cats have NaN, such as 0th which is often for "missing values"
+            # depending on label encoding scheme.
+            # no need to shift as abs(avg_per_cat) deals with negatives.
+            avg_abs_pdp = np.nanmean(np.abs(avg_per_cat))
+    else:
+        leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored = \
+            partial_dependence(X=X, y=y, colname=colname,
+                               n_trees=n_trees,
+                               min_samples_leaf=min_samples_leaf,
+                               min_slopes_per_x=min_slopes_per_x,
+                               bootstrap=bootstrap,
+                               max_features=max_features,
+                               verbose=verbose,
+                               parallel_jit=n_jobs == 1,
+                               supervised=supervised)
+        if density_weighted:
+            _, pdpx_counts = np.unique(X_col[np.isin(X_col, pdpx)], return_counts=True)
+            if len(pdpx_counts)>0:
+                # weighted average of pdpy using pdpx_counts
+                avg_abs_pdp = np.sum(np.abs(pdpy * pdpx_counts)) / np.sum(pdpx_counts)
+            else:
+                avg_abs_pdp = np.mean(np.abs(pdpy))
+        else:
+            avg_abs_pdp = np.mean(np.abs(pdpy))
+    # print(f"{colname}:{avg_abs_pdp:.3f} mass")
+    # print(f"Stop {colname}")
+    return avg_abs_pdp
 
 
 def importances_pvalues(X: pd.DataFrame,

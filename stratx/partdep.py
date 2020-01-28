@@ -1333,7 +1333,7 @@ def avg_values_at_cat_jit(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose
     # completed.append(-1) # init to any nonempty set to enter loop
     iteration = 1
     while len(work)>0 and len(completed)>0 and iteration<=max_iter:
-        print("PASS", iteration, "len(work)", len(work))
+        #print("PASS", iteration, "len(work)", len(work))
         completed.clear()
         for j in work:      # for each refcat, avg in the vectors
             cat = uniq_refcats[j]
@@ -1370,7 +1370,7 @@ def avg_values_at_cat_jit(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose
         work = work - completed
 
     if len(work)>0:
-        print("Left", len(work), "leaves in work list")
+        #print("Left", len(work), "leaves in work list")
         # hmm..couldn't merge some vectors; total up the samples we ignored
         for j in work:
             merge_ignored += weight_for_refcats[j]
@@ -1543,7 +1543,7 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose=Fal
     completed = {-1} # init to any nonempty set to enter loop
     iteration = 1
     while len(work)>0 and len(completed)>0 and iteration<=max_iter:
-        print(f"PASS {iteration} len(work)", len(work))
+        #print(f"PASS {iteration} len(work)", len(work))
         completed = set()
         for j in work:      # for each refcat, avg in the vectors
             cat = uniq_refcats[j]
@@ -1578,7 +1578,7 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose=Fal
         work = work - completed
 
     if len(work)>0:
-        print(f"Left {len(work)} leaves in work list")
+        #print(f"Left {len(work)} leaves in work list")
         # hmm..couldn't merge some vectors; total up the samples we ignored
         for j in work:
             merge_ignored += weight_for_refcats[j]
@@ -1586,6 +1586,7 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose=Fal
 
     if verbose: print("final cat avgs", parray3(catavg))
     return catavg, catavg_weight, merge_ignored # last one is count of values per cat actually incorporated
+
 
 def plot_catstratpd(X, y,
                     colname,  # X[colname] expected to be numeric codes
