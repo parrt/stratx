@@ -21,7 +21,7 @@ def importances(X: pd.DataFrame,
                 density_weighted=True,
                 supervised=True,
                 n_jobs=1,
-                sort=True,  # sort by importance in descending order?
+                sort='Importance',  # sort by importance or impact
                 min_slopes_per_x=5,  # ignore pdp y values derived from too few slopes (usually at edges)
                 # important for getting good starting point of PD so AUC isn't skewed.
                 n_trials: int = 1,
@@ -35,7 +35,8 @@ def importances(X: pd.DataFrame,
         raise ValueError("Can only operate on dataframes at the moment")
 
     n,p = X.shape
-    imps = np.zeros(shape=(p, n_trials))
+    impact_trials = np.zeros(shape=(p, n_trials))
+    importance_trials = np.zeros(shape=(p, n_trials))
     # track p var importances for ntrials; cols are trials
     for i in range(n_trials):
         if n_trials==1: # don't shuffle if not bootstrapping
@@ -44,26 +45,30 @@ def importances(X: pd.DataFrame,
             # bootstrap_sample_idxs = resample(range(n), n_samples=n, replace=True)
             bootstrap_sample_idxs = resample(range(n), n_samples=int(n*.75), replace=False)
         X_, y_ = X.iloc[bootstrap_sample_idxs], y.iloc[bootstrap_sample_idxs]
-        I = importances_(X_, y_, catcolnames=catcolnames,
-                         normalize=normalize,
-                         density_weighted=density_weighted,
-                         supervised=supervised,
-                         n_jobs=n_jobs,
-                         n_trees=n_trees,
-                         min_samples_leaf=min_samples_leaf,
-                         cat_min_samples_leaf=cat_min_samples_leaf,
-                         min_slopes_per_x=min_slopes_per_x,
-                         bootstrap=bootstrap,
-                         max_features=max_features,
-                         verbose=verbose)
-        imps[:,i] = I
+        impacts, importances = importances_(X_, y_, catcolnames=catcolnames,
+                                            normalize=normalize,
+                                            density_weighted=density_weighted,
+                                            supervised=supervised,
+                                            n_jobs=n_jobs,
+                                            n_trees=n_trees,
+                                            min_samples_leaf=min_samples_leaf,
+                                            cat_min_samples_leaf=cat_min_samples_leaf,
+                                            min_slopes_per_x=min_slopes_per_x,
+                                            bootstrap=bootstrap,
+                                            max_features=max_features,
+                                            verbose=verbose)
+        impact_trials[:,i] = impacts
+        importance_trials[:,i] = importances
 
-    avg_imps = np.mean(imps, axis=1)
+    avg_importance = np.mean(importance_trials, axis=1)
+    avg_impact = np.mean(impact_trials, axis=1)
 
-    I = pd.DataFrame(data={'Feature': X.columns, 'Importance': avg_imps})
+    I = pd.DataFrame(data={'Feature': X.columns})
+    I['Importance'] = avg_importance
+    I['Importance Sigma'] = np.std(importance_trials, axis=1)
+    I['Impact'] = avg_impact
+    I['Impact Sigma'] = np.std(impact_trials, axis=1)
     I = I.set_index('Feature')
-
-    I['Sigma'] = np.std(imps, axis=1)
 
     if pvalues:
         print("--------------- START PVALUES --------------------------------------")
@@ -98,7 +103,10 @@ def importances(X: pd.DataFrame,
     #     I = I[['Importance','Sigma','Rank']]
 
     if sort is not None:
-        I = I.sort_values('Importance', ascending=False)
+        if sort=='Importance':
+            I = I.sort_values('Importance', ascending=False)
+        elif sort == 'Impact':
+            I = I.sort_values('Impact', ascending=False)
 
     return I
 
@@ -121,7 +129,7 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
 
     if n_jobs>1 or n_jobs==-1:
         # Do n_jobs in parallel; in case it flips to shared mem, make it readonly
-        avg_abs_pdp = Parallel(verbose=0, n_jobs=n_jobs, mmap_mode='r')\
+        impacts_importances = Parallel(verbose=0, n_jobs=n_jobs, mmap_mode='r')\
             (delayed(single_feature_importance)(X,y,colname,
                                                  catcolnames=catcolnames,
                                                  density_weighted=density_weighted,
@@ -135,7 +143,7 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                                                  max_features=max_features,
                                                  verbose=verbose) for colname in X.columns)
     else:
-        avg_abs_pdp = [single_feature_importance(X,y,colname,
+        impacts_importances = [single_feature_importance(X,y,colname,
                                                  catcolnames=catcolnames,
                                                  density_weighted=density_weighted,
                                                  supervised=supervised,
@@ -148,18 +156,21 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                                                  max_features=max_features,
                                                  verbose=verbose) for colname in X.columns]
 
-    # nor
-    avg_abs_pdp = np.array(avg_abs_pdp)
-    total_avg_pdpy = np.sum(avg_abs_pdp)
+    impacts_importances = np.array(impacts_importances)
+    impacts = impacts_importances[:,0]
+    importances = impacts_importances[:,1]
 
-    importances = avg_abs_pdp
+    total_impact = np.sum(impacts)
+    total_importance = np.sum(importances)
+
     if normalize:
-        importances = avg_abs_pdp / total_avg_pdpy
+        impacts /= total_impact
+        importances /= total_importance
 
     all_stop = timer()
     print(f"Impact importance time {(all_stop-all_start):.0f}s")
 
-    return importances
+    return impacts, importances
 
 
 def single_feature_importance(X: pd.DataFrame, y: pd.Series,
@@ -174,6 +185,7 @@ def single_feature_importance(X: pd.DataFrame, y: pd.Series,
                               min_slopes_per_x=5,
                               bootstrap=False, max_features=1.0,
                               verbose=False):
+    "Return impact=unweighted avg abs, importance=weighted avg abs"
     # print(f"Start {colname}")
     X_col = X[colname]
     if colname in catcolnames:
@@ -185,7 +197,7 @@ def single_feature_importance(X: pd.DataFrame, y: pd.Series,
                                    max_features=max_features,
                                    verbose=verbose,
                                    supervised=supervised)
-        avg_abs_pdp = cat_compute_importance(avg_per_cat, count_per_cat, density_weighted)
+        impact, importance = cat_compute_importance(avg_per_cat, count_per_cat)
     else:
         leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored = \
             partial_dependence(X=X, y=y, colname=colname,
@@ -197,37 +209,37 @@ def single_feature_importance(X: pd.DataFrame, y: pd.Series,
                                verbose=verbose,
                                parallel_jit=n_jobs == 1,
                                supervised=supervised)
-        avg_abs_pdp = compute_importance(X_col, pdpx, pdpy, density_weighted)
+        impact, importance = compute_importance(X_col, pdpx, pdpy)
     # print(f"{colname}:{avg_abs_pdp:.3f} mass")
     # print(f"Stop {colname}")
-    return avg_abs_pdp
+    return impact, importance
 
 
-def compute_importance(X_col, pdpx, pdpy, density_weighted):
-    if density_weighted:
-        # TODO: might include samples not included in pdpy due to thresholding, ignored
-        _, pdpx_counts = np.unique(X_col[np.isin(X_col, pdpx)], return_counts=True)
-        if len(pdpx_counts) > 0:
-            # weighted average of pdpy using pdpx_counts
-            avg_abs_pdp = np.sum(np.abs(pdpy * pdpx_counts)) / np.sum(pdpx_counts)
-        else:
-            avg_abs_pdp = np.mean(np.abs(pdpy))
+def compute_importance(X_col, pdpx, pdpy):
+    # TODO: might include samples not included in pdpy due to thresholding, ignored
+    _, pdpx_counts = np.unique(X_col[np.isin(X_col, pdpx)], return_counts=True)
+    if len(pdpx_counts) > 0:
+        # weighted average of pdpy using pdpx_counts
+        weighted_avg_abs_pdp = np.sum(np.abs(pdpy * pdpx_counts)) / np.sum(pdpx_counts)
     else:
-        avg_abs_pdp = np.mean(np.abs(pdpy))
-    return avg_abs_pdp
+        weighted_avg_abs_pdp = np.mean(np.abs(pdpy))
+
+    # unweighted
+    avg_abs_pdp = np.mean(np.abs(pdpy))
+    return avg_abs_pdp, weighted_avg_abs_pdp
 
 
-def cat_compute_importance(avg_per_cat, count_per_cat, density_weighted):
-    if density_weighted:
-        # weight each cat value by how many were used to create it
-        abs_avg_per_cat = np.abs(avg_per_cat)
-        avg_abs_pdp = np.nansum(abs_avg_per_cat * count_per_cat) / np.sum(count_per_cat)
-    else:
-        # some cats have NaN, such as 0th which is often for "missing values"
-        # depending on label encoding scheme.
-        # no need to shift as abs(avg_per_cat) deals with negatives.
-        avg_abs_pdp = np.nanmean(np.abs(avg_per_cat))
-    return avg_abs_pdp
+def cat_compute_importance(avg_per_cat, count_per_cat):
+    # weight each cat value by how many were used to create it
+    weighted_abs_avg_per_cat = np.abs(avg_per_cat)
+    weighted_avg_abs_pdp = np.nansum(weighted_abs_avg_per_cat * count_per_cat) / np.sum(count_per_cat)
+
+    # do unweighted
+    # some cats have NaN, such as 0th which is often for "missing values"
+    # depending on label encoding scheme.
+    # no need to shift as abs(avg_per_cat) deals with negatives.
+    avg_abs_pdp = np.nanmean(np.abs(avg_per_cat))
+    return avg_abs_pdp, weighted_avg_abs_pdp
 
 
 def importances_pvalues(X: pd.DataFrame,

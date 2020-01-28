@@ -30,7 +30,7 @@ np.set_printoptions(precision=2, suppress=True, linewidth=300)#, threshold=1e10)
 
 #np.random.seed(999)
 
-n=20_000
+n=3_000
 #r = (500,600)
 # r = (0,500)
 _, _, df_flights = load_flights(n=n)
@@ -46,9 +46,10 @@ I = importances(X, y,
                              'DESTINATION_AIRPORT',
                              'FLIGHT_NUMBER',
                              'DAY_OF_WEEK'},
-                n_trials=5,
+                n_trials=2,
                 normalize=False,
                 density_weighted=True,
+                n_jobs=1,
                 min_samples_leaf=10,
                 cat_min_samples_leaf=2)
 print(I)

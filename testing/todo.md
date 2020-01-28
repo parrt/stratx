@@ -7,3 +7,4 @@
 * combine pvalue=True and n_trials to get pvalues; no sep count
 * add ignored to plots
 * add impact to importance dataframe
+* yearmade and modelid get reversed with density_weighted; see compute_importance()
