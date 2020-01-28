@@ -8,3 +8,5 @@
 * add ignored to plots
 * add impact to importance dataframe
 * yearmade and modelid get reversed with density_weighted; see compute_importance()
+* if mean - 2sigma <=0 then can discard feature
+* could weight features by scaled version of sigma to lower importance if higher variance
