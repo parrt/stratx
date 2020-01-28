@@ -26,7 +26,6 @@ def importances(X: pd.DataFrame,
                 # important for getting good starting point of PD so AUC isn't skewed.
                 n_trials: int = 1,
                 pvalues=False,  # use to get p-values for each importance; it's number trials
-                n_pvalue_trials=50,  # how many trials to do to get p-values
                 n_trees=1,
                 min_samples_leaf=10,
                 cat_min_samples_leaf=10,
@@ -74,7 +73,7 @@ def importances(X: pd.DataFrame,
                                            normalize=normalize,
                                            density_weighted=density_weighted,
                                            n_jobs=n_jobs,
-                                           n_trials=n_pvalue_trials,
+                                           n_trials=n_trials,
                                            min_slopes_per_x=min_slopes_per_x,
                                            n_trees=n_trees,
                                            min_samples_leaf=min_samples_leaf,
@@ -141,28 +140,6 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                 # depending on label encoding scheme.
                 # no need to shift as abs(avg_per_cat) deals with negatives.
                 avg_abs_pdp = np.nanmean(np.abs(avg_per_cat))
-
-            """
-            #         print(f"Ignored for {colname} = {ignored}")
-            # values will straddle 0, some above, some below.
-            # Used to be just this but now we weight by num of each cat:
-            # Ok, I'm back to this from the below because weight at each x really
-            # doesn't change how much an x location pushes on y.
-            avg_abs_pdp = np.nanmean(np.abs(avg_per_cat))
-
-            # avg_per_cat is currently deltas from mean(y) but we want to use min avg_per_cat
-            # as reference point, zeroing that one out. All others will be relative to that
-            # min cat value
-            # DON'T do this actually. seems to accentuate the impact; leave as relative to
-            # overall mean
-            #avg_per_cat -= np.nanmin(avg_per_cat)
-
-            # group by cat and get count
-            # abs_avg_per_cat = np.abs(avg_per_cat[~np.isnan(avg_per_cat)])
-            # uniq_cats = np.where(~np.isnan(avg_per_cat))[0]
-            # cat_counts = [len(np.where(X_col == cat)[0]) for cat in uniq_cats]
-            # avg_abs_pdp = np.sum(abs_avg_per_cat * cat_counts) / np.sum(cat_counts)
-            """
         else:
             leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored = \
                 partial_dependence(X=X, y=y, colname=colname,

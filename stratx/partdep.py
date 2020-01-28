@@ -21,36 +21,6 @@ from numba import jit, prange
 import numba
 
 
-'''
-def leaf_samples_general(rf, X:np.ndarray):
-    """
-    Return a list of arrays where each array is the set of X sample indexes
-    residing in a single leaf of some tree in rf forest.
-    """
-    n_trees = len(rf.estimators_)
-    leaf_ids = rf.apply(X) # which leaf does each X_i go to for each tree?
-    d = pd.DataFrame(leaf_ids, columns=[f"tree{i}" for i in range(n_trees)])
-    d = d.reset_index() # get 0..n-1 as column called index so we can do groupby
-    """
-    d looks like:
-        index	tree0	tree1	tree2	tree3	tree4
-    0	0	    8	    3	    4	    4	    3
-    1	1	    8	    3	    4	    4	    3
-    """
-    leaf_samples = []
-    for i in range(n_trees):
-        """
-        Each groupby gets a list of all X indexes associated with same leaf. 4 leaves would
-        get 4 arrays of X indexes; e.g.,
-        array([array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
-               array([10, 11, 12, 13, 14, 15]), array([16, 17, 18, 19, 20]),
-               array([21, 22, 23, 24, 25, 26, 27, 28, 29]), ... )
-        """
-        sample_idxs_in_leaf = d.groupby(f'tree{i}')['index'].apply(lambda x: x.values)
-        leaf_samples.extend(sample_idxs_in_leaf) # add [...sample idxs...] for each leaf
-    return leaf_samples
-'''
-
 def leaf_samples(rf, X_not_col:np.ndarray):
     """
     Return a list of arrays where each array is the set of X sample indexes
