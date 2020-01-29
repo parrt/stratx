@@ -1328,6 +1328,8 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose=Fal
       noise should cancel out or we get better estimate one way or another
     * might need min_values_per_cat hyperparameter akin to min_slopes_per_x
     * wow. choosing random refcat helps avoid focusing on some outliers by accident
+      and after merging same (random) refcat, use random refcat to merge in 2nd loop.
+      even less likely to hit outlier 2x in row.
 
     :param leaf_deltas: A 2D matrix where rows are category levels/values and
                         columns hold y values for categories.

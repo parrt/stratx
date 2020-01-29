@@ -120,30 +120,30 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
 
     if n_jobs>1 or n_jobs==-1:
         # Do n_jobs in parallel; in case it flips to shared mem, make it readonly
-        impacts_importances = Parallel(verbose=0, n_jobs=n_jobs, mmap_mode='r')\
-            (delayed(single_feature_importance)(X,y,colname,
-                                                 catcolnames=catcolnames,
-                                                 supervised=supervised,
-                                                 n_jobs=n_jobs,
-                                                 n_trees=n_trees,
-                                                 min_samples_leaf=min_samples_leaf,
-                                                 cat_min_samples_leaf=cat_min_samples_leaf,
-                                                 min_slopes_per_x=min_slopes_per_x,
-                                                 bootstrap=bootstrap,
-                                                 max_features=max_features,
-                                                 verbose=verbose) for colname in X.columns)
+        impacts_importances = Parallel(verbose=0, n_jobs=n_jobs, mmap_mode='r') \
+            (delayed(single_feature_importance)(X, y, colname,
+                                                catcolnames=catcolnames,
+                                                supervised=supervised,
+                                                n_jobs=n_jobs,
+                                                n_trees=n_trees,
+                                                min_samples_leaf=min_samples_leaf,
+                                                cat_min_samples_leaf=cat_min_samples_leaf,
+                                                min_slopes_per_x=min_slopes_per_x,
+                                                bootstrap=bootstrap,
+                                                max_features=max_features,
+                                                verbose=verbose) for colname in X.columns)
     else:
-        impacts_importances = [single_feature_importance(X,y,colname,
-                                                 catcolnames=catcolnames,
-                                                 supervised=supervised,
-                                                 n_jobs=n_jobs,
-                                                 n_trees=n_trees,
-                                                 min_samples_leaf=min_samples_leaf,
-                                                 cat_min_samples_leaf=cat_min_samples_leaf,
-                                                 min_slopes_per_x=min_slopes_per_x,
-                                                 bootstrap=bootstrap,
-                                                 max_features=max_features,
-                                                 verbose=verbose) for colname in X.columns]
+        impacts_importances = [single_feature_importance(X, y, colname,
+                                                         catcolnames=catcolnames,
+                                                         supervised=supervised,
+                                                         n_jobs=n_jobs,
+                                                         n_trees=n_trees,
+                                                         min_samples_leaf=min_samples_leaf,
+                                                         cat_min_samples_leaf=cat_min_samples_leaf,
+                                                         min_slopes_per_x=min_slopes_per_x,
+                                                         bootstrap=bootstrap,
+                                                         max_features=max_features,
+                                                         verbose=verbose) for colname in X.columns]
 
     impacts_importances = np.array(impacts_importances)
     impacts = impacts_importances[:,0]
@@ -175,7 +175,6 @@ def single_feature_importance(X: pd.DataFrame, y: pd.Series,
                               verbose=False):
     "Return impact=unweighted avg abs, importance=weighted avg abs"
     # print(f"Start {colname}")
-    X_col = X[colname]
     if colname in catcolnames:
         leaf_deltas, leaf_counts, avg_per_cat, count_per_cat, ignored, merge_ignored = \
             cat_partial_dependence(X, y, colname=colname,
@@ -197,7 +196,7 @@ def single_feature_importance(X: pd.DataFrame, y: pd.Series,
                                verbose=verbose,
                                parallel_jit=n_jobs == 1,
                                supervised=supervised)
-        impact, importance = compute_importance(X_col, pdpx, pdpy)
+        impact, importance = compute_importance(X[colname], pdpx, pdpy)
     # print(f"{colname}:{avg_abs_pdp:.3f} mass")
     # print(f"Stop {colname}")
     return impact, importance
@@ -219,16 +218,16 @@ def compute_importance(X_col, pdpx, pdpy):
 
 def cat_compute_importance(avg_per_cat, count_per_cat):
     # weight each cat value by how many were used to create it
-    weighted_abs_avg_per_cat = np.abs(avg_per_cat)
-    # above_threshold = np.where(count_per_cat>6)[0]
-    # weighted_avg_abs_pdp = np.nansum(weighted_abs_avg_per_cat[above_threshold] * count_per_cat[above_threshold]) / np.sum(count_per_cat[above_threshold])
-    weighted_avg_abs_pdp = np.nansum(weighted_abs_avg_per_cat * count_per_cat) / np.sum(count_per_cat)
+    abs_avg_per_cat = np.abs(avg_per_cat)
+    # above_threshold = np.where(count_per_cat>20)[0]
+    # weighted_avg_abs_pdp = np.nansum(abs_avg_per_cat[above_threshold] * count_per_cat[above_threshold]) / np.sum(count_per_cat[above_threshold])
+    weighted_avg_abs_pdp = np.nansum(abs_avg_per_cat * count_per_cat) / np.sum(count_per_cat)
 
     # do unweighted
     # some cats have NaN, such as 0th which is often for "missing values"
     # depending on label encoding scheme.
     # no need to shift as abs(avg_per_cat) deals with negatives.
-    avg_abs_pdp = np.nanmean(np.abs(avg_per_cat))
+    avg_abs_pdp = np.nanmean(abs_avg_per_cat)
     return avg_abs_pdp, weighted_avg_abs_pdp
 
 

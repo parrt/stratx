@@ -167,7 +167,7 @@ def cv_features(kf, X, y, features, metric, catcolnames=None, time_sensitive=Fal
         indexes = kf.split(X)
     else:
         end_training = int(.8 * len(X))
-        indexes = (range(0, end_training), range(end_training,len(X)))
+        indexes = [(range(0, end_training), range(end_training,len(X)))]
     for train_index, test_index in indexes:
         # for k in range(kfolds):
         # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)

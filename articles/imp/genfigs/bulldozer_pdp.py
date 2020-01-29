@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 
 np.set_printoptions(precision=2, suppress=True, linewidth=300, threshold=2000)
 
-n = 20_000
+n = 10_000
 
 X, y = load_bulldozer()
 
@@ -37,37 +37,44 @@ X_ = X_.copy()
 # X_['ModelID'] += 1
 
 
-I = importances(X_, y_,
-                n_trials=3,
-                normalize=True,
-                min_samples_leaf=10,
-                cat_min_samples_leaf=5,
-                pvalues=False,
-                pvalues_n_trials=10,
-                catcolnames={'AC','ModelID'})
-print(I)
+# I = importances(X_, y_,
+#                 n_trials=5,
+#                 normalize=True,
+#                 min_samples_leaf=10,
+#                 cat_min_samples_leaf=5,
+#                 pvalues=True,
+#                 pvalues_n_trials=20,
+#                 catcolnames={'AC','ModelID'})
+# print(I)
 
-#y_ = y_.sample(frac=1.0, replace=False)
-# uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored = \
-#     plot_catstratpd(X_, y_, colname='ModelID', targetname='SalePrice',
-#                     min_samples_leaf=5,
-#                     # sort=None,
-#                     alpha=.08,
-#                     show_all_deltas=False,
-#                     n_trials=1,
-#                     show_xticks=False,
-#                     show_impact=True,
-#                     min_y_shifted_to_zero=False,
-#                     figsize=(20,5),
-#                     yrange=(-150_000, 150_000),
-#                     verbose=False)
-# plt.title(f"n={n}, ignored ={ignored}")
-# print("ignored",ignored)
-# plt.tight_layout()
-# plt.savefig(f"/Users/parrt/Desktop/james-ModelID-25k.pdf", pad_inches=0)
-# # plt.savefig(f"/Users/parrt/Desktop/james-ModelID-25k-shuffled.pdf", pad_inches=0)
-# plt.show()
 
+# y_ = y_.sample(frac=1.0, replace=False)
+# X_['ModelID'] = X_['ModelID'].sample(frac=1.0, replace=False)
+uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored = \
+    plot_catstratpd(X_, y_, colname='ModelID', targetname='SalePrice',
+                    min_samples_leaf=5,
+                    # sort=None,
+                    alpha=.08,
+                    show_all_deltas=False,
+                    n_trials=1,
+                    show_xticks=False,
+                    show_impact=True,
+                    shuffle_y=True,
+                    min_y_shifted_to_zero=False,
+                    figsize=(20,5),
+                    yrange=(-150_000, 150_000),
+                    verbose=False)
+plt.title(f"n={n}, ignored = {ignored}, merge_ignored = {merge_ignored}")
+print("ignored",ignored, f"merge_ignored = {merge_ignored}")
+plt.tight_layout()
+# # plt.savefig(f"/Users/parrt/Desktop/james-ModelID-10k.pdf", pad_inches=0)
+# # plt.savefig(f"/Users/parrt/Desktop/james-ModelID-10k-shuffled-x-not-y.pdf", pad_inches=0)
+plt.savefig(f"/Users/parrt/Desktop/james-ModelID-10k-shuffled.pdf", pad_inches=0)
+plt.show()
+
+
+# X_ = X_.copy()
+# X_['YearMade'] = np.random.choice(X_['YearMade'], size=len(X_), replace=False)
 # plot_stratpd(X_, y_, colname='YearMade', targetname='SalePrice',
 #              n_trials=3,
 #              show_slope_lines=False,
@@ -75,7 +82,8 @@ print(I)
 #              figsize=(3.8,3.2)
 #              )
 # plt.tight_layout()
-# plt.savefig(f"/Users/parrt/Desktop/james-YearMade.pdf", pad_inches=0)
+# # plt.savefig(f"/Users/parrt/Desktop/james-YearMade.pdf", pad_inches=0)
+# plt.savefig(f"/Users/parrt/Desktop/james-YearMade-x-shuffled.pdf", pad_inches=0)
 # plt.show()
 
 
