@@ -25,6 +25,7 @@ from sklearn import linear_model
 
 import xgboost as xgb
 from sklearn import svm
+from sklearn.model_selection import KFold
 
 pd.set_option('display.max_columns', 10)
 pd.set_option('display.width', 300)
@@ -152,7 +153,7 @@ def shap_importances(model, X_train, X_test, n_shap, normalize=True, sort=True):
     return shapI
 
 
-def cv_features(X, y, features, metric, catcolnames=None, time_sensitive=False, kfolds=5, model='RF'):
+def cv_features(kf, X, y, features, metric, catcolnames=None, time_sensitive=False, kfolds=5, model='RF'):
     # if time_sensitive:
     #     n_test = int(0.20 * len(X))
     #     n_train = len(X) - n_test
@@ -162,8 +163,16 @@ def cv_features(X, y, features, metric, catcolnames=None, time_sensitive=False, 
     scores = []
     n_estimators = 40  # for both SHAP and testing purposes
 
-    for k in range(kfolds):
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    if kf is not None:
+        indexes = kf.split(X)
+    else:
+        end_training = int(.8 * len(X))
+        indexes = (range(0, end_training), range(end_training,len(X)))
+    for train_index, test_index in indexes:
+        # for k in range(kfolds):
+        # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+        X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+        y_train, y_test = y.iloc[train_index], y.iloc[test_index]
         if model=='RF':
             m = RandomForestRegressor(n_estimators=n_estimators, min_samples_leaf=1, n_jobs=-1)
             m.fit(X_train[features], y_train)
@@ -308,11 +317,12 @@ def compare_top_features(X, y, top_features_range=None,
         results = []
         stddevs = []
         feature_sets = [I.iloc[:top, 0].index.values for I in all_importances.values() if I is not None]
+        kf = KFold(n_splits=kfolds) if kfolds > 1 else None  # use same set of folds for all techniques
         for technique_name, features in zip(include, feature_sets):
             # print(f"Train with {features} from {technique_name}")
             # Train RF model with top-k features
             # Do 5-fold cross validation using original X, y passed in to this method
-            scores = cv_features(X, y, features, metric=metric, kfolds=kfolds, model=model,
+            scores = cv_features(kf, X, y, features, metric=metric, kfolds=kfolds, model=model,
                                  catcolnames=catcolnames)
             results.append(np.mean(scores))
             stddevs.append(np.std(scores))
@@ -335,8 +345,9 @@ def compare_top_features(X, y, top_features_range=None,
 
 def best_single_feature(X, y, kfolds=5, model='RF'):
     means = []
+    kf = KFold(n_splits=kfolds) if kfolds>1 else None
     for colname in X.columns:
-        scores = cv_features(X, y, [colname],
+        scores = cv_features(kf, X, y, [colname],
                              # metric=mean_squared_error,
                              metric=mean_absolute_error,
                              kfolds=kfolds, model=model)

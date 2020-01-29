@@ -15,7 +15,7 @@ R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
                                       'DESTINATION_AIRPORT',
                                       'FLIGHT_NUMBER',
                                       'DAY_OF_WEEK'},
-                         kfolds=1,
+                         kfolds=5,
                          model=model,
                          metric=mean_absolute_error,
                          stratpd_min_samples_leaf=10,

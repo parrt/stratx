@@ -26,7 +26,7 @@ R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
                                       },
                          metric=metric,
                          use_oob=use_oob,
-                         kfolds=1,
+                         kfolds=2,
                          imp_n_trials=10,
                          imp_pvalues_n_trials=0,
                          model=model,
