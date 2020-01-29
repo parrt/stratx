@@ -20,7 +20,7 @@ def importances(X: pd.DataFrame,
                 normalize=True,  # make imp values 0..1
                 supervised=True,
                 n_jobs=1,
-                sortby='Rank',  # sort by importance or impact
+                sortby='Impact',  # sort by importance or impact
                 min_slopes_per_x=5,  # ignore pdp y values derived from too few slopes (usually at edges)
                 # important for getting good starting point of PD so AUC isn't skewed.
                 n_trials: int = 1,

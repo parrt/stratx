@@ -4,7 +4,6 @@
 * add ignored to plots
 * yearmade and modelid get reversed with density_weighted; see compute_importance(); pvalue=1.0?
   Seems that modelid with shuffled y is random and large
-* if mean - 2sigma <=0 then can discard feature
 * timing experiment to see empirical complexity
 * plots can't handle unnormalized data
 * plots show rank then importance? option to sortby
