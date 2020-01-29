@@ -187,10 +187,12 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
     slope_counts_at_x = slope_counts_at_x[idx]
     pdpx = real_uniq_x[idx]
 
+    # Integrate the partial derivative estimate in slope_at_x across pdpx to get dependence
     dx = np.diff(pdpx)
     dydx = slope_at_x[:-1] # ignore last point as dx is always one smaller
-    y_deltas = dydx * dx
+    y_deltas = dydx * dx   # change in y from dx[i] to dx[i+1]
     # print(f"y_deltas: {y_deltas}")
+    # x_counts = [np.sum(X_col == x) for x in pdpx]
     pdpy = np.cumsum(y_deltas)                    # we lose one value here
     pdpy = np.concatenate([np.array([0]), pdpy])  # add back the 0 we lost
 
@@ -508,19 +510,19 @@ def collect_discrete_slopes(rf, X, y, colname):
     """
     For each leaf of each tree of the random forest rf (trained on all features
     except colname), get the leaf samples then isolate the column of interest X values
-    and the target y values. Perform another partition of X[colname] vs y and do
-    piecewise linear regression to get the slopes in various regions of X[colname].
-    We don't need to subtract the minimum y value before regressing because
-    the slope won't be different. (We are ignoring the intercept of the regression line).
+    and the target y values. Perform piecewise linear regression of X[colname] vs y
+    to get the slopes in various regions of X[colname].  We don't need to subtract
+    the minimum y value before regressing because the slope won't be different.
+    (We are ignoring the intercept of the regression line).
 
-    Return for each leaf, the ranges of X[colname] partitions, num obs per x range,
+    Return for each leaf, the ranges of X[colname] partitions,
     associated slope for each range
 
     Only does discrete now after doing pointwise continuous slopes differently.
     """
     # start = timer()
-    leaf_slopes = []  # drop or rise between discrete x values
-    leaf_xranges = [] # drop is from one discrete value to next
+    leaf_slopes = []   # drop or rise between discrete x values
+    leaf_xranges = []  # drop is from one discrete value to next
 
     ignored = 0
 
@@ -848,6 +850,7 @@ def marginal_catplot_(X, y, colname, targetname, ax, catnames, alpha=.1, show_xt
         ax.set_xticks([])
 
 def plot_catstratpd_gridsearch(X, y, colname, targetname,
+                               n_trials=3,
                                min_samples_leaf_values=(2, 5, 10, 20, 30),
                                min_y_shifted_to_zero=True,  # easier to read if values are relative to 0 (usually); do this for high cardinality cat vars
                                show_xticks=True,
@@ -856,9 +859,9 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
                                catnames=None,
                                yrange=None,
                                sort='ascending',
-                               style:('strip','scatter')='strip',
                                cellwidth=2.5,
                                cellheight=2.5):
+
     ncols = len(min_samples_leaf_values)
     fig, axes = plt.subplots(1, ncols + 1,
                              figsize=((ncols + 1) * cellwidth, cellheight))
@@ -875,6 +878,7 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
         try:
             uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored = \
                 plot_catstratpd(X, y, colname, targetname, ax=axes[col],
+                                n_trials=n_trials,
                                 min_samples_leaf=msl,
                                 catnames=catnames,
                                 yrange=yrange,
@@ -884,7 +888,6 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
                                 show_all_deltas=show_all_cat_deltas,
                                 show_ylabel=False,
                                 sort=sort,
-                                style=style,
                                 min_y_shifted_to_zero=min_y_shifted_to_zero)
         except ValueError:
             axes[col].set_title(f"Can't gen: leafsz={msl}", fontsize=8)
