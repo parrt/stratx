@@ -17,8 +17,7 @@ import matplotlib.pyplot as plt
 
 np.set_printoptions(precision=2, suppress=True, linewidth=300, threshold=2000)
 
-np.random.seed(2)
-n = 10_000
+n = 20_000
 
 X, y = load_bulldozer()
 
@@ -50,7 +49,7 @@ X_ = X_.copy()
 #y_ = y_.sample(frac=1.0, replace=False)
 uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored = \
     plot_catstratpd(X_, y_, colname='ModelID', targetname='SalePrice',
-                    min_samples_leaf=3,
+                    min_samples_leaf=5,
                     # sort=None,
                     alpha=.08,
                     show_all_deltas=False,
@@ -59,6 +58,7 @@ uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored = \
                     show_impact=True,
                     min_y_shifted_to_zero=False,
                     figsize=(20,5),
+                    yrange=(-150_000, 150_000),
                     verbose=False)
 plt.title(f"n={n}, ignored ={ignored}")
 print("ignored",ignored)

@@ -4,7 +4,7 @@ figsize = (3.5, 3.0)
 use_oob=False
 n = 25_000
 metric = mean_absolute_error
-model='GBM' # ('RF','SVM','GBM','OLS','Lasso')
+model='RF' # ('RF','SVM','GBM','OLS','Lasso')
 
 # np.random.seed(999) # set for testing effects
 
@@ -16,10 +16,10 @@ R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
                          use_oob=use_oob,
                          kfolds=1,
                          model=model,
-                         imp_n_trials=5,
-#                         catcolnames=['bathrooms'], # numeric version ignores too much data
+                         imp_n_trials=3,
+                         imp_pvalues_n_trials=10,
+                         #                         catcolnames=['bathrooms'], # numeric version ignores too much data
                          top_features_range=(1, 8),
-                         density_weighted=True,
                          drop=['Spearman','PCA'])
 
 plot_importances(our_I.iloc[:8], imp_range=(0,0.4), width=3,

@@ -7,3 +7,5 @@
 * if mean - 2sigma <=0 then can discard feature
 * timing experiment to see empirical complexity
 * plots can't handle unnormalized data
+* plots show rank then importance? option to sortby
+* use same splits for all CV; seems to wobble a bit between top-k curves even on same first var
