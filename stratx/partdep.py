@@ -162,7 +162,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
     # print('leaf_xranges', leaf_xranges)
     # print('leaf_slopes', leaf_slopes)
 
-    real_uniq_x = np.array(sorted(np.unique(X_col)))
+    real_uniq_x = np.unique(X_col) # comes back sorted
     if verbose:
         print(f"discrete StratPD num samples ignored {ignored}/{len(X)} for {colname}")
 
@@ -190,9 +190,18 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
     # Integrate the partial derivative estimate in slope_at_x across pdpx to get dependence
     dx = np.diff(pdpx)
     dydx = slope_at_x[:-1] # ignore last point as dx is always one smaller
+
+    '''
+    # Weight slopes by mass ratio at each x location for which we have a slope
+    # Mass ratio is (count at x)/(max count at x) giving 0..1
+    if len(pdpx)>1:
+        _, pdpx_counts = np.unique(X_col[np.isin(X_col, pdpx)], return_counts=True)
+        x_counts = [np.sum(X_col == x) for x in pdpx]
+        weighted_dydx = dydx * x_counts[:-1]/np.max(x_counts[:-1])
+    '''
+
     y_deltas = dydx * dx   # change in y from dx[i] to dx[i+1]
     # print(f"y_deltas: {y_deltas}")
-    # x_counts = [np.sum(X_col == x) for x in pdpx]
     pdpy = np.cumsum(y_deltas)                    # we lose one value here
     pdpy = np.concatenate([np.array([0]), pdpy])  # add back the 0 we lost
 

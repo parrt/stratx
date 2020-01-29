@@ -37,15 +37,15 @@ X_ = X_.copy()
 # X_['ModelID'] += 1
 
 
-# I = importances(X_, y_,
-#                 n_trials=5,
-#                 normalize=False,
-#                 min_samples_leaf=10,
-#                 cat_min_samples_leaf=15,
-#                 pvalues=True,
-#                 pvalues_n_trials=10,
-#                 catcolnames={'AC','ModelID'})
-# print(I)
+I = importances(X_, y_,
+                n_trials=3,
+                normalize=True,
+                min_samples_leaf=10,
+                cat_min_samples_leaf=5,
+                pvalues=False,
+                pvalues_n_trials=10,
+                catcolnames={'AC','ModelID'})
+print(I)
 
 #y_ = y_.sample(frac=1.0, replace=False)
 # uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored = \
@@ -68,15 +68,15 @@ X_ = X_.copy()
 # # plt.savefig(f"/Users/parrt/Desktop/james-ModelID-25k-shuffled.pdf", pad_inches=0)
 # plt.show()
 
-plot_stratpd(X_, y_, colname='YearMade', targetname='SalePrice',
-             n_trials=3,
-             show_slope_lines=False,
-             show_impact=False,
-             figsize=(3.8,3.2)
-             )
-plt.tight_layout()
-plt.savefig(f"/Users/parrt/Desktop/james-YearMade.pdf", pad_inches=0)
-plt.show()
+# plot_stratpd(X_, y_, colname='YearMade', targetname='SalePrice',
+#              n_trials=3,
+#              show_slope_lines=False,
+#              show_impact=False,
+#              figsize=(3.8,3.2)
+#              )
+# plt.tight_layout()
+# plt.savefig(f"/Users/parrt/Desktop/james-YearMade.pdf", pad_inches=0)
+# plt.show()
 
 
 # I = importances(X_, y_,
@@ -143,14 +143,18 @@ plt.show()
 col = 'age'
 # col = 'ProductSize'
 
-# plot_catstratpd_gridsearch(X_, y_, 'ProductSize', 'SalePrice',
-#                            min_samples_leaf_values=(5,10,15,20),
+# y_ = y_.sample(frac=1.0, replace=False)
+# plot_catstratpd_gridsearch(X_, y_, 'ModelID', 'SalePrice',
+#                            min_samples_leaf_values=(5, 8, 10, 15, 20),
 #                            sort=None,
+#                            cellwidth=4.5,
+#                            n_trials=3,
 #                            show_xticks=False,
-#                            show_mean_line=True,
 #                            show_all_cat_deltas=False,
-#                            style='scatter',
 #                            min_y_shifted_to_zero=False)
+# plt.savefig(f"/Users/parrt/Desktop/james-ModelID-grid-shuffled.pdf", pad_inches=0)
+# # plt.savefig(f"/Users/parrt/Desktop/james-ModelID-grid.pdf", pad_inches=0)
+# plt.show()
 
 # plot_catstratpd(X_, y_, 'YearMade', 'SalePrice',
 #                 min_samples_leaf=10,

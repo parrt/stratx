@@ -19,12 +19,12 @@ R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
                          model=model,
                          metric=mean_absolute_error,
                          stratpd_min_samples_leaf=10,
-                         stratpd_cat_min_samples_leaf=3,
+                         stratpd_cat_min_samples_leaf=5,
                          use_oob=use_oob,
-                         imp_n_trials=3,
-                         imp_pvalues_n_trials=20,
+                         imp_n_trials=10,
+                         imp_pvalues_n_trials=0,
                          #min_slopes_per_x=1,
-                         normalize=False,
+                         normalize=True,
                          top_features_range=(1, 8),
                          drop=['Spearman','PCA'])
 
