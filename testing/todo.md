@@ -7,5 +7,3 @@
 * timing experiment to see empirical complexity
 * plots can't handle unnormalized data
 * plots show rank then importance? option to sortby
-* drop min in cat var codes to make vectors smaller; e.g., modelid - min(modelid)+1
-  actually have to recode as unique integers; maybe use rank()? 

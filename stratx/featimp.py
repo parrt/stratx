@@ -34,6 +34,8 @@ def importances(X: pd.DataFrame,
     if not isinstance(X, pd.DataFrame):
         raise ValueError("Can only operate on dataframes at the moment")
 
+    X = compress_catcodes(X, catcolnames)
+
     n,p = X.shape
     impact_trials = np.zeros(shape=(p, n_trials))
     importance_trials = np.zeros(shape=(p, n_trials))
@@ -102,6 +104,7 @@ def importances(X: pd.DataFrame,
     if not pvalues:
         I = I.drop(['Importance p-value', 'Impact p-value'], axis=1)
     return I
+
 
 def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                  normalize=True,

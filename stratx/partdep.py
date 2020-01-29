@@ -1505,6 +1505,8 @@ def plot_catstratpd(X, y,
         else:
             fig, ax = plt.subplots(1, 1)
 
+    X = compress_catcodes(X, catcolnames=[colname])
+
     uniq_catcodes = np.unique(X[colname])
     max_catcode = max(uniq_catcodes)
 
@@ -1762,6 +1764,16 @@ def conjure_twoclass(X):
     y_synth = np.concatenate([np.zeros(len(X)),
                               np.ones(len(X_rand))], axis=0)
     return X_synth, pd.Series(y_synth)
+
+
+def compress_catcodes(X, catcolnames, inplace=False):
+    "Compress categorical integers if less than 90% dense"
+    X_ = X if inplace else X.copy()
+    for colname in catcolnames:
+        uniq_x = np.unique(X_[colname])
+        if len(uniq_x) < 0.90 * len(X_):  # sparse? compress into contiguous range of x cat codes
+            X_[colname] = X_[colname].rank(method='min').astype(int)
+    return X_
 
 
 def nanavg_vectors(a, b, wa=1.0, wb=1.0):
