@@ -19,8 +19,10 @@ y = y.iloc[-50_000:]
 idxs = resample(range(50_000), n_samples=n, replace=False)
 X_, y_ = X.iloc[idxs], y.iloc[idxs]
 
+X_train, X_test, y_train, y_test = train_test_split(X_, y_, test_size=0.2)
+
 def gen(model, rank):
-    R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
+    R, imps = \
         compare_top_features(X_, y_, n_shap=300,
                              catcolnames={'AC', 'ModelID',
                                           #'ProductSize'
@@ -41,13 +43,13 @@ def gen(model, rank):
                              drop=['Spearman','PCA']
                              )
 
-    plot_importances(our_I.iloc[:8], imp_range=(0,0.4), width=3,
+    plot_importances(imps['StratImpact'].iloc[:8], imp_range=(0,0.4), width=3,
                      title="Bulldozer StratImpact importances")
     plt.tight_layout()
     plt.savefig("../images/bulldozer-features.pdf", bbox_inches="tight", pad_inches=0)
     plt.show()
 
-    plot_importances(rf_I.iloc[0:8], imp_range=(0, .4), width=3,
+    plot_importances(imps['RF SHAP'].iloc[0:8], imp_range=(0, .4), width=3,
                      title="Bulldozer RF SHAP importances")
     plt.tight_layout()
     plt.savefig("../images/bulldozer-features-shap-rf.pdf", bbox_inches="tight", pad_inches=0)

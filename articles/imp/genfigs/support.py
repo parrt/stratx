@@ -342,7 +342,7 @@ def compare_top_features(X, y, top_features_range=None,
     print(Rstddev)
 
     # unpack for users
-    return (R, Rstddev, *all_importances.values())
+    return (R, all_importances)
 
 
 def best_single_feature(X, y, kfolds=5, model='RF'):

@@ -11,7 +11,7 @@ model='RF' # ('RF','SVM','GBM','OLS','Lasso')
 X, y = load_rent(n=n)
 
 def gen(model, rank):
-    R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
+    R, imps = \
         compare_top_features(X, y, n_shap=300,
                              sortby=rank,
                              metric=metric,
@@ -24,13 +24,13 @@ def gen(model, rank):
                              top_features_range=(1, 8),
                              drop=['Spearman','PCA'])
 
-    plot_importances(our_I.iloc[:8], imp_range=(0,0.4), width=3,
+    plot_importances(imps['StratImpact'].iloc[:8], imp_range=(0,0.4), width=3,
                      title="Rent StratImpact importances")
     plt.tight_layout()
     plt.savefig("../images/rent-features.pdf", bbox_inches="tight", pad_inches=0)
     plt.show()
 
-    plot_importances(rf_I.iloc[0:8], imp_range=(0, .4), width=3,
+    plot_importances(imps['RF SHAP'].iloc[0:8], imp_range=(0, .4), width=3,
                      title="Rent RF SHAP importances")
     plt.tight_layout()
     plt.savefig("../images/rent-features-shap-rf.pdf", bbox_inches="tight", pad_inches=0)

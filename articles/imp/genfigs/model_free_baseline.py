@@ -15,8 +15,9 @@ def boston(rank):
     data = StandardScaler().fit_transform(data)
     X = pd.DataFrame(data, columns=boston.feature_names)
     y = pd.Series(boston.target)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
-    R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
+    R, imps = \
         compare_top_features(X, y, n_shap=300,
                              kfolds=5,
                              imp_n_trials=10,
@@ -43,8 +44,9 @@ def bulldozer(rank):
     X, y = load_bulldozer()
     X = X.iloc[-n:]
     y = y.iloc[-n:]
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
-    R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
+    R, imps = \
         compare_top_features(X, y, n_shap=300,
                              kfolds=5,
                              imp_n_trials=10,
@@ -70,8 +72,9 @@ def bulldozer(rank):
 def rent(rank):
     n = 25_000
     X, y = load_rent(n=n)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
-    R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
+    R, imps = \
         compare_top_features(X, y, n_shap=300,
                              kfolds=5,
                              imp_n_trials=10,
@@ -94,8 +97,9 @@ def flight(rank):
     n = 25_000
 
     X, y, _ = load_flights(n=n)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
-    R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
+    R, imps = \
         compare_top_features(X, y, n_shap=300,
                              catcolnames={'AIRLINE',
                                           'ORIGIN_AIRPORT',

@@ -26,11 +26,13 @@ rf = RandomForestRegressor(n_estimators=30, oob_score=True)
 rf.fit(X,y)
 print(f"Response {response} = OOB R^2 {rf.oob_score_:.2f}")
 
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+
 # I = importances(X, y, n_trials=20)
 # print(I)
 
 def gen(model, rank):
-    R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
+    R, imps = \
         compare_top_features(X, y, n_shap=300,
                              sortby=rank,
                              kfolds=3,

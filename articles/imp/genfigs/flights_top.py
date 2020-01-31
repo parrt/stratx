@@ -8,8 +8,11 @@ model='RF' # ('RF','SVM','GBM','OLS','Lasso')
 
 X, y, _ = load_flights(n=n)
 
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+
+
 def gen(model, rank):
-    R, Rstd, spear_I, pca_I, ols_I, shap_ols_I, rf_I, perm_I, our_I = \
+    R, imps = \
         compare_top_features(X, y, n_shap=300,
                              catcolnames={'AIRLINE',
                                           'ORIGIN_AIRPORT',
@@ -30,13 +33,13 @@ def gen(model, rank):
                              top_features_range=(1, 8),
                              drop=['Spearman','PCA'])
 
-    plot_importances(our_I.iloc[0:8], imp_range=(0, .4), width=4.1,
+    plot_importances(imps['StratImpact'].iloc[0:8], imp_range=(0, .4), width=4.1,
                      title="Flight delay StratImpact importances")
     plt.tight_layout()
     plt.savefig("../images/flights-features.pdf", bbox_inches="tight", pad_inches=0)
     plt.show()
 
-    plot_importances(rf_I.iloc[0:8], imp_range=(0, .4), width=4.1,
+    plot_importances(imps['RF SHAP'].iloc[0:8], imp_range=(0, .4), width=4.1,
                      title="Flight delay RF SHAP importances")
     plt.tight_layout()
     plt.savefig("../images/flights-features-shap-rf.pdf", bbox_inches="tight", pad_inches=0)

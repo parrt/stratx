@@ -599,15 +599,15 @@ def rent_drop():
     n_estimators = 50
     trials = 10
     X, y = load_rent(n=2_000)
-    ols_I, shap_ols_I, rf_I, our_I = get_multiple_imps(X, y, min_samples_leaf=10)
+    ols_I, shap_ols_I, rf_I, imps['StratImpact'] = get_multiple_imps(X, y, min_samples_leaf=10)
     print("OLS\n", ols_I)
     print("OLS SHAP\n", shap_ols_I)
     print("RF SHAP\n",rf_I)
-    print("OURS\n",our_I)
+    print("OURS\n",imps['StratImpact'])
 
     ols_drop = ols_I.iloc[-n_drop:,0].index.values
     rf_drop = rf_I.iloc[-n_drop:,0].index.values
-    our_drop = our_I.iloc[-n_drop:,0].index.values
+    our_drop = imps['StratImpact'].iloc[-n_drop:,0].index.values
     features_names = ['OLS', 'RF', 'OUR']
     features_set = [ols_drop, rf_drop, our_drop]
 
@@ -636,21 +636,21 @@ def rent_top(top_range=(1, 7),
              min_samples_leaf=20):
     n_shap = n
     X, y = load_rent(n=n)
-    ols_I, shap_ols_I, rf_I, our_I = get_multiple_imps(X, y, min_samples_leaf=min_samples_leaf, n_estimators=n_estimators, n_shap=n_shap)
+    ols_I, shap_ols_I, rf_I, imps['StratImpact'] = get_multiple_imps(X, y, min_samples_leaf=min_samples_leaf, n_estimators=n_estimators, n_shap=n_shap)
     # print("OLS\n", ols_I)
     # print("RF\n",rf_I)
-    # print("OURS\n",our_I)
+    # print("OURS\n",imps['StratImpact'])
 
     metric = mean_absolute_error # or rmse or mean_squared_error or r2_score
     top = top_range[1]
 
-    print("OUR FEATURES", our_I.index.values)
+    print("OUR FEATURES", imps['StratImpact'].index.values)
 
     print("n_top, n_estimators, n, n_shap, min_samples_leaf", top, n_estimators, n, n_shap, min_samples_leaf)
     for top in range(top_range[0], top+1):
         ols_top = ols_I.iloc[:top, 0].index.values
         rf_top = rf_I.iloc[:top, 0].index.values
-        our_top = our_I.iloc[:top, 0].index.values
+        our_top = imps['StratImpact'].iloc[:top, 0].index.values
         features_names = ['OLS', 'RF', 'OUR']
         features_set = [ols_top, rf_top, our_top]
         all = []
