@@ -7,3 +7,4 @@
 * timing experiment to see empirical complexity
 * plots can't handle unnormalized data
 * plots show rank then importance? option to sortby
+* feature plot doesn't show error bars

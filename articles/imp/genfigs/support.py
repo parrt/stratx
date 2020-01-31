@@ -239,6 +239,7 @@ def compare_top_features(X, y, top_features_range=None,
                          model='RF',
                          imp_n_trials=1,
                          imp_pvalues_n_trials=0,
+                         sortby='Importance',
                          use_oob = False,
                          #time_sensitive=False,
                          kfolds=5,
@@ -276,6 +277,7 @@ def compare_top_features(X, y, top_features_range=None,
     print(f"testing {metric.__name__}={metric(y_test, rf.predict(X_test))}")
 
     all_importances = get_multiple_imps(X_train, y_train, X_test, y_test,
+                                        sortby=sortby,
                                         n_stratpd_trees=n_stratpd_trees,
                                         imp_n_trials=imp_n_trials,
                                         imp_pvalues_n_trials=imp_pvalues_n_trials,
@@ -361,6 +363,7 @@ def best_single_feature(X, y, kfolds=5, model='RF'):
 
 
 def get_multiple_imps(X_train, y_train, X_test, y_test, n_shap=300, n_estimators=50,
+                      sortby='Importance',
                       stratpd_min_samples_leaf=10,
                       stratpd_cat_min_samples_leaf=10,
                       imp_n_trials=1,
@@ -417,6 +420,7 @@ def get_multiple_imps(X_train, y_train, X_test, y_test, n_shap=300, n_estimators
         X_full = X_train
         y_full = y_train
         ours_I = importances(X_full, y_full, verbose=False,
+                             sortby=sortby,
                              min_samples_leaf=stratpd_min_samples_leaf,
                              cat_min_samples_leaf=stratpd_cat_min_samples_leaf,
                              n_trials=imp_n_trials,
