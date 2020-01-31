@@ -70,7 +70,7 @@ def importances(X: pd.DataFrame,
 
     I['Impact p-value'] = 0.0
     I['Importance p-value'] = 0.0
-    I['Rank'] = I['Importance']
+    # I['Rank'] = I['Importance']
     if pvalues:
         impact_pvalues, importance_pvalues = \
             importances_pvalues(X, y, catcolnames,
@@ -88,16 +88,16 @@ def importances(X: pd.DataFrame,
                                 max_features=max_features)
         I['Impact p-value'] = importance_pvalues
         I['Importance p-value'] = importance_pvalues
-        I['Rank'] = I['Importance'] * (1.0 - importance_pvalues)
+        # I['Rank'] = I['Importance'] * (1.0 - importance_pvalues)
 
     # knock out any feature whose importance is less than 2 sigma
-    I['Rank'] = I['Rank'] * ((I['Importance'] - 2 * I['Importance sigma']) > 0).astype(int)
+    # I['Rank'] = I['Rank'] * ((I['Importance'] - 2 * I['Importance sigma']) > 0).astype(int)
 
     if sortby:
         I = I.sort_values(sortby, ascending=False)
 
     # Set reasonable column order
-    I = I[['Rank', 'Importance', 'Importance sigma', 'Importance p-value',
+    I = I[['Importance', 'Importance sigma', 'Importance p-value',
            'Impact', 'Impact sigma', 'Impact p-value']]
     if n_trials==1:
         I = I.drop(['Importance sigma', 'Impact sigma'], axis=1)
