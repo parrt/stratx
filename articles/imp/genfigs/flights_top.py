@@ -32,7 +32,7 @@ def gen(model, rank):
                              stratpd_min_samples_leaf=10,
                              stratpd_cat_min_samples_leaf=2,
                              use_oob=use_oob,
-                             imp_n_trials=3,
+                             imp_n_trials=10,
                              imp_pvalues_n_trials=0,
                              #min_slopes_per_x=1,
                              normalize=True,
@@ -76,6 +76,7 @@ def baseline(rank):
                              X_train, X_test, y_train, y_test,
                              kfold_indexes,
                              n_shap=300,
+                             sortby=rank,
                              catcolnames={'AIRLINE',
                                           'ORIGIN_AIRPORT',
                                           'DESTINATION_AIRPORT',
@@ -93,6 +94,7 @@ def baseline(rank):
               title_fontsize=14,
               label_fontsize=14,
               ticklabel_fontsize=10,
+              yrange=(5,30),
               figsize=figsize)
     plt.tight_layout()
     plt.savefig(f"../images/flights-topk-baseline-{rank}.pdf", bbox_inches="tight", pad_inches=0)

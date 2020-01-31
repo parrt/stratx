@@ -25,7 +25,7 @@ def gen(model, rank):
                              metric=metric,
                              use_oob=use_oob,
                              model=model,
-                             imp_n_trials=3,
+                             imp_n_trials=10,
                              stratpd_min_samples_leaf=10,
                              imp_pvalues_n_trials=0,
                              top_features_range=(1, 8),
@@ -64,8 +64,9 @@ def baseline(rank):
         compare_top_features(X, y,
                              X_train, X_test, y_train, y_test,
                              kfold_indexes,
+                             sortby=rank,
                              n_shap=300,
-                             imp_n_trials=3,
+                             imp_n_trials=10,
                              stratpd_min_samples_leaf=5,
                              top_features_range=(1, 8),
                              include=['Spearman','PCA','OLS','StratImpact'])
@@ -76,6 +77,7 @@ def baseline(rank):
               title_fontsize=14, # make font a bit bigger as we shrink this one is paper a bit
               label_fontsize=14,
               ticklabel_fontsize=10,
+              yrange=(300,900),
               figsize=figsize)
     plt.savefig(f"../images/rent-topk-baseline-{rank}.pdf", bbox_inches="tight", pad_inches=0)
     plt.show()

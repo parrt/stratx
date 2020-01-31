@@ -26,7 +26,7 @@ def gen(model, rank):
                              n_shap=n,
                              sortby=rank,
                              metric=metric,
-                             imp_n_trials=3,
+                             imp_n_trials=10,
                              use_oob=use_oob,
                              model=model,
                              top_features_range=(1,8),
@@ -54,7 +54,7 @@ def gen(model, rank):
               title_fontsize=14,
               label_fontsize=14,
               ticklabel_fontsize=10,
-              yrange=(2,5.5),
+              yrange=(3.5, 3.0),
               figsize=figsize)
     plt.tight_layout()
     plt.savefig(f"../images/boston-topk-{model}-{rank}.pdf", bbox_inches="tight", pad_inches=0)
@@ -66,8 +66,9 @@ def baseline(rank):
         compare_top_features(X, y,
                              X_train, X_test, y_train, y_test,
                              kfold_indexes,
+                             sortby=rank,
                              n_shap=300,
-                             imp_n_trials=3,
+                             imp_n_trials=10,
                              top_features_range=(1, 8),
                              include=['Spearman','PCA', 'OLS', 'StratImpact'])
 
@@ -79,6 +80,7 @@ def baseline(rank):
               title_fontsize=14,
               label_fontsize=14,
               ticklabel_fontsize=10,
+              yrange=(3.5, 3.0),
               figsize=figsize)
     plt.tight_layout()
     plt.savefig(f"../images/boston-topk-baseline-{rank}.pdf", bbox_inches="tight", pad_inches=0)

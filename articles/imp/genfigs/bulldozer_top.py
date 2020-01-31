@@ -37,7 +37,7 @@ def gen(model, rank):
                              sortby=rank,
                              metric=metric,
                              use_oob=use_oob,
-                             imp_n_trials=3,
+                             imp_n_trials=10,
                              imp_pvalues_n_trials=0,
                              model=model,
                              stratpd_min_samples_leaf=10,
@@ -71,7 +71,7 @@ def gen(model, rank):
               title_fontsize=14,
               label_fontsize=14,
               ticklabel_fontsize=10,
-              yrange=(5000,19000),
+              yrange=(5000,20000),
               figsize=figsize)
     plt.tight_layout()
     plt.savefig(f"../images/bulldozer-topk-{model}-{rank}.pdf", bbox_inches="tight", pad_inches=0)
@@ -83,8 +83,9 @@ def baseline(rank):
         compare_top_features(X_, y_,
                              X_train, X_test, y_train, y_test,
                              kfold_indexes,
+                             sortby=rank,
                              n_shap=300,
-                             imp_n_trials=3,
+                             imp_n_trials=10,
                              stratpd_min_samples_leaf=5,
                              catcolnames={'AC', 'ModelID', 'YearMade', 'ProductSize'},
                              top_features_range=(1, 8),
@@ -98,6 +99,7 @@ def baseline(rank):
               title_fontsize=14,
               label_fontsize=14,
               ticklabel_fontsize=10,
+              yrange=(5000,20000),
               figsize=figsize)
     plt.tight_layout()
     plt.savefig(f"../images/bulldozer-topk-baseline-{rank}.pdf", bbox_inches="tight", pad_inches=0)
