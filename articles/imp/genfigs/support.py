@@ -302,6 +302,7 @@ def compare_top_features(X, y,
     print(f"n_train={len(X_train)}, n_top={top_features_range[1]}, n_estimators={n_estimators}, n_shap={n_shap}, min_samples_leaf={stratpd_min_samples_leaf}")
     topscores = []
     topstddevs = []
+    kf = KFold(n_splits=kfolds) if kfolds > 1 else None  # use same set of folds for all techniques
     for top in range(top_features_range[0], top_features_range[1] + 1):
         # ols_top = ols_I.iloc[:top, 0].index.values
         # shap_ols_top = shap_ols_I.iloc[:top, 0].index.values
@@ -313,7 +314,6 @@ def compare_top_features(X, y,
         results = []
         stddevs = []
         feature_sets = [I.iloc[:top, 0].index.values for I in all_importances.values() if I is not None]
-        kf = KFold(n_splits=kfolds) if kfolds > 1 else None  # use same set of folds for all techniques
         for technique_name, features in zip(include, feature_sets):
             # print(f"Train with {features} from {technique_name}")
             # Train RF model with top-k features

@@ -37,7 +37,7 @@ def gen(model, rank):
                              X_train, X_test, y_train, y_test,
                              n_shap=300,
                              sortby=rank,
-                             kfolds=3,
+                             kfolds=1,
                              imp_n_trials=10,
                              model=model,
                              stratpd_min_samples_leaf=10,
