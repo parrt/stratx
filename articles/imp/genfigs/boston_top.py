@@ -16,7 +16,9 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 def gen(model, rank):
     # need small or 1 min_slopes_per_x given tiny toy dataset
     R, imps = \
-        compare_top_features(X, y, n_shap=n,
+        compare_top_features(X, y,
+                             X_train, X_test, y_train, y_test,
+                             n_shap=n,
                              sortby=rank,
                              metric=metric,
                              imp_n_trials=10,

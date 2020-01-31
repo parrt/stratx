@@ -9,10 +9,13 @@ model='RF' # ('RF','SVM','GBM','OLS','Lasso')
 # np.random.seed(999) # set for testing effects
 
 X, y = load_rent(n=n)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
 def gen(model, rank):
     R, imps = \
-        compare_top_features(X, y, n_shap=300,
+        compare_top_features(X, y,
+                             X_train, X_test, y_train, y_test,
+                             n_shap=300,
                              sortby=rank,
                              metric=metric,
                              use_oob=use_oob,

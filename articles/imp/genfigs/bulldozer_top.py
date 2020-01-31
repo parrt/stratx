@@ -23,7 +23,9 @@ X_train, X_test, y_train, y_test = train_test_split(X_, y_, test_size=0.2)
 
 def gen(model, rank):
     R, imps = \
-        compare_top_features(X_, y_, n_shap=300,
+        compare_top_features(X_, y_,
+                             X_train, X_test, y_train, y_test,
+                             n_shap=300,
                              catcolnames={'AC', 'ModelID',
                                           #'ProductSize'
                                           },

@@ -233,7 +233,9 @@ def todummies(X, features, catcolnames):
     return X
 
 
-def compare_top_features(X, y, top_features_range=None,
+def compare_top_features(X, y,
+                         X_train, X_test, y_train, y_test,
+                         top_features_range=None,
                          n_shap=300,
                          metric = mean_absolute_error,
                          model='RF',
@@ -260,14 +262,6 @@ def compare_top_features(X, y, top_features_range=None,
     include = include.copy()
     for feature in drop:
         include.remove(feature)
-
-    # if time_sensitive:
-    #     n_test = int(0.20 * len(X))
-    #     n_train = len(X) - n_test
-    #     X_train, X_test = X[:n_train], X[n_train:]
-    #     y_train, y_test = y[:n_train], y[n_train:]
-    # else:
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
     n_estimators = 40 # for both SHAP and testing purposes
 
@@ -323,7 +317,7 @@ def compare_top_features(X, y, top_features_range=None,
         for technique_name, features in zip(include, feature_sets):
             # print(f"Train with {features} from {technique_name}")
             # Train RF model with top-k features
-            # Do 5-fold cross validation using original X, y passed in to this method
+            # Do 5-fold cross validation using original full X, y passed in to this method
             scores = cv_features(kf, X, y, features, metric=metric, kfolds=kfolds, model=model,
                                  catcolnames=catcolnames)
             results.append(np.mean(scores))
