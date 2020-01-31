@@ -54,7 +54,7 @@ def gen(model, rank):
               title_fontsize=14,
               label_fontsize=14,
               ticklabel_fontsize=10,
-              yrange=(3.5, 3.0),
+              yrange=(2, 5.5),
               figsize=figsize)
     plt.tight_layout()
     plt.savefig(f"../images/boston-topk-{model}-{rank}.pdf", bbox_inches="tight", pad_inches=0)
@@ -80,7 +80,7 @@ def baseline(rank):
               title_fontsize=14,
               label_fontsize=14,
               ticklabel_fontsize=10,
-              yrange=(3.5, 3.0),
+              yrange=(2, 5.5),
               figsize=figsize)
     plt.tight_layout()
     plt.savefig(f"../images/boston-topk-baseline-{rank}.pdf", bbox_inches="tight", pad_inches=0)
