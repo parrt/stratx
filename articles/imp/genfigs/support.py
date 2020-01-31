@@ -186,7 +186,7 @@ def cv_features(kf, X, y, features, metric, catcolnames=None, time_sensitive=Fal
         elif model == 'GBM':
             m = xgb.XGBRegressor(objective='reg:squarederror',
                                  learning_rate=0.7, # default is 1
-                                 max_depth=4, # default is 3
+                                 max_depth=5, # default is 3
                                  n_estimators=100 # default is 100
                                  )
             m.fit(X_train[features], y_train)
@@ -450,6 +450,7 @@ def plot_topk(R, ax=None, k=None,
               label_fontsize=11,
               ticklabel_fontsize=11,
               ylabel=None,
+              xlabel=None,
               emphasis_color = '#A22396',
               figsize=None):
     if ax is None:
@@ -480,8 +481,12 @@ def plot_topk(R, ax=None, k=None,
                 c=color, alpha=.9, markersize=ms, fillstyle='none')
 
     plt.legend(loc='upper right')  # usually it's out of the way
-    ax.set_xlabel("Top $k$ most important features", fontsize=label_fontsize,
-                       fontname=fontname)
+
+    if xlabel is None:
+        ax.set_xlabel("Top $k$ most important features", fontsize=label_fontsize,
+                           fontname=fontname)
+    else:
+        ax.set_xlabel(xlabel, fontsize=label_fontsize, fontname=fontname)
 
     if ylabel is not None:
         ax.set_ylabel(ylabel, fontsize = label_fontsize, fontname=fontname)

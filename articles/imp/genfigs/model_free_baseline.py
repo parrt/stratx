@@ -8,7 +8,7 @@ np.set_printoptions(precision=4, suppress=True, linewidth=150)
 figsize = (3.5, 3)
 
 # Show BOSTON Spearman's vs ours
-def boston():
+def boston(rank):
     boston = load_boston()
     data = boston.data
     # data = normalize(boston.data)
@@ -25,18 +25,19 @@ def boston():
 
     print(R)
 
-    plot_topk(R, k=8, title="Boston housing prices",
+    plot_topk(R, k=8, title="RF Boston housing prices",
               ylabel="20% 5-fold CV MAE (k$)",
+              xlabel=f"Top $k$ feature {rank}",
               title_fontsize=14,
               label_fontsize=14,
               ticklabel_fontsize=10,
               figsize=figsize)
     plt.tight_layout()
-    plt.savefig("../images/boston-topk-spearman.pdf", bbox_inches="tight", pad_inches=0)
+    plt.savefig(f"../images/boston-topk-baseline-{rank}.pdf", bbox_inches="tight", pad_inches=0)
     plt.show()
 
 
-def bulldozer():
+def bulldozer(rank):
     n = 25_000 # shap crashes above this
 
     X, y = load_bulldozer()
@@ -54,18 +55,19 @@ def bulldozer():
 
     print(R)
 
-    plot_topk(R, k=8, title="Bulldozer auction prices",
+    plot_topk(R, k=8, title="RF Bulldozer auction prices",
               ylabel="20% 5-fold CV MAE ($)",
+              xlabel=f"Top $k$ feature {rank}",
               title_fontsize=14,
               label_fontsize=14,
               ticklabel_fontsize=10,
               figsize=figsize)
     plt.tight_layout()
-    plt.savefig("../images/bulldozer-topk-spearman.pdf", bbox_inches="tight", pad_inches=0)
+    plt.savefig(f"../images/bulldozer-topk-baseline-{rank}.pdf", bbox_inches="tight", pad_inches=0)
     plt.show()
 
 
-def rent():
+def rent(rank):
     n = 25_000
     X, y = load_rent(n=n)
 
@@ -77,17 +79,18 @@ def rent():
                              top_features_range=(1, 8),
                              include=['Spearman','PCA','OLS','StratImpact'])
 
-    plot_topk(R, k=8, title="NYC rent prices",
+    plot_topk(R, k=8, title="RF NYC rent prices",
               ylabel="20% 5-fold CV MAE ($)",
-              title_fontsize=15, # make font a bit bigger as we shrink this one is paper a bit
-              label_fontsize=15,
+              xlabel=f"Top $k$ feature {rank}",
+              title_fontsize=14, # make font a bit bigger as we shrink this one is paper a bit
+              label_fontsize=14,
               ticklabel_fontsize=10,
               figsize=figsize)
-    plt.savefig("../images/rent-topk-spearman.pdf", bbox_inches="tight", pad_inches=0)
+    plt.savefig(f"../images/rent-topk-baseline-{rank}.pdf", bbox_inches="tight", pad_inches=0)
     plt.show()
 
 
-def flight():
+def flight(rank):
     n = 25_000
 
     X, y, _ = load_flights(n=n)
@@ -106,18 +109,19 @@ def flight():
                              # a bit less than usual (gridsearch showed how to get value)
                              top_features_range=(1, 8),
                              include=['Spearman','PCA','OLS','StratImpact'])
-    plot_topk(R, k=8, title="Flight arrival delay",
+    plot_topk(R, k=8, title="RF Flight arrival delay",
               ylabel="20% 5-fold CV MAE (mins)",
+              xlabel=f"Top $k$ feature {rank}",
               title_fontsize=14,
               label_fontsize=14,
               ticklabel_fontsize=10,
               figsize=figsize)
     plt.tight_layout()
-    plt.savefig("../images/flights-topk-spearman.pdf", bbox_inches="tight", pad_inches=0)
+    plt.savefig(f"../images/flights-topk-baseline-{rank}.pdf", bbox_inches="tight", pad_inches=0)
     plt.show()
 
 
-flight()
-boston()
-bulldozer()
-rent()
+flight(rank='Importance')
+boston(rank='Importance')
+bulldozer(rank='Importance')
+rent(rank='Importance')

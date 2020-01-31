@@ -47,6 +47,7 @@ def gen(model, rank):
 
     plot_topk(R, k=8, title=f"RF bmi",
               ylabel="20% 5-fold CV MAE ($)",
+              xlabel=f"Top $k$ feature {rank}",
               title_fontsize=14,
               label_fontsize=14,
               ticklabel_fontsize=10,
@@ -56,4 +57,5 @@ def gen(model, rank):
     plt.show()
 
 gen(model='RF', rank='Importance')
+gen(model='RF', rank='Impact')
 gen(model='GBM', rank='Importance')

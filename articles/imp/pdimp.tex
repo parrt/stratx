@@ -293,6 +293,10 @@ Here is where we show that SHAP gets $y = x_1^2 + x_2 + 100$ wrong.
 
 \todo{what about outlier example}
 
+\todo{show impact vs importance}
+
+\todo{RF vs GBM}
+
 \todo{stability is valuable. users would not trust results that changed significantly for small data set changes. show our error bars from bootstrapping and say we can do p-values.}
 
 \todo{bulldozer: YearMade ignores too much with stratpd, use catstrat}
@@ -348,25 +352,25 @@ Then see \figref{fig:topk}
 \centering
 \begin{subfigure}{.24\textwidth}
     \centering
-\includegraphics[scale=0.48]{images/boston-topk-RF.pdf}
+\includegraphics[scale=0.48]{images/boston-topk-RF-Importance.pdf}
 \subcaption{\footnotesize foo}
 \end{subfigure}%
 \hfill
 \begin{subfigure}{.23\textwidth}
     \centering
-\includegraphics[scale=0.48]{images/flights-topk-RF.pdf}
+\includegraphics[scale=0.48]{images/flights-topk-RF-Importance.pdf}
 \subcaption{\footnotesize foo}
 \end{subfigure}
 \hfill
 \begin{subfigure}{.25\textwidth}
     \centering
-\includegraphics[scale=0.5]{images/bulldozer-topk-RF.pdf}
+\includegraphics[scale=0.5]{images/bulldozer-topk-RF-Importance.pdf}
 \subcaption{\footnotesize sometimes we get age as first feature which is ok but not the amazing ModelID, clearly best. 100 = 81/100 ModelID is top and 19/100 age is top}
 \end{subfigure}%
 \hfill
 \begin{subfigure}{.2\textwidth}
     \centering
-\includegraphics[scale=0.5]{images/rent-topk-RF.pdf}
+\includegraphics[scale=0.5]{images/rent-topk-RF-Importance.pdf}
 \subcaption{\footnotesize foo}
 \end{subfigure}
 \caption[short]{Features from RF model, tested on RF}
@@ -377,30 +381,62 @@ Then see \figref{fig:topk}
 \centering
 \begin{subfigure}{.24\textwidth}
     \centering
-\includegraphics[scale=0.48]{images/boston-topk-GBM.pdf}
+\includegraphics[scale=0.48]{images/boston-topk-GBM-Importance.pdf}
 \subcaption{\footnotesize foo}
 \end{subfigure}%
 \hfill
 \begin{subfigure}{.23\textwidth}
     \centering
-\includegraphics[scale=0.48]{images/flights-topk-GBM.pdf}
+\includegraphics[scale=0.48]{images/flights-topk-GBM-Importance.pdf}
 \subcaption{\footnotesize foo}
 \end{subfigure}
 \hfill
 \begin{subfigure}{.25\textwidth}
     \centering
-\includegraphics[scale=0.5]{images/bulldozer-topk-GBM.pdf}
+\includegraphics[scale=0.5]{images/bulldozer-topk-GBM-Importance.pdf}
 \subcaption{\footnotesize sometimes we get age as first feature which is ok but not the amazing ModelID, clearly best. 100 = 81/100 ModelID is top and 19/100 age is top}
 \end{subfigure}%
 \hfill
 \begin{subfigure}{.2\textwidth}
     \centering
-\includegraphics[scale=0.5]{images/rent-topk-GBM.pdf}
+\includegraphics[scale=0.5]{images/rent-topk-GBM-Importance.pdf}
 \subcaption{\footnotesize foo}
 \end{subfigure}
 \caption[short]{Features from RF model, tested on gradient boosting machine}
 \label{fig:topk}
 \end{figure}
+
+Show impact vs import in \figref{fig:topk-impact}
+
+\begin{figure}
+\centering
+\begin{subfigure}{.24\textwidth}
+    \centering
+\includegraphics[scale=0.48]{images/boston-topk-RF-Impact.pdf}
+\subcaption{\footnotesize foo}
+\end{subfigure}%
+\hfill
+\begin{subfigure}{.23\textwidth}
+    \centering
+\includegraphics[scale=0.48]{images/flights-topk-RF-Impact.pdf}
+\subcaption{\footnotesize foo}
+\end{subfigure}
+\hfill
+\begin{subfigure}{.25\textwidth}
+    \centering
+\includegraphics[scale=0.5]{images/bulldozer-topk-RF-Impact.pdf}
+\subcaption{\footnotesize sometimes we get age as first feature which is ok but not the amazing ModelID, clearly best. 100 = 81/100 ModelID is top and 19/100 age is top}
+\end{subfigure}%
+\hfill
+\begin{subfigure}{.2\textwidth}
+    \centering
+\includegraphics[scale=0.5]{images/rent-topk-RF-Impact.pdf}
+\subcaption{\footnotesize foo}
+\end{subfigure}
+\caption[short]{Features from RF model, tested on RF}
+\label{fig:topk-impact}
+\end{figure}
+
 
 \begin{figure}
 \centering

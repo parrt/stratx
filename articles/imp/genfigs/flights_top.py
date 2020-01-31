@@ -21,7 +21,7 @@ def gen(model, rank):
                              model=model,
                              metric=mean_absolute_error,
                              stratpd_min_samples_leaf=10,
-                             stratpd_cat_min_samples_leaf=5,
+                             stratpd_cat_min_samples_leaf=3,
                              use_oob=use_oob,
                              imp_n_trials=10,
                              imp_pvalues_n_trials=0,
@@ -49,6 +49,7 @@ def gen(model, rank):
 
     plot_topk(R, k=8, title=f"{model} Flight arrival delay",
               ylabel="20% 5-fold CV MAE (mins)",
+              xlabel=f"Top $k$ feature {rank}",
               title_fontsize=14,
               label_fontsize=14,
               ticklabel_fontsize=10,
@@ -58,4 +59,5 @@ def gen(model, rank):
     plt.show()
 
 gen(model='RF', rank='Importance')
+gen(model='RF', rank='Impact')
 gen(model='GBM', rank='Importance')
