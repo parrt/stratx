@@ -12,8 +12,9 @@ metric = mean_absolute_error
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
 # use same set of folds for all techniques
-kfolds = 2
+kfolds = 5
 kf = KFold(n_splits=kfolds, shuffle=True)
+kfold_indexes = list(kf.split(X))
 
 
 def gen(model, rank):
@@ -21,11 +22,11 @@ def gen(model, rank):
     R, imps = \
         compare_top_features(X, y,
                              X_train, X_test, y_train, y_test,
-                             kf,
+                             kfold_indexes,
                              n_shap=n,
                              sortby=rank,
                              metric=metric,
-                             imp_n_trials=10,
+                             imp_n_trials=3,
                              use_oob=use_oob,
                              model=model,
                              top_features_range=(1,8),
@@ -53,13 +54,39 @@ def gen(model, rank):
               title_fontsize=14,
               label_fontsize=14,
               ticklabel_fontsize=10,
-              yrange=(3,7),
+              yrange=(2,5.5),
               figsize=figsize)
     plt.tight_layout()
     plt.savefig(f"../images/boston-topk-{model}-{rank}.pdf", bbox_inches="tight", pad_inches=0)
+    plt.show()
+
+# Show BOSTON Spearman's vs ours
+def baseline(rank):
+    R, imps = \
+        compare_top_features(X, y,
+                             X_train, X_test, y_train, y_test,
+                             kfold_indexes,
+                             n_shap=300,
+                             imp_n_trials=3,
+                             top_features_range=(1, 8),
+                             include=['Spearman','PCA', 'OLS', 'StratImpact'])
+
+    print(R)
+
+    plot_topk(R, k=8, title="RF Boston housing prices",
+              ylabel="5-fold CV MAE (k$)",
+              xlabel=f"Top $k$ feature {rank}",
+              title_fontsize=14,
+              label_fontsize=14,
+              ticklabel_fontsize=10,
+              figsize=figsize)
+    plt.tight_layout()
+    plt.savefig(f"../images/boston-topk-baseline-{rank}.pdf", bbox_inches="tight", pad_inches=0)
     plt.show()
 
 
 gen(model='RF', rank='Importance')
 gen(model='RF', rank='Impact')
 gen(model='GBM', rank='Importance')
+
+baseline(rank='Importance')

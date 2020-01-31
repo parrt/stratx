@@ -31,7 +31,6 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
 kfolds = 2
 kf = KFold(n_splits=kfolds, shuffle=True)
 kfold_indexes = list(kf.split(X))
-print(kfold_indexes)
 
 # I = importances(X, y, n_trials=20)
 # print(I)
@@ -60,7 +59,7 @@ def gen(model, rank):
               title_fontsize=14,
               label_fontsize=14,
               ticklabel_fontsize=10,
-              yrange=(4,6),
+              yrange=(3.5,5),
               figsize=(3.5, 3.0))
     plt.tight_layout()
     plt.savefig(f"../images/bmi-topk-{rank}.pdf", bbox_inches="tight", pad_inches=0)

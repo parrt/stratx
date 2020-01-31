@@ -18,3 +18,4 @@ invalid value encountered in less
 invalid value encountered in less_equal
 ```
 * don't say "top-4 training ..." in R dataframe
+* don't compress X[colname] in plot catstrat; messes up labels
