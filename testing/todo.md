@@ -8,6 +8,7 @@
 * plots can't handle unnormalized data
 * plots show rank then importance? option to sortby
 * feature plot doesn't show error bars
+* set range on top-k plots to be same for same dataset
 * errors running model_free_baseline; not sure it's my stuff, likely not Strat stuff
 ```
 invalid value encountered in true_divide
@@ -16,3 +17,4 @@ invalid value encountered in greater
 invalid value encountered in less
 invalid value encountered in less_equal
 ```
+* don't say "top-4 training ..." in R dataframe

@@ -16,12 +16,15 @@ def boston(rank):
     X = pd.DataFrame(data, columns=boston.feature_names)
     y = pd.Series(boston.target)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    # use same set of folds for all techniques
+    kfolds = 2
+    kf = KFold(n_splits=kfolds, shuffle=True)
 
     R, imps = \
         compare_top_features(X, y,
                              X_train, X_test, y_train, y_test,
+                             kf,
                              n_shap=300,
-                             kfolds=5,
                              imp_n_trials=10,
                              top_features_range=(1, 8),
                              include=['Spearman','PCA', 'OLS', 'StratImpact'])
@@ -29,7 +32,7 @@ def boston(rank):
     print(R)
 
     plot_topk(R, k=8, title="RF Boston housing prices",
-              ylabel="20% 5-fold CV MAE (k$)",
+              ylabel="5-fold CV MAE (k$)",
               xlabel=f"Top $k$ feature {rank}",
               title_fontsize=14,
               label_fontsize=14,
@@ -47,12 +50,15 @@ def bulldozer(rank):
     X = X.iloc[-n:]
     y = y.iloc[-n:]
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    # use same set of folds for all techniques
+    kfolds = 2
+    kf = KFold(n_splits=kfolds, shuffle=True)
 
     R, imps = \
         compare_top_features(X, y,
                              X_train, X_test, y_train, y_test,
+                             kf,
                              n_shap=300,
-                             kfolds=5,
                              imp_n_trials=10,
                              stratpd_min_samples_leaf=5,
                              catcolnames={'AC', 'ModelID', 'YearMade', 'ProductSize'},
@@ -62,7 +68,7 @@ def bulldozer(rank):
     print(R)
 
     plot_topk(R, k=8, title="RF Bulldozer auction prices",
-              ylabel="20% 5-fold CV MAE ($)",
+              ylabel="5-fold CV MAE ($)",
               xlabel=f"Top $k$ feature {rank}",
               title_fontsize=14,
               label_fontsize=14,
@@ -77,19 +83,22 @@ def rent(rank):
     n = 25_000
     X, y = load_rent(n=n)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    # use same set of folds for all techniques
+    kfolds = 2
+    kf = KFold(n_splits=kfolds, shuffle=True)
 
     R, imps = \
         compare_top_features(X, y,
                              X_train, X_test, y_train, y_test,
+                             kf,
                              n_shap=300,
-                             kfolds=5,
                              imp_n_trials=10,
                              stratpd_min_samples_leaf=5,
                              top_features_range=(1, 8),
                              include=['Spearman','PCA','OLS','StratImpact'])
 
     plot_topk(R, k=8, title="RF NYC rent prices",
-              ylabel="20% 5-fold CV MAE ($)",
+              ylabel="5-fold CV MAE ($)",
               xlabel=f"Top $k$ feature {rank}",
               title_fontsize=14, # make font a bit bigger as we shrink this one is paper a bit
               label_fontsize=14,
@@ -104,10 +113,14 @@ def flight(rank):
 
     X, y, _ = load_flights(n=n)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    # use same set of folds for all techniques
+    kfolds = 2
+    kf = KFold(n_splits=kfolds, shuffle=True)
 
     R, imps = \
         compare_top_features(X, y,
                              X_train, X_test, y_train, y_test,
+                             kf,
                              n_shap=300,
                              catcolnames={'AIRLINE',
                                           'ORIGIN_AIRPORT',
@@ -115,14 +128,13 @@ def flight(rank):
                                           'FLIGHT_NUMBER',
                                           'DAY_OF_WEEK'},
                              metric=mean_squared_error,
-                             kfolds=5,
                              imp_n_trials=10,
                              stratpd_min_samples_leaf=10,
                              # a bit less than usual (gridsearch showed how to get value)
                              top_features_range=(1, 8),
                              include=['Spearman','PCA','OLS','StratImpact'])
     plot_topk(R, k=8, title="RF Flight arrival delay",
-              ylabel="20% 5-fold CV MAE (mins)",
+              ylabel="5-fold CV MAE (mins)",
               xlabel=f"Top $k$ feature {rank}",
               title_fontsize=14,
               label_fontsize=14,

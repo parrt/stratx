@@ -153,7 +153,7 @@ def shap_importances(model, X_train, X_test, n_shap, normalize=True, sort=True):
     return shapI
 
 
-def cv_features(kf, X, y, features, metric, catcolnames=None, time_sensitive=False, kfolds=5, model='RF'):
+def cv_features(kfold_indexes, X, y, features, metric, catcolnames=None, model='RF'):
     # if time_sensitive:
     #     n_test = int(0.20 * len(X))
     #     n_train = len(X) - n_test
@@ -163,12 +163,10 @@ def cv_features(kf, X, y, features, metric, catcolnames=None, time_sensitive=Fal
     scores = []
     n_estimators = 40  # for both SHAP and testing purposes
 
-    if kf is not None:
-        indexes = kf.split(X)
-    else:
+    if kfold_indexes is None:
         end_training = int(.8 * len(X))
-        indexes = [(range(0, end_training), range(end_training,len(X)))]
-    for train_index, test_index in indexes:
+        kfold_indexes = [(range(0, end_training), range(end_training,len(X)))]
+    for train_index, test_index in kfold_indexes:
         # for k in range(kfolds):
         # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
         X_train, X_test = X.iloc[train_index], X.iloc[test_index]
@@ -235,6 +233,7 @@ def todummies(X, features, catcolnames):
 
 def compare_top_features(X, y,
                          X_train, X_test, y_train, y_test,
+                         kfold_indexes,
                          top_features_range=None,
                          n_shap=300,
                          metric = mean_absolute_error,
@@ -244,7 +243,6 @@ def compare_top_features(X, y,
                          sortby='Importance',
                          use_oob = False,
                          #time_sensitive=False,
-                         kfolds=5,
                          n_stratpd_trees=1,
                          bootstrap=False,
                          stratpd_min_samples_leaf=10,
@@ -302,7 +300,6 @@ def compare_top_features(X, y,
     print(f"n_train={len(X_train)}, n_top={top_features_range[1]}, n_estimators={n_estimators}, n_shap={n_shap}, min_samples_leaf={stratpd_min_samples_leaf}")
     topscores = []
     topstddevs = []
-    kf = KFold(n_splits=kfolds) if kfolds > 1 else None  # use same set of folds for all techniques
     for top in range(top_features_range[0], top_features_range[1] + 1):
         # ols_top = ols_I.iloc[:top, 0].index.values
         # shap_ols_top = shap_ols_I.iloc[:top, 0].index.values
@@ -318,7 +315,7 @@ def compare_top_features(X, y,
             # print(f"Train with {features} from {technique_name}")
             # Train RF model with top-k features
             # Do 5-fold cross validation using original full X, y passed in to this method
-            scores = cv_features(kf, X, y, features, metric=metric, kfolds=kfolds, model=model,
+            scores = cv_features(kfold_indexes, X, y, features, metric=metric, model=model,
                                  catcolnames=catcolnames)
             results.append(np.mean(scores))
             stddevs.append(np.std(scores))
@@ -342,11 +339,12 @@ def compare_top_features(X, y,
 def best_single_feature(X, y, kfolds=5, model='RF'):
     means = []
     kf = KFold(n_splits=kfolds) if kfolds>1 else None
+    kfold_indexes = kf.split(X)
     for colname in X.columns:
-        scores = cv_features(kf, X, y, [colname],
+        scores = cv_features(kfold_indexes, X, y, [colname],
                              # metric=mean_squared_error,
                              metric=mean_absolute_error,
-                             kfolds=kfolds, model=model)
+                             model=model)
         print(colname, scores, np.mean(scores))
         means.append(np.mean(scores))
     df = pd.DataFrame()
@@ -445,6 +443,7 @@ def plot_topk(R, ax=None, k=None,
               ticklabel_fontsize=11,
               ylabel=None,
               xlabel=None,
+              yrange=None,
               emphasis_color = '#A22396',
               figsize=None):
     if ax is None:
@@ -491,6 +490,9 @@ def plot_topk(R, ax=None, k=None,
         tick.set_fontname(fontname)
     for tick in ax.get_yticklabels():
         tick.set_fontname(fontname)
+
+    if yrange is not None:
+        ax.set_ylim(*yrange)
 
     if title is not None:
         ax.set_title(title, fontsize=title_fontsize, fontname=fontname)

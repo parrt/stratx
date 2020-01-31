@@ -9,12 +9,16 @@ model='RF' # ('RF','SVM','GBM','OLS','Lasso')
 X, y, _ = load_flights(n=n)
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+# use same set of folds for all techniques
+kfolds = 2
+kf = KFold(n_splits=kfolds, shuffle=True)
 
 
 def gen(model, rank):
     R, imps = \
         compare_top_features(X, y,
                              X_train, X_test, y_train, y_test,
+                             kf,
                              n_shap=300,
                              catcolnames={'AIRLINE',
                                           'ORIGIN_AIRPORT',
@@ -22,7 +26,6 @@ def gen(model, rank):
                                           'FLIGHT_NUMBER',
                                           'DAY_OF_WEEK'},
                              sortby=rank,
-                             kfolds=1,
                              model=model,
                              metric=mean_absolute_error,
                              stratpd_min_samples_leaf=10,
@@ -53,7 +56,7 @@ def gen(model, rank):
     # R.reset_index().to_feather("/tmp/flights.feather")
 
     plot_topk(R, k=8, title=f"{model} Flight arrival delay",
-              ylabel="20% 5-fold CV MAE (mins)",
+              ylabel="5-fold CV MAE (mins)",
               xlabel=f"Top $k$ feature {rank}",
               title_fontsize=14,
               label_fontsize=14,

@@ -20,11 +20,15 @@ idxs = resample(range(50_000), n_samples=n, replace=False)
 X_, y_ = X.iloc[idxs], y.iloc[idxs]
 
 X_train, X_test, y_train, y_test = train_test_split(X_, y_, test_size=0.2)
+# use same set of folds for all techniques
+kfolds = 2
+kf = KFold(n_splits=kfolds, shuffle=True)
 
 def gen(model, rank):
     R, imps = \
         compare_top_features(X_, y_,
                              X_train, X_test, y_train, y_test,
+                             kf,
                              n_shap=300,
                              catcolnames={'AC', 'ModelID',
                                           #'ProductSize'
@@ -32,7 +36,6 @@ def gen(model, rank):
                              sortby=rank,
                              metric=metric,
                              use_oob=use_oob,
-                             kfolds=1,
                              imp_n_trials=10,
                              imp_pvalues_n_trials=0,
                              model=model,
@@ -60,7 +63,7 @@ def gen(model, rank):
     print(R)
 
     plot_topk(R, k=8, title=f"{model} Bulldozer auction prices",
-              ylabel="20% 5-fold CV MAE ($)",
+              ylabel="5-fold CV MAE ($)",
               xlabel=f"Top $k$ feature {rank}",
               title_fontsize=14,
               label_fontsize=14,

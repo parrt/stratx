@@ -10,7 +10,10 @@ y = pd.Series(boston.target)
 n = X.shape[0]
 metric = mean_absolute_error
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
+# use same set of folds for all techniques
+kfolds = 2
+kf = KFold(n_splits=kfolds, shuffle=True)
 
 
 def gen(model, rank):
@@ -18,12 +21,12 @@ def gen(model, rank):
     R, imps = \
         compare_top_features(X, y,
                              X_train, X_test, y_train, y_test,
+                             kf,
                              n_shap=n,
                              sortby=rank,
                              metric=metric,
                              imp_n_trials=10,
                              use_oob=use_oob,
-                             kfolds=1,
                              model=model,
                              top_features_range=(1,8),
                              drop=['Spearman','PCA'])
@@ -32,23 +35,25 @@ def gen(model, rank):
                      title="Boston StratImpact importances")
     plt.tight_layout()
     plt.savefig("../images/boston-features.pdf")
-    plt.show()
+    # plt.show()
+    plt.close()
 
     plot_importances(imps['RF SHAP'].iloc[:8], imp_range=(0,0.4), width=3,
                      title="Boston SHAP RF importances")
     plt.tight_layout()
     plt.savefig("../images/boston-features-shap-rf.pdf")
-    plt.show()
+    # plt.show()
+    plt.close()
 
     print(R)
-    R.reset_index().to_feather("/tmp/boston.feather")
 
     plot_topk(R, k=8, title=f"{model} Boston housing prices",
-              ylabel="20% 5-fold CV MAE (k$)",
+              ylabel="5-fold CV MAE (k$)",
               xlabel=f"Top $k$ feature {rank}",
               title_fontsize=14,
               label_fontsize=14,
               ticklabel_fontsize=10,
+              yrange=(3,7),
               figsize=figsize)
     plt.tight_layout()
     plt.savefig(f"../images/boston-topk-{model}-{rank}.pdf", bbox_inches="tight", pad_inches=0)
