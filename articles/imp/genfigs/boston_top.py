@@ -16,39 +16,43 @@ kfolds = 5
 kf = KFold(n_splits=kfolds, shuffle=True)
 kfold_indexes = list(kf.split(X))
 
+R_cache = {} # save R per rank
 
 def gen(model, rank):
-    # need small or 1 min_slopes_per_x given tiny toy dataset
-    R, imps = \
-        compare_top_features(X, y,
-                             X_train, X_test, y_train, y_test,
-                             kfold_indexes,
-                             n_shap=n,
-                             sortby=rank,
-                             metric=metric,
-                             imp_n_trials=10,
-                             use_oob=use_oob,
-                             model=model,
-                             top_features_range=(1,8),
-                             drop=['Spearman','PCA'])
+    if rank in R_cache:
+        R = R_cache[rank]
+    else:
+        R, imps = \
+            compare_top_features(X, y,
+                                 X_train, X_test, y_train, y_test,
+                                 kfold_indexes,
+                                 n_shap=n,
+                                 sortby=rank,
+                                 metric=metric,
+                                 imp_n_trials=10,
+                                 use_oob=use_oob,
+                                 model=model,
+                                 top_features_range=(1,8),
+                                 drop=['Spearman','PCA'])
+        R_cache[rank] = R
+        plot_importances(imps['StratImpact'].iloc[:8], imp_range=(0,0.4), width=3,
+                         title="Boston StratImpact importances")
+        plt.tight_layout()
+        plt.savefig("../images/boston-features.pdf")
+        # plt.show()
+        plt.close()
 
-    plot_importances(imps['StratImpact'].iloc[:8], imp_range=(0,0.4), width=3,
-                     title="Boston StratImpact importances")
-    plt.tight_layout()
-    plt.savefig("../images/boston-features.pdf")
-    # plt.show()
-    plt.close()
-
-    plot_importances(imps['RF SHAP'].iloc[:8], imp_range=(0,0.4), width=3,
-                     title="Boston SHAP RF importances")
-    plt.tight_layout()
-    plt.savefig("../images/boston-features-shap-rf.pdf")
-    # plt.show()
-    plt.close()
+        plot_importances(imps['RF SHAP'].iloc[:8], imp_range=(0,0.4), width=3,
+                         title="Boston SHAP RF importances")
+        plt.tight_layout()
+        plt.savefig("../images/boston-features-shap-rf.pdf")
+        # plt.show()
+        plt.close()
 
     print(R)
 
-    plot_topk(R, k=8, title=f"{model} Boston housing prices",
+    R_ = {k:v for k,v in R.items() if k not in ['Spearman','PCA']}
+    plot_topk(R_, k=8, title=f"{model} Boston housing prices",
               ylabel="5-fold CV MAE (k$)",
               xlabel=f"Top $k$ feature {rank}",
               title_fontsize=14,
@@ -62,19 +66,9 @@ def gen(model, rank):
 
 # Show BOSTON Spearman's vs ours
 def baseline(rank):
-    R, imps = \
-        compare_top_features(X, y,
-                             X_train, X_test, y_train, y_test,
-                             kfold_indexes,
-                             sortby=rank,
-                             n_shap=300,
-                             imp_n_trials=10,
-                             top_features_range=(1, 8),
-                             include=['Spearman','PCA', 'OLS', 'StratImpact'])
-
-    print(R)
-
-    plot_topk(R, k=8, title="RF Boston housing prices",
+    R = R_cache[rank]
+    R_ = {k:v for k,v in R.items() if k in ['Spearman','PCA', 'OLS', 'StratImpact']}
+    plot_topk(R_, k=8, title="RF Boston housing prices",
               ylabel="5-fold CV MAE (k$)",
               xlabel=f"Top $k$ feature {rank}",
               title_fontsize=14,

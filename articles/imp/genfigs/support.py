@@ -250,16 +250,10 @@ def compare_top_features(X, y,
                          min_slopes_per_x=5,
                          catcolnames=set(),
                          normalize=True,
-                         supervised=True,
-                         include=['Spearman', 'PCA', 'OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact'],
-                         drop=()):
+                         supervised=True):
     if use_oob and metric!=r2_score:
         #     print("Warning: use_oob can only give R^2; flipping metric to r2_score")
         metric=r2_score
-
-    include = include.copy()
-    for feature in drop:
-        include.remove(feature)
 
     n_estimators = 40 # for both SHAP and testing purposes
 
@@ -281,7 +275,6 @@ def compare_top_features(X, y,
                                         catcolnames=catcolnames,
                                         min_slopes_per_x=min_slopes_per_x,
                                         supervised=supervised,
-                                        include=include,
                                         normalize=normalize)\
 
     print("Spearman\n", all_importances['Spearman'])
@@ -295,23 +288,16 @@ def compare_top_features(X, y,
     if top_features_range is None:
         top_features_range = (1, X.shape[1])
 
-    features_names = include #['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']
+    technique_names = ['Spearman', 'PCA', 'OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact'],
 
     print(f"n_train={len(X_train)}, n_top={top_features_range[1]}, n_estimators={n_estimators}, n_shap={n_shap}, min_samples_leaf={stratpd_min_samples_leaf}")
     topscores = []
     topstddevs = []
     for top in range(top_features_range[0], top_features_range[1] + 1):
-        # ols_top = ols_I.iloc[:top, 0].index.values
-        # shap_ols_top = shap_ols_I.iloc[:top, 0].index.values
-        # rf_top = rf_I.iloc[:top, 0].index.values
-        # perm_top = perm_I.iloc[:top, 0].index.values
-        # our_top = our_I.iloc[:top, 0].index.values
-        # features_set = [ols_top, shap_ols_top, rf_top, perm_top, our_top]
-        # print(i, end=' ')
         results = []
         stddevs = []
         feature_sets = [I.iloc[:top, 0].index.values for I in all_importances.values() if I is not None]
-        for technique_name, features in zip(include, feature_sets):
+        for technique_name, features in zip(technique_names, feature_sets):
             # print(f"Train with {features} from {technique_name}")
             # Train RF model with top-k features
             # Do 5-fold cross validation using original full X, y passed in to this method
@@ -326,9 +312,9 @@ def compare_top_features(X, y,
         # avg = [f"{round(m,2):9.3f}" for m in np.mean(all, axis=0)]
         # print(f"Avg top-{top} valid {metric.__name__} {', '.join(avg)}")
 
-    R = pd.DataFrame(data=topscores, columns=features_names)
+    R = pd.DataFrame(data=topscores, columns=technique_names)
     R.index = [f"top-{top} {'OOB' if use_oob else 'training'} {metric.__name__}" for top in range(top_features_range[0], top_features_range[1] + 1)]
-    Rstddev = pd.DataFrame(data=topstddevs, columns=features_names)
+    Rstddev = pd.DataFrame(data=topstddevs, columns=technique_names)
     Rstddev.index = [f"top-{top} stddev" for top in range(top_features_range[0], top_features_range[1] + 1)]
     print(Rstddev)
 
@@ -365,9 +351,12 @@ def get_multiple_imps(X_train, y_train, X_test, y_test, n_shap=300, n_estimators
                       catcolnames=set(),
                       min_slopes_per_x=10,
                       supervised=True,
-                      include=['Spearman', 'PCA', 'OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact'],
+                      # include=['Spearman', 'PCA', 'OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact'],
                       normalize=True):
     spear_I = pca_I = ols_I = ols_shap_I = rf_I = perm_I = ours_I = None
+
+    # Do everything now
+    include = ['Spearman', 'PCA', 'OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']
 
     if 'Spearman' in include:
         spear_I = spearmans_importances(X_train, y_train)
