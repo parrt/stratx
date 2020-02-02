@@ -1,13 +1,13 @@
 \documentclass[12pt]{article}
 \usepackage{enumitem}
 %\usepackage[T1]{fontenc}
-\usepackage[auth-sc,affil-sl]{authblk}
+%\usepackage[auth-sc,affil-sl]{authblk}
 \usepackage{amsmath}
 \usepackage{graphicx}
 \usepackage{color}
 \usepackage[toc,page]{appendix}
 %\usepackage{enumerate}
-\usepackage[round]{natbib}
+%\usepackage[round]{natbib}
 %\usepackage{url} % not crucial - just used below for the URL 
 %\usepackage{amsthm}
 \usepackage{amssymb}
@@ -20,9 +20,10 @@
 \usepackage[noline, boxed, linesnumbered, procnumbered, titlenumbered]{algorithm2e}
 %\usepackage[firstpage]{draftwatermark}
 \usepackage[margin=1in]{geometry}  %%jcgs has own margins
-\usepackage{lmodern}
+%\usepackage{lmodern}
 \usepackage{caption}
 \usepackage{subcaption}
+
 
 %\pdfminorversion=4
 % NOTE: To produce blinded version, replace "0" with "1" below.
@@ -106,7 +107,7 @@ dsf
 \section{Introduction}
 \label{sec:intro}
 
-Among data analysis techniques, feature importance is one of the most  useful. Data science practitioners use feature importance to gain business insights (e.g., identifying product characteristics valued by customers) and to select features for predictive models (dropping the least predictive features to simplify and potentially increase the generality of the model). While some approaches work directly on the data, such as minimal-redundancy-maximal-relevance (mRMR) by \cite{mRMR}, almost all feature importance algorithms used in practice analyze data through interrogation of a specific  fitted model (SHAP \cite{shap}, permutation importance, drop column importance), or even interrogating subsidiary models to analyze such fitted models (LIME \cite{lime}).
+Among data analysis techniques, feature importance is one of the most  useful. Data science practitioners use feature importance for two primary purposes. First, to select features for predictive models (dropping the least predictive features to simplify and potentially increase the generality of the model). Second, to gain business and medical insights, such as identifying product characteristics valued by customers and identifying treatments contributing to patient recovery. While some approaches work directly on the data, such as minimal-redundancy-maximal-relevance (mRMR \cite{mRMR}), almost all feature importance algorithms used in practice analyze data through interrogation of a specific  fitted model (e.g., SHAP \cite{shap}, permutation importance \cite{RF}, and drop column importance), or even interrogating subsidiary models to analyze such fitted models (e.g., LIME \cite{lime}).
 
 But, relying on a fitted model is problematic. First, practitioners must choose an appropriate model that captures the relationship between features and target. Inaccurate models do not yield useful feature importance results, yet, there is no definition of ``accurate enough.'' More importantly, it is possible to get very different feature importances running the same algorithm on the same data, just by choosing a different model. Feature importances derived from a model indicate how well that specific model is able to take advantage of the features, rather than the predictiveness or importance intrinsic to those features of the data.  This fact is troubling and calls into question the validity of importances derived from imperfect models using any technique.  
 
@@ -225,7 +226,7 @@ See \cite{filter-benchmark} for benchmarks of filter on filter methods.
 
 Turning to model-based techniques, feature importances are typically variations on a theme: tweak the model and measure the effect on model prediction accuracy or expected model output. The simplest approach is {\em drop-column importance}, which defines $x_j$ importance as the difference in model accuracy between the full model and the model with $x_j$ removed. The model must be retrained $p$ times and highly similar features yield low or zero importances because codependent features cover for the dropped column in the model.
 
-To avoid retraining the model, $x_j$ can be permuted instead of dropped for {\em permutation importance} (\cite{RF}). This approach is faster but can introduce nonsensical observations by permuting invalid values into records; e.g., shifting a true {\tt\small pregnant} value into a male's record. Codependent features tend to share importance, at least when applied to random forest models.
+To avoid retraining the model, $x_j$ can be permuted instead of dropped for {\em permutation importance}. This approach is faster but can introduce nonsensical observations by permuting invalid values into records; e.g., shifting a true {\tt\small pregnant} value into a male's record. Codependent features tend to share importance, at least when applied to random forest models.
 
 Rather than removing or permuting entire columns of data, LIME \cite{lime} and SHAP \cite{shap} focus on model behavior at the observation level. For a prediction of interest, LIME trains an interpretable linear model, on a small neighborhood of data around that prediction to explain the relationship between variables and the response locally. SHAP, however, was shown to subsume the LIME technique in \cite{shap}.
 

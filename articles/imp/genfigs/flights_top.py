@@ -14,6 +14,7 @@ gen_topk_figs(X,y,kfolds=5,n_trials=5,dataset="flights",title="Flight arrival de
                            'DESTINATION_AIRPORT',
                            'FLIGHT_NUMBER',
                            'DAY_OF_WEEK'},
+              min_slopes_per_x=20,
               yrange=(5,30), yunits="min")
 
 """
