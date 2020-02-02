@@ -1,15 +1,10 @@
-\documentclass[12pt]{article}
+\documentclass[twoside,11pt]{article}
+\usepackage[abbrvbib, preprint]{jmlr2e}
+
 \usepackage{enumitem}
-%\usepackage[T1]{fontenc}
-%\usepackage[auth-sc,affil-sl]{authblk}
 \usepackage{amsmath}
-\usepackage{graphicx}
 \usepackage{color}
 \usepackage[toc,page]{appendix}
-%\usepackage{enumerate}
-%\usepackage[round]{natbib}
-%\usepackage{url} % not crucial - just used below for the URL 
-%\usepackage{amsthm}
 \usepackage{amssymb}
 \usepackage{graphicx}
 \usepackage{epstopdf}
@@ -18,16 +13,9 @@
 \usepackage{listings}
 \usepackage{array}
 \usepackage[noline, boxed, linesnumbered, procnumbered, titlenumbered]{algorithm2e}
-%\usepackage[firstpage]{draftwatermark}
-\usepackage[margin=1in]{geometry}  %%jcgs has own margins
-%\usepackage{lmodern}
 \usepackage{caption}
 \usepackage{subcaption}
 
-
-%\pdfminorversion=4
-% NOTE: To produce blinded version, replace "0" with "1" below.
-\newcommand{\blind}{0}
 
 \newcommand{\secref}[1]{Section~\ref{#1}}
 \newcommand{\appdxref}[1]{Appendix~\ref{#1}}
@@ -64,6 +52,9 @@
 \addtolength{\topmargin}{-.8in}%
 }
 
+\ShortHeadings{Tech Report: Model-Free Feature Importance}{Parr, Wilson, and Hamrick}
+\firstpageno{1}
+
 \begin{document}
 
 \def\spacingset#1{\renewcommand{\baselinestretch}%
@@ -72,42 +63,29 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\if0\blind
-{
-  \title{\bf Tech Report: Model-Free Feature Importance}
+\title{\bf Tech Report: Model-Free Feature Importance}
 
-  \author{Terence Parr, James D. Wilson, and Jeff Hamrick\\
-      University of San Francisco\\
-}
-  \maketitle
-} \fi
+\author{Terence Parr \email parrt@cs.usfca.edu
+\addr University of San Francisco\\
+\AND James D. Wilson \email jdwilson4@usfca.edu
+\addr University of San Francisco\\
+\AND Jeff Hamrick \email jhamrick@usfca.edu
+      \addr University of San Francisco}
 
-\if1\blind
-{
-  \bigskip
-  \bigskip
-  \bigskip
-  \begin{center}
-    {\LARGE\bf Title}
-\end{center}
-  \medskip
-} \fi
+\maketitle
 
-\bigskip
-\begin{abstract}
-dsf
+\begin{abstract}%
+awesome abstract here
 \end{abstract}
 
-\noindent%
-{\it Keywords:} feature importance, partial dependence, model interpretability, machine learning
-%\vfill
+\begin{keywords}
+feature importance, business insights, medical insights, partial dependence, model interpretability, machine learning
+\end{keywords}
 
-%\newpage
-%\spacingset{1.5} % DON'T change the spacing!
 \section{Introduction}
 \label{sec:intro}
 
-Among data analysis techniques, feature importance is one of the most  useful. Data science practitioners use feature importance for two primary purposes. First, to select features for predictive models (dropping the least predictive features to simplify and potentially increase the generality of the model). Second, to gain business and medical insights, such as identifying product characteristics valued by customers and identifying treatments contributing to patient recovery. While some approaches work directly on the data, such as minimal-redundancy-maximal-relevance (mRMR \cite{mRMR}), almost all feature importance algorithms used in practice analyze data through interrogation of a specific  fitted model (e.g., SHAP \cite{shap}, permutation importance \cite{RF}, and drop column importance), or even interrogating subsidiary models to analyze such fitted models (e.g., LIME \cite{lime}).
+Among data analysis techniques, feature importance is one of the most  useful. Data science practitioners use feature importance for two primary purposes. First, to select features for predictive models (dropping the least predictive features to simplify and potentially increase the generality of the model). Second, to gain business and medical insights, such as identifying product characteristics valued by customers and identifying treatments contributing to patient recovery. While some approaches work directly on the data, such as minimal-redundancy-maximal-relevance (mRMR) by \cite{mRMR}, almost all feature importance algorithms used in practice analyze data through interrogation of a specific  fitted model (e.g., SHAP (\cite{shap}), permutation importance (\cite{RF}), and drop column importance), or even interrogating subsidiary models to analyze such fitted models (e.g., LIME (\cite{lime})).
 
 But, relying on a fitted model is problematic. First, practitioners must choose an appropriate model that captures the relationship between features and target. Inaccurate models do not yield useful feature importance results, yet, there is no definition of ``accurate enough.'' More importantly, it is possible to get very different feature importances running the same algorithm on the same data, just by choosing a different model. Feature importances derived from a model indicate how well that specific model is able to take advantage of the features, rather than the predictiveness or importance intrinsic to those features of the data.  This fact is troubling and calls into question the validity of importances derived from imperfect models using any technique.  
 
@@ -515,7 +493,6 @@ research should now focus on getting more accurate partial dependence approximat
 
 must define for classification
 
-\bibliographystyle{apalike}
-
+\vskip 0.2in
 \bibliography{pdimp}
 \end{document}

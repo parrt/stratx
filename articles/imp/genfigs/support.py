@@ -379,7 +379,7 @@ def test_top_features(X, y,
 
 
 def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yrange=None,figsize=(3.5, 3.0),
-                  min_slopes_per_x=5):
+                  min_slopes_per_x=20):
     model="RF"
     test_size = .2 # Some techniques use validation set to pick best features
 
