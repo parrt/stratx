@@ -183,7 +183,7 @@ def cv_features(kfold_indexes, X, y, features, metric, catcolnames=None, model='
             s = metric(y_test, y_pred)
         elif model == 'GBM':
             m = xgb.XGBRegressor(objective='reg:squarederror',
-                                 learning_rate=0.7, # default is 1
+                                 learning_rate=0.5, # default is 1
                                  max_depth=5, # default is 3
                                  n_estimators=100 # default is 100
                                  )
@@ -231,6 +231,7 @@ def todummies(X, features, catcolnames):
     return X
 
 
+"""
 def compare_top_features(X, y,
                          X_train, X_test, y_train, y_test,
                          kfold_indexes,
@@ -296,7 +297,15 @@ def compare_top_features(X, y,
     for top in range(top_features_range[0], top_features_range[1] + 1):
         results = []
         stddevs = []
-        feature_sets = [I.iloc[:top, 0].index.values for I in all_importances.values() if I is not None]
+        # Get list of top features as ranked by various techniques
+        feature_sets = []
+        for technique_name,I in all_importances.items():
+            if I is not None:
+                if technique_name=='StratImpact':
+                    I = I.sort_values(sortby, ascending=False)
+                top_features = I.iloc[:top, 0]
+                feature_sets.append(top_features.index.values)
+
         for technique_name, features in zip(technique_names, feature_sets):
             # print(f"Train with {features} from {technique_name}")
             # Train RF model with top-k features
@@ -320,6 +329,199 @@ def compare_top_features(X, y,
 
     # unpack for users
     return (R, all_importances)
+"""
+
+def test_top_features(X, y,
+                      all_importances,
+                      kfold_indexes,
+                      sortby,
+                      top_features_range=None,
+                      metric=mean_absolute_error,
+                      model='RF',
+                      catcolnames=set()):
+    if top_features_range is None:
+        top_features_range = (1, X.shape[1])
+
+    technique_names = ['Spearman', 'PCA', 'OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']
+
+    topscores = []
+    topstddevs = []
+    for top in range(top_features_range[0], top_features_range[1] + 1):
+        results = []
+        stddevs = []
+        # Get list of top features as ranked by various techniques
+        feature_sets = []
+        for technique_name,I in all_importances.items():
+            if I is not None:
+                if technique_name=='StratImpact':
+                    I = I.sort_values(sortby, ascending=False)
+                top_features = I.iloc[:top, 0]
+                feature_sets.append(top_features.index.values)
+
+        for technique_name, features in zip(technique_names, feature_sets):
+            # print(f"Train with {features} from {technique_name}")
+            # Train RF model with top-k features
+            # Do 5-fold cross validation using original full X, y passed in to this method
+            scores = cv_features(kfold_indexes, X, y, features, metric=metric, model=model,
+                                 catcolnames=catcolnames)
+            results.append(np.mean(scores))
+            stddevs.append(np.std(scores))
+            # print(f"{technique_name} valid R^2 {s:.3f}")
+        topscores.append( results )
+        topstddevs.append( stddevs )
+
+        # avg = [f"{round(m,2):9.3f}" for m in np.mean(all, axis=0)]
+        # print(f"Avg top-{top} valid {metric.__name__} {', '.join(avg)}")
+
+    R = pd.DataFrame(data=topscores, columns=technique_names)
+    R.index = [f"top-{top}" for top in range(top_features_range[0], top_features_range[1] + 1)]
+    return R
+
+
+def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yrange=None,figsize=(3.5, 3.0)):
+    model="RF"
+    test_size = .2 # Some techniques use validation set to pick best features
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
+    # use same set of folds for all techniques
+    kf = KFold(n_splits=kfolds, shuffle=True)
+    kfold_indexes = list(kf.split(X))
+
+    imps = get_multiple_imps(X, y,
+                             X_train, y_train, X_test, y_test,
+                             normalize=True,
+                             catcolnames=catcolnames,
+                             n_shap=300,
+                             n_estimators=40,
+                             imp_n_trials=n_trials,
+                             # stratpd_min_samples_leaf=stratpd_min_samples_leaf,
+                             # stratpd_cat_min_samples_leaf=stratpd_cat_min_samples_leaf,
+                             )
+    plot_importances(imps['StratImpact'].iloc[:8], imp_range=(0,0.4), width=3,
+                     title=f"{dataset} StratImpact importances")
+    plt.tight_layout()
+    plt.savefig(f"../images/{dataset}-features.pdf")
+    # plt.show()
+    plt.close()
+
+    plot_importances(imps['RF SHAP'].iloc[:8], imp_range=(0,0.4), width=3,
+                     title=f"{dataset} SHAP RF importances")
+    plt.tight_layout()
+    plt.savefig(f"../images/{dataset}-features-shap-rf.pdf")
+    # plt.show()
+    plt.close()
+
+    sortby="Importance"
+    R = test_top_features(X, y,
+                          imps,
+                          kfold_indexes,
+                          sortby=sortby,
+                          top_features_range=(1,8),
+                          metric=mean_absolute_error,
+                          model=model,
+                          catcolnames=catcolnames)
+    # print(R)
+
+    R_ = R[['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']]
+    plot_topk(R_, k=8, title=f"{model} {title}",
+              ylabel=f"5-fold CV MAE ({yunits})",
+              xlabel=f"Top $k$ feature {sortby}",
+              title_fontsize=14,
+              label_fontsize=14,
+              ticklabel_fontsize=10,
+              yrange=yrange,
+              figsize=figsize)
+    plt.tight_layout()
+    plt.savefig(f"../images/{dataset}-topk-{model}-{sortby}.pdf", bbox_inches="tight", pad_inches=0)
+    plt.show()
+
+    R_ = R[['Spearman', 'PCA', 'OLS', 'StratImpact']]
+    plot_topk(R_, k=8, title=f"{model} {title}",
+              ylabel=f"5-fold CV MAE ({yunits})",
+              xlabel=f"Top $k$ feature {sortby}",
+              title_fontsize=14,
+              label_fontsize=14,
+              ticklabel_fontsize=10,
+              yrange=yrange,
+              figsize=figsize)
+    plt.tight_layout()
+    plt.savefig(f"../images/{dataset}-topk-baseline-{sortby}.pdf", bbox_inches="tight", pad_inches=0)
+    plt.show()
+
+    sortby="Impact"
+    R = test_top_features(X, y,
+                          imps,
+                          kfold_indexes,
+                          sortby=sortby,
+                          top_features_range=(1,8),
+                          metric=mean_absolute_error,
+                          model=model,
+                          catcolnames=catcolnames)
+
+    R_ = R[['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']]
+    plot_topk(R_, k=8, title=f"{model} {title}",
+              ylabel=f"5-fold CV MAE ({yunits})",
+              xlabel=f"Top $k$ feature {sortby}",
+              title_fontsize=14,
+              label_fontsize=14,
+              ticklabel_fontsize=10,
+              yrange=yrange,
+              figsize=figsize)
+    plt.tight_layout()
+    plt.savefig(f"../images/{dataset}-topk-{model}-{sortby}.pdf", bbox_inches="tight", pad_inches=0)
+    plt.show()
+
+    model = "GBM"
+    sortby = "Impact"
+    R = test_top_features(X, y,
+                          imps,
+                          kfold_indexes,
+                          sortby=sortby,
+                          top_features_range=(1, 8),
+                          metric=mean_absolute_error,
+                          model=model,
+                          catcolnames=catcolnames)
+
+    R_ = R[['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']]
+    plot_topk(R_, k=8, title=f"{model} {title}",
+              ylabel=f"5-fold CV MAE ({yunits})",
+              xlabel=f"Top $k$ feature {sortby}",
+              title_fontsize=14,
+              label_fontsize=14,
+              ticklabel_fontsize=10,
+              yrange=yrange,
+              figsize=figsize)
+    plt.tight_layout()
+    plt.savefig(f"../images/{dataset}-topk-{model}-{sortby}.pdf", bbox_inches="tight",
+                pad_inches=0)
+    plt.show()
+
+    if dataset=='rent': # the only non-toy dataset with purely numerical features
+        model = "Lasso"
+        sortby="Impact"
+        R = test_top_features(X, y,
+                              imps,
+                              kfold_indexes,
+                              sortby=sortby,
+                              top_features_range=(1,8),
+                              metric=mean_absolute_error,
+                              model=model,
+                              catcolnames=catcolnames)
+
+        R_ = R[['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']]
+        plot_topk(R_, k=8, title=f"{model} {title}",
+                  ylabel=f"5-fold CV MAE ({yunits})",
+                  xlabel=f"Top $k$ feature {sortby}",
+                  title_fontsize=14,
+                  label_fontsize=14,
+                  ticklabel_fontsize=10,
+                  # legend_location='lower left',
+                  legend_location='upper right',
+                  yrange=(500,1200),
+                  figsize=figsize)
+        plt.tight_layout()
+        plt.savefig(f"../images/{dataset}-topk-{model}-{sortby}.pdf", bbox_inches="tight", pad_inches=0)
+        plt.show()
 
 
 def best_single_feature(X, y, kfolds=5, model='RF'):
@@ -340,7 +542,7 @@ def best_single_feature(X, y, kfolds=5, model='RF'):
     return df
 
 
-def get_multiple_imps(X_train, y_train, X_test, y_test, n_shap=300, n_estimators=50,
+def get_multiple_imps(X, y, X_train, y_train, X_test, y_test, n_shap=300, n_estimators=50,
                       sortby='Importance',
                       stratpd_min_samples_leaf=10,
                       stratpd_cat_min_samples_leaf=10,
@@ -359,32 +561,33 @@ def get_multiple_imps(X_train, y_train, X_test, y_test, n_shap=300, n_estimators
     include = ['Spearman', 'PCA', 'OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']
 
     if 'Spearman' in include:
-        spear_I = spearmans_importances(X_train, y_train)
+        spear_I = spearmans_importances(X, y)
 
     if 'PCA' in include:
-        pca_I = pca_importances(X_train)
+        pca_I = pca_importances(X)
 
     if "OLS" in include:
-        X_train_ = StandardScaler().fit_transform(X_train)
-        X_train_ = pd.DataFrame(X_train_, columns=X_train.columns)
+        X_ = StandardScaler().fit_transform(X)
+        X_ = pd.DataFrame(X_, columns=X.columns)
         lm = LinearRegression()
-        lm.fit(X_train_, y_train)
-        ols_I, score = linear_model_importance(lm, X_train_, y_train)
+        lm.fit(X_, y)
+        ols_I, score = linear_model_importance(lm, X_, y)
 
     if "OLS SHAP" in include:
-        X_train_ = StandardScaler().fit_transform(X_train)
-        X_train_ = pd.DataFrame(X_train_, columns=X_train.columns)
+        X_ = StandardScaler().fit_transform(X)
+        X_ = pd.DataFrame(X_, columns=X.columns)
         lm = LinearRegression()
-        lm.fit(X_train_, y_train)
-        ols_shap_I = shap_importances(lm, X_train_, X_test, n_shap=len(X_test)) # fast enough so use all data
+        lm.fit(X_, y)
+        # fast enough so use all data
+        ols_shap_I = shap_importances(lm, X_, X_, n_shap=len(X_))
 
     if "RF SHAP" in include:
         # Limit to training RFs with 20,000 records as it sometimes crashes above
-        X_train_ = X_train[:min(20_000,len(X_train))] # already randomly selected, just grab first part
-        y_train_ = y_train[:min(20_000,len(X_train))]
+        # X_train_ = X_train[:min(20_000,len(X_train))] # already randomly selected, just grab first part
+        # y_train_ = y_train[:min(20_000,len(X_train))]
         rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=True)
-        rf.fit(X_train_, y_train_)
-        rf_I = shap_importances(rf, X_train_, X_test, n_shap, normalize=normalize)
+        rf.fit(X_train, y_train)
+        rf_I = shap_importances(rf, X_train, X_test, n_shap, normalize=normalize)
 
     if "RF perm" in include:
         rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=True)
@@ -393,14 +596,9 @@ def get_multiple_imps(X_train, y_train, X_test, y_test, n_shap=300, n_estimators
 
     if "StratImpact" in include:
         # RF SHAP and RF perm get to look at the test data to decide which features
-        # are more predictive and useful for generality's sake so it's fair to
-        # let this method see all data as well
-        # X_full = pd.concat([X_train, X_test], axis=0)
-        # y_full = pd.concat([y_train, y_test], axis=0)
-        # Actually use just X_train
-        X_full = X_train
-        y_full = y_train
-        ours_I = importances(X_full, y_full, verbose=False,
+        # are more predictive and useful for generality's sake but we only get to
+        # see X_Train
+        ours_I = importances(X_train, y_train, verbose=False,
                              sortby=sortby,
                              min_samples_leaf=stratpd_min_samples_leaf,
                              cat_min_samples_leaf=stratpd_cat_min_samples_leaf,
@@ -413,6 +611,7 @@ def get_multiple_imps(X_train, y_train, X_test, y_test, n_shap=300, n_estimators
                              min_slopes_per_x=min_slopes_per_x,
                              supervised=supervised,
                              normalize=normalize)
+        print(ours_I)
     d = OrderedDict()
     d['Spearman'] = spear_I
     d['PCA'] = pca_I
@@ -433,11 +632,12 @@ def plot_topk(R, ax=None, k=None,
               ylabel=None,
               xlabel=None,
               yrange=None,
-              emphasis_color = '#A22396',
+              legend_location='upper right',
+              emphasis_color='#A22396',
               figsize=None):
     if ax is None:
         if figsize is not None:
-            fig, ax = plt.subplots(1,1,figsize=figsize)
+            fig, ax = plt.subplots(1, 1, figsize=figsize)
         else:
             fig, ax = plt.subplots(1, 1)
 
@@ -462,7 +662,7 @@ def plot_topk(R, ax=None, k=None,
         ax.plot(feature_counts, R[technique][:k], fmt, lw=lw, label=technique,
                 c=color, alpha=.9, markersize=ms, fillstyle='none')
 
-    plt.legend(loc='upper right')  # usually it's out of the way
+    plt.legend(loc=legend_location)  # usually it's out of the way
 
     if xlabel is None:
         ax.set_xlabel("Top $k$ most important features", fontsize=label_fontsize,

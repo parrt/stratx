@@ -9,6 +9,11 @@ model='RF' # ('RF','SVM','GBM','OLS','Lasso')
 # np.random.seed(999) # set for testing effects
 
 X, y = load_rent(n=n)
+
+gen_topk_figs(X,y,kfolds=5,n_trials=5,dataset="rent",title="NYC rent prices",
+              yrange=(300,900), yunits="$")
+
+"""
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 # use same set of folds for all techniques
 kfolds = 5
@@ -87,3 +92,4 @@ gen(model='RF', rank='Impact')
 gen(model='GBM', rank='Importance')
 
 baseline(rank='Importance')
+"""

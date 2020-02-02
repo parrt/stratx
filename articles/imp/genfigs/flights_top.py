@@ -8,6 +8,15 @@ model='RF' # ('RF','SVM','GBM','OLS','Lasso')
 
 X, y, _ = load_flights(n=n)
 
+gen_topk_figs(X,y,kfolds=5,n_trials=5,dataset="flights",title="Flight arrival delay",
+              catcolnames={'AIRLINE',
+                           'ORIGIN_AIRPORT',
+                           'DESTINATION_AIRPORT',
+                           'FLIGHT_NUMBER',
+                           'DAY_OF_WEEK'},
+              yrange=(5,30), yunits="min")
+
+"""
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 # use same set of folds for all techniques
 kfolds = 5
@@ -106,3 +115,4 @@ gen(model='RF', rank='Impact')
 gen(model='GBM', rank='Importance')
 
 baseline(rank='Importance')
+"""

@@ -377,35 +377,6 @@ Then see \figref{fig:topk}
 \label{fig:topk}
 \end{figure}
 
-\begin{figure}
-\centering
-\begin{subfigure}{.24\textwidth}
-    \centering
-\includegraphics[scale=0.48]{images/boston-topk-GBM-Importance.pdf}
-\subcaption{\footnotesize foo}
-\end{subfigure}%
-\hfill
-\begin{subfigure}{.23\textwidth}
-    \centering
-\includegraphics[scale=0.48]{images/flights-topk-GBM-Importance.pdf}
-\subcaption{\footnotesize foo}
-\end{subfigure}
-\hfill
-\begin{subfigure}{.25\textwidth}
-    \centering
-\includegraphics[scale=0.5]{images/bulldozer-topk-GBM-Importance.pdf}
-\subcaption{\footnotesize sometimes we get age as first feature which is ok but not the amazing ModelID, clearly best. 100 = 81/100 ModelID is top and 19/100 age is top}
-\end{subfigure}%
-\hfill
-\begin{subfigure}{.2\textwidth}
-    \centering
-\includegraphics[scale=0.5]{images/rent-topk-GBM-Importance.pdf}
-\subcaption{\footnotesize foo}
-\end{subfigure}
-\caption[short]{Features from RF model, tested on gradient boosting machine}
-\label{fig:topk}
-\end{figure}
-
 Show impact vs import in \figref{fig:topk-impact}
 
 \begin{figure}
@@ -435,6 +406,46 @@ Show impact vs import in \figref{fig:topk-impact}
 \end{subfigure}
 \caption[short]{Features from RF model, tested on RF}
 \label{fig:topk-impact}
+\end{figure}
+
+Show \figref{fig:lasso}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.65]{images/rent-topk-Lasso-Impact.pdf}
+\captionof{figure}{Lasso model}
+\label{fig:lasso}
+\end{center}
+\end{figure}
+
+
+\begin{figure}
+\centering
+\begin{subfigure}{.24\textwidth}
+    \centering
+\includegraphics[scale=0.48]{images/boston-topk-GBM-Importance.pdf}
+\subcaption{\footnotesize foo}
+\end{subfigure}%
+\hfill
+\begin{subfigure}{.23\textwidth}
+    \centering
+\includegraphics[scale=0.48]{images/flights-topk-GBM-Importance.pdf}
+\subcaption{\footnotesize foo}
+\end{subfigure}
+\hfill
+\begin{subfigure}{.25\textwidth}
+    \centering
+\includegraphics[scale=0.5]{images/bulldozer-topk-GBM-Importance.pdf}
+\subcaption{\footnotesize sometimes we get age as first feature which is ok but not the amazing ModelID, clearly best. 100 = 81/100 ModelID is top and 19/100 age is top}
+\end{subfigure}%
+\hfill
+\begin{subfigure}{.2\textwidth}
+    \centering
+\includegraphics[scale=0.5]{images/rent-topk-GBM-Importance.pdf}
+\subcaption{\footnotesize foo}
+\end{subfigure}
+\caption[short]{Features from RF model, tested on gradient boosting machine}
+\label{fig:topk}
 \end{figure}
 
 

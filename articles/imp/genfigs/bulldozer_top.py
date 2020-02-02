@@ -19,6 +19,11 @@ y = y.iloc[-50_000:]
 idxs = resample(range(50_000), n_samples=n, replace=False)
 X_, y_ = X.iloc[idxs], y.iloc[idxs]
 
+gen_topk_figs(X_,y_,kfolds=5,n_trials=5,dataset="bulldozer",title="Bulldozer auction prices",
+              catcolnames={'AC', 'ModelID'},
+              yrange=(5000,20000), yunits="$")
+
+"""
 X_train, X_test, y_train, y_test = train_test_split(X_, y_, test_size=0.2)
 # use same set of folds for all techniques
 kfolds = 5
@@ -66,7 +71,7 @@ def gen(model, rank):
     print(R)
 
     plot_topk(R, k=8, title=f"{model} Bulldozer auction prices",
-              ylabel="5-fold CV MAE ($)",
+              ylabel=f"5-fold CV MAE ({yunits})",
               xlabel=f"Top $k$ feature {rank}",
               title_fontsize=14,
               label_fontsize=14,
@@ -94,7 +99,7 @@ def baseline(rank):
     print(R)
 
     plot_topk(R, k=8, title="RF Bulldozer auction prices",
-              ylabel="5-fold CV MAE ($)",
+              ylabel=f"5-fold CV MAE ({yunits})",
               xlabel=f"Top $k$ feature {rank}",
               title_fontsize=14,
               label_fontsize=14,
@@ -111,3 +116,4 @@ gen(model='RF', rank='Impact')
 gen(model='GBM', rank='Importance')
 
 baseline(rank='Importance')
+"""
