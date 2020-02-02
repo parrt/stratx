@@ -378,7 +378,8 @@ def test_top_features(X, y,
     return R
 
 
-def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yrange=None,figsize=(3.5, 3.0)):
+def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yrange=None,figsize=(3.5, 3.0),
+                  min_slopes_per_x=5):
     model="RF"
     test_size = .2 # Some techniques use validation set to pick best features
 
@@ -387,12 +388,14 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yra
     kf = KFold(n_splits=kfolds, shuffle=True)
     kfold_indexes = list(kf.split(X))
 
-    imps = get_multiple_imps(X, y,
+    imps = get_multiple_imps(dataset,
+                             X, y,
                              X_train, y_train, X_test, y_test,
                              normalize=True,
                              catcolnames=catcolnames,
                              n_shap=300,
                              n_estimators=40,
+                             min_slopes_per_x=min_slopes_per_x,
                              imp_n_trials=n_trials,
                              # stratpd_min_samples_leaf=stratpd_min_samples_leaf,
                              # stratpd_cat_min_samples_leaf=stratpd_cat_min_samples_leaf,
@@ -542,7 +545,8 @@ def best_single_feature(X, y, kfolds=5, model='RF'):
     return df
 
 
-def get_multiple_imps(X, y, X_train, y_train, X_test, y_test, n_shap=300, n_estimators=50,
+def get_multiple_imps(dataset,
+                      X, y, X_train, y_train, X_test, y_test, n_shap=300, n_estimators=50,
                       sortby='Importance',
                       stratpd_min_samples_leaf=10,
                       stratpd_cat_min_samples_leaf=10,
@@ -597,7 +601,7 @@ def get_multiple_imps(X, y, X_train, y_train, X_test, y_test, n_shap=300, n_esti
     if "StratImpact" in include:
         # RF SHAP and RF perm get to look at the test data to decide which features
         # are more predictive and useful for generality's sake but we only get to
-        # see X_Train
+        # see X_Train.
         ours_I = importances(X_train, y_train, verbose=False,
                              sortby=sortby,
                              min_samples_leaf=stratpd_min_samples_leaf,
