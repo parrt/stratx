@@ -277,16 +277,6 @@ y_{weight}  = 120 + 10(x_{height} - min(x_{height})) + 70x_{pregnant} - 1.5x_{ed
 \end{center}
 \end{figure}
 
-SHAP has model type optimizations so it is for performance; not unlike gini drop it is sensitive to vagaries of the underlying model.  high variance models such as the decision trees inside random forests can lead to high variance of SHAP values.
-
-most approaches are model-independent
- 
-LIME has a linear model that approximates the output in a neighborhood of x for each x. this might be the Segway to gini drop and model type dependent SHAP.
-
-Here is where we show that SHAP gets $y = x_1^2 + x_2 + 100$ wrong.
-
-
-
 \section{Experimental results}\label{sec:experiments}
 
 \todo{an experiment where we show insensitive to noise column and any other codependent ones that are thrown in but don't affect y}
