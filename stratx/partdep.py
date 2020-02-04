@@ -209,7 +209,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
 
 
 def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
-                 min_slopes_per_x=20,  # ignore pdp y values derived from too few slopes (usually at edges)
+                 min_slopes_per_x=15,  # ignore pdp y values derived from too few slopes (usually at edges)
                  # important for getting good starting point of PD so AUC isn't skewed.
                  n_trials=10, # how many pd curves to show (subsampling by 2/3 to get diff X sets)
                  n_trees=1,

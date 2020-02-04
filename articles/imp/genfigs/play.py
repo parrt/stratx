@@ -15,7 +15,7 @@ colname='astoria'
 colname='UpperEast'
 
 plot_stratpd(X, y, colname=colname, targetname='price',
-             min_slopes_per_x=20,
+             min_slopes_per_x=15,
              n_trials=5,
              show_slope_lines=False,
              show_impact=False,

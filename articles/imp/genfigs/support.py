@@ -379,7 +379,8 @@ def test_top_features(X, y,
 
 
 def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yrange=None,figsize=(3.5, 3.0),
-                  min_slopes_per_x=20):
+                  min_slopes_per_x=15,
+                  cat_min_samples_leaf=5):
     model="RF"
     test_size = .2 # Some techniques use validation set to pick best features
 
@@ -396,6 +397,7 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yra
                              n_shap=300,
                              n_estimators=40,
                              min_slopes_per_x=min_slopes_per_x,
+                             stratpd_cat_min_samples_leaf=cat_min_samples_leaf,
                              imp_n_trials=n_trials,
                              # stratpd_min_samples_leaf=stratpd_min_samples_leaf,
                              # stratpd_cat_min_samples_leaf=stratpd_cat_min_samples_leaf,
@@ -796,8 +798,8 @@ def toy_weight_data(n):
     # nmen = int(.7 * n)
     # nwomen = int(.3 * n)
     df['sex'] = ['M'] * nmen + ['F'] * nwomen
-    # df.loc[df['sex'] == 'F', 'pregnant'] = np.random.randint(0, 2, size=(nwomen,))
-    df.loc[df['sex'] == 'F', 'pregnant'] = 1 # assume all women are pregnant
+    df.loc[df['sex'] == 'F', 'pregnant'] = np.random.randint(0, 2, size=(nwomen,))
+    # df.loc[df['sex'] == 'F', 'pregnant'] = 1 # assume all women are pregnant
     df.loc[df['sex'] == 'M', 'pregnant'] = 0
     df.loc[df['sex'] == 'M', 'height'] = 5 * 12 + 8 + np.random.uniform(-7, +8,
                                                                         size=(nmen,))

@@ -2,6 +2,7 @@ from support import *
 import numpy as np
 import shap
 
+"""
 def weight():
     X, y, df, eqn = toy_weight_data(2000)
     X = df.drop('weight', axis=1)
@@ -68,7 +69,7 @@ def play():
     shap.dependence_plot("height", shap_values, X[:shap_test_size],
                          interaction_index=None, dot_size=5,
                          show=False, alpha=.5)
-
+"""
 
 def combined(feature_perturbation, twin=False):
     n = 2000
