@@ -1,4 +1,5 @@
-\documentclass[twoside,11pt]{article}
+%\documentclass[twoside,11pt]{article}
+\documentclass[11pt]{article}
 \usepackage[abbrvbib, preprint]{jmlr2e}
 
 \usepackage{enumitem}
@@ -35,6 +36,7 @@
 \newcommand{\Ex}{\mathop{\mathbb{E}}}
 \newcommand{\Imp}{\mathbf{I}}
 
+\newcommand{\simp}{\fontfamily{cmr}\textsc{\small StratImpact}}
 \newcommand{\spd}{\fontfamily{cmr}\textsc{\small StratPD}}
 \newcommand{\cspd}{\fontfamily{cmr}\textsc{\small CatStratPD}}
 \newcommand{\xnc}{$x_{\overline{c}}$}
@@ -85,13 +87,13 @@ feature importance, business insights, medical insights, partial dependence, mod
 \section{Introduction}
 \label{sec:intro}
 
-Among data analysis techniques, feature importance is one of the most  useful, and practitioners use feature importance for two key purposes. First, to select features for predictive models (dropping the least predictive features to simplify and potentially increase the generality of the model). Second, to gain business or medical insights, such as identifying product characteristics valued by customers or treatments contributing to patient recovery.  To distinguish the two use cases, we will refer to feature predictiveness for modeling purposes as {\em importance} (the usual meaning) and the effect of features on business or medical response variables as {\em impact}.
+Among data analysis techniques, feature importance is one of the most useful and is used by practitioners for two key purposes. First, to select features for predictive models (dropping the least predictive features to simplify and potentially increase the generality of the model). Second, to gain business or medical insights, such as identifying product characteristics valued by customers or treatments contributing to patient recovery.  To distinguish the two use cases, we will refer to feature predictiveness for modeling purposes as {\em importance} (the usual meaning) and the effect of features on business or medical response variables as {\em impact}.
 
-While some approaches work directly on the data, such as minimal-redundancy-maximal-relevance (mRMR) by \cite{mRMR}, almost all feature importance algorithms used in practice rank features through interrogation of a specific fitted model (e.g., SHAP (\cite{shap}), permutation importance (\cite{RF}), and drop column importance), or even interrogating subsidiary models to analyze such fitted models (e.g., LIME (\cite{lime})). It is accepted as self-evident that identifying the most important features for a model is through interrogation of that  model, but this is not always the case.  For example, when asked to identify the most important single feature of a real dataset (\cite{bulldozer}) through interrogation and validation on a random forest, the model-free technique proposed in this paper identifies a feature yielding half the validation error (see \figref{fig:topk}(c)). Still, model interrogation is generally effective in practice for feature importance purposes. (In our experience, it is best to get importances using multiple techniques and to view the combined results as a clue rather than the gospel truth.)
+While some feature importance approaches work directly on the data, such as minimal-redundancy-maximal-relevance (mRMR) by \cite{mRMR}, almost all algorithms used in practice rank features by interrogating a specific fitted model (e.g., SHAP (\cite{shap}), permutation importance (\cite{RF}), and drop column importance), or even interrogating subsidiary models to analyze such fitted models (e.g., LIME (\cite{lime})). It is accepted as self-evident that identifying the most important features for a model is through interrogation of that  model, but this is not always the case.  For example, when asked to identify the single most important feature of a real dataset (\cite{bulldozer}), through interrogation and validation on a random forest, the features selected by model-based techniques get twice the validation error of the model-free technique proposed in this paper (\figref{fig:topk}(c)). Still, model interrogation is generally effective in practice for feature importance purposes. (In our experience, it is best to get importances using multiple techniques and to view the combined results as a clue rather than the gospel truth.)
 
-Feature importance should not, however, be interpreted as feature impact. First, predictive features do not always coincide with impactful features; e.g., models unable to capture complex nonlinear feature-response relationships rank such features as unimportant, even if they have large impacts on the response. Next, practitioners must develop models accurate enough to yield useful feature importances, but there is no definition of ``accurate enough.'' Finally, it is possible to get very different feature importances (and hence impacts) running the same algorithm on the same data, just by choosing a different model. This is despite the fact that true feature impacts are relationships that exist in the data, with or without a model.
+Feature importance should not, however, be interpreted as feature impact for several reasons. First, predictive features do not always coincide with impactful features; e.g., models unable to capture complex nonlinear feature-response relationships rank such features as unimportant, even if they have large impacts on the response. Next, practitioners must develop models accurate enough to yield useful feature importances, but there is no definition of ``accurate enough.'' Finally, it is possible to get very different feature importances (and hence impacts) running the same algorithm on the same data, just by choosing a different model. This is despite the fact that true feature impacts are relationships that exist in the data, with or without a model.
 
-Consider the feature importance graphs in \figref{fig:diff-models} derived from four different models on the same, well-known Boston toy data set, as computed by SHAP that has recently emerged as the front runner in feature importance. The linear model (a) struggles to capture the relationship between features and target ($R^2$=0.74), so those importances are less trustworthy.  In contrast, the random forest (b), boosted trees (c), and support vector machine (d) models capture the relationship in the training records (all 506) with high fidelity, but SHAP derives meaningfully different feature importances from each model. The differences clearly arise because feature importances are distorted by the lens' of the models, making it unclear which ranking, if any, gives the true feature impacts. 
+Consider the feature importance charts in \figref{fig:diff-models} derived from four different models on the same, well-known Boston toy data set, as computed by SHAP that has recently emerged as the front runner in feature importance. The linear model (a) struggles to capture the relationship between features and target ($R^2$=0.74), so those importances are less trustworthy.  In contrast, the random forest (b), boosted trees (c), and support vector machine (d) models capture the relationship in the training records (all 506) with high fidelity, but SHAP derives meaningfully different feature importances from each model. The differences arise because feature importances are distorted by the lens' of the models, making it unclear which ranking, if any, gives the true feature impacts. 
 
 \begin{figure}[htbp]
 \begin{center}
@@ -101,20 +103,15 @@ Consider the feature importance graphs in \figref{fig:diff-models} derived from 
 \end{center}
 \end{figure}
 
-Practitioners routinely interpret feature importance as impact and, therefore, have likely made business or medical decisions based upon faulty information.  This is partly due to the fact that feature importances are ready-to-hand after modeling but mostly due to a lack of model-free techniques for computing feature impact. While there are many model-free data analysis techniques, they focus on feature importance rather than feature impact (see \secref{sec:existing}). Ideally, the same technique would provide accurate feature impacts that would also serve as  effective importances across a variety of models.
+Unfortunately, practitioners routinely conflate feature importance with impact and have, consequently, likely made business or medical decisions based upon faulty information. Despite the potentially serious real-world consequences resulting from inappropriate application of importances, research attention has focused primarily on feature importance rather than impact. In this paper, we address this deficiency by contributing (1) a simple mathematical formula for computing feature impact, (2) a variation on impact to obtain feature importance, and (3) an efficient implementation called \simp{} that yields plausible feature impacts and importances.   To measure the quality of feature impacts, we use the importances derived from impacts as a proxy and determined that our importances are competitive with those of existing techniques, as measured by cross-validation errors on models trained using the top importances.  We emphasize that \simp{} is model-free in that impacts are purely a function of the training data, rather than a fitted model obtained from the user, and the technique applies to both numerical and categorical features.  (The latter is essential because virtually all real-world datasets have categorical variables.) While we focus solely on regression here, a similar approach would work for classification.
 
-\todo{are we defining feature impact or importance?}
+We begin by giving definitions of feature impact and importance in \secref{sec:def}, then survey  existing model-free and model-dependent techniques in \secref{sec:existing}. \secref{sec:experiments} compares \simp{} to ... \todo{finish walkthrough}
 
-Despite many years of research attention, there is still no widely-accepted definition of feature importance. While there are multiple precisely-defined algorithms, we are unaware of a purely mathematical, data-driven, non-algorithmic definition.  Existing model-free techniques are greedy feature-selection algorithms rather than formulas to compute importances. Model-based techniques observe model behavior to estimate feature importances but, by definition, such estimates contain both feature importance and predictive strength information for a specific model.  The primary contributions of this paper are (1) a simple, intuitive, and mathematical formula for computing feature importance that is purely a function of training data and (2) an efficient implementation that yields plausible and effective results, as measured by the model prediction error for the top $k$ features (\secref{sec:experiments}). \todo{probably need to say regression versus classifier here.}
+\section{The definition of feature impact}\label{sec:def}
 
-~\\
-\noindent \todo{Likely a good spot for a paper walk-through}
+\cut{Practitioners loosely define feature importance as feature predictiveness, which presupposes a fitted predictive model, probably because importances are so often used for feature selection during model development.  Research  focuses on more accurately identifying the impact of features upon model predictions.  But, relying on a fitted model makes it difficult to tease apart the true feature importance from the ability of the model to exploit that feature for prediction purposes. Rather than measuring feature impact on {\em model predictions}, we propose avoiding the model completely to define feature importance as the average impact of a feature on the {\em data set response values}.}
 
-\section{The definition of feature importance}\label{sec:def}
-
-Practitioners loosely define feature importance as feature predictiveness, which presupposes a fitted predictive model, probably because importances are so often used for feature selection during model development.  Research  focuses on more accurately identifying the impact of features upon model predictions.  But, relying on a fitted model makes it difficult to tease apart the true feature importance from the ability of the model to exploit that feature for prediction purposes. Rather than measuring feature impact on {\em model predictions}, we propose avoiding the model completely to define feature importance as the average impact of a feature on the {\em data set response values}.
-
-In special circumstances, we know the precise importance of each feature $x_j$. Assume we are given training data pair ($\bf X, y$) where ${\bf X} = [x^{(1)}, \ldots, x^{(n)}]$ is an $n \times p$ matrix whose $p$ columns represent observed features and ${\bf y}$ is the $n \times 1$ vector of responses.  If a data set is generated using a linear function, $y = \beta_0 + \sum_{j=1}^p \beta_j x_j$, \todo{assumes independence of $x_j$?} then coefficient $\beta_j$ corresponds exactly to the importance of $x_j$.  $\beta_j$ is the impact on $y$ for a unit change in $x_j$, holding all other features constant.
+In special circumstances, we know the precise impact of each feature $x_j$. Assume we are given training data pair ($\bf X, y$) where ${\bf X} = [x^{(1)}, \ldots, x^{(n)}]$ is an $n \times p$ matrix whose $p$ columns represent observed features and ${\bf y}$ is the $n \times 1$ vector of responses.  If a data set is generated using a linear function, $y = \beta_0 + \sum_{j=1}^p \beta_j x_j$, \todo{assumes independence of $x_j$?} then coefficient $\beta_j$ corresponds exactly to the importance of $x_j$.  $\beta_j$ is the impact on $y$ for a unit change in $x_j$, holding all other features constant.
 
 To hold features constant for any smooth generator function, we can take the partial derivatives of $y$ with respect to each feature $x_j$. For any smooth function $f:\mathbb{R}^{p} \rightarrow \mathbb{R}$ that precisely maps each $\xi$ to $y_i$, ${y_i} = f(\xi)$, \todo{should that be $y^{(i)}$ to be consistent?} the partial derivative of $y$ with respect to $x_j$ gives the change in $y$ holding all other variables constant; e.g., for linear functions, $\frac{\partial y}{\partial x_j}=\beta_j$. Integrating the partial derivative then gives the {\em partial dependence}  of $y$ on $x_j$, the isolated contribution of $x_j$ to $y$. But, rather than relying on a fitted model as originally formulated by \cite{PDP}, this definition of partial dependence relies on the partial derivative of a known function that generated the data set.
 
@@ -125,54 +122,70 @@ To hold features constant for any smooth generator function, we can take the par
 \text{\it PD}_j(z) = \int_{min(x_j)}^z \frac{\partial y}{\partial x_j} dx_j
 \end{equation}
 
-$\text{\it PD}_j(z)$ is the value contributed to $y$ by $x_j$ at $x_j = z$. The advantage of this partial dependence definition is that it is insensitive to collinear or otherwise codependent features, unlike the traditional definition that is most accurate for fitted models ``{\em dominated by low order interactions}'' per Friedman.  
+$\text{\it PD}_j(z)$ is the value contributed to $y$ by $x_j$ at $x_j = z$. The advantages of this partial dependence definition are that it does not depend on a fitted model and is insensitive to collinear or otherwise codependent features, unlike the traditional definition that is accurate for data ``{\em dominated by low order interactions}'' per Friedman.  
 
-To go from partial dependence to feature importance, we compare the area under each partial dependence curve. The larger the area under the curve, the larger the impact on $y$.   By the mean-value theorem of integrals, the area under $f(x)$ in interval $[a,b]$ is $\int_{a}^{b} f(x) dx = \overline{f(x)}(b-a)$.  For comparison purposes between variables, the actual area is not important and the $b-a$ term drops out, if we normalize the variables so all $x_j$ domains have the same range, such as $[0,1]$. The importance of $x_j$ is then just the average magnitude of $\text{\it PD}_j(x_j)$.
+To go from partial dependence to feature impact, we compare the area under the absolute value of each partial dependence curve. The larger the area under the curve, the larger the impact on $y$.   By the mean-value theorem of integrals, the area under $f(x)$ in interval $[a,b]$ is $\int_{a}^{b} f(x) dx = \overline{f(x)}(b-a)$.  For comparison purposes between variables, the actual area is not important and the $b-a$ term drops out, assuming the variables our normalized so all $x_j$ domains have the same range, such as $[0,1]$. The importance of $x_j$ is then just the average magnitude of $\text{\it PD}_j(x_j)$:
 
 ~\\
-\noindent {\bf Definition 2a} The feature importance of $x_j$ is the ratio of $x_j$'s average partial dependence value to the total of all variables, when all $x_j$ variables are normalized to the same fixed range:
+\noindent {\bf Definition 2} The feature impact, $\Imp_j$, of $x_j$ is the ratio of $x_j$'s average partial dependence magnitude to the total of all variables, when all $x_j$ variables are normalized to the same fixed range:
 
 \begin{equation}\label{eq:Epd2a}
 \Imp_j = \frac{\overline{|\text{\it PD}_j|}}{\sum_{k=1}^p \overline{|\text{\it PD}_k|}}
 \end{equation}
 
-\noindent For example, consider quadratic equation $y = x_1^2 + x_2 + 100$ as a generator of data in $[0,3]$. The partial derivatives are $\frac{\partial y}{\partial x_1} = 2 x_1$ and $\frac{\partial y}{\partial x_2} = 1$, giving $\text{\it PD}_1 = x_1^2$ and $\text{\it PD}_2 = x_2$. The areas under the partial dependence curves in $[0,3]$ are $\Imp_1 = \frac{x_1^3}{3} \big |_0^3 = 9$ and $\Imp_2 = \frac{x_2^2}{2} \big |_0^3 = 4.5$.   Therefore, $x_1$ is twice as important as $x_2$ for data generated in that interval with importances $\Imp_1 = 0.\overline{66}$ and $\Imp_2 = 0.\overline{33}$. \figref{fig:quad-area} shows...
+\noindent For example, consider quadratic equation $y = x_1^2 + x_2 + 100$ as a generator of data in $[0,3]$. The partial derivatives are $\frac{\partial y}{\partial x_1} = 2 x_1$ and $\frac{\partial y}{\partial x_2} = 1$, giving $\text{\it PD}_1 = x_1^2$ and $\text{\it PD}_2 = x_2$. The areas under the partial dependence curves in $[0,3]$ are $\Imp_1 = \frac{x_1^3}{3} \big |_0^3 = 9$ and $\Imp_2 = \frac{x_2^2}{2} \big |_0^3 = 4.5$.   Therefore, $x_1$ has twice the impact as $x_2$ for data generated in that interval with impacts $\Imp_1 = 0.\overline{66}$ and $\Imp_2 = 0.\overline{33}$. \figref{fig:quad-area} shows...
 
 
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.6]{images/quadratic-auc.pdf}
-\captionof{figure}{\small AUC for partial dependence curves from $y = x_1^2 + x_2 + 100$ in $[0,3]$}
+\captionof{figure}{\small $\Imp_1$, $\Imp_2$ for partial dependence curves from $y = x_1^2 + x_2 + 100$ in $[0,3]$}
 \label{fig:quad-area}
 \end{center}
 \end{figure}
 
-The obvious disadvantage of this feature importance definition is that function $f$, from which $\text{\it PD}_j$ is derived, is unknown in practice, so symbolically computing the partial derivatives is not possible. But, if we could compute accurate partial dependence curves by some other method, then this definition would still represent a viable means to obtain true feature importances. 
+The obvious disadvantage of this feature impact definition is that function $f$, from which $\text{\it PD}_j$ is derived, is unknown in practice, so symbolically computing the partial derivatives is not possible. But, if we could compute accurate partial dependence curves by some other method, then this definition would still represent a viable means to obtain feature impacts. 
 
-As originally defined, partial dependence curves are derived from fitted models and are biased in the presence of codependent variables.  To overcome this bias and to avoid the need for predictions from a fitted model, we recently introduced a technique called \spd{} (\cite{stratpd}) to approximate partial dependence curves using a data stratification approach. \spd{} stratifies a data set into groups of observations that are similar, except in the variable of interest, $x_j$, through the use of a single decision tree. Any fluctuation of the response variable within a group (decision tree leaf) is likely due to $x_j$. The $\beta_1$ coefficient of a simple local linear regression fit to the $(x_j, y)$ values within a group provides an estimate of $\frac{\partial y}{\partial x_j}$ in that group's $x_j$ range. Averaging the partial derivative estimates across all such groups yields the overall $\frac{\partial y}{\partial x_j}$ partial derivative approximation. The cumulative sum of the partial derivative yields the partial dependence curve. (Note that \spd{} never uses predictions from any model---the decision tree merely stratifies feature space and the piecewise linear regression models provide slope estimates.)
+As originally defined, partial dependence curves are derived from fitted models and are biased in the presence of codependent variables.  To overcome this bias and to avoid the need for predictions from a fitted model, we recently introduced a technique called \spd{} (\cite{stratpd}) to approximate partial dependence curves using a data stratification approach. \spd{} stratifies a data set into groups of observations that are similar, except in the variable of interest, $x_j$, through the use of a single decision tree. Any fluctuation of the response variable within a group (decision tree leaf) is likely due to $x_j$. The $\beta_1$ coefficient of a simple local linear regression fit to the $(x_j, y)$ values within a group provides an estimate of $\frac{\partial y}{\partial x_j}$ in that group's $x_j$ range. Averaging the partial derivative estimates across all such groups yields the overall $\frac{\partial y}{\partial x_j}$ partial derivative approximation. The cumulative sum of the partial derivative yields the partial dependence curve. 
 
-\begin{minipage}[t]{0.35\textwidth}
-\centering
-\vspace{1em}
-\includegraphics[scale=0.7]{images/bulldozer-impact-YearMade.pdf}\captionof{figure}{AUC for bulldozer features weighted by evidence, 20, 000 records of 401,125}
-\label{fig:bulldozer-impact}
-\end{minipage}
+For categorical variables, \cspd{} uses the same stratification approach, but cannot apply  regression of $y$ on categorical $x_j$. Instead, a random reference category is chosen for each group and its $y$ value is subtracted from all leaf $y$ to get relative impacts between categories. The relative category impacts across groups are then averaged to get the impact of each $x_j$ on $y$.  (Note that \cspd{} and \spd{} never use predictions from any model---they use decision trees merely to stratify feature space and \spd{} uses piecewise linear regressors just to get slope estimates.)
 
-The definition of $\Imp_j$ in \eqnref{eq:Epd2a} assumes that data is evenly distributed across all $x_j$ domains, which is not the case in practice for $(\bf X, y)$ data sets.  The impact of each $\text{\it PD}_j$ curve value must be weighted by the number of samples at $x_j=z$.  For example, \figref{fig:bulldozer-impact} shows the partial dependence curve (black dots) for feature {\tt\small age} from the bulldozer auction data set \cite{bulldozer}. The gray histogram under the curve indicates the number of samples at each $x_j$ value. The red dots represent the $\text{\it PD}_j$ weighted according to the histogram height and the orange region represents the impact {\tt\small YearMade} has on target {\tt\small SalePrice}. While the {\tt\small YearMade} partial dependence curve is plausible before year 1990 (older bulldozers are worth less), there are so few data points that the collection of very old bulldozers should have little overall effect on the overall average sale price.  This leads to a definition based upon expected value rather than simple averages across $x_j$ domains.
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.5]{images/bulldozer-YearMade.pdf}
+\captionof{figure}{\small AUC for bulldozer features weighted by evidence, 20, 000 records of 401,125}
+\label{fig:yearmade}
+\end{center}
+\end{figure}
+
+Intuitively, the feature importance of $x_j$ is how much, on average, the values of $x_j$ are expected to push $y$ away from zero. We deliberately chose this  definition instead of measuring how much $x_j$ pushes $y$ away from the average response, $\overline{y}$. The impact of $x_1$ on $y$ is $x_1^2$, not $\overline{y} - x_1^2$; e.g., at $x_j=0$, the impact on $y$ should be 0, not $\overline{y}-0 = \overline{y}$.  \figref{fig:combined-area} illustrates how the area under the $x_1^2$ and $x_2$ partial dependence curves from $y = x_1^2+x_2+100$ differ from the area straddling the means. The true area under the curve ratio of $x_1$-to-$x_2$ is 2-to-1 (9/4.5), whereas the ratio of the area straddling the mean has roughly a 3-to-1 ratio (6.95/2.26). \todo{is this clear enough?}
+
+For business or medical insight purposes, deriving feature impacts from partial dependence curves make sense because these curves describe how each $x_j$ value found in the data set effects $y$. When selecting features for modeling, however, feature importance values should take $x_j$ density into consideration.
+
+\section{A definition of feature importance}
+
+While feature importances should not be interpreted as feature impacts, impacts can be effective as feature importances for model feature selection.  Features with the most impact on the response variable the most should coincide with the most predictive features. But, model validation error is sensitive to the distribution of the records in the validation set, not just selecting the most impactful features.  For example, \figref{fig:yearmade} shows the partial dependence curve for feature {\tt\small YearMade} and the histogram of $x_j$ values from the bulldozer auction data set (\cite{bulldozer}); the colored curves represent ten bootstrapped data sets and the black dots give the average curve.  Knowing that bulldozer age continues to reduce price is useful from a business perspective, but the bulk of the validation set will have newer bulldozers.  This leads to a feature importance definition based upon expected value of the partial dependence magnitude rather than simple averages across $x_j$ domains.
+
+\cut{
+The definition of impact in \eqnref{eq:Epd2a} assumes that each $x_j$ value is equally likely, which is not the case in practice for $(\bf X, y)$ data sets. To go from partial dependence to importance, the $\text{\it PD}_j$ curve at $x_j=z$ must be weighted by the number of samples at $x_j=z$ before computing the average magnitude.  The red dots represent the $\text{\it PD}_j$ weighted according to the histogram height and the orange region represents the impact {\tt\small YearMade} has on target {\tt\small SalePrice}. While the {\tt\small YearMade} partial dependence curve is plausible before year 1990 (older bulldozers are worth less), there are so few data points that the collection of very old bulldozers should have little overall effect on the overall average sale price.  This leads to a definition based upon expected value rather than simple averages across $x_j$ domains.
+}
 
 ~\\
-\noindent {\bf Definition 2b} The feature importance of $x_j$ is the ratio of $x_j$'s expected partial dependence value to the total of all expected values, when all $x_j$ variables are normalized to the same fixed range:
-
+\noindent {\bf Definition 3} The feature importance of $x_j$ is the ratio of $x_j$'s expected partial dependence value to the total of all expected values, when all $x_j$ variables are normalized to the same fixed range:
 
 \begin{equation}\label{eq:Epd2b}
-\Imp_j = \frac{\Ex[|\text{\it PD}_j|]}{\sum_{k=1}^p \Ex[|\text{\it PD}_k|]}
+\text{Impo}_j = \frac{\Ex[|\text{\it PD}_j|]}{\sum_{k=1}^p \Ex[|\text{\it PD}_k|]}
 \end{equation}
 
 \noindent where:
 
 \begin{equation}\label{eq:Epd2c}
-\Ex[|\text{\it PD}_j|] = \frac{1}{n} \sum_{i=1}^{n} |\text{\it PD}_j(x_j^{(i)})|
+\Ex[|\text{\it PD}_j|] = \frac{1}{n} \sum_{i=1}^{n} |x_j^{(i)}| \times  |\text{\it PD}_j(x_j^{(i)})|
 \end{equation}
+
+where $|x_j^{(i)}|$ denotes the count of $x_j^{(i)}$ values.
+
+\todo{ need something better than Impo... how should we denote impact and importance?}
 
 \todo{
 \begin{itemize}
@@ -182,7 +195,6 @@ The definition of $\Imp_j$ in \eqnref{eq:Epd2a} assumes that data is evenly dist
 \end{itemize}
 }
 
-Intuitively, the feature importance of $x_j$ is how much, on average, the values of $x_j$ are expected to push $y$ away from zero. We deliberately chose this  definition instead of measuring how much $x_j$ pushes $y$ away from the average response, $\overline{y}$. The impact of $x_1$ on $y$ is $x_1^2$, not $\overline{y} - x_1^2$; e.g., at $x_j=0$, the impact on $y$ should be 0, not $\overline{y}-0 = \overline{y}$.  \figref{fig:combined-area} illustrates how the area under the $x_1^2$ and $x_2$ partial dependence curves from $y = x_1^2+x_2+100$ differ from the area straddling the means. The true area under the curve ratio of $x_1$-to-$x_2$ is 2-to-1 (9/4.5), whereas the ratio of the area straddling the mean has roughly a 3-to-1 ratio (6.95/2.26). \todo{is this clear enough?}
  
 \section{Existing methods}\label{sec:existing}
 
@@ -393,7 +405,7 @@ Show \figref{fig:lasso}
 
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[scale=0.65]{images/rent-topk-Lasso-Impact.pdf}
+\includegraphics[scale=0.65]{images/rent-topk-Lasso-Importance.pdf}
 \captionof{figure}{Lasso model}
 \label{fig:lasso}
 \end{center}
@@ -417,7 +429,7 @@ Show \figref{fig:lasso}
 \begin{subfigure}{.25\textwidth}
     \centering
 \includegraphics[scale=0.5]{images/bulldozer-topk-GBM-Importance.pdf}
-\subcaption{\footnotesize sometimes we get age as first feature which is ok but not the amazing ModelID, clearly best. 100 = 81/100 ModelID is top and 19/100 age is top}
+\subcaption{\footnotesize abc}
 \end{subfigure}%
 \hfill
 \begin{subfigure}{.2\textwidth}

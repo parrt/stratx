@@ -476,6 +476,7 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yra
 
     model = "GBM"
     sortby = "Impact"
+    sortby = "Importance"
     R = test_top_features(X, y,
                           imps,
                           kfold_indexes,
@@ -501,7 +502,8 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yra
 
     if dataset=='rent': # the only non-toy dataset with purely numerical features
         model = "Lasso"
-        sortby="Impact"
+        # sortby="Impact"
+        sortby="Importance"
         R = test_top_features(X, y,
                               imps,
                               kfold_indexes,
@@ -597,6 +599,7 @@ def get_multiple_imps(dataset,
         rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=True)
         rf.fit(X_train, y_train)
         perm_I = rfpimp.importances(rf, X_test, y_test) # permutation; drop in test accuracy
+        print("RF perm\n",perm_I)
 
     if "StratImpact" in include:
         # RF SHAP and RF perm get to look at the test data to decide which features
@@ -615,7 +618,7 @@ def get_multiple_imps(dataset,
                              min_slopes_per_x=min_slopes_per_x,
                              supervised=supervised,
                              normalize=normalize)
-        print(ours_I)
+        print("OURS\n",ours_I)
     d = OrderedDict()
     d['Spearman'] = spear_I
     d['PCA'] = pca_I
