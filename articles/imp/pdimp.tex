@@ -237,26 +237,28 @@ SHAP has its roots in {\em Shapley regression values} \citep{shapley-regression}
 
 To avoid training a combinatorial explosion of models with the various feature subsets, SHAP reuses the same model by running simplified feature vectors into the model. Simplified vectors replace ``missing'' $x_j$ features with the expected value of $x_j$ \todo{isn't it $E[f(z)]$? hold on, they are approximating $f(z_S)$ not missing $x_j$ features; another description indicates that you replace missing values with a random one selected from other records}, to simulate models trained on feature subsets. To further reduce computation costs, SHAP users typically compute values for a small subsample of the data set. SHAP has model-type-dependent optimizations for linear regression, deep learning, and decision-tree based models. 
 
-While SHAP has very strong theoretical foundations, we observed several disadvantages:
+While SHAP has very strong theoretical foundations, we see several disadvantages:
 
 \begin{itemize}
-\item  For performance reasons, SHAP limits the user's choice of model to those with model-type-dependent implementations, such as {\tt\small TreeExplainer}; e.g., SHAP applied to a support vector machine trained on Boston's 506 records takes 13 minutes to explain the same 506 records.  Large data sets also pose problems even for the model-type-dependent optimizations; e.g., SHAP applied to a modest 50-tree random forest trained on 1.2M record ``League of legends'' data set \citep{lol} takes 25 minutes to process sample of size 1000.
+\item  For performance reasons, SHAP limits the user's choice of model to those with model-type-dependent implementations, such as {\tt\small TreeExplainer}; e.g., SHAP applied to a support vector machine trained on Boston's 506 records takes 13 minutes to explain the same 506 records.  Large data sets also pose problems even for the model-type-dependent optimizations; e.g., SHAP applied to a modest 50-tree random forest trained on 1.2M record ``League of legends'' data set \citep{lol} takes 25 minutes to process a sample of size 1000.
 
 \item As with permutation methods, replacing feature values with their expectations \todo{or random sample?} introduces the possibility of creating nonsensical feature vectors.  For example, replacing the bulldozer {\tt\small YearMade} feature with the overall {\tt\small YearMade} average, risks conjuring up a type of bulldozer that did not exist in that year. This biases the feature contribution estimates.
 
-\item SHAP documentation claims to break ``the dependencies between features according to the rules dictated by casual inference'' citing \citet{janzing2019feature}, but we find this SHAP ``interventional'' mode is still unable to disentangle codependent features for a synthetic body weight data set with codependent {\tt\small sex}/{\tt\small pregnant}/{\tt\small height} features from Equation (7) in \citet{stratpd}:
+\item SHAP documentation claims to break ``the dependencies between features according to the rules dictated by casual inference'' citing \citet{janzing2019feature}, but we find that SHAP ``interventional'' mode is still unable to disentangle codependent features for a synthetic body weight data set with codependent {\tt\small sex}/{\tt\small pregnant}/{\tt\small height} features (Equation (7) from \citealt{stratpd}):
 
 \begin{equation}\label{eq:weight}
 y_{weight}  = 120 + 10(x_{height} - min(x_{height})) + 70x_{pregnant} - 1.5x_{education}
 \end{equation}
 
-\noindent with 50/50 male/female, half of the women are pregnant, and women gain an inflated 70 pounds to make the bias more prominent. \figref{fig:shap-weight}(a) illustrates the original SHAP partial dependence between height and weight and (b) shows that the interventional SHAP is improved but still biased by codependent features.  The exact partial dependence relationship between height and weight should be a line with slope 10, which is what \spd{} computes and draws on top of the SHAP plots in \figref{fig:shap-weight}; see \citet{stratpd} for more details.
+\noindent with 50/50 male/female, half of the women are pregnant, and women gain an exaggerated 70 pounds to make the bias more prominent. \figref{fig:shap-weight}(a) illustrates the original SHAP partial dependence between height and weight and (b) shows that the interventional SHAP is improved but still biased by codependent features.  The exact partial dependence relationship between height and weight should be a line with slope 10, which is what \spd{} computes and draws on top of the SHAP plots in \figref{fig:shap-weight}; see \citet{stratpd} for more details. \todo{right scale is from 0 not mean}
 
 \item  We cannot agree with the SHAP definition of feature importance, which measures the effect of features as they cause deviations from the mean model prediction. This definition effectively measures the area straddling the mean of the partial dependence curve rather than the area under the curve.  Revisiting \figref{fig:combined-area}, SHAP measures the gray area and \simp{} measures the orange area.  Given the associated generator function, $y=x_1^2 + x_2 + 100$, we know the partial dependence curves are $x_1^2$ and $x_2$.  By our definition, the impact is the area under $x_1^2$ and $x_2$, not the areas straddling the mean of $x_1^2$ and $x_2$. \todo{need to explain why they are wrong or is it obvious?} 
 
-\item SHAP often gives plausible partial dependence curves, but we found several questionable cases for features identified as important. \figref{fig:shap-stratpd-YearMade} gives one such example, comparing the marginal plot of  bulldozer YearMade to SalePrice (a), SHAP partial dependence of SalePrice on YearMade (b), and \spd{}'s curve (c). The SHAP does not show the expected relationship, that of decreased value for older bulldozers.
+\item SHAP often gives plausible partial dependence curves, but we found several questionable cases for features identified as important. \figref{fig:shap-stratpd-YearMade} gives one such example, comparing the marginal plot of  bulldozer YearMade to SalePrice (a), SHAP partial dependence of SalePrice on YearMade (b), and \spd{}'s curve (c). The SHAP does not show the expected relationship, that of decreased value for older bulldozers. 
 
 \end{itemize}
+
+\todo{maybe we move the two partial dependence items in the bullet list to the partial dependence paper and reference them here?}
 
 \begin{figure}[htbp]
 \begin{center}
@@ -277,11 +279,11 @@ y_{weight}  = 120 + 10(x_{height} - min(x_{height})) + 70x_{pregnant} - 1.5x_{ed
 \end{center}
 \end{figure}
 
+Summarize our benefits. we do not alter the data in any way. model free not just model agnostic, insensitive to codependencies, avoids having to look at subsets of features by isolating the effect of features on the response, show in the next section it is efficient. It is a simple definition and implementation based upon the stratification approach to partial dependence. 
+
 \section{Experimental results}\label{sec:experiments}
 
 \todo{an experiment where we show insensitive to noise column and any other codependent ones that are thrown in but don't affect y}
-
-\todo{maybe show the linear 1 1 1 codependence example}
 
 \todo{what about outlier example}
 

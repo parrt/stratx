@@ -135,12 +135,9 @@ def combined(feature_perturbation, twin=False):
         ax2.set_ylim(min(pdpy)-5, max(pdpy)+5)
         ax2.set_xticks([60,65,70,75])
         ax2.set_yticks([0,20,40,60,80,100,120,140,150])
-        ax2.set_ylabel("height", fontsize=12)
+        ax2.set_ylabel("weight", fontsize=12)
 
-        #too hard to see, leave out
-        ax2.plot(pdpx, pdpy, # shift y down a bit to make it visible
-                 '-', lw=.9,
-                 markersize=1, c='k')
+        ax2.scatter(pdpx, pdpy, s=2, c='k')
         # ax2.text(65,25, f"StratPD slope = {slope:.1f}")
         ax2.annotate(f"StratPD (slope={slope:.1f})", (64.65,39), xytext=(66,18),
                      horizontalalignment='left',

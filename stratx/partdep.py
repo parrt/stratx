@@ -1033,6 +1033,7 @@ def cat_partial_dependence(X, y,
     return leaf_deltas, leaf_counts, avg_per_cat, count_per_cat, ignored, merge_ignored
 
 # currently unused
+'''
 @jit(nopython=True)
 def avg_values_at_cat_jit(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose=False):
     """
@@ -1219,7 +1220,7 @@ def avg_values_at_cat_jit(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose
             catavg = nanavg_vectors(catavg, adjusted_v, catavg_weight, cur_weight)
             # Update weight of running sum to incorporate "mass" from v
             catavg_weight += cur_weight
-            '''
+            """
             if verbose:
                 print(f"{cat:-2d} : vec to add =", parray(v), f"- {v[ix]:.2f}")
                 print("     shifted    =", parray(shifted_v), "+ %.2f" % (relative_to_value,))
@@ -1227,7 +1228,7 @@ def avg_values_at_cat_jit(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose
                 print("     prev avg   =", parray(prev_catavg),"*",catavg_weight-cur_weight)
                 print("     new avg    =", parray(catavg))
                 print()
-            '''
+            """
             completed.add(j)
         iteration += 1
         work = work - completed
@@ -1237,15 +1238,15 @@ def avg_values_at_cat_jit(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose
         # hmm..couldn't merge some vectors; total up the samples we ignored
         for j in work:
             merge_ignored += weight_for_refcats[j]
-        '''
+        """
         if verbose: print("cats", uniq_refcats[list(work)], "couldn't be merged into running sum; ignored=",merge_ignored)
-        '''
+        """
 
-    '''
+    """
     if verbose: print("final cat avgs", parray3(catavg))
-    '''
+        """
     return catavg, catavg_weight, merge_ignored # last one is count of values per cat actually incorporated
-
+'''
 
 def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose=False):
     """
