@@ -330,19 +330,19 @@ class ImpViz:
 
 def plot_importances(df_importances,
                      xlabel=None,
-                     show: ('Rank', 'Importance') = 'Rank',
+                     sortby: ('Impact', 'Importance') = 'Impact',
                      yrot=0,
                      title_fontsize=11,
                      label_fontsize=10,
                      fontname="Arial",
-                     width:float=3, # if no figsize, use this width
+                     width:float=3,  # if no figsize, use this width
                      height:float=None,
-                     bar_width=13, # in pixels
-                     bar_spacing = 4, # in pixels
+                     bar_width=13,  # in pixels
+                     bar_spacing = 4,  # in pixels
                      imp_range=(0, 1.0),
                      dpi=150,
-                     color='#4574B4',#'#D9E6F5',
-                     whisker_color='black', #'#F46C43'
+                     color='#4574B4',  #'#D9E6F5',
+                     whisker_color='black',  #'#F46C43'
                      whisker_linewidth = .6,
                      whisker_barwidth = .1,
                      bgcolor=None,  # seaborn uses '#F1F8FE'
@@ -391,14 +391,12 @@ def plot_importances(df_importances,
     """
     GREY = '#444443'
     I = df_importances
-    if show=='Rank' and 'Rank' not in I.columns:
-        show='Importance'
-    I = I.sort_values(show, ascending=True)
+    I = I.sort_values(sortby, ascending=True)
     n_features = len(I)
     left_padding = 0.01
 
     ppi = 72 # matplotlib has this hardcoded. E.g., see https://github.com/matplotlib/matplotlib/blob/40dfc353aa66b93fd0fbc55ca1f51701202c0549/lib/matplotlib/axes/_base.py#L694
-    imp = I[show].values
+    imp = I[sortby].values
 
     barcounts = np.array([f.count('\n')+1 for f in I.index])
     N = np.sum(barcounts)
@@ -460,19 +458,26 @@ def plot_importances(df_importances,
     ax.hlines(y=ypositions, xmin=left_padding, xmax=imp + left_padding, color=color,
               linewidth=bar_width, linestyles='solid')
 
-    if show!='Rank' and 'Sigma' in I.columns:
-        sigmas = I['Sigma'].values
+    if sortby+' sigma' in I.columns:
+        sigmas = I[sortby+' sigma'].values
         for fi,s,y in zip(imp, sigmas, ypositions):
             if fi < 0.005: continue
             s *= 2 # show 2 sigma
             left_whisker = fi + left_padding - s
             right_whisker = fi + left_padding + s
+            left_edge = left_whisker
+            c = whisker_color
             if left_whisker < left_padding:
-                left_whisker = left_padding + 0.004 # add fudge factor; mpl sees to draw bars a bit too far to right
-            # print(fi, y, left_whisker, right_whisker)
-            ax.plot([left_whisker, right_whisker], [y, y], lw=whisker_linewidth, c=whisker_color)
-            ax.plot([left_whisker, left_whisker], [y - whisker_barwidth, y + whisker_barwidth], lw=whisker_linewidth, c=whisker_color)
-            ax.plot([right_whisker, right_whisker], [y - whisker_barwidth, y + whisker_barwidth], lw=whisker_linewidth, c=whisker_color)
+                left_edge = left_padding + 0.004 # add fudge factor; mpl sees to draw bars a bit too far to right
+                c = '#CB1B1F'
+            print(fi, y, left_whisker, right_whisker)
+            # horiz line
+            ax.plot([left_edge, right_whisker],  [y, y], lw=whisker_linewidth, c=c)
+            # left vertical
+            if left_whisker >= left_padding:
+                ax.plot([left_whisker, left_whisker],   [y - whisker_barwidth, y + whisker_barwidth], lw=whisker_linewidth, c=c)
+            # right vertical
+            ax.plot([right_whisker, right_whisker], [y - whisker_barwidth, y + whisker_barwidth], lw=whisker_linewidth, c=c)
 
 
     # barcontainer = ax.barh(y=range(n_features),
