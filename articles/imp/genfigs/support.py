@@ -402,7 +402,8 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yra
                              # stratpd_min_samples_leaf=stratpd_min_samples_leaf,
                              # stratpd_cat_min_samples_leaf=stratpd_cat_min_samples_leaf,
                              )
-    plot_importances(imps['StratImpact'].iloc[:8], imp_range=(0,0.4), width=3,
+    w = 4.5 if dataset=='flight' else 3
+    plot_importances(imps['StratImpact'].iloc[:8], imp_range=(0,0.4), width=w,
                      title=f"{dataset} StratImpact importances")
     plt.tight_layout()
     plt.savefig(f"../images/{dataset}-features.pdf")

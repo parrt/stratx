@@ -391,6 +391,8 @@ def plot_importances(df_importances,
     """
     GREY = '#444443'
     I = df_importances
+    if sortby not in I.index.values:
+        sortby = 'Importance'
     I = I.sort_values(sortby, ascending=True)
     n_features = len(I)
     left_padding = 0.01
@@ -470,7 +472,7 @@ def plot_importances(df_importances,
             if left_whisker < left_padding:
                 left_edge = left_padding + 0.004 # add fudge factor; mpl sees to draw bars a bit too far to right
                 c = '#CB1B1F'
-            print(fi, y, left_whisker, right_whisker)
+            # print(fi, y, left_whisker, right_whisker)
             # horiz line
             ax.plot([left_edge, right_whisker],  [y, y], lw=whisker_linewidth, c=c)
             # left vertical
