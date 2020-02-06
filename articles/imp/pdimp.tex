@@ -283,25 +283,23 @@ Summarize our benefits. we do not alter the data in any way. model free not just
 
 \section{Experimental results}\label{sec:experiments}
 
-Assessing the quality of feature impacts is challenging because, even with domain expertise, humans are unreliable estimators of feature importance (which is why we would need data analysis algorithms in the first place).  The simplest approach is to evaluate impacts computed from synthetic data for which the answer is clear, as we did with the bodyweight data in \figref{fig:shap-weight}.  For real data sets, we can train a predictive model on the most important $k$ features and compare prediction error. The importance method that accurately identifies the most impactful features without getting confused by codependent features, should yield lower prediction errors for a given $k$.
+Assessing the quality of feature impact and importance is challenging because, even with domain expertise, humans are unreliable estimators (which is why we would need data analysis algorithms in the first place).  The simplest approach is to examine impacts computed from synthetic data for which the answer is clear, as we did with the bodyweight data in \figref{fig:shap-weight} (impact is the area under the black curve).  For real data sets, we can train a predictive model on the most impactful or most important $k$ features, as identified by the methods of interests, and then compare model prediction errors. (\citealt{mRMR} and \citealt{tsanas} also used this approach.) The method that accurately identifies the most impactful features without getting confused by codependent features, should yield lower prediction errors for a given $k$. 
 
-but it is important to evaluate proposed feature impacts on real data sets.
+In this section, we present the results of several experiments using the toy Boston data set and three real data sets, NYC rent prices \citep{rent}, bulldozer auction sales \citep{bulldozer}, and flight delays \citep{flights}. We begin with a baseline comparison of \simp{}'s importance metric to two simple model-free methods using the top-$k$ ranked features, then compare \simp{} to permutation importance and SHAP. We finish up by examining \simp's efficiency on nontrival Kaggle data subsets.
 
- so assessing the quality of feature impacts is, therefore, a challenge. 
+Our first experiment is to compare the feature rankings recommended by \simp{} to PCA (``loads'' associated with the first component) and Spearman's R coefficient computed between each $x_j$ and the response variable, $y$. \figref{fig:baseline} shows error rates versus the number of features and, surprisingly, Spearman's R does a good job for all but the bulldozer data set. PCA is the opposite, performing well on bulldozer but poorly on the others. \simp{} is competitive with or surpasses these baseline techniques.  Ordinary least squares (OLS) regression coefficients, divided by their standard error, are included as a common reference curve on this and the following graphs. \todo{25k records, 80/20 split, 40 trees etc..., 10 runs, 5-fold CV}
 
-For real data sets, we can train a predictive model on the most important $k$ features and compare prediction error. The importance method that accurately identifies the most impactful features without getting confused by codependent features, should yield lower prediction errors for a given $k$.   This mirrors how one would use it for model feature selection.
+Next, we compare \simp{} to OLS, OLS-based SHAP, RF-based SHAP, and RF-based permutation importance in \figref{fig:topk}. SHAP is given every advantage here.  Except for OLS-based SHAP, SHAP uses a RF fit to the training data to compute feature importances and then trains the same kind of model (RF) to measure top-$k$ error curves.  Further, SHAP selects features using the validation data, the very data used to compute error curves. In contrast, \simp{} cannot use predictions from a fitted model, by design, and we restrict \simp{} to examining just the training data, without access to the validation data. Despite this handicap, \simp{} error curves for the four data sets are competitive with the  feature rankings from the other methods. OLS does not appear to adequately capture the relationship between features and response variable, except for the Boston data set, which explains why the OLS-based SHAP error curves are higher than for the other methods. \simp{} performs competitively with existing techniques, sometimes a little worse and sometimes a bit better than RF-based SHAP and RF-based permutation importance, but \simp{} does so model-free and with access to less data.
 
-Use top-$k$ as proxy for impact quality.
+We define feature importance as the area under the partial dependence curve weighted by the $x_j$ density, which takes into consideration validation sets with highly skewed distributions.  For the four data sets in use here, we found that the plain impact, area under the partial dependence curve, also works well, as shown in \figref{fig:topk-impact}. In fact, the first feature recommended by \simp{} for the bulldozer data set gets half the error rate than that of the top features recommended by the other methods, \figref{fig:topk-impact}(c). \simp{} recommends the {\tt ModelID} followed by {\tt YearMade}, whereas RF-based SHAP selects {\tt ProductSize} followed by {\tt YearMade}. \todo{tie into the importance bar charts}
 
-Compare Baseline of model-free to \simp
-
-Compare \simp to OLS, OLS SHAP, RF perm, RF SHAP
-
-Export features from RF to GBM, and lasso for rent
+Export features from RF to GBM, and lasso for rent \figref{fig:lasso}
 
 Compare rank of features
 
 Show performance and give rough $O(...)$.
+
+all code is available at github; {\tt\small RUNME.py}
 
 \todo{an experiment where we show insensitive to noise column and any other codependent ones that are thrown in but don't affect y}
 
@@ -313,11 +311,9 @@ Show performance and give rough $O(...)$.
  
 The best feature importance method ranks features by their independent contributions to $y$, without getting confused by codependent features. The most important single feature as reported by two importance methods can be used to train a model and measure a prediction metric.
  
-{\bf Definition 3} The {\em top-k} fitness measure trains a suitable model on the  most important $k$ features as reported by two or more importance methods then compares prediction metrics. Actually p246 \citep{liu-fs} has an example of this.
+{\bf Definition 3} The {\em top-k} fitness measure trains a suitable model on the  most important $k$ features as reported by two or more importance methods then compares prediction metrics.
 
 even if recommendations are identified by their isolated contribution, the model is still taking the combination into consideration when fitting and hence the marginal errors are not necessarily reduced specifically because of the added feature at number $k$.
-
-Get a baseline \figref{fig:baseline}.
 
 \begin{figure}
 \centering
@@ -352,7 +348,7 @@ Model-based methods have all the advantages in these experiments.
 
 In \figref{fig:features}, we
 
-Then see \figref{fig:topk}
+
 
 \begin{figure}
 \centering
@@ -427,31 +423,31 @@ Show \figref{fig:lasso}
 
 \begin{figure}
 \centering
-\begin{subfigure}{.24\textwidth}
+\begin{subfigure}{.245\textwidth}
     \centering
-\includegraphics[scale=0.48]{images/boston-topk-GBM-Importance.pdf}
+\includegraphics[scale=0.45]{images/boston-topk-GBM-Importance.pdf}
 \subcaption{\footnotesize foo}
 \end{subfigure}%
 \hfill
-\begin{subfigure}{.23\textwidth}
+\begin{subfigure}{.245\textwidth}
     \centering
-\includegraphics[scale=0.48]{images/flights-topk-GBM-Importance.pdf}
+\includegraphics[scale=0.45]{images/flights-topk-GBM-Importance.pdf}
 \subcaption{\footnotesize foo}
 \end{subfigure}
 \hfill
-\begin{subfigure}{.25\textwidth}
+\begin{subfigure}{.245\textwidth}
     \centering
-\includegraphics[scale=0.5]{images/bulldozer-topk-GBM-Importance.pdf}
+\includegraphics[scale=0.45]{images/bulldozer-topk-GBM-Importance.pdf}
 \subcaption{\footnotesize abc}
 \end{subfigure}%
 \hfill
-\begin{subfigure}{.2\textwidth}
+\begin{subfigure}{.245\textwidth}
     \centering
-\includegraphics[scale=0.5]{images/rent-topk-GBM-Importance.pdf}
+\includegraphics[scale=0.45]{images/rent-topk-GBM-Importance.pdf}
 \subcaption{\footnotesize foo}
 \end{subfigure}
 \caption[short]{Features from RF model, tested on gradient boosting machine}
-\label{fig:topk}
+\label{fig:topk-gbm}
 \end{figure}
 
 Timing \figref{fig:timing}
