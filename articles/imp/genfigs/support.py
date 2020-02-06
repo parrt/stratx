@@ -402,7 +402,7 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yra
                              # stratpd_min_samples_leaf=stratpd_min_samples_leaf,
                              # stratpd_cat_min_samples_leaf=stratpd_cat_min_samples_leaf,
                              )
-    w = 4.5 if dataset=='flight' else 3
+    w = 4.5 if dataset=='flights' else 3
     plot_importances(imps['StratImpact'].iloc[:8], imp_range=(0,0.4), width=w,
                      title=f"{dataset} StratImpact importances")
     plt.tight_layout()
@@ -410,7 +410,7 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yra
     # plt.show()
     plt.close()
 
-    plot_importances(imps['RF SHAP'].iloc[:8], imp_range=(0,0.4), width=3,
+    plot_importances(imps['RF SHAP'].iloc[:8], imp_range=(0,0.4), width=w,
                      title=f"{dataset} SHAP RF importances")
     plt.tight_layout()
     plt.savefig(f"../images/{dataset}-features-shap-rf.pdf")
