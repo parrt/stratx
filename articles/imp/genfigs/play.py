@@ -4,26 +4,36 @@ from stratx.featimp import *
 figsize = (3.5, 3.0)
 use_oob=False
 metric = mean_absolute_error
-n = 5_000
+n = 20_000
 
-# X, y = load_rent(n=n)
-X, y, _ = load_flights(n=n)
+X, y = load_rent(n=n)
 
-I = importances(X, y, n_trials = 5,
-                catcolnames={'AIRLINE',
-                             'ORIGIN_AIRPORT',
-                             'DESTINATION_AIRPORT',
-                             'FLIGHT_NUMBER',
-                             'DAY_OF_WEEK'}
-                )
-print(I)
-plot_importances(I, imp_range=(0,.4), width=4)
-plt.show()
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
-colname='bedrooms'
-colname='bathrooms'
-colname='astoria'
-colname='UpperEast'
+lm = Lasso(normalize=True, alpha=1.5)
+lm.fit(X_train,y_train)
+
+print(mean_absolute_error(y_test, lm.predict(X_test)))
+
+
+#
+# X, y, _ = load_flights(n=n)
+#
+# I = importances(X, y, n_trials = 5,
+#                 catcolnames={'AIRLINE',
+#                              'ORIGIN_AIRPORT',
+#                              'DESTINATION_AIRPORT',
+#                              'FLIGHT_NUMBER',
+#                              'DAY_OF_WEEK'}
+#                 )
+# print(I)
+# plot_importances(I, imp_range=(0,.4), width=4)
+# plt.show()
+#
+# colname='bedrooms'
+# colname='bathrooms'
+# colname='astoria'
+# colname='UpperEast'
 
 # plot_stratpd(X, y, colname=colname, targetname='price',
 #              min_slopes_per_x=15,

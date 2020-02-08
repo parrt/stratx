@@ -130,7 +130,7 @@ def shap_importances(model, X_train, X_test, n_shap, normalize=True, sort=True):
         explainer = shap.TreeExplainer(model, data=shap.sample(X_train, 100), feature_perturbation='interventional')
         shap_values = explainer.shap_values(X_test, check_additivity=False)
     elif isinstance(model, Lasso) or isinstance(model, LinearRegression):
-        shap_values = shap.LinearExplainer(model, X_train, feature_dependence='independent').shap_values(X_train)
+        shap_values = shap.LinearExplainer(model, X_train, feature_dependence='independent').shap_values(X_test)
     else:
         # gotta use really small sample; verrry slow
         explainer = shap.KernelExplainer(model.predict, X_train.sample(frac=.1))
@@ -503,7 +503,7 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yra
                 pad_inches=0)
     plt.show()
 
-    if dataset=='rent': # the only non-toy dataset with purely numerical features
+    if dataset=='rent': # purely numerical features
         model = "Lasso"
         # sortby="Impact"
         sortby="Importance"
@@ -526,6 +526,34 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yra
                   # legend_location='lower left',
                   legend_location='upper right',
                   yrange=(500,1200),
+                  figsize=figsize)
+        plt.tight_layout()
+        plt.savefig(f"../images/{dataset}-topk-{model}-{sortby}.pdf", bbox_inches="tight", pad_inches=0)
+        plt.show()
+
+    if dataset=='boston': # purely numerical features
+        model = "Lasso"
+        # sortby="Impact"
+        sortby="Importance"
+        R = test_top_features(X, y,
+                              imps,
+                              kfold_indexes,
+                              sortby=sortby,
+                              top_features_range=(1,8),
+                              metric=mean_absolute_error,
+                              model=model,
+                              catcolnames=catcolnames)
+
+        R_ = R[['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']]
+        plot_topk(R_, k=8, title=f"{model} {title}",
+                  ylabel=f"5-fold CV MAE ({yunits})",
+                  xlabel=f"Top $k$ feature {sortby}",
+                  title_fontsize=14,
+                  label_fontsize=14,
+                  ticklabel_fontsize=10,
+                  # legend_location='lower left',
+                  legend_location='upper right',
+                  #yrange=(2,6),
                   figsize=figsize)
         plt.tight_layout()
         plt.savefig(f"../images/{dataset}-topk-{model}-{sortby}.pdf", bbox_inches="tight", pad_inches=0)
@@ -607,8 +635,12 @@ def get_multiple_imps(dataset,
     if "StratImpact" in include:
         # RF SHAP and RF perm get to look at the test data to decide which features
         # are more predictive and useful for generality's sake but we only get to
-        # see X_Train.
-        ours_I = importances(X_train, y_train, verbose=False,
+        # see X_Train. Boston has so little data, we get to see entire 506 records
+        if dataset=='boston':
+            X_, y_ = X, y
+        else:
+            X_, y_ = X_train, y_train
+        ours_I = importances(X_, y_, verbose=False,
                              sortby=sortby,
                              min_samples_leaf=stratpd_min_samples_leaf,
                              cat_min_samples_leaf=stratpd_cat_min_samples_leaf,
