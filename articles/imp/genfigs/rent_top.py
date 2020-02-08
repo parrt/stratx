@@ -1,5 +1,7 @@
 from support import *
 
+np.random.seed(1)
+
 figsize = (3.5, 3.0)
 use_oob=False
 n = 25_000

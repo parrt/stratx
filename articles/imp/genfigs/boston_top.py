@@ -1,5 +1,7 @@
 from support import *
 
+np.random.seed(1)
+
 boston = load_boston()
 X = pd.DataFrame(boston.data, columns=boston.feature_names)
 y = pd.Series(boston.target)
