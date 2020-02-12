@@ -6,6 +6,7 @@ from sklearn.linear_model import Ridge
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
 
+forcerun = False
 warmedup = False
 
 def get_timing(dataset, X, y, catcolnames=set(), cat_min_samples_leaf=5, max_size = 30_000):
@@ -40,7 +41,7 @@ def jit_warmup():
 
 
 def rent():
-    if os.path.exists(f"data/rent-timing.csv"):
+    if not forcerun and os.path.exists(f"data/rent-timing.csv"):
         return pd.read_csv(f"data/rent-timing.csv")
 
     jit_warmup()
@@ -49,7 +50,7 @@ def rent():
 
 
 def bulldozer():
-    if os.path.exists(f"data/bulldozer-timing.csv"):
+    if not forcerun and os.path.exists(f"data/bulldozer-timing.csv"):
         return pd.read_csv(f"data/bulldozer-timing.csv")
 
     jit_warmup()
@@ -66,7 +67,7 @@ def bulldozer():
 
 
 def flight(max_size=30_000):
-    if os.path.exists(f"data/flight-timing.csv"):
+    if not forcerun and os.path.exists(f"data/flight-timing.csv"):
         return pd.read_csv(f"data/flight-timing.csv")
 
     jit_warmup()
@@ -114,7 +115,7 @@ ax.plot(x, y, ':', c='k', lw=.7, label=f"${ridge.coef_[1]:.3f} n + {ridge.coef_[
 
 plt.legend(loc="upper left")
 
-ax.set_ylim(0,100)
+ax.set_ylim(0,120)
 ax.set_xlabel(f"Sample size $n$ ($10^3$ samples)")
 ax.set_ylabel("Time (sec)")
 
