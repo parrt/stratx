@@ -12,7 +12,7 @@ model='RF' # ('RF','SVM','GBM','OLS','Lasso')
 
 X, y = load_rent(n=n)
 
-gen_topk_figs(X,y,kfolds=5,n_trials=10,dataset="rent",title="NYC rent prices",
+gen_topk_figs(X,y,kfolds=5,n_trials=1,dataset="rent",title="NYC rent prices",
               min_slopes_per_x=15,
               yrange=(300,900), yunits="$")
 

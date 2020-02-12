@@ -10,7 +10,7 @@ model='RF' # ('RF','SVM','GBM','OLS','Lasso')
 
 X, y, _ = load_flights(n=n)
 
-gen_topk_figs(X,y,kfolds=5,n_trials=10,dataset="flights",title="Flight arrival delay",
+gen_topk_figs(X,y,kfolds=5,n_trials=1,dataset="flights",title="Flight arrival delay",
               catcolnames={'AIRLINE',
                            'ORIGIN_AIRPORT',
                            'DESTINATION_AIRPORT',
