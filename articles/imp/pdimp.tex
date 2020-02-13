@@ -293,22 +293,13 @@ Our first experiment is to compare the feature rankings recommended by \simp{} t
 
 Next, we compare \simp{} to OLS, OLS-based SHAP, RF-based SHAP, and RF-based permutation importance in \figref{fig:topk}.  We have given SHAP every advantage here.  Except for OLS-based SHAP, SHAP uses an RF fit to the training data to compute feature importances and then trains the same kind of model (RF) to measure top-$k$ error curves.  Further, SHAP selects features using the validation data, the very data used to compute error curves. In contrast, \simp{} cannot use predictions from a fitted model, by design, and we restrict \simp{} to examining just the training data, without access to the validation data. Despite these handicaps, \simp{} error curves for the four data sets are competitive with the feature rankings from the other methods, as shown in \figref{fig:topk}. 
 
-The bulldozer data set results, \figref{fig:topk}(c), surprised us because the top feature recommended by \simp{} gets half the error rate of the top features recommended by the other methods. One would expect model-based techniques to easily identify the single most important model feature.
+The bulldozer error curve in \figref{fig:topk}(c) is surprising because the top feature recommended by \simp{} gets half the error rate of the top features recommended by the other methods. One would expect model-based techniques to easily identify the single most important model feature, or at least more readily than a model-free approach.  (\simp{} recommends the high-cardinality categorical variable {\tt ModelID}, whereas RF-based permutation importance and SHAP recommend ordinal {\tt ProductSize}.)  Even if such results are rare, misidentifying the single most important feature indicates that there is room for improvement in this research area.
 
+We have also found that the plain impact, area under the partial dependence curve, tends to work well, as shown in \figref{fig:topk-impact}. In some cases, though, importances derived from \simp{} outperform impact-derived feature rankings, as they do initially for the flight data set; compare \figref{fig:topk}(b) and \figref{fig:topk-impact}(b).
 
- \simp{} recommends the {\tt ModelID} followed by {\tt YearMade}, whereas RF-based SHAP selects {\tt ProductSize} followed by {\tt YearMade}. \todo{tie into the importance bar charts}
+Features that are predictive in one model are not necessarily predictive in another model.  To determine how well the feature rankings from the various methods ``export'' to other models, we trained gradient boosting machines (GBM) on the OLS-based, RF-based, and \simp{} feature rankings. \figref{fig:topk-gbm} shows the error occurs.  The error curves generated using GBM models are similar to those resulting from RF models except for the flight delay curve, which does not improve much after feature five while the other feature rankings do.  This could be \simp's choice of features or the fact that we used a single set of GBM hyper-parameters for all graphs, not tuning the GBMs per dataset. 
 
-
-We define feature importance as the area under the partial dependence curve weighted by the $x_j$ density, which takes into consideration validation sets with highly skewed distributions.  That said, we have found that the plain impact, area under the partial dependence curve, also tends to work well, as shown in \figref{fig:topk-impact}. In some cases, importances derived from \simp{} outperform impact-derived importances, as they do initially for the flight data set; compare \figref{fig:topk}(b) and \figref{fig:topk-impact}(b).
-
-
-Features that are predictive in one model are not necessarily predictive in another model.  To determine how well the feature rankings from \simp{}, OLS, RF permutation importance, and OLS/RF-based SHAP  ``export'' to other models, we trained gradient boosting machines (GBM) with the previous rankings, as shown in \figref{fig:topk-gbm}. The error curves generated using GBM models are similar, except for the flight delay data set which does not improve after feature five as error curves for the other feature rankings do.  This could be the choice of features or the fact that we did not tune the GBM hyper-parameters per dataset. 
-
-GBMs are based upon decision trees (stumps) like random forests, so we computed error curves for the feature rankings using Lasso regularized regression as well, \figref{fig:lasso}. The rent data set was the only one without categorical variablesThe \simp{} error curve does not drop significantly after the top three features, which could mean that the \simp{} feature rankings require a complex model
-
-OLS does not appear to adequately capture the relationship between features and response variable, except for the Boston data set, which explains why the OLS-based SHAP error curves are higher than for the other methods. (Curiously, features ranked by OLS SHAP perform worse than plain OLS.) 
-
-Compare rank of features
+GBMs are based upon decision trees (stumps) like random forests, so the RF-based feature rankings would likely export well to GBM models.   Consequently, we computed error curves for the Boston and rent feature rankings using OLS regressors, as shown in \figref{fig:OLS}. (The Boston and rent data sets are the only ones without categorical variables, and we wanted to avoid creating tens of thousands of dummy variables for the flight and bulldozer data sets.) The error curves in \figref{fig:OLS} for OLS are all higher than for RFs in \figref{fig:topk}, as expected, but no technique's feature ranking fails to export.
 
 Show performance and give rough $O(...)$.
 
@@ -439,14 +430,14 @@ Show impact vs import in \figref{fig:topk-impact}
 \label{fig:topk-gbm}
 \end{figure}
 
-Show \figref{fig:lasso}
+Show \figref{fig:OLS}
 
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.5]{images/boston-topk-OLS-Importance.pdf}~~~
 \includegraphics[scale=0.5]{images/rent-topk-OLS-Importance.pdf}
 \captionof{figure}{\small OLS model}
-\label{fig:lasso}
+\label{fig:OLS}
 \end{center}
 \end{figure}
 
