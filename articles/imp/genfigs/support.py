@@ -431,7 +431,7 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yra
     R_ = R[['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']]
     plot_topk(R_, k=8, title=f"{model} {title}",
               ylabel=f"5-fold CV MAE ({yunits})",
-              xlabel=f"Top $k$ feature {sortby}",
+              xlabel=f"Top $k$ feature ${sortby}$",
               title_fontsize=14,
               label_fontsize=14,
               ticklabel_fontsize=10,
@@ -444,7 +444,7 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yra
     R_ = R[['Spearman', 'PCA', 'OLS', 'StratImpact']]
     plot_topk(R_, k=8, title=f"{model} {title}",
               ylabel=f"5-fold CV MAE ({yunits})",
-              xlabel=f"Top $k$ feature {sortby}",
+              xlabel=f"Top $k$ feature ${sortby}$",
               title_fontsize=14,
               label_fontsize=14,
               ticklabel_fontsize=10,
@@ -467,7 +467,7 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yra
     R_ = R[['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']]
     plot_topk(R_, k=8, title=f"{model} {title}",
               ylabel=f"5-fold CV MAE ({yunits})",
-              xlabel=f"Top $k$ feature {sortby}",
+              xlabel=f"Top $k$ feature ${sortby}$",
               title_fontsize=14,
               label_fontsize=14,
               ticklabel_fontsize=10,
@@ -492,7 +492,7 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yra
     R_ = R[['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']]
     plot_topk(R_, k=8, title=f"{model} {title}",
               ylabel=f"5-fold CV MAE ({yunits})",
-              xlabel=f"Top $k$ feature {sortby}",
+              xlabel=f"Top $k$ feature ${sortby}$",
               title_fontsize=14,
               label_fontsize=14,
               ticklabel_fontsize=10,
@@ -504,7 +504,7 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yra
     plt.show()
 
     if dataset=='rent': # purely numerical features
-        model = "Lasso"
+        model = "OLS"
         # sortby="Impact"
         sortby="Importance"
         R = test_top_features(X, y,
@@ -519,7 +519,7 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yra
         R_ = R[['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']]
         plot_topk(R_, k=8, title=f"{model} {title}",
                   ylabel=f"5-fold CV MAE ({yunits})",
-                  xlabel=f"Top $k$ feature {sortby}",
+                  xlabel=f"Top $k$ feature ${sortby}$",
                   title_fontsize=14,
                   label_fontsize=14,
                   ticklabel_fontsize=10,
@@ -532,7 +532,7 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yra
         plt.show()
 
     if dataset=='boston': # purely numerical features
-        model = "Lasso"
+        model = "OLS"
         # sortby="Impact"
         sortby="Importance"
         R = test_top_features(X, y,
@@ -547,13 +547,13 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yra
         R_ = R[['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']]
         plot_topk(R_, k=8, title=f"{model} {title}",
                   ylabel=f"5-fold CV MAE ({yunits})",
-                  xlabel=f"Top $k$ feature {sortby}",
+                  xlabel=f"Top $k$ feature ${sortby}$",
                   title_fontsize=14,
                   label_fontsize=14,
                   ticklabel_fontsize=10,
                   # legend_location='lower left',
                   legend_location='upper right',
-                  #yrange=(2,6),
+                  yrange=(2,6),
                   figsize=figsize)
         plt.tight_layout()
         plt.savefig(f"../images/{dataset}-topk-{model}-{sortby}.pdf", bbox_inches="tight", pad_inches=0)
