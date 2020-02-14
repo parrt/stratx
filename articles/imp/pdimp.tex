@@ -291,21 +291,21 @@ In this section, we present the results of several experiments using the toy Bos
 
 Our first experiment is to compare the feature rankings recommended by \simp{} to PCA's ranking (``loads'' associated with the first component) and to Spearman's R coefficient computed between each $x_j$ and the response variable, $y$. \figref{fig:baseline} shows error rates versus the number of features using an RF model with 40 trees trained using the various top-$k$ feature rankings. Surprisingly, Spearman's R does a good job for all but the bulldozer data set. PCA is the opposite, performing well on bulldozer but poorly on the others. \simp{} is competitive with or surpasses these baseline techniques.  Rankings from ordinary least squares (OLS) regression coefficients, divided by their standard error, are included as a common reference curve on this and the following graphs. \todo{25k records, 80/20 split, 40 trees etc..., 10 runs, 5-fold CV}
 
-Next, in \figref{fig:topk}, we compare \simp{}'s rankings to those of OLS, RF-based permutation importance, and SHAP interrogating linear-model-specific and tree-specific models. Error curves were generated using an RF model trained on the top-$k$ features recommended by each technique, using an 80/20 train/validation split. RF SHAP and RF permutation importances have a distinct advantage here because they use RFs for both feature ranking and top-$k$ error curves. Moreover, the model-based methods were able to select features using the validation set, the same data used to compute error curves. In contrast, \simp{} cannot use predictions from a fitted model, by design, and we restricted \simp{} to examining just the training data, without access to the validation data. 
+Next, in \figref{fig:topk}, we compare \simp{}'s rankings to those of OLS, RF-based permutation importance, and SHAP interrogating linear-model-specific and tree-specific models. Error curves were generated with an RF model trained on the top-$k$ features recommended by each technique, using $n$=25,000 records sampled from the total data set population with an 80/20 train/validation split. (Boston only 506  total records.) RF SHAP and RF permutation importances have a distinct advantage here because they use the same kind of model (RF) for both feature ranking and top-$k$ error curves. Moreover, the model-based methods were able to select features using the validation set, the same data used to compute error curves. In contrast, \simp{} cannot use predictions from a fitted model, by design, and we restricted \simp{} to examining just the training data, without access to the validation data, to see how it fared. 
 
-We have given SHAP and permutation importance every advantage here.  Except for OLS-based SHAP, SHAP uses an RF fit to the training data to compute feature importances and then trains the same kind of model (RF) to measure top-$k$ error curves.  Further, SHAP selects features using the validation data, the very data used to compute error curves. In contrast, \simp{} cannot use predictions from a fitted model, by design, and we restrict \simp{} to examining just the training data, without access to the validation data. Despite these handicaps, \simp{} error curves for the four data sets are competitive with the feature rankings from the other methods, as shown in \figref{fig:topk}. 
+Despite these handicaps, \figref{fig:topk} shows that \simp{}'s feature importances are competitive with the rankings from the other methods  applied to the four data sets.   The exception is that the \simp{} bulldozer error curve starts out higher than RF SHAP and RF permutation importance. This is because \simp{} chooses feature {\tt YearMade} as the single most important feature, whereas the RF-based techniques choose ordinal feature {\tt ProductSize}. \todo{tie into importance graphs} The \simp{} bulldozer error curve then converges with the RF-based curves.  Depending on the subset drawn from the various overall data set populations, the recommended rankings and error curves can shift.
 
-The bulldozer error curve in \figref{fig:topk}(c) is surprising because the top feature recommended by \simp{} gets half the error rate of the top features recommended by the other methods. One would expect model-based techniques to easily identify the single most important model feature, or at least more readily than a model-free approach.  (\simp{} recommends the high-cardinality categorical variable {\tt ModelID}, whereas RF-based permutation importance and SHAP recommend ordinal {\tt ProductSize}.)  Even if such results are rare, misidentifying the single most important feature indicates that there is room for improvement in this research area.
+The feature rankings derived from OLS perform poorly for the first few features, but then merge with the error curves from the RF-based feature rankings.  While the features were chosen by interrogating a linear model, the error curves are generated using predictions from a (stronger) RF model. Once the RF integrates sufficient numbers of features with reasonable importance, prediction error curves become more similar.  In other words, although the order might not be the best, even a linear model can provide good estimates of the top few most  predictive features.
 
-We have also found that the plain impact, area under the partial dependence curve, tends to work well, as shown in \figref{fig:topk-impact}. In some cases, though, importances derived from \simp{} outperform impact-derived feature rankings, as they do initially for the flight data set; compare \figref{fig:topk}(b) and \figref{fig:topk-impact}(b).
+We have also found that the plain impact, area under the partial dependence curve unweighted by $x_j$ density, also works well, as shown in \figref{fig:topk-impact}.  In the bulldozer case, for example, the first impact-ranked \simp{} feature is much better than the first \simp{} importance-ranked feature, as shown in \figref{fig:topk}(c) and \figref{fig:topk-impact}(c). (\simp{} selects the high-cardinality categorical variable {\tt ModelID}.) In fact, this impact feature yields half the error rate than that of the all the other methods' top features. On the other hand, Using impact instead of importance for the flight data set leads to a poor second rank feature choice; compare \figref{fig:topk}(b) and \figref{fig:topk-impact}(b).
 
-Features that are predictive in one model are not necessarily predictive in another model.  To determine how well the feature rankings from the various methods ``export'' to other models, we trained gradient boosting machines (GBM) on the OLS-based, RF-based, and \simp{} feature rankings. \figref{fig:topk-gbm} shows the error occurs.  The error curves generated using GBM models are similar to those resulting from RF models except for the flight delay curve, which does not improve much after feature five while the other feature rankings do.  This could be \simp's choice of features or the fact that we used a single set of GBM hyper-parameters for all graphs, not tuning the GBMs per dataset. 
+Features that are predictive in one model are not necessarily predictive in another model.  To determine how well the feature rankings from the various methods ``export'' to other models, we trained gradient boosting machines (GBM) on the OLS-based, RF-based, and \simp{} feature rankings. \figref{fig:topk-gbm} shows that the error curves generated using GBM models are similar to those resulting from RF models, except for the flight delay curve, which does not improve much after feature five while the other feature rankings do.  This could be \simp's choice of features or the fact that we used a single set of GBM hyper-parameters for all graphs, not tuning the GBMs per dataset. 
 
-GBMs are based upon decision trees (stumps) like random forests, so the RF-based feature rankings would likely export well to GBM models.   Consequently, we computed error curves for the Boston and rent feature rankings using OLS regressors, as shown in \figref{fig:OLS}. (The Boston and rent data sets are the only ones without categorical variables, and we wanted to avoid creating tens of thousands of dummy variables for the flight and bulldozer data sets.) The error curves in \figref{fig:OLS} for OLS are all higher than for RFs in \figref{fig:topk}, as expected, but no technique's feature ranking fails to export.
+Because GBMs are based upon decision trees (stumps) like random forests, the RF-based feature rankings would likely export well to GBM models.  Consequently, we computed error curves for the Boston and rent feature rankings using OLS regressors, as shown in \figref{fig:OLS}. (The Boston and rent data sets are the only ones without categorical variables, and we wanted to avoid creating tens of thousands of dummy variables for the flight and bulldozer data sets.) The error curves derived from OLS models are all higher than those from RFs, as expected, but no technique's feature ranking fails to export.
 
 Show performance and give rough $O(...)$.
 
-even if recommendations are identified by their isolated contribution, the model is still taking the combination into consideration when fitting and hence the marginal errors are not necessarily reduced specifically because of the added feature at number $k$.
+
 
 \begin{figure}
 \centering
@@ -336,12 +336,6 @@ even if recommendations are identified by their isolated contribution, the model
 \label{fig:baseline}
 \end{figure}
 
-Model-based methods have all the advantages in these experiments.
-
-In \figref{fig:features}, we
-
-
-
 \begin{figure}
 \centering
 \begin{subfigure}{.245\textwidth}
@@ -370,8 +364,6 @@ In \figref{fig:features}, we
 \caption[short]{Features from RF model, tested on RF}
 \label{fig:topk}
 \end{figure}
-
-Show impact vs import in \figref{fig:topk-impact}
 
 \begin{figure}
 \centering
@@ -432,8 +424,6 @@ Show impact vs import in \figref{fig:topk-impact}
 \label{fig:topk-gbm}
 \end{figure}
 
-Show \figref{fig:OLS}
-
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.5]{images/boston-topk-OLS-Importance.pdf}~~~
@@ -443,8 +433,6 @@ Show \figref{fig:OLS}
 \end{center}
 \end{figure}
 
-
-Timing \figref{fig:timing}
 
 \begin{figure}[htbp]
 \begin{center}
@@ -493,19 +481,15 @@ all code is available at github; {\tt\small RUNME.py}
 
 \todo{what about outlier example}
 
-\todo{stability is valuable. users would not trust results that changed significantly for small data set changes. show our error bars from bootstrapping and say we can do p-values.}
+\todo{stability is valuable. users would not trust results that changed significantly for small data set changes. show our error bars from bootstrapping}
 
-Consider the recommendations from OLS SHAP used in a random forest. In general, they are not good recommendations. This demonstrates that the rank of features is highly dependent upon the model used to get those recommendations. In some cases, plain OLS recommendations fitted to RF beats the recommendations from OLS SHAP fitted to the RF.
+\section{Discussion and future work}
 
-performance. with lots of outliers, choosing a small subset for shap is a bad idea so this is a real problem. linear and boosted trees are efficient but RF are not and I wouldn't consider anything using the general explainer.
+The bulldozer error curve in \figref{fig:topk}(c) is surprising because the top feature recommended by \simp{} gets half the error rate of the top features recommended by the other methods. One would expect model-based techniques to easily identify the single most important model feature, or at least more readily than a model-free approach.  (\simp{} recommends the high-cardinality categorical variable {\tt ModelID}, whereas RF-based permutation importance and SHAP recommend ordinal {\tt ProductSize}.)  Even if such results are rare, misidentifying the single most important feature indicates that there is room for improvement in this research area.
 
-There are issues surrounding how many explanatory samples you can use. 300 even run a couple of times is not enough to sample 5.8M records.
+even if recommendations are identified by their isolated contribution, the model is still taking the combination into consideration when fitting and hence the marginal errors are not necessarily reduced specifically because of the added feature at number $k$.
 
 \todo{We need min samples per x to avoid left edge issues as they skew entire pdp, which severely skews mass AUC.}
-
-\todo{explain cat mechanism and how there is no left/right edge so no evidence used to weight AUC.}
- 
-\section{Discussion and future work}
 
 We deal with all possible combinations for codependency's because of the nature of the partial dependence mechanism.
 
