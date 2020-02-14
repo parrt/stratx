@@ -22,6 +22,7 @@ idxs = resample(range(50_000), n_samples=n, replace=False)
 X_, y_ = X.iloc[idxs], y.iloc[idxs]
 
 gen_topk_figs(X_,y_,kfolds=5,n_trials=1,dataset="bulldozer",title="Bulldozer auction prices",
+              cat_min_samples_leaf=5,
               min_slopes_per_x=15,
               catcolnames={'AC', 'ModelID'},
               yrange=(5000,20000), yunits="$")

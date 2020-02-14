@@ -21,3 +21,4 @@ invalid value encountered in less_equal
 * don't compress X[colname] in plot catstrat; messes up labels
 * set default rank to Importance or Impact?
 * try X_train=X for computing features again?
+* set all hyper param defaults per examples

@@ -6,20 +6,22 @@ use_oob=False
 metric = mean_absolute_error
 n = 20_000
 
-X, y = load_rent(n=n)
-
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-
-lm = Lasso(normalize=True, alpha=1.5)
-lm.fit(X_train,y_train)
-
-print(mean_absolute_error(y_test, lm.predict(X_test)))
-
-
+# X, y = load_rent(n=n)
 #
+# X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+#
+# lm = Lasso(normalize=True, alpha=1.5)
+# lm.fit(X_train,y_train)
+#
+# print(mean_absolute_error(y_test, lm.predict(X_test)))
+#
+
+
 # X, y, _ = load_flights(n=n)
 #
-# I = importances(X, y, n_trials = 5,
+# I = importances(X, y, n_trials = 1,
+#                 cat_min_samples_leaf=5,
+#                 min_slopes_per_x=15,
 #                 catcolnames={'AIRLINE',
 #                              'ORIGIN_AIRPORT',
 #                              'DESTINATION_AIRPORT',
@@ -46,13 +48,23 @@ print(mean_absolute_error(y_test, lm.predict(X_test)))
 # plt.savefig(f"/Users/parrt/Desktop/rent-{colname}.pdf", pad_inches=0)
 # plt.show()
 
-# X, y = load_bulldozer()
-#
-# # Most recent timeseries data is more relevant so get big recent chunk
-# # then we can sample from that to get n
-# X = X.iloc[-50_000:]
-# y = y.iloc[-50_000:]
-#
+X, y = load_bulldozer()
+
+# Most recent timeseries data is more relevant so get big recent chunk
+# then we can sample from that to get n
+X = X.iloc[-50_000:]
+y = y.iloc[-50_000:]
+
+I = importances(X, y, n_trials = 1,
+                cat_min_samples_leaf=5,
+                min_slopes_per_x=15,
+                catcolnames={'AC',
+                             'ModelID'}
+                )
+print(I)
+plot_importances(I, imp_range=(0,.4), width=4)
+plt.show()
+
 # trials=20
 # colname = "YearMade"
 # min_samples_leaf=10

@@ -291,7 +291,7 @@ In this section, we present the results of several experiments using the toy Bos
 
 Our first experiment is to compare the feature rankings recommended by \simp{} to PCA's ranking (``loads'' associated with the first component) and to Spearman's R coefficient computed between each $x_j$ and the response variable, $y$. \figref{fig:baseline} shows error rates versus the number of features using an RF model with 40 trees trained using the various top-$k$ features. Surprisingly, Spearman's R does a good job for all but the bulldozer data set. PCA is the opposite, performing well on bulldozer but poorly on the others. \simp{} is competitive with or surpasses these baseline techniques.  Rankings from ordinary least squares (OLS) regression coefficients, divided by their standard error, are included as a common reference curve on this and the following graphs. \todo{25k records, 80/20 split, 40 trees etc..., 10 runs, 5-fold CV}
 
-Next, in \figref{fig:topk}, we compare \simp{}'s rankings to those of OLS, RF-based permutation importance, and SHAP interrogating linear-model-specific and tree-specific models. We placed \simp{} at a
+Next, in \figref{fig:topk}, we compare \simp{}'s rankings to those of OLS, RF-based permutation importance, and SHAP interrogating linear-model-specific and tree-specific models. Error curves were generated using an RF model trained on the top-$k$ features recommended by each technique, using an 80/20 train/validation split.
 
 We have given SHAP and permutation importance every advantage here.  Except for OLS-based SHAP, SHAP uses an RF fit to the training data to compute feature importances and then trains the same kind of model (RF) to measure top-$k$ error curves.  Further, SHAP selects features using the validation data, the very data used to compute error curves. In contrast, \simp{} cannot use predictions from a fitted model, by design, and we restrict \simp{} to examining just the training data, without access to the validation data. Despite these handicaps, \simp{} error curves for the four data sets are competitive with the feature rankings from the other methods, as shown in \figref{fig:topk}. 
 
@@ -331,8 +331,8 @@ even if recommendations are identified by their isolated contribution, the model
     \centering
 \includegraphics[scale=0.45]{images/rent-topk-baseline-Importance.pdf}
 \subcaption{\footnotesize foo  }
-\end{subfigure}
-\caption{\small variation appears from run to run given the subset of overall data used for these experiments. OLS-based SHAP; {\tt\small LinearExplainer}; RF-based SHAP; {\tt\small TreeExplainer}, {\tt\small feature\_dependence='interventional'}; RF has 40 trees for both feature ranking and error curves}
+\end{subfigure} 
+\caption{\small variation appears from run to run given the subset of overall data used for these experiments. OLS-based SHAP; {\tt\small LinearExplainer}; RF-based SHAP; {\tt\small TreeExplainer}, {\tt\small feature\_perturbation='interventional'}; RF has 40 trees for both feature ranking and error curves}
 \label{fig:baseline}
 \end{figure}
 

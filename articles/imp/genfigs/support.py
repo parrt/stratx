@@ -98,7 +98,6 @@ def pca_importances(X):
 
 
 def linear_model_importance(model, X, y):
-    model.fit(X, y)
     score = model.score(X, y)
 
     imp = np.abs(model.coef_)
@@ -130,7 +129,7 @@ def shap_importances(model, X_train, X_test, n_shap, normalize=True, sort=True):
         explainer = shap.TreeExplainer(model, data=shap.sample(X_train, 100), feature_perturbation='interventional')
         shap_values = explainer.shap_values(X_test, check_additivity=False)
     elif isinstance(model, Lasso) or isinstance(model, LinearRegression):
-        shap_values = shap.LinearExplainer(model, X_train, feature_dependence='independent').shap_values(X_test)
+        shap_values = shap.LinearExplainer(model, X_train, feature_perturbation='interventional').shap_values(X_test)
     else:
         # gotta use really small sample; verrry slow
         explainer = shap.KernelExplainer(model.predict, X_train.sample(frac=.1))
@@ -380,7 +379,8 @@ def test_top_features(X, y,
 
 def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yrange=None,figsize=(3.5, 3.0),
                   min_slopes_per_x=15,
-                  cat_min_samples_leaf=5):
+                  cat_min_samples_leaf=5,
+                  min_samples_leaf=10):
     model="RF"
     test_size = .2 # Some techniques use validation set to pick best features
 
@@ -398,9 +398,8 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yra
                              n_estimators=40,
                              min_slopes_per_x=min_slopes_per_x,
                              stratpd_cat_min_samples_leaf=cat_min_samples_leaf,
+                             stratpd_min_samples_leaf=min_samples_leaf,
                              imp_n_trials=n_trials,
-                             # stratpd_min_samples_leaf=stratpd_min_samples_leaf,
-                             # stratpd_cat_min_samples_leaf=stratpd_cat_min_samples_leaf,
                              )
     w = 4.5 if dataset=='flights' else 3
     plot_importances(imps['StratImpact'].iloc[:8], imp_range=(0,0.4), width=w,
@@ -604,24 +603,28 @@ def get_multiple_imps(dataset,
         pca_I = pca_importances(X)
 
     if "OLS" in include:
-        X_ = StandardScaler().fit_transform(X)
-        X_ = pd.DataFrame(X_, columns=X.columns)
+        X_train = StandardScaler().fit_transform(X_train)
+        X_test = StandardScaler().fit_transform(X_test)
+        X_train = pd.DataFrame(X_train, columns=X.columns)
+        X_test = pd.DataFrame(X_test, columns=X.columns)
         lm = LinearRegression()
-        lm.fit(X_, y)
-        ols_I, score = linear_model_importance(lm, X_, y)
+        lm.fit(X_train, y_train)
+        ols_I, score = linear_model_importance(lm, X_test, y_test)
 
     if "OLS SHAP" in include:
-        X_ = StandardScaler().fit_transform(X)
-        X_ = pd.DataFrame(X_, columns=X.columns)
+        X_train = StandardScaler().fit_transform(X_train)
+        X_test = StandardScaler().fit_transform(X_test)
+        X_train = pd.DataFrame(X_train, columns=X.columns)
+        X_test = pd.DataFrame(X_test, columns=X.columns)
         lm = LinearRegression()
-        lm.fit(X_, y)
+        lm.fit(X_train, y_train)
         # fast enough so use all data
-        ols_shap_I = shap_importances(lm, X_, X_, n_shap=len(X_))
+        ols_shap_I = shap_importances(lm, X_test, X_test, n_shap=len(X_test))
+
+    X_train = pd.DataFrame(X_train, columns=X.columns)
+    X_test = pd.DataFrame(X_test, columns=X.columns)
 
     if "RF SHAP" in include:
-        # Limit to training RFs with 20,000 records as it sometimes crashes above
-        # X_train_ = X_train[:min(20_000,len(X_train))] # already randomly selected, just grab first part
-        # y_train_ = y_train[:min(20_000,len(X_train))]
         rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=True)
         rf.fit(X_train, y_train)
         rf_I = shap_importances(rf, X_train, X_test, n_shap, normalize=normalize)
@@ -635,12 +638,9 @@ def get_multiple_imps(dataset,
     if "StratImpact" in include:
         # RF SHAP and RF perm get to look at the test data to decide which features
         # are more predictive and useful for generality's sake but we only get to
-        # see X_Train. Boston has so little data, we get to see entire 506 records
-        if dataset=='boston':
-            X_, y_ = X, y
-        else:
-            X_, y_ = X_train, y_train
-        ours_I = importances(X_, y_, verbose=False,
+        # see X_train.
+        ours_I = importances(X_train, y_train,
+                             verbose=False,
                              sortby=sortby,
                              min_samples_leaf=stratpd_min_samples_leaf,
                              cat_min_samples_leaf=stratpd_cat_min_samples_leaf,
@@ -756,7 +756,7 @@ def stability(X, y, sample_size, n_trials, technique='StratImpact',
             rf.fit(X_, y_)
             I = shap_importances(rf, X_, X_, n_shap=300)
         else:
-            raise ValueError("bad mode: "+model)
+            raise ValueError("bad mode: "+technique)
         print(I.iloc[:8])
         all_I[i] = I['Importance']
         # print(all_I)
