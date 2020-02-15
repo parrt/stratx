@@ -303,8 +303,49 @@ Features that are predictive in one model are not necessarily predictive in anot
 
 Because GBMs are based upon decision trees (stumps) like random forests, the RF-based feature rankings would likely export well to GBM models.  Consequently, we computed error curves for the Boston and rent feature rankings using OLS regressors, as shown in \figref{fig:OLS}. (The Boston and rent data sets are the only ones without categorical variables, and we wanted to avoid creating tens of thousands of dummy variables for the flight and bulldozer data sets.) The error curves derived from OLS models are all higher than those from RFs, as expected, but no technique's feature ranking fails to export.
 
-Show performance and give rough $O(...)$.
+Show performance and give rough $O(...)$. $p$ times cost of doing \spd{} or \cspd. cost of \spd{} is cost to train RF then cost to walk leaves and perform piecewise linear approximation for each leaf. Then average the slope-ranges.  piecewise linear approximation is a function of elements in leaf but in total, we are computing differences on all n elements. to average the slopes together, it's a function of how many slopes, which could be n If all values are unique. There are roughly unique x by n slopes in a matrix of values that we collapse to get average slope in a range.  Integrating the slopes, the partial derivatives, is O(unique x). \todo{ print out how many nx and nslopes are}.
 
+can't parallelize. GIL. some numba
+
+\cut{
+Bulldozer:
+uniq x = 5 slopes.shape = (8112,) x ranges.shape (8112, 2)
+uniq x = 59 slopes.shape = (8242,) x ranges.shape (8242, 2)
+uniq x = 22 slopes.shape = (10145,) x ranges.shape (10145, 2)
+uniq x = 10887 slopes.shape = (23200,) x ranges.shape (23200, 2)
+uniq x = 59 slopes.shape = (8587,) x ranges.shape (8587, 2)
+uniq x = 6 slopes.shape = (2641,) x ranges.shape (2641, 2)
+uniq x = 2 slopes.shape = (3265,) x ranges.shape (3265, 2)
+uniq x = 2 slopes.shape = (3177,) x ranges.shape (3177, 2)
+uniq x = 12 slopes.shape = (15967,) x ranges.shape (15967, 2)
+uniq x = 31 slopes.shape = (28357,) x ranges.shape (28357, 2)
+uniq x = 7 slopes.shape = (11874,) x ranges.shape (11874, 2)
+uniq x = 293 slopes.shape = (32103,) x ranges.shape (32103, 2)
+Impact importance time 61s
+
+Rent:
+uniq x = 8 slopes.shape = (3436,) x ranges.shape (3436, 2)
+uniq x = 9 slopes.shape = (1027,) x ranges.shape (1027, 2)
+uniq x = 1933 slopes.shape = (11814,) x ranges.shape (11814, 2)
+uniq x = 1364 slopes.shape = (11759,) x ranges.shape (11759, 2)
+uniq x = 3 slopes.shape = (2139,) x ranges.shape (2139, 2)
+uniq x = 3374 slopes.shape = (12159,) x ranges.shape (12159, 2)
+uniq x = 4091 slopes.shape = (12098,) x ranges.shape (12098, 2)
+uniq x = 4585 slopes.shape = (12034,) x ranges.shape (12034, 2)
+uniq x = 4452 slopes.shape = (11968,) x ranges.shape (11968, 2)
+uniq x = 4506 slopes.shape = (12020,) x ranges.shape (12020, 2)
+uniq x = 4473 slopes.shape = (12088,) x ranges.shape (12088, 2)
+uniq x = 4194 slopes.shape = (12029,) x ranges.shape (12029, 2)
+uniq x = 3141 slopes.shape = (12003,) x ranges.shape (12003, 2)
+uniq x = 3440 slopes.shape = (11996,) x ranges.shape (11996, 2)
+uniq x = 4234 slopes.shape = (12005,) x ranges.shape (12005, 2)
+uniq x = 4389 slopes.shape = (12089,) x ranges.shape (12089, 2)
+uniq x = 3598 slopes.shape = (12082,) x ranges.shape (12082, 2)
+uniq x = 42 slopes.shape = (8551,) x ranges.shape (8551, 2)
+uniq x = 355 slopes.shape = (16019,) x ranges.shape (16019, 2)
+uniq x = 29 slopes.shape = (9204,) x ranges.shape (9204, 2)
+Impact importance time 13s
+}
 
 
 \begin{figure}

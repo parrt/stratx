@@ -166,7 +166,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
     if verbose:
         print(f"discrete StratPD num samples ignored {ignored}/{len(X)} for {colname}")
 
-
+    #print("uniq x =", len(real_uniq_x), "slopes.shape =", leaf_slopes.shape, "x ranges.shape", leaf_xranges.shape)
     if parallel_jit:
         slope_at_x, slope_counts_at_x = \
             avg_values_at_x_jit(real_uniq_x, leaf_xranges, leaf_slopes)
