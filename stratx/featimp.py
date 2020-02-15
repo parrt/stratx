@@ -391,9 +391,9 @@ def plot_importances(df_importances,
     """
     GREY = '#444443'
     I = df_importances
-    if sortby not in I.index.values:
+    if sortby not in I.columns.values:
         sortby = 'Importance'
-    I = I.sort_values(sortby, ascending=True)
+    I = I.sort_values(sortby, ascending=True) # we're drawing in reverse order
     n_features = len(I)
     left_padding = 0.01
 

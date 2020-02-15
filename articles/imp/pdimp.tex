@@ -428,7 +428,19 @@ Because GBMs are based upon decision trees (stumps) like random forests, the RF-
 \end{center}
 \end{figure}
 
-Speed is an important consideration when using feature importance techniques for feature selection---practitioners need to iterate quickly when developing models.  \simp{} is model-free and, therefore, does not incur the cost of training a model, except for the single decision tree used for stratification purposes to get partial dependences.   The cost of computing each $x_j$'s impact is the cost of computing the partial dependence and a pass over the unique $x_j$ values to compute the mean. To compute importance, it costs an extra pass over all $n$ $x_j$ values to get the histogram. The upper bound performance for \spd{} and \cspd{} partial dependences is $O(n \times |unique(x_j)|)$, or just $O(n^2)$ in the worst case.   Because $|unique(x_j)|$ is usually much smaller than $n$ in real data sets, \spd{} typically performs linearly.  The overall worst case behavior for \simp{} to get $p$ impacts is then $(p + |unique(x_j)|)\times n^2$ and $(p + |unique(x_j)|+n)\times n^2$ for importances, giving asymptotic behavior $O(n^2)$ and $O(n^3)$. 
+\todo{not as important for bus/med insight vs feature selection}
+
+To compute the feature rankings described thus far, we set the random seed to 1 before each test in order to get reproducible figures. Computing feature impacts and importances always returns the same result for the same data, as there are no random processes involved.  Different subsets from a larger data set, however, can yield very different impacts, depending on the variability of the data set. \simp{} supports subsampling with multiple trials on the overall data set to get impact standard deviations.  As an example, \figref{fig:stability} shows the  feature rankings averaged from 10 trials using 75\% subsamples selected randomly from the 48k records of the rent data set. The error bars show two standard deviations (a red error bar indicate it reaches 0). The high variance of the neighborhood features, such as {\tt UpperEast} and {\tt astoria}, are all highly correlated because they represent the $L_1$ distance from each apartment's longitude/latitude to that neighborhood. The distance-to-neighborhood features have similar importance and selection depends on vagaries of the data set.
+ 
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.65]{images/rent-stability-importance.pdf}~~~\includegraphics[scale=0.65]{images/rent-stability-impact.pdf}
+\captionof{figure}{\small stability of importance and impact}
+\label{fig:stability}
+\end{center}
+\end{figure}
+
+Speed is also an important consideration when using feature importance techniques for feature selection---practitioners need to iterate quickly when developing models.  \simp{} is model-free and, therefore, does not incur the cost of training a model, except for the single decision tree used for stratification purposes to get partial dependences.   The cost of computing each $x_j$'s impact is the cost of computing the partial dependence and a pass over the unique $x_j$ values to compute the mean. To compute importance, it costs an extra pass over all $n$ $x_j$ values to get the histogram. The upper bound performance for \spd{} and \cspd{} partial dependences is $O(n \times |unique(x_j)|)$, or just $O(n^2)$ in the worst case.   Because $|unique(x_j)|$ is usually much smaller than $n$ in real data sets, \spd{} typically performs linearly.  The overall worst case behavior for \simp{} to get $p$ impacts is then $(p + |unique(x_j)|)\times n^2$ and $(p + |unique(x_j)|+n)\times n^2$ for importances, giving asymptotic behavior $O(n^2)$ and $O(n^3)$. 
 
 \begin{figure}
 \centering
@@ -447,13 +459,14 @@ Speed is an important consideration when using feature importance techniques for
 \end{figure}
 
 
-In practice, importances for numerical variables are nearly linear and importances for categorical variables are quadratic. \figref{fig:timing} summarizes the empirical time in seconds to compute importances for subsets of the three Kaggle data sets. The ``time versus $n$'' and $R^2$ columns describe a quadratic fit to the time required to compute subsets from $n=1$ to 30,000 stepping by 1,000. The rent data set has no categorical variables and grows linearly with $n$, possibly with a small quadratic component. The flight data set, on the other hand, shows clear quadratic behavior due to the (five) categorical variables.
+In practice, importances for numerical variables are nearly linear and importances for categorical variables are mildly quadratic. \figref{fig:timing} summarizes the empirical time in seconds to compute importances for subsets of the three Kaggle data sets. The ``time versus $n$'' and $R^2$ columns describe a quadratic fit to the time required to compute subsets from $n=1$ to 30,000 stepping by 1,000. The rent data set has no categorical variables and grows linearly with $n$, possibly with a small quadratic component. The flight data set, on the other hand, shows clear quadratic behavior due to the (five) categorical variables.
 
 Despite the highly nonlinear worst-case complexity, \figref{fig:timing} suggests our Python-only \simp{} prototype is fast enough for use on real data sets of sizes in the tens of thousands. Our casual attempts at parallelizing the computation of $p$ importances across $p$ CPU cores were thwarted by Python's dreaded ``global interpreter lock'' (threading) and passing data between processes (process-based threading).  We did, however, get increased performance  from using the Numba just-in-time compiler ({\tt\small http://numba.pydata.org}) on algorithm hotspots. Reimplementation in C would be the next step and should yield dramatic performance improvements over pure Python.
 
 \cut{
 cost of \spd{} is cost to train RF then cost to walk leaves and perform piecewise linear approximation for each leaf. Then average the slope-ranges.  piecewise linear approximation is a function of elements in leaf but in total, we are computing differences on all n elements. to average the slopes together, it's a function of how many slopes, which could be n If all values are unique. There are roughly unique x by n slopes in a matrix of values that we collapse to get average slope in a range.  Integrating the slopes, the partial derivatives, is O(unique x). 
 Bulldozer:
+X.shape=(362781, 14)
 uniq x = 5 slopes.shape = (8112,) x ranges.shape (8112, 2)
 uniq x = 59 slopes.shape = (8242,) x ranges.shape (8242, 2)
 uniq x = 22 slopes.shape = (10145,) x ranges.shape (10145, 2)
@@ -469,6 +482,7 @@ uniq x = 293 slopes.shape = (32103,) x ranges.shape (32103, 2)
 Impact importance time 61s
 
 Rent:
+X.shape=(48299, 20)
 uniq x = 8 slopes.shape = (3436,) x ranges.shape (3436, 2)
 uniq x = 9 slopes.shape = (1027,) x ranges.shape (1027, 2)
 uniq x = 1933 slopes.shape = (11814,) x ranges.shape (11814, 2)
@@ -490,6 +504,8 @@ uniq x = 42 slopes.shape = (8551,) x ranges.shape (8551, 2)
 uniq x = 355 slopes.shape = (16019,) x ranges.shape (16019, 2)
 uniq x = 29 slopes.shape = (9204,) x ranges.shape (9204, 2)
 Impact importance time 13s
+
+flight has 5,819,080 records.
 }
 
 

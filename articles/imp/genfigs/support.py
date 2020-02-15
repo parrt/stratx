@@ -727,17 +727,17 @@ def plot_topk(R, ax=None, k=None,
 
 
 def stability(X, y, sample_size, n_trials, technique='StratImpact',
-              catcolnames=None,
+              catcolnames=set(),
               imp_n_trials=1,
-              min_slopes_per_x=5,
+              min_slopes_per_x=15,
               n_trees=1, min_samples_leaf=10, bootstrap=False, max_features=1.0
               ):
     n = len(X)
     all_I = pd.DataFrame(data=X.columns, columns=['Feature'])
     all_I = all_I.set_index('Feature')
     for i in range(n_trials):
-        bootstrap_sample_idxs = resample(range(n), n_samples=sample_size, replace=False)
-        X_, y_ = X.iloc[bootstrap_sample_idxs], y.iloc[bootstrap_sample_idxs]
+        subsample_idxs = resample(range(n), n_samples=sample_size, replace=False)
+        X_, y_ = X.iloc[subsample_idxs], y.iloc[subsample_idxs]
         if technique=='StratImpact':
             I = importances(X_, y_,
                             catcolnames=catcolnames,
@@ -759,7 +759,7 @@ def stability(X, y, sample_size, n_trials, technique='StratImpact',
         # print(all_I)
     I = pd.DataFrame(data={'Feature': X.columns,
                            'Importance': np.mean(all_I, axis=1),
-                           'Sigma': np.std(all_I, axis=1)})
+                           'Importance sigma': np.std(all_I, axis=1)})
     I = I.set_index('Feature')
     I = I.sort_values('Importance', ascending=False)
     I.reset_index().to_feather("/tmp/t.feather")
