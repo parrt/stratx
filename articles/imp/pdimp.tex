@@ -285,23 +285,169 @@ Summarize our benefits. we do not alter the data in any way. model free not just
 
 \section{Experimental results}\label{sec:experiments}
 
-Assessing the quality of feature impact and importance is challenging because, even with domain expertise, humans are unreliable estimators (which is why we need data analysis algorithms in the first place).  The simplest approach is to examine impacts computed from synthetic data for which the answer is clear, as we did with the bodyweight data in \figref{fig:shap-weight} (impact is the area under the black line).  For real data sets, we can train a predictive model on the most impactful or most important $k$ features, as identified by the methods of interests, and then compare model prediction errors. (\citealt{mRMR} and \citealt{tsanas} also used this approach.) The method that accurately identifies the most impactful features without getting confused by codependent features, should yield lower prediction errors for a given $k$. 
+Assessing the quality of feature impact and importance is challenging because, even with domain expertise, humans are unreliable estimators (which is why we need data analysis algorithms in the first place).  The simplest approach is to examine impacts and importances computed from synthetic data for which the answer is clear, as we did with the bodyweight data in \figref{fig:shap-weight} (impact is the area under the black line).  For real data sets, we can train a predictive model on the most impactful or most important $k$ features, as identified by the methods of interests, and then compare model prediction errors. (\citealt{mRMR} and \citealt{tsanas} also used this approach.) The method that accurately identifies the most impactful features without getting confused by codependent features, should yield lower prediction errors for a given $k$. 
 
-In this section, we present the results of several experiments using the toy Boston data set and three real data sets, NYC rent prices \citep{rent}, bulldozer auction sales \citep{bulldozer}, and flight delays \citep{flights}. We begin with a baseline comparison of \simp{}'s importance metric to two simple model-free methods using the top-$k$ ranked features, then compare \simp{} to permutation importance and SHAP. We finish up by examining \simp's efficiency on nontrival Kaggle data subsets.
+In this section, we present the results of several experiments using the toy Boston data set and three real data sets, NYC rent prices \citep{rent}, bulldozer auction sales \citep{bulldozer}, and flight delays \citep{flights}. We begin with a baseline comparison of \simp{}'s importance metric to two simple model-free methods using the top-$k$ ranked features, then compare \simp{} to permutation importance and SHAP. We finish up by examining \simp's efficiency on the Kaggle data sets.
 
-Our first experiment is to compare the feature rankings recommended by \simp{} to PCA's ranking (``loads'' associated with the first component) and to Spearman's R coefficient computed between each $x_j$ and the response variable, $y$. \figref{fig:baseline} shows error rates versus the number of features using an RF model with 40 trees trained using the various top-$k$ feature rankings. Surprisingly, Spearman's R does a good job for all but the bulldozer data set. PCA is the opposite, performing well on bulldozer but poorly on the others. \simp{} is competitive with or surpasses these baseline techniques.  Rankings from ordinary least squares (OLS) regression coefficients, divided by their standard error, are included as a common reference curve on this and the following graphs. \todo{25k records, 80/20 split, 40 trees etc..., 10 runs, 5-fold CV}
+Our first experiment is to compare the feature rankings recommended by \simp{} to PCA's ranking (``loads'' associated with the first component) and to Spearman's R coefficients computed between each $x_j$ and the response variable, $y$. \figref{fig:baseline} shows mean absolute error  (MAE) versus the number of features using an RF model with 40 trees trained using the various top-$k$ feature rankings. Surprisingly, Spearman's R does a good job for all but the bulldozer data set. PCA is the opposite, performing well on bulldozer but poorly on the others. \simp{} is competitive with or surpasses these baseline techniques.  Rankings from ordinary least squares (OLS) regression coefficients, divided by their standard error, are included as a common reference curve on this and the following graphs. \todo{25k records, 80/20 split, 40 trees etc..., 10 runs, 5-fold CV}
 
-Next, in \figref{fig:topk}, we compare \simp{}'s rankings to those of OLS, RF-based permutation importance, and SHAP interrogating linear-model-specific and tree-specific models. Error curves were generated with an RF model trained on the top-$k$ features recommended by each technique, using $n$=25,000 records sampled from the total data set population with an 80/20 train/validation split. (Boston only 506  total records.) RF SHAP and RF permutation importances have a distinct advantage here because they use the same kind of model (RF) for both feature ranking and top-$k$ error curves. Moreover, the model-based methods were able to select features using the validation set, the same data used to compute error curves. In contrast, \simp{} cannot use predictions from a fitted model, by design, and we restricted \simp{} to examining just the training data, without access to the validation data, to see how it fared. 
+\begin{figure}
+\centering
+\begin{subfigure}{.245\textwidth}
+    \centering
+\includegraphics[scale=0.45]{images/boston-topk-baseline-Importance.pdf}
+\subcaption{\footnotesize foo}
+\end{subfigure}%
+%\hfill
+\begin{subfigure}{.245\textwidth}
+    \centering
+\includegraphics[scale=0.45]{images/flights-topk-baseline-Importance.pdf}
+\subcaption{\footnotesize foo}
+\end{subfigure}
+%\hfill
+\begin{subfigure}{.245\textwidth}
+    \centering
+\includegraphics[scale=0.45]{images/bulldozer-topk-baseline-Importance.pdf}
+\subcaption{\footnotesize foo}
+\end{subfigure}
+%\hfill
+\begin{subfigure}{.245\textwidth}
+    \centering
+\includegraphics[scale=0.45]{images/rent-topk-baseline-Importance.pdf}
+\subcaption{\footnotesize foo  }
+\end{subfigure} 
+\caption{\small variation appears from run to run given the subset of overall data used for these experiments. OLS-based SHAP; {\tt\small LinearExplainer}; RF-based SHAP; {\tt\small TreeExplainer}, {\tt\small feature\_perturbation='interventional'}; RF has 40 trees for both feature ranking and error curves}
+\label{fig:baseline}
+\end{figure}
 
-Despite these handicaps, \figref{fig:topk} shows that \simp{}'s feature importances are competitive with the rankings from the other methods  applied to the four data sets.   The exception is that the \simp{} bulldozer error curve starts out higher than RF SHAP and RF permutation importance. This is because \simp{} chooses feature {\tt YearMade} as the single most important feature, whereas the RF-based techniques choose ordinal feature {\tt ProductSize}. \todo{tie into importance graphs} The \simp{} bulldozer error curve then converges with the RF-based curves.  Depending on the subset drawn from the various overall data set populations, the recommended rankings and error curves can shift.
+Next, in \figref{fig:topk}, we compare \simp{}'s rankings to those of OLS, RF-based permutation importance, and SHAP interrogating OLS and RF models. MAE error curves were generated with an RF model trained on the top-$k$ features recommended by each technique, using $n$=25,000 records sampled from the total data set population with an 80/20 train/validation split. (Boston only has 506  total records.) RF SHAP and RF permutation importances have a distinct advantage here because they use the same kind of model (RF) for both feature ranking and top-$k$ error curves. Moreover, the model-based methods were all able to select features using the validation set, the same validation set used to compute error curves. In contrast, \simp{} cannot use predictions from a fitted model, by design, and we restricted \simp{} to examining just the training data, without access to the validation data, to see how it fared. 
 
-The feature rankings derived from OLS perform poorly for the first few features, but then merge with the error curves from the RF-based feature rankings.  While the features were chosen by interrogating a linear model, the error curves are generated using predictions from a (stronger) RF model. Once the RF integrates sufficient numbers of features with reasonable importance, prediction error curves become more similar.  In other words, although the order might not be the best, even a linear model can provide good estimates of the top few most  predictive features.
+\begin{figure}
+\centering
+\begin{subfigure}{.245\textwidth}
+    \centering
+\includegraphics[scale=0.45]{images/boston-topk-RF-Importance.pdf}
+\subcaption{\footnotesize foo}
+\end{subfigure}%
+\hfill
+\begin{subfigure}{.245\textwidth}
+    \centering
+\includegraphics[scale=0.45]{images/flights-topk-RF-Importance.pdf}
+\subcaption{\footnotesize foo}
+\end{subfigure}
+\hfill
+\begin{subfigure}{.245\textwidth}
+    \centering
+\includegraphics[scale=0.45]{images/bulldozer-topk-RF-Importance.pdf}
+\subcaption{\footnotesize fff}
+\end{subfigure}%
+\hfill
+\begin{subfigure}{.245\textwidth}
+    \centering
+\includegraphics[scale=0.45]{images/rent-topk-RF-Importance.pdf}
+\subcaption{\footnotesize foo}
+\end{subfigure}
+\caption[short]{Features from RF model, tested on RF}
+\label{fig:topk}
+\end{figure}
 
-We have also found that the plain impact, area under the partial dependence curve unweighted by $x_j$ density, also works well, as shown in \figref{fig:topk-impact}.  In the bulldozer case, for example, the first impact-ranked \simp{} feature is much better than the first \simp{} importance-ranked feature, as shown in \figref{fig:topk}(c) and \figref{fig:topk-impact}(c). (\simp{} selects the high-cardinality categorical variable {\tt ModelID}.) In fact, this impact feature yields half the error rate than that of the all the other methods' top features. On the other hand, Using impact instead of importance for the flight data set leads to a poor second rank feature choice; compare \figref{fig:topk}(b) and \figref{fig:topk-impact}(b).
+Despite these handicaps, \figref{fig:topk} shows that \simp{}'s feature importances are competitive with the rankings from the other methods  applied to the four data sets.   The exception is that the \simp{} bulldozer error curve starts out higher than RF SHAP and RF permutation importance. This is because \simp{} chooses feature {\tt YearMade} as the single most important feature, whereas the RF-based techniques choose ordinal feature {\tt ProductSize}. \todo{tie into importance graphs} The \simp{} bulldozer error curve then quickly converges with the RF-based curves.  Depending on the subset drawn from the various overall data set populations, the recommended rankings and error curves can shift.
 
-Features that are predictive in one model are not necessarily predictive in another model.  To determine how well the feature rankings from the various methods ``export'' to other models, we trained gradient boosting machines (GBM) on the OLS-based, RF-based, and \simp{} feature rankings. \figref{fig:topk-gbm} shows that the error curves generated using GBM models are similar to those resulting from RF models, except for the flight delay curve, which does not improve much after feature five while the other feature rankings do.  This could be \simp's choice of features or the fact that we used a single set of GBM hyper-parameters for all graphs, not tuning the GBMs per dataset. 
+The feature rankings derived from OLS perform poorly for the first few features, but then merge with the error curves from the RF-based feature rankings.  While the features were chosen by interrogating a linear model, the error curves are generated using predictions from a (stronger) RF model. Once the RF integrates sufficient numbers of features with reasonable importance, prediction error curves become more similar.  In other words, although the order might not be the best, even a linear model can provide good estimates of the top few most  predictive features. The error curve derived from the OLS SHAP feature rankings differs from the OLS curve because the OLS coefficients are divided by the standard error. Without normalizing for coefficient variance, the OLS and OLS SHAP curves merge.
 
-Because GBMs are based upon decision trees (stumps) like random forests, the RF-based feature rankings would likely export well to GBM models.  Consequently, we computed error curves for the Boston and rent feature rankings using OLS regressors, as shown in \figref{fig:OLS}. (The Boston and rent data sets are the only ones without categorical variables, and we wanted to avoid creating tens of thousands of dummy variables for the flight and bulldozer data sets.) The error curves derived from OLS models are all higher than those from RFs, as expected, but no technique's feature ranking fails to export.
+\figref{fig:topk-impact} shows that the plain impact, area under the partial dependence curve unweighted by $x_j$ density, can also work well.  In the bulldozer case, for example, the first impact-ranked \simp{} feature is much better than the first \simp{} importance-ranked feature, as shown in \figref{fig:topk}(c) and \figref{fig:topk-impact}(c). (\simp{} selects the high-cardinality categorical variable {\tt ModelID}.) In fact, this impact feature yields half the MAE of all the other methods' top features. On the other hand, using impact instead of importance for the flight data set leads to a poor second rank feature choice; compare \figref{fig:topk}(b) and \figref{fig:topk-impact}(b).
+
+\begin{figure}
+\centering
+\begin{subfigure}{.245\textwidth}
+    \centering
+\includegraphics[scale=0.45]{images/boston-topk-RF-Impact.pdf}
+\subcaption{\footnotesize foo}
+\end{subfigure}%
+\hfill
+\begin{subfigure}{.245\textwidth}
+    \centering
+\includegraphics[scale=0.45]{images/flights-topk-RF-Impact.pdf}
+\subcaption{\footnotesize foo}
+\end{subfigure}
+\hfill
+\begin{subfigure}{.245\textwidth}
+    \centering
+\includegraphics[scale=0.45]{images/bulldozer-topk-RF-Impact.pdf}
+\subcaption{\footnotesize foo}
+\end{subfigure}%
+\hfill
+\begin{subfigure}{.245\textwidth}
+    \centering
+\includegraphics[scale=0.45]{images/rent-topk-RF-Impact.pdf}
+\subcaption{\footnotesize foo}
+\end{subfigure}
+\caption[short]{Features from RF model, tested on RF}
+\label{fig:topk-impact}
+\end{figure}
+
+Features that are predictive in one model are not necessarily predictive in another model.  To determine how well the feature rankings from the various methods ``export'' to other models, we trained gradient boosting machines (GBM) on the OLS-based, RF-based, and \simp{} feature rankings. \figref{fig:topk-gbm} shows that the \simp{} error curves generated using GBM models are similar to those resulting from RF models, except for the flight delay curve, which does not improve much after feature five while the other feature rankings do.  This could be \simp's choice of features or the fact that we used a single set of GBM hyper-parameters for all graphs, not tuning the GBMs per dataset. 
+
+\begin{figure}
+\centering
+\begin{subfigure}{.245\textwidth}
+    \centering
+\includegraphics[scale=0.45]{images/boston-topk-GBM-Importance.pdf}
+\subcaption{\footnotesize foo}
+\end{subfigure}%
+\hfill
+\begin{subfigure}{.245\textwidth}
+    \centering
+\includegraphics[scale=0.45]{images/flights-topk-GBM-Importance.pdf}
+\subcaption{\footnotesize foo}
+\end{subfigure}
+\hfill
+\begin{subfigure}{.245\textwidth}
+    \centering
+\includegraphics[scale=0.45]{images/bulldozer-topk-GBM-Importance.pdf}
+\subcaption{\footnotesize abc}
+\end{subfigure}%
+\hfill
+\begin{subfigure}{.245\textwidth}
+    \centering
+\includegraphics[scale=0.45]{images/rent-topk-GBM-Importance.pdf}
+\subcaption{\footnotesize foo}
+\end{subfigure}
+\caption[short]{\small Features from RF model, tested on gradient boosting machine ({\tt xgboost} 0.90 learning\_rate=0.5,  max\_depth=5,  n\_estimators=100)}
+\label{fig:topk-gbm}
+\end{figure}
+
+Because GBMs are based upon decision trees (stumps) like random forests, the RF-based feature rankings would likely export well to GBM models.  To check feature exportation to a very different model, we computed error curves for the Boston and rent  data sets using OLS regressors, as shown in \figref{fig:OLS}. (The Boston and rent data sets are the only ones without categorical variables, and we wanted to avoid creating tens of thousands of dummy variables for the flight and bulldozer data sets.) The error curves derived from OLS models are all higher than those from RFs, as expected, but no technique's feature ranking fails to export.
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.5]{images/boston-topk-OLS-Importance.pdf}~~~
+\includegraphics[scale=0.5]{images/rent-topk-OLS-Importance.pdf}
+\captionof{figure}{\small OLS model}
+\label{fig:OLS}
+\end{center}
+\end{figure}
+
+Speed is an important consideration when using feature importance techniques for model feature selection, as practitioners need to iterate quickly when developing models.
+
+Performance...
+
+\begin{figure}
+\centering
+\begin{tabular}{r r r r r r r r r}
+{\bf dataset} & $p$ & catvars & {\small $n$=1,000} & {\small 10,000} & {\small 20,000} & {\small 30,000} & time versus $n$~~ & $R^2$\\
+\hline
+{\tt\small flight} & 17 & 5 & 0.6s & 17.7s & 64.6s & 0 &
+{\small $-0.088 n + 0.164 n^2$} & {\small 0.9995}\\
+{\tt\small bulldozer} & 14 & 2 & 0.2s & 2.7s & 8.7s & 0 &
+{\small $0.101 n + 0.016 n^2$} & {\small 0.9998}\\
+{\tt\small rent} & 20 & 0 & 0.3s & 3.7s & 8.1s & 0 &
+{\small $0.367 n + 0.003 n^2$} & {\small 0.9994}\\
+\end{tabular}
+\caption{timing stuff}
+\label{fig:timing}
+\end{figure}
+
 
 Show performance and give rough $O(...)$. $p$ times cost of doing \spd{} or \cspd. cost of \spd{} is cost to train RF then cost to walk leaves and perform piecewise linear approximation for each leaf. Then average the slope-ranges.  piecewise linear approximation is a function of elements in leaf but in total, we are computing differences on all n elements. to average the slopes together, it's a function of how many slopes, which could be n If all values are unique. There are roughly unique x by n slopes in a matrix of values that we collapse to get average slope in a range.  Integrating the slopes, the partial derivatives, is O(unique x). \todo{ print out how many nx and nslopes are}.
 
@@ -348,140 +494,7 @@ Impact importance time 13s
 }
 
 
-\begin{figure}
-\centering
-\begin{subfigure}{.245\textwidth}
-    \centering
-\includegraphics[scale=0.45]{images/boston-topk-baseline-Importance.pdf}
-\subcaption{\footnotesize foo}
-\end{subfigure}%
-%\hfill
-\begin{subfigure}{.245\textwidth}
-    \centering
-\includegraphics[scale=0.45]{images/flights-topk-baseline-Importance.pdf}
-\subcaption{\footnotesize foo}
-\end{subfigure}
-%\hfill
-\begin{subfigure}{.245\textwidth}
-    \centering
-\includegraphics[scale=0.45]{images/bulldozer-topk-baseline-Importance.pdf}
-\subcaption{\footnotesize foo}
-\end{subfigure}
-%\hfill
-\begin{subfigure}{.245\textwidth}
-    \centering
-\includegraphics[scale=0.45]{images/rent-topk-baseline-Importance.pdf}
-\subcaption{\footnotesize foo  }
-\end{subfigure} 
-\caption{\small variation appears from run to run given the subset of overall data used for these experiments. OLS-based SHAP; {\tt\small LinearExplainer}; RF-based SHAP; {\tt\small TreeExplainer}, {\tt\small feature\_perturbation='interventional'}; RF has 40 trees for both feature ranking and error curves}
-\label{fig:baseline}
-\end{figure}
 
-\begin{figure}
-\centering
-\begin{subfigure}{.245\textwidth}
-    \centering
-\includegraphics[scale=0.45]{images/boston-topk-RF-Importance.pdf}
-\subcaption{\footnotesize foo}
-\end{subfigure}%
-\hfill
-\begin{subfigure}{.245\textwidth}
-    \centering
-\includegraphics[scale=0.45]{images/flights-topk-RF-Importance.pdf}
-\subcaption{\footnotesize foo}
-\end{subfigure}
-\hfill
-\begin{subfigure}{.245\textwidth}
-    \centering
-\includegraphics[scale=0.45]{images/bulldozer-topk-RF-Importance.pdf}
-\subcaption{\footnotesize fff}
-\end{subfigure}%
-\hfill
-\begin{subfigure}{.245\textwidth}
-    \centering
-\includegraphics[scale=0.45]{images/rent-topk-RF-Importance.pdf}
-\subcaption{\footnotesize foo}
-\end{subfigure}
-\caption[short]{Features from RF model, tested on RF}
-\label{fig:topk}
-\end{figure}
-
-\begin{figure}
-\centering
-\begin{subfigure}{.245\textwidth}
-    \centering
-\includegraphics[scale=0.45]{images/boston-topk-RF-Impact.pdf}
-\subcaption{\footnotesize foo}
-\end{subfigure}%
-\hfill
-\begin{subfigure}{.245\textwidth}
-    \centering
-\includegraphics[scale=0.45]{images/flights-topk-RF-Impact.pdf}
-\subcaption{\footnotesize foo}
-\end{subfigure}
-\hfill
-\begin{subfigure}{.245\textwidth}
-    \centering
-\includegraphics[scale=0.45]{images/bulldozer-topk-RF-Impact.pdf}
-\subcaption{\footnotesize foo}
-\end{subfigure}%
-\hfill
-\begin{subfigure}{.245\textwidth}
-    \centering
-\includegraphics[scale=0.45]{images/rent-topk-RF-Impact.pdf}
-\subcaption{\footnotesize foo}
-\end{subfigure}
-\caption[short]{Features from RF model, tested on RF}
-\label{fig:topk-impact}
-\end{figure}
-
-
-\begin{figure}
-\centering
-\begin{subfigure}{.245\textwidth}
-    \centering
-\includegraphics[scale=0.45]{images/boston-topk-GBM-Importance.pdf}
-\subcaption{\footnotesize foo}
-\end{subfigure}%
-\hfill
-\begin{subfigure}{.245\textwidth}
-    \centering
-\includegraphics[scale=0.45]{images/flights-topk-GBM-Importance.pdf}
-\subcaption{\footnotesize foo}
-\end{subfigure}
-\hfill
-\begin{subfigure}{.245\textwidth}
-    \centering
-\includegraphics[scale=0.45]{images/bulldozer-topk-GBM-Importance.pdf}
-\subcaption{\footnotesize abc}
-\end{subfigure}%
-\hfill
-\begin{subfigure}{.245\textwidth}
-    \centering
-\includegraphics[scale=0.45]{images/rent-topk-GBM-Importance.pdf}
-\subcaption{\footnotesize foo}
-\end{subfigure}
-\caption[short]{\small Features from RF model, tested on gradient boosting machine ({\tt xgboost} 0.90 learning\_rate=0.5,  max\_depth=5,  n\_estimators=100)}
-\label{fig:topk-gbm}
-\end{figure}
-
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.5]{images/boston-topk-OLS-Importance.pdf}~~~
-\includegraphics[scale=0.5]{images/rent-topk-OLS-Importance.pdf}
-\captionof{figure}{\small OLS model}
-\label{fig:OLS}
-\end{center}
-\end{figure}
-
-
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.7]{images/timing}
-\caption{\small foo}
-\label{fig:timing}
-\end{center}
-\end{figure}
 
 \begin{figure}
 \centering
@@ -529,6 +542,8 @@ all code is available at github; {\tt\small RUNME.py}
 The bulldozer error curve in \figref{fig:topk}(c) is surprising because the top feature recommended by \simp{} gets half the error rate of the top features recommended by the other methods. One would expect model-based techniques to easily identify the single most important model feature, or at least more readily than a model-free approach.  (\simp{} recommends the high-cardinality categorical variable {\tt ModelID}, whereas RF-based permutation importance and SHAP recommend ordinal {\tt ProductSize}.)  Even if such results are rare, misidentifying the single most important feature indicates that there is room for improvement in this research area.
 
 even if recommendations are identified by their isolated contribution, the model is still taking the combination into consideration when fitting and hence the marginal errors are not necessarily reduced specifically because of the added feature at number $k$.
+
+coefficients divided by variance outperform OLS SHAP.
 
 \todo{We need min samples per x to avoid left edge issues as they skew entire pdp, which severely skews mass AUC.}
 

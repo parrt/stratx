@@ -102,6 +102,8 @@ def linear_model_importance(model, X, y):
 
     imp = np.abs(model.coef_)
 
+    # Without dividing by stderr, OLS mirrors OLS SHAP for most part
+
     # use statsmodels to get stderr for betas
     if isinstance(model, LinearRegression):
         # stderr for betas makes no sense in Lasso
@@ -190,17 +192,10 @@ def cv_features(kfold_indexes, X, y, features, metric, catcolnames=None, model='
             y_pred = m.predict(X_test[features])
             s = metric(y_test, y_pred)
         elif model == 'OLS':
-            if catcolnames is not None:
-                # TODO: this is broken: doesn't apply training cats to X_test
-                X_train = todummies(X_train[features], features, catcolnames)
-                X_test = todummies(X_test[features], features, catcolnames)
-            else:
-                X_train = X_train[features]
-                X_test = X_test[features]
-
+            # no need to normalize for prediction purposes
             m = LinearRegression()
-            m.fit(X_train, y_train)
-            y_pred = m.predict(X_test)
+            m.fit(X_train[features], y_train)
+            y_pred = m.predict(X_test[features])
             s = metric(y_test, y_pred)
         elif model == 'Lasso':
             m = Lasso(normalize=True)
@@ -381,8 +376,8 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yra
                   min_slopes_per_x=15,
                   cat_min_samples_leaf=5,
                   min_samples_leaf=10):
-    model="RF"
-    test_size = .2 # Some techniques use validation set to pick best features
+    model = "RF"
+    test_size = .2  # Some techniques use validation set to pick best features
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
     # use same set of folds for all techniques
@@ -401,106 +396,108 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yra
                              stratpd_min_samples_leaf=min_samples_leaf,
                              imp_n_trials=n_trials,
                              )
-    w = 4.5 if dataset=='flights' else 3
-    plot_importances(imps['StratImpact'].iloc[:8], imp_range=(0,0.4), width=w,
+    w = 4.5 if dataset == 'flights' else 3
+    plot_importances(imps['StratImpact'].iloc[:8], imp_range=(0, 0.4), width=w,
                      title=f"{dataset} StratImpact importances")
     plt.tight_layout()
     plt.savefig(f"../images/{dataset}-features.pdf")
     # plt.show()
     plt.close()
 
-    plot_importances(imps['RF SHAP'].iloc[:8], imp_range=(0,0.4), width=w,
+    plot_importances(imps['RF SHAP'].iloc[:8], imp_range=(0, 0.4), width=w,
                      title=f"{dataset} SHAP RF importances")
     plt.tight_layout()
     plt.savefig(f"../images/{dataset}-features-shap-rf.pdf")
     # plt.show()
     plt.close()
 
-    sortby="Importance"
-    R = test_top_features(X, y,
-                          imps,
-                          kfold_indexes,
-                          sortby=sortby,
-                          top_features_range=(1,8),
-                          metric=mean_absolute_error,
-                          model=model,
-                          catcolnames=catcolnames)
-    # print(R)
+    doall=True
+    if doall:
+        sortby="Importance"
+        R = test_top_features(X, y,
+                              imps,
+                              kfold_indexes,
+                              sortby=sortby,
+                              top_features_range=(1,8),
+                              metric=mean_absolute_error,
+                              model=model,
+                              catcolnames=catcolnames)
+        # print(R)
 
-    R_ = R[['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']]
-    plot_topk(R_, k=8, title=f"{model} {title}",
-              ylabel=f"5-fold CV MAE ({yunits})",
-              xlabel=f"Top $k$ feature ${sortby}$",
-              title_fontsize=14,
-              label_fontsize=14,
-              ticklabel_fontsize=10,
-              yrange=yrange,
-              figsize=figsize)
-    plt.tight_layout()
-    plt.savefig(f"../images/{dataset}-topk-{model}-{sortby}.pdf", bbox_inches="tight", pad_inches=0)
-    plt.show()
+        R_ = R[['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']]
+        plot_topk(R_, k=8, title=f"{model} {title}",
+                  ylabel=f"5-fold CV MAE ({yunits})",
+                  xlabel=f"Top $k$ feature ${sortby}$",
+                  title_fontsize=14,
+                  label_fontsize=14,
+                  ticklabel_fontsize=10,
+                  yrange=yrange,
+                  figsize=figsize)
+        plt.tight_layout()
+        plt.savefig(f"../images/{dataset}-topk-{model}-{sortby}.pdf", bbox_inches="tight", pad_inches=0)
+        plt.show()
 
-    R_ = R[['Spearman', 'PCA', 'OLS', 'StratImpact']]
-    plot_topk(R_, k=8, title=f"{model} {title}",
-              ylabel=f"5-fold CV MAE ({yunits})",
-              xlabel=f"Top $k$ feature ${sortby}$",
-              title_fontsize=14,
-              label_fontsize=14,
-              ticklabel_fontsize=10,
-              yrange=yrange,
-              figsize=figsize)
-    plt.tight_layout()
-    plt.savefig(f"../images/{dataset}-topk-baseline-{sortby}.pdf", bbox_inches="tight", pad_inches=0)
-    plt.show()
+        R_ = R[['Spearman', 'PCA', 'OLS', 'StratImpact']]
+        plot_topk(R_, k=8, title=f"{model} {title}",
+                  ylabel=f"5-fold CV MAE ({yunits})",
+                  xlabel=f"Top $k$ feature ${sortby}$",
+                  title_fontsize=14,
+                  label_fontsize=14,
+                  ticklabel_fontsize=10,
+                  yrange=yrange,
+                  figsize=figsize)
+        plt.tight_layout()
+        plt.savefig(f"../images/{dataset}-topk-baseline-{sortby}.pdf", bbox_inches="tight", pad_inches=0)
+        plt.show()
 
-    sortby="Impact"
-    R = test_top_features(X, y,
-                          imps,
-                          kfold_indexes,
-                          sortby=sortby,
-                          top_features_range=(1,8),
-                          metric=mean_absolute_error,
-                          model=model,
-                          catcolnames=catcolnames)
+        sortby="Impact"
+        R = test_top_features(X, y,
+                              imps,
+                              kfold_indexes,
+                              sortby=sortby,
+                              top_features_range=(1,8),
+                              metric=mean_absolute_error,
+                              model=model,
+                              catcolnames=catcolnames)
 
-    R_ = R[['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']]
-    plot_topk(R_, k=8, title=f"{model} {title}",
-              ylabel=f"5-fold CV MAE ({yunits})",
-              xlabel=f"Top $k$ feature ${sortby}$",
-              title_fontsize=14,
-              label_fontsize=14,
-              ticklabel_fontsize=10,
-              yrange=yrange,
-              figsize=figsize)
-    plt.tight_layout()
-    plt.savefig(f"../images/{dataset}-topk-{model}-{sortby}.pdf", bbox_inches="tight", pad_inches=0)
-    plt.show()
+        R_ = R[['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']]
+        plot_topk(R_, k=8, title=f"{model} {title}",
+                  ylabel=f"5-fold CV MAE ({yunits})",
+                  xlabel=f"Top $k$ feature ${sortby}$",
+                  title_fontsize=14,
+                  label_fontsize=14,
+                  ticklabel_fontsize=10,
+                  yrange=yrange,
+                  figsize=figsize)
+        plt.tight_layout()
+        plt.savefig(f"../images/{dataset}-topk-{model}-{sortby}.pdf", bbox_inches="tight", pad_inches=0)
+        plt.show()
 
-    model = "GBM"
-    sortby = "Impact"
-    sortby = "Importance"
-    R = test_top_features(X, y,
-                          imps,
-                          kfold_indexes,
-                          sortby=sortby,
-                          top_features_range=(1, 8),
-                          metric=mean_absolute_error,
-                          model=model,
-                          catcolnames=catcolnames)
+        model = "GBM"
+        sortby = "Impact"
+        sortby = "Importance"
+        R = test_top_features(X, y,
+                              imps,
+                              kfold_indexes,
+                              sortby=sortby,
+                              top_features_range=(1, 8),
+                              metric=mean_absolute_error,
+                              model=model,
+                              catcolnames=catcolnames)
 
-    R_ = R[['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']]
-    plot_topk(R_, k=8, title=f"{model} {title}",
-              ylabel=f"5-fold CV MAE ({yunits})",
-              xlabel=f"Top $k$ feature ${sortby}$",
-              title_fontsize=14,
-              label_fontsize=14,
-              ticklabel_fontsize=10,
-              yrange=yrange,
-              figsize=figsize)
-    plt.tight_layout()
-    plt.savefig(f"../images/{dataset}-topk-{model}-{sortby}.pdf", bbox_inches="tight",
-                pad_inches=0)
-    plt.show()
+        R_ = R[['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']]
+        plot_topk(R_, k=8, title=f"{model} {title}",
+                  ylabel=f"5-fold CV MAE ({yunits})",
+                  xlabel=f"Top $k$ feature ${sortby}$",
+                  title_fontsize=14,
+                  label_fontsize=14,
+                  ticklabel_fontsize=10,
+                  yrange=yrange,
+                  figsize=figsize)
+        plt.tight_layout()
+        plt.savefig(f"../images/{dataset}-topk-{model}-{sortby}.pdf", bbox_inches="tight",
+                    pad_inches=0)
+        plt.show()
 
     if dataset=='rent': # purely numerical features
         model = "OLS"
@@ -552,7 +549,7 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yra
                   ticklabel_fontsize=10,
                   # legend_location='lower left',
                   legend_location='upper right',
-                  yrange=(2,6),
+                  yrange=(2,6.5),
                   figsize=figsize)
         plt.tight_layout()
         plt.savefig(f"../images/{dataset}-topk-{model}-{sortby}.pdf", bbox_inches="tight", pad_inches=0)
@@ -610,6 +607,7 @@ def get_multiple_imps(dataset,
         lm = LinearRegression()
         lm.fit(X_train, y_train)
         ols_I, score = linear_model_importance(lm, X_test, y_test)
+        print("OLS\n",ols_I)
 
     if "OLS SHAP" in include:
         X_train = StandardScaler().fit_transform(X_train)
@@ -618,8 +616,7 @@ def get_multiple_imps(dataset,
         X_test = pd.DataFrame(X_test, columns=X.columns)
         lm = LinearRegression()
         lm.fit(X_train, y_train)
-        # fast enough so use all data
-        ols_shap_I = shap_importances(lm, X_test, X_test, n_shap=len(X_test))
+        ols_shap_I = shap_importances(lm, X_train, X_test, n_shap=len(X_test))
 
     X_train = pd.DataFrame(X_train, columns=X.columns)
     X_test = pd.DataFrame(X_test, columns=X.columns)
