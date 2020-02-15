@@ -6,7 +6,9 @@ use_oob=False
 metric = mean_absolute_error
 n = 20_000
 
-# X, y = load_rent(n=n)
+X, y = load_rent(n=n)
+print(X.shape)
+
 #
 # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 #
@@ -18,6 +20,8 @@ n = 20_000
 
 
 # X, y, _ = load_flights(n=n)
+# print(X.shape)
+
 #
 # I = importances(X, y, n_trials = 1,
 #                 cat_min_samples_leaf=5,
@@ -49,6 +53,7 @@ n = 20_000
 # plt.show()
 
 X, y = load_bulldozer()
+print(X.shape)
 
 # Most recent timeseries data is more relevant so get big recent chunk
 # then we can sample from that to get n

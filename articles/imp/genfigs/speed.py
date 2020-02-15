@@ -10,7 +10,7 @@ forcerun = False
 warmedup = False
 
 def get_timing(dataset, X, y, catcolnames=set(), cat_min_samples_leaf=5, max_size = 30_000):
-    sizes = np.arange(1000, max_size, 1000)
+    sizes = np.arange(1000, max_size+1, 1000)
     times = []
     for n in sizes:
         X_ = X[:n]
@@ -81,6 +81,23 @@ def flight(max_size=30_000):
                       cat_min_samples_leaf=2)
 
 
+def fitcurve(dataset,x,y,order=2):
+    poly = PolynomialFeatures(order)
+    model = make_pipeline(poly, Ridge())
+    model.fit(x, y)
+    # print(poly.get_feature_names())
+    ridge = model.named_steps['ridge']
+    s = model.score(x,y)
+    # y_pred = model.predict(x)
+    # ax.plot(x, y_pred, ':', c='k', lw=.7)
+    if order==2:
+        eqn = f"$y = {ridge.coef_[1]:.3f} n + {ridge.coef_[2]:.3f} n^2$"
+    else:
+        eqn = f"$y = {ridge.coef_[1]:.3f}$"
+    print(f"{dataset} R^2 {s:.5f} {eqn}")
+    return s, eqn
+
+
 R_flight = flight()
 R_rent = rent()
 R_bulldozer = bulldozer()
@@ -89,29 +106,56 @@ R_flight['size'] /= 1000
 R_rent['size'] /= 1000
 R_bulldozer['size'] /= 1000
 
-figsize = (3.5, 3.0)
+# Fit to quadratic for FLIGHT delay data; mildly quadratic
+x = R_flight['size'].values.reshape(-1, 1)
+y = R_flight['time']
+fl_s, fl_eqn = fitcurve("flight", x, y, order=2)
 
-fig, ax = plt.subplots(1,1,figsize=figsize)
+x = R_bulldozer['size'].values.reshape(-1, 1)
+y = R_bulldozer['time']
+bu_s, bu_eqn = fitcurve("flight", x, y, order=2)
+
+x = R_rent['size'].values.reshape(-1, 1)
+y = R_rent['time']
+re_s, re_eqn = fitcurve("flight", x, y, order=2)
+
+print(r"\begin{tabular}{r r r r r r r r}")
+print(r"{\bf dataset} & $p$ & $n$=1,000 & 10,000 & 20,000 & 30,000& quadratic & $R^2$\\")
+print(r"\hline")
+print(r"{\tt flight} & 17", end=' & ')
+print(f"{R_flight[R_flight['size']==1.0]['time'].values[0]:.1f}s", end=' & ')
+print(f"{R_flight[R_flight['size']==10.0]['time'].values[0]:.1f}s", end=' & ')
+print(f"{R_flight[R_flight['size']==20.0]['time'].values[0]:.1f}s", end=' & ')
+#print(f"{R_flight[R_flight['size']==30.0]['time'].values[0]:.1f}s", end=' & ')
+print('0 &')
+print(f"{fl_eqn} & {fl_s:.4f}\\\\")
+print(r"{\tt bulldozer} & 14", end=' & ')
+print(f"{R_bulldozer[R_bulldozer['size']==1.0]['time'].values[0]:.1f}s", end=' & ')
+print(f"{R_bulldozer[R_bulldozer['size']==10.0]['time'].values[0]:.1f}s", end=' & ')
+print(f"{R_bulldozer[R_bulldozer['size']==20.0]['time'].values[0]:.1f}s", end=' & ')
+#print(f"{R_bulldozer[R_bulldozer['size']==30.0]['time'].values[0]:.1f}s", end=' & ')
+print('0 &')
+print(f"{bu_eqn} & {bu_s:.4f}\\\\")
+print(r"{\tt rent} & 20", end=' & ')
+print(f"{R_rent[R_rent['size']==1.0]['time'].values[0]:.1f}s", end=' & ')
+print(f"{R_rent[R_rent['size']==10.0]['time'].values[0]:.1f}s", end=' & ')
+print(f"{R_rent[R_rent['size']==20.0]['time'].values[0]:.1f}s", end=' & ')
+#print(f"{R_flight[R_flight['size']==30.0]['time'].values[0]:.1f}s", end=' & ')
+print('0 &')
+print(f"{re_eqn} & {re_s:.4f}\\\\")
+print(r"\end{tabular}")
+
 
 lw = .8
+figsize = (3.5, 3.0)
+fig, ax = plt.subplots(1,1,figsize=figsize)
+
 ax.plot(R_flight['size'], R_flight['time'], '-',
         markersize=5, label="flight", lw=lw*2, c='#FEAE61')
 ax.plot(R_rent['size'], R_rent['time'], '-',
         markersize=5, label="rent", lw=lw, c='#A40227')
 ax.plot(R_bulldozer['size'], R_bulldozer['time'], '-',
         markersize=5, label="bulldozer", lw=lw, c='#415BA3')
-
-# Fit to quadratic for flight delay data; mildly quadratic
-poly = PolynomialFeatures(2)
-model = make_pipeline(poly, Ridge())
-x = R_flight['size'].values.reshape(-1, 1)
-model.fit(x, R_flight['time'])
-print(poly.get_feature_names())
-ridge = model.named_steps['ridge']
-#ax.text(100,40, f"${ridge.coef_[1]:.5f} n + {ridge.coef_[2]:.8f} n^2$")
-y = model.predict(x)
-
-ax.plot(x, y, ':', c='k', lw=.7, label=f"${ridge.coef_[1]:.3f} n + {ridge.coef_[2]:.3f} n^2$")
 
 plt.legend(loc="upper left")
 
