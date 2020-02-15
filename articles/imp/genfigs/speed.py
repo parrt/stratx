@@ -90,7 +90,9 @@ def fitcurve(dataset,x,y,order=2):
     s = model.score(x,y)
     # y_pred = model.predict(x)
     # ax.plot(x, y_pred, ':', c='k', lw=.7)
-    if order==2:
+    if order==3:
+        eqn = f"${ridge.coef_[1]:.3f} n + {ridge.coef_[2]:.3f} n^2 + {ridge.coef_[3]:.4f} n^3$"
+    elif order == 2:
         eqn = f"${ridge.coef_[1]:.3f} n + {ridge.coef_[2]:.3f} n^2$"
     else:
         eqn = f"${ridge.coef_[1]:.3f} n$"
@@ -109,7 +111,7 @@ R_bulldozer['size'] /= 1000
 # Fit to quadratic for FLIGHT delay data; mildly quadratic
 x = R_flight['size'].values.reshape(-1, 1)
 y = R_flight['time']
-fl_s, fl_eqn = fitcurve("flight", x, y, order=2)
+fl_s, fl_eqn = fitcurve("flight", x, y, order=3)
 
 x = R_bulldozer['size'].values.reshape(-1, 1)
 y = R_bulldozer['time']
