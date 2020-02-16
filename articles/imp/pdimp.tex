@@ -428,8 +428,6 @@ Because GBMs are based upon decision trees (stumps) like random forests, the RF-
 \end{center}
 \end{figure}
 
-\todo{not as important for bus/med insight vs feature selection}
-
 To compute the feature rankings described thus far, we set the random seed to 1 before each test in order to get reproducible figures. Computing feature impacts and importances always returns the same result for the same data, as there are no random processes involved.  Different subsets from a larger data set, however, can yield very different impacts, depending on the variability of the data set. \simp{} supports subsampling with multiple trials on the overall data set to get impact standard deviations.  As an example, \figref{fig:stability} shows the  feature rankings averaged from 10 trials using 75\% subsamples selected randomly from the 48k records of the rent data set. The error bars show two standard deviations (a red error bar indicate it reaches 0). The high variance of the neighborhood features, such as {\tt UpperEast} and {\tt astoria}, are all highly correlated because they represent the $L_1$ distance from each apartment's longitude/latitude to that neighborhood. The distance-to-neighborhood features have similar importance and selection depends on vagaries of the data set.
  
 \begin{figure}[htbp]
@@ -440,7 +438,9 @@ To compute the feature rankings described thus far, we set the random seed to 1 
 \end{center}
 \end{figure}
 
-Speed is also an important consideration when using feature importance techniques for feature selection---practitioners need to iterate quickly when developing models.  \simp{} is model-free and, therefore, does not incur the cost of training a model, except for the single decision tree used for stratification purposes to get partial dependences.   The cost of computing each $x_j$'s impact is the cost of computing the partial dependence and a pass over the unique $x_j$ values to compute the mean. To compute importance, it costs an extra pass over all $n$ $x_j$ values to get the histogram. The upper bound performance for \spd{} and \cspd{} partial dependences is $O(n \times |unique(x_j)|)$, or just $O(n^2)$ in the worst case.   Because $|unique(x_j)|$ is usually much smaller than $n$ in real data sets, \spd{} typically performs linearly.  The overall worst case behavior for \simp{} to get $p$ impacts is then $(p + |unique(x_j)|)\times n^2$ and $(p + |unique(x_j)|+n)\times n^2$ for importances, giving asymptotic behavior $O(n^2)$ and $O(n^3)$. 
+Because we are primarily concerned with computing variable impacts to gain business and medical insights, speed is less of a concern---practitioners would likely run \simp{} on their entire data set once they were happy with the feature set. (Feature selection, on the other hand, must be more performance as practitioners need to iterate quickly when developing models.)   Nonetheless, it is worthwhile analyzing \simp{} time complexity and demonstrating that it operates in a reasonable amount of time empirically.
+
+The cost of computing each $x_j$'s impact is dominated by the cost of computing the partial dependence and a pass over the unique $x_j$ values to compute the mean. To compute importance, it costs an extra pass over all $n$ $x_j$ values to get the histogram. The upper bound  complexity for \spd{} and \cspd{} partial dependences is $O(n \times |unique(x_j)|)$, or just $O(n^2)$ in the worst case.   Because $|unique(x_j)|$ is usually much smaller than $n$ in real data sets, \spd{} typically performs linearly, but \cspd{} exhibits quadratic behavior.  The overall worst case behavior for \simp{} is then $(p + |unique(x_j)|)\times n^2$ to get $p$ impacts and $(p + |unique(x_j)|+n)\times n^2$  to get $p$ importances, giving asymptotic behaviors of $O(n^2)$ and $O(n^3)$, respectively. 
 
 \begin{figure}
 \centering
@@ -455,9 +455,9 @@ Speed is also an important consideration when using feature importance technique
 \label{fig:timing}
 \end{figure}
 
-In practice, importances for numerical variables are nearly linear and importances for categorical variables are mildly quadratic. \figref{fig:timing} summarizes the empirical time in seconds to compute importances for subsets of the three Kaggle data sets. The ``time versus $n$'' and $R^2$ columns describe a quadratic fit to the time required to compute subsets from $n=1$ to 30,000 stepping by 1,000. The rent data set has no categorical variables and grows linearly with $n$, possibly with a small quadratic component. The flight data set, on the other hand, shows clear quadratic behavior due to the (five) categorical variables.
+In practice, importances for numerical variables are nearly linear and importances for categorical variables are mildly quadratic. \figref{fig:timing} summarizes the empirical time in seconds to compute importances for subsets of the three Kaggle data sets. The ``time versus $n$'' and $R^2$ columns describe a quadratic fit to the curve representing the time (in seconds) required to compute subsets from $n=1$ to 30,000 stepping by 1,000. The rent data set has no categorical variables and grows linearly with $n$, possibly with a small quadratic component. The flight data set, on the other hand, shows clear quadratic behavior due to the (five) categorical variables.
 
-Despite the highly nonlinear worst-case complexity, \figref{fig:timing} suggests our Python-only \simp{} prototype is fast enough for use on real data sets of sizes in the tens of thousands. Our casual attempts at parallelizing the computation of $p$ importances across $p$ CPU cores were thwarted by Python's dreaded ``global interpreter lock'' (threading) and passing data between processes (process-based threading).  We did, however, get increased performance  from using the Numba just-in-time compiler ({\tt\small http://numba.pydata.org}) on algorithm hotspots. Reimplementation in C would be the next step and should yield dramatic performance improvements over pure Python.
+Despite the highly nonlinear worst-case complexity, \figref{fig:timing} suggests our Python-only \simp{} prototype is fast enough for use on real data sets of sizes in the tens of thousands. Our casual attempt at parallelizing the computation of $p$ importances across $p$ CPU cores was thwarted by Python's dreaded ``global interpreter lock'' (threading) and passing data between processes (process-based threading).  We did, however, get increased performance using the Numba just-in-time compiler ({\tt\small http://numba.pydata.org}) on algorithm hotspots. Reimplementation in C would be the next step and should yield dramatic performance improvements over pure Python.
 
 \cut{
 cost of \spd{} is cost to train RF then cost to walk leaves and perform piecewise linear approximation for each leaf. Then average the slope-ranges.  piecewise linear approximation is a function of elements in leaf but in total, we are computing differences on all n elements. to average the slopes together, it's a function of how many slopes, which could be n If all values are unique. There are roughly unique x by n slopes in a matrix of values that we collapse to get average slope in a range.  Integrating the slopes, the partial derivatives, is O(unique x). 
@@ -540,17 +540,15 @@ flight has 5,819,080 records.
 \label{fig:features}
 \end{figure}
 
-all code is available at github; {\tt\small RUNME.py}
-
-\todo{an experiment where we show insensitive to noise column}
-
-\todo{what about outlier example}
+Readers can find the entire \simp{} code base at {\tt\small https://github.com/parrt/stratx} and can regenerate all figures in this paper by downloading Kaggle data sets and running {\tt\small articles/imp/genfigs/RUNME.py}.
 
 \section{Discussion and future work}
 
 The bulldozer error curve in \figref{fig:topk}(c) is surprising because the top feature recommended by \simp{} gets half the error rate of the top features recommended by the other methods. One would expect model-based techniques to easily identify the single most important model feature, or at least more readily than a model-free approach.  (\simp{} recommends the high-cardinality categorical variable {\tt ModelID}, whereas RF-based permutation importance and SHAP recommend ordinal {\tt ProductSize}.)  Even if such results are rare, misidentifying the single most important feature indicates that there is room for improvement in this research area.
 
 even if recommendations are identified by their isolated contribution, the model is still taking the combination into consideration when fitting and hence the marginal errors are not necessarily reduced specifically because of the added feature at number $k$.
+
+seems to do well with noise as there are lots of unimportant features that don't confuse it.
 
 coefficients divided by variance outperform OLS SHAP.
 
