@@ -447,17 +447,13 @@ Speed is also an important consideration when using feature importance technique
 \begin{tabular}{r r r r r r r r r}
 {\bf dataset} & $p$ & catvars & {\small $n$=1,000} & {\small 10,000} & {\small 20,000} & {\small 30,000} & time versus $n$~~ & $R^2$\\
 \hline
-{\tt\small flight} & 17 & 5 & 0.6s & 17.7s & 64.6s & 0 &
-{\small $-0.088 n + 0.164 n^2$} & {\small 0.9995}\\
-{\tt\small bulldozer} & 14 & 2 & 0.2s & 2.7s & 8.7s & 0 &
-{\small $0.101 n + 0.016 n^2$} & {\small 0.9998}\\
-{\tt\small rent} & 20 & 0 & 0.3s & 3.7s & 8.1s & 0 &
-{\small $0.367 n + 0.003 n^2$} & {\small 0.9994}\\
+{\tt\small flight} & 17 & 5 & 0.6s & 18.4s & 65.4s & 152.7s & {\small $-0.219 n + 0.170 n^2$} & {\small 0.9990}\\
+{\tt\small bulldozer} & 14 & 2 & 0.2s & 2.7s & 8.6s & 18.3s & {\small $0.078 n + 0.017 n^2$} & {\small 0.9997}\\
+{\tt\small rent} & 20 & 0 & 0.3s & 3.7s & 8.2s & 13.0s & {\small $0.385 n + 0.002 n^2$} & {\small 0.9985}\\
 \end{tabular}
 \caption{timing stuff}
 \label{fig:timing}
 \end{figure}
-
 
 In practice, importances for numerical variables are nearly linear and importances for categorical variables are mildly quadratic. \figref{fig:timing} summarizes the empirical time in seconds to compute importances for subsets of the three Kaggle data sets. The ``time versus $n$'' and $R^2$ columns describe a quadratic fit to the time required to compute subsets from $n=1$ to 30,000 stepping by 1,000. The rent data set has no categorical variables and grows linearly with $n$, possibly with a small quadratic component. The flight data set, on the other hand, shows clear quadratic behavior due to the (five) categorical variables.
 
@@ -546,11 +542,9 @@ flight has 5,819,080 records.
 
 all code is available at github; {\tt\small RUNME.py}
 
-\todo{an experiment where we show insensitive to noise column and any other codependent ones that are thrown in but don't affect y}
+\todo{an experiment where we show insensitive to noise column}
 
 \todo{what about outlier example}
-
-\todo{stability is valuable. users would not trust results that changed significantly for small data set changes. show our error bars from bootstrapping}
 
 \section{Discussion and future work}
 
