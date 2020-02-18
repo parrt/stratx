@@ -20,10 +20,11 @@ n_shap=len(X)
 fig, axes = plt.subplots(1,4,figsize=(10,2.5))
 
 lm = LinearRegression()
-#lm = Lasso(alpha=.001)
-lm.fit(X, y)
-ols_I, score = linear_model_importance(lm, X, y)
-ols_shap_I = shap_importances(lm, X, X, n_shap=n_shap)  # fast enough so use all data
+X_ = StandardScaler().fit_transform(X)
+X_ = pd.DataFrame(X_, columns=X.columns)
+lm.fit(X_, y)
+ols_I, score = linear_model_importance(lm, X_, y)
+ols_shap_I = shap_importances(lm, X_, X_, n_shap=n_shap)  # fast enough so use all data
 # print(ols_shap_I)
 lm_score = lm.score(X,y)
 print("OLS", lm_score, mean_absolute_error(y, lm.predict(X)))
