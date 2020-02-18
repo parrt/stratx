@@ -26,8 +26,8 @@ def quad(ax):
     ax.set_xlabel("$x_1, x_2$\n(a)", fontname='Arial')
     ax.set_ylabel("$y$", fontname='Arial')
     ax.fill_between(lx, [0] * n, y, color=impact_fill_color)
-    ax.fill_between(lx, [0] * n, y2, color=GREY, alpha=.5)
-    ax.fill_between(lx[lx<=1], y[lx<=1], y2[lx<=1], color=GREY, alpha=.8)
+    ax.fill_between(lx, [0] * n, y2, color='#B4D2F7', alpha=.8)
+    ax.fill_between(lx[lx<=1], y[lx<=1], y2[lx<=1], color='#B4D2F7', alpha=.8)
 
     ax.spines['top'].set_linewidth(.5)
     ax.spines['right'].set_linewidth(.5)
