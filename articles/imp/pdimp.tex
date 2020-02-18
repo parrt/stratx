@@ -78,7 +78,7 @@
 \maketitle
 
 \begin{abstract}%
-awesome abstract here
+There is no widely-accepted definition of feature importance. Moreover, practitioners conflate feature importance with feature impact upon the response variable.
 \end{abstract}
 
 \begin{keywords}
@@ -94,7 +94,7 @@ While some feature importance approaches work directly on the data, such as mini
 
 Feature importance should not, however, be interpreted as feature impact for several reasons. First, predictive features do not always coincide with impactful features; e.g., models unable to capture complex nonlinear feature-response relationships rank such features as unimportant, even if they have large impacts on the response. Next, practitioners must develop models accurate enough to yield meaningful feature importances, but there is no definition of ``accurate enough.'' Finally, it is possible to get very different feature importances (and hence impacts) running the same algorithm on the same data, just by choosing a different model. This is despite the fact that true feature impacts are relationships that exist in the data, with or without a model.
 
-Consider the feature importance charts in \figref{fig:diff-models} derived from four different models on the same, well-known Boston toy data set, as computed by SHAP that has recently emerged as the front runner in feature importance. The linear model (a) struggles to capture the relationship between features and target ($R^2$=0.74), so those importances are less trustworthy.  In contrast, the random forest (b), boosted trees (c), and support vector machine (d) models capture the relationship in the training records (all 506) with high fidelity, but SHAP derives meaningfully different feature importances from each model. The differences arise because feature importances are distorted by the lens' of the models, making it unclear which ranking, if any, gives the true feature impacts. 
+Consider the feature importance charts in \figref{fig:diff-models} derived from four different models on the same, well-known Boston toy data set, as computed by SHAP that has recently emerged as the front runner in feature importance. The linear model (a) struggles to capture the relationship between features and response variable ($R^2$=0.74), so those importances are less trustworthy.  In contrast, the random forest (b), boosted trees (c), and support vector machine (d) models capture the relationship in the training records (all 506) with high fidelity, but SHAP derives meaningfully different feature importances from each model. The differences arise because feature importances are distorted by the lens' of the models, making it unclear which ranking, if any, gives the true feature impacts. 
 
 \begin{figure}[htbp]
 \begin{center}
@@ -163,7 +163,7 @@ For categorical variables, \cspd{} uses the same stratification approach, but ca
 \end{center}
 \end{figure}
 
-Intuitively, the impact of $x_j$ is how much, on average, the values of $x_j$ are expected to push $y$ away from zero. We deliberately chose this  definition instead of measuring how much $x_j$ pushes $y$ away from the average response, $\overline{y}$. The impact of $x_1$ on $y$ is $x_1^2$, not $\overline{y} - x_1^2$; e.g., at $x_j=0$, the impact on $y$ should be 0, not $\overline{y}-0 = \overline{y}$.  \figref{fig:combined-area} illustrates how the area under the $x_1^2$ and $x_2$ partial dependence curves from $y = x_1^2+x_2+100$ differ from the area straddling the means. The true area under the curve ratio of $x_1$-to-$x_2$ is 2-to-1 (9/4.5), whereas the ratio of the area straddling the mean has roughly a 3-to-1 ratio (6.95/2.26). \todo{is this clear enough?}
+Intuitively, the impact of $x_j$ is how much, on average, the values of $x_j$ are expected to push $y$ away from zero. We deliberately chose this  definition instead of measuring how much $x_j$ pushes $y$ away from the average response, $\overline{y}$. The impact of $x_1$ on $y$ is $x_1^2$, not $\overline{y} - x_1^2$; e.g., at $x_j=0$, the impact on $y$ should be 0, not $\overline{y}-0 = \overline{y}$.  \figref{fig:combined-area} illustrates how the area under the $x_1^2$ and $x_2$ partial dependence curves from $y = x_1^2+x_2+100$ differ from the area straddling the means. The true area under-the-curve ratio of $x_1$-to-$x_2$ is 2-to-1 (9/4.5), whereas the ratio of the area straddling the mean has roughly a 3-to-1 ratio (6.95/2.26). \todo{is this clear enough?}
 
 \begin{figure}[htbp]
 \begin{center}
@@ -178,14 +178,14 @@ For business or medical insight purposes, deriving feature impacts from partial 
 \cut{
 While feature importances should not be interpreted as feature impacts, impacts can be effective as feature importances for model feature selection.  Features with the most impact on the response variable the most should coincide with the most predictive features. But, m
 
-The definition of impact in \eqnref{eq:Epd2a} assumes that each $x_j$ value is equally likely, which is not the case in practice for $(\bf X, y)$ data sets. To go from partial dependence to importance, the $\text{\it PD}_j$ curve at $x_j=z$ must be weighted by the number of samples at $x_j=z$ before computing the average magnitude.  The red dots represent the $\text{\it PD}_j$ weighted according to the histogram height and the orange region represents the impact {\tt\small YearMade} has on target {\tt\small SalePrice}. While the {\tt\small YearMade} partial dependence curve is plausible before year 1990 (older bulldozers are worth less), there are so few data points that the collection of very old bulldozers should have little overall effect on the overall average sale price.  This leads to a definition based upon expected value rather than simple averages across $x_j$ domains.
+The definition of impact in \eqnref{eq:Epd2a} assumes that each $x_j$ value is equally likely, which is not the case in practice for $(\bf X, y)$ data sets. To go from partial dependence to importance, the $\text{\it PD}_j$ curve at $x_j=z$ must be weighted by the number of samples at $x_j=z$ before computing the average magnitude.  The red dots represent the $\text{\it PD}_j$ weighted according to the histogram height and the orange region represents the impact {\tt\small YearMade} has on the response variable, {\tt\small SalePrice}. While the {\tt\small YearMade} partial dependence curve is plausible before year 1990 (older bulldozers are worth less), there are so few data points that the collection of very old bulldozers should have little overall effect on the overall average sale price.  This leads to a definition based upon expected value rather than simple averages across $x_j$ domains.
 }
 
 ~\\
 \noindent {\bf Definition 3} The {\em model-free feature importance}, $\text{Impo}_j$, of $x_j$ is the ratio of $x_j$'s expected partial dependence value to the total of all expected values, when all $x_j$ variables are normalized to the same fixed range:
 
 \begin{equation}\label{eq:Epd2b}
-\text{Impo}_j = \frac{\Ex[|\text{\it PD}_j|]}{\sum_{k=1}^p \Ex[|\text{\it PD}_k|]}
+\text{Importance}_j = \frac{\Ex[|\text{\it PD}_j|]}{\sum_{k=1}^p \Ex[|\text{\it PD}_k|]}
 \end{equation}
 
 \noindent where:
@@ -195,8 +195,6 @@ The definition of impact in \eqnref{eq:Epd2a} assumes that each $x_j$ value is e
 \end{equation}
 
 \noindent and $x_j[x_j=x_j^{(i)}]$ denotes the count of $x_j$ values equal to $x_j^{(i)}$.
-
-\todo{ need something better than Impo... how should we denote impact and importance?}
 
 \todo{
 \begin{itemize}
@@ -225,13 +223,13 @@ In an effort to deal with codependencies, data analysis techniques rank features
 J_{mRMR}(x_k) = I(x_k, y) - \frac{1}{|S|} \sum_{x_k \in S} I(x_k, x_j)
 \]
 
-\noindent where $I(x_k, x_j)$ is some measure of mutual information between $x_k$ and $x_j$, $S$ is the growing set of selected features, and $x_k$ is the candidate feature. mRMR only considers single-feature relationships with the response variable, and is limited to classification as originally defined. See \citep{ubermRMR} for a recent application of mRMR at Uber Technologies.  For more on model-free feature importances, see the survey by \citep{survey}.  \citet{tsanas} suggests using spearman's rank not mutual information. \citet{meyer-microarray} looks for pairs of features to target associations as an improvement, while retaining reasonable efficiency. See \citet{filter-benchmark} for benchmarks of filter versus filter methods.
+\noindent where $I(x_k, x_j)$ is some measure of mutual information between $x_k$ and $x_j$, $S$ is the growing set of selected features, and $x_k$ is the candidate feature. mRMR only considers single-feature relationships with the response variable, and is limited to classification as originally defined. See \citep{ubermRMR} for a recent application of mRMR at Uber Technologies.  For more on model-free feature importances, see the survey by \citep{survey}.  \citet{tsanas} suggests using spearman's rank not mutual information. \citet{meyer-microarray} looks for pairs of features to response variable associations as an improvement, while retaining reasonable efficiency. See \citet{filter-benchmark} for benchmarks of filter versus filter methods.
 
 The fundamental problem faced by all of these data analysis techniques is that they measure relevance by the strength of the association between (typically) a single feature to response $y$, but $y$ contains the impact of all $x_j$ variables. Computing an appropriate association metric between categorical and numeric values also presents a challenge.  In contrast, the definitions of impact and importance proposed in this paper isolate the effect of each $x_j$ on $y$, holding all other variables constant, and also support categorical features.
  
 Turning to model-based techniques, feature importance methods are typically variations on a theme: tweak the model and measure the effect on model prediction accuracy or expected model output. The simplest approach is {\em drop-column importance}, which defines $x_j$ importance as the difference in model accuracy between a model with all features (the baseline) and a model with $x_j$ removed. The model must be retrained $p$ times and highly similar features yield low or zero importances because codependent features cover for the dropped column in the model.
 
-To avoid retraining the model, $x_j$ can be permuted instead of dropped for {\em permutation importance}. This approach is faster but can introduce nonsensical observations by permuting invalid values into records; e.g., shifting a true {\tt\small pregnant} value into a male's record. Codependent features tend to share importance, at least when applied to random forest models.
+To avoid retraining the model, $x_j$ can be permuted instead of dropped for {\em permutation importance}. This approach is faster but can introduce nonsensical observations by permuting invalid values into records; e.g., shifting a true {\tt\small pregnant} value into a male's record. Codependent features tend to share importance, at least when permutation importance is applied to random forest models.
 
 Rather than removing or permuting entire columns of data, LIME \citep{lime} and SHAP \citep{shap} focus on model behavior at the observation level. For a feature vector of interest, LIME trains an interpretable linear model, on a small neighborhood of data around that vector to explain the relationship between variables and the response locally. SHAP, however, was shown to subsume the LIME technique in \citep{shap}.
 
@@ -239,7 +237,7 @@ SHAP has its roots in {\em Shapley regression values} \citep{shapley-regression}
 
 To avoid training a combinatorial explosion of models with the various feature subsets, SHAP reuses the same model by running simplified feature vectors into the model. Simplified vectors replace ``missing'' $x_j$ features with the expected value of $x_j$ \todo{isn't it $E[f(z)]$? hold on, they are approximating $f(z_S)$ not missing $x_j$ features; another description indicates that you replace missing values with a random one selected from other records}, to simulate models trained on feature subsets. To further reduce computation costs, SHAP users typically compute values for a small subsample of the data set. SHAP has model-type-dependent optimizations for linear regression, deep learning, and decision-tree based models. 
 
-While SHAP has very strong theoretical foundations, we cannot agree with the SHAP definition of feature impact for the simple reason that SHAP measures impact as the magnitude of deviations a feature causes from the mean model prediction, $\overline{y}$, rather than deviations from zero.   For example, given equation $y=x_1^2 + x_2 + 100$ from \figref{fig:combined-area}, the effect of $x_1$ on $y$ is clearly $x_1^2$ (whose impact is the area of the orange region), not $|\overline{y} - x_1^2|$, as defined by SHAP (grey region area).  \todo{need to explain why they are wrong or is it obvious?} 
+While SHAP has very strong theoretical foundations, we cannot agree with the SHAP definition of feature impact for the simple reason that SHAP measures impact as the magnitude of deviations a feature causes from the mean model prediction, $\overline{y}$, rather than deviations from $y=0$.   For example, given equation $y=x_1^2 + x_2 + 100$ from \figref{fig:combined-area}, the effect of $x_1$ on $y$ is clearly $x_1^2$ (whose impact is the area of the orange region), not $|\overline{y} - x_1^2|$, as defined by SHAP (grey region area).  \todo{need to explain why they are wrong or is it obvious?} 
 
 We also see several practical SHAP disadvantages:
 
@@ -353,7 +351,7 @@ Next, in \figref{fig:topk}, we compare \simp{}'s rankings to those of OLS, RF-ba
 
 Despite these handicaps, \figref{fig:topk} shows that \simp{}'s feature importances are competitive with the rankings from the other methods  applied to the four data sets.   The exception is that the \simp{} bulldozer error curve starts out higher than RF SHAP and RF permutation importance. This is because \simp{} chooses feature {\tt YearMade} as the single most important feature, whereas the RF-based techniques choose ordinal feature {\tt ProductSize}. \todo{tie into importance graphs} The \simp{} bulldozer error curve then quickly converges with the RF-based curves.  Depending on the subset drawn from the various overall data set populations, the recommended rankings and error curves can shift.
 
-The feature rankings derived from OLS perform poorly for the first few features, but then merge with the error curves from the RF-based feature rankings.  While the features were chosen by interrogating a linear model, the error curves are generated using predictions from a (stronger) RF model. Once the RF integrates sufficient numbers of features with reasonable importance, prediction error curves become more similar.  In other words, although the order might not be the best, even a linear model can provide good estimates of the top few most  predictive features. The error curve derived from the OLS SHAP feature rankings differs from the OLS curve because the OLS coefficients are divided by the standard error. Without normalizing for coefficient variance, the OLS and OLS SHAP curves merge.
+The feature rankings derived from OLS perform poorly for the first few features, but then merge with the error curves from the RF-based feature rankings.  While the features were chosen by interrogating a linear model, the error curves are generated using predictions from a (stronger) RF model. Once the RF integrates sufficient numbers of features with reasonable importance, prediction error curves become more similar.  In other words, although the order might not be the best, even a linear model can provide good estimates of the top few most  predictive features. The error curve derived from the OLS SHAP feature rankings differs from the OLS curve because the OLS coefficients are divided by the standard error. Without normalizing OLS coefficients with their variances, the OLS and OLS SHAP curves merge.
 
 \figref{fig:topk-impact} shows that the plain impact, area under the partial dependence curve unweighted by $x_j$ density, can also work well.  In the bulldozer case, for example, the first impact-ranked \simp{} feature is much better than the first \simp{} importance-ranked feature, as shown in \figref{fig:topk}(c) and \figref{fig:topk-impact}(c). (\simp{} selects the high-cardinality categorical variable {\tt ModelID}.) In fact, this impact feature yields half the MAE of all the other methods' top features. On the other hand, using impact instead of importance for the flight data set leads to a poor second rank feature choice; compare \figref{fig:topk}(b) and \figref{fig:topk-impact}(b).
 
@@ -417,7 +415,7 @@ Features that are predictive in one model are not necessarily predictive in anot
 \label{fig:topk-gbm}
 \end{figure}
 
-Because GBMs are based upon decision trees (stumps) like random forests, the RF-based feature rankings would likely export well to GBM models.  To check feature exportation to a very different model, we computed error curves for the Boston and rent  data sets using OLS regressors, as shown in \figref{fig:OLS}. (The Boston and rent data sets are the only ones without categorical variables, and we wanted to avoid creating tens of thousands of dummy variables for the flight and bulldozer data sets.) The error curves derived from OLS models are all higher than those from RFs, as expected, but no technique's feature ranking fails to export.
+Because GBMs are based upon decision trees (stumps) like random forests, the RF-based feature rankings would likely export well to GBM models.  To check feature exportation to a very different model, we computed error curves for the Boston and rent  data sets using OLS regressors, as shown in \figref{fig:OLS}, again using the \simp{}, OLS, and RF-derived rankings. (The Boston and rent data sets are the only ones without categorical variables, and we wanted to avoid creating tens of thousands of dummy variables for the flight and bulldozer data sets.) The error curves derived from OLS model predictions are all higher than those from RFs, as expected, but no technique's feature ranking fails to export.
 
 \begin{figure}[htbp]
 \begin{center}
@@ -428,7 +426,7 @@ Because GBMs are based upon decision trees (stumps) like random forests, the RF-
 \end{center}
 \end{figure}
 
-To compute the feature rankings described thus far, we set the random seed to 1 before each test in order to get reproducible figures. Computing feature impacts and importances always returns the same result for the same data, as there are no random processes involved.  Different subsets from a larger data set, however, can yield very different impacts, depending on the variability of the data set. \simp{} supports subsampling with multiple trials on the overall data set to get impact standard deviations.  As an example, \figref{fig:stability} shows the  feature rankings averaged from 10 trials using 75\% subsamples selected randomly from the 48k records of the rent data set. The error bars show two standard deviations (a red error bar indicate it reaches 0). The high variance of the neighborhood features, such as {\tt UpperEast} and {\tt astoria}, are all highly correlated because they represent the $L_1$ distance from each apartment's longitude/latitude to that neighborhood. The distance-to-neighborhood features have similar importance and selection depends on vagaries of the data set.
+To compute the feature rankings described thus far, we set the random seed to 1 before each test in order to get reproducible figures, and computing feature impacts and importances always returns the same result for the same data as there are no random processes involved.  But, different subsets from the data set can yield very different impacts, depending on the variability of the data set. \simp{} supports subsampling with multiple trials on the overall data set to get impact standard deviations.  As an example, \figref{fig:stability} shows the  feature rankings from impact and importance, averaged from 10 trials using 75\% subsamples selected randomly from the 48k records of the rent data set. The error bars show two standard deviations (a red error bar indicates it reaches 0). The high variances of the neighborhood features, such as {\tt UpperEast} and {\tt astoria}, arise because those features represent the $L_1$ distance from each apartment's longitude/latitude to that neighborhood. The distance-to-neighborhood features have similar importance and selection depends on vagaries of the data set.
  
 \begin{figure}[htbp]
 \begin{center}
@@ -438,9 +436,9 @@ To compute the feature rankings described thus far, we set the random seed to 1 
 \end{center}
 \end{figure}
 
-Because we are primarily concerned with computing variable impacts to gain business and medical insights, speed is less of a concern---practitioners would likely run \simp{} on their entire data set once they were happy with the feature set. (Feature selection, on the other hand, must be more performance as practitioners need to iterate quickly when developing models.)   Nonetheless, it is worthwhile analyzing \simp{} time complexity and demonstrating that it operates in a reasonable amount of time empirically.
+Because we are primarily concerned with computing variable impacts to gain business and medical insights, speed is less of a concern---practitioners would likely run \simp{} on their entire data set once, or at least much less often than techniques for feature selection during modeling. (Feature selection, must be more performant as practitioners need to iterate quickly when developing models.)   Nonetheless, it is worthwhile analyzing \simp{} time complexity and demonstrating that it operates in a reasonable amount of time empirically.
 
-The cost of computing each $x_j$'s impact is dominated by the cost of computing the partial dependence and a pass over the unique $x_j$ values to compute the mean. To compute importance, it costs an extra pass over all $n$ $x_j$ values to get the histogram. The upper bound  complexity for \spd{} and \cspd{} partial dependences is $O(n \times |unique(x_j)|)$, or just $O(n^2)$ in the worst case.   Because $|unique(x_j)|$ is usually much smaller than $n$ in real data sets, \spd{} typically performs linearly, but \cspd{} exhibits quadratic behavior.  The overall worst case behavior for \simp{} is then $(p + |unique(x_j)|)\times n^2$ to get $p$ impacts and $(p + |unique(x_j)|+n)\times n^2$  to get $p$ importances, giving asymptotic behaviors of $O(n^2)$ and $O(n^3)$, respectively. 
+The cost of computing each $x_j$'s impact is dominated by the cost of computing the partial dependence and a pass over the unique $x_j$ values to compute the mean. Computing the importance costs an extra pass over all $n$ $x_j$ values to get the histogram. The upper bound  complexity for \spd{} and \cspd{} partial dependences is $O(n \times |unique(x_j)|)$, or just $O(n^2)$ in the worst case.   Because $|unique(x_j)|$ is usually much smaller than $n$ in real data sets, \spd{} typically performs linearly, but \cspd{} exhibits quadratic behavior.  The overall worst case behavior for \simp{} is then $p \times (|unique(x_j)| + n^2)$ to get $p$ impacts and $p \times (n + |unique(x_j)| + n^2)$  to get $p$ importances, giving asymptotic behavior of $O(n^2)$.
 
 \begin{figure}
 \centering
@@ -455,9 +453,7 @@ The cost of computing each $x_j$'s impact is dominated by the cost of computing 
 \label{fig:timing}
 \end{figure}
 
-In practice, importances for numerical variables are nearly linear and importances for categorical variables are mildly quadratic. \figref{fig:timing} summarizes the empirical time in seconds to compute importances for subsets of the three Kaggle data sets. The ``time versus $n$'' and $R^2$ columns describe a quadratic fit to the curve representing the time (in seconds) required to compute subsets from $n=1$ to 30,000 stepping by 1,000. The rent data set has no categorical variables and grows linearly with $n$, possibly with a small quadratic component. The flight data set, on the other hand, shows clear quadratic behavior due to the (five) categorical variables.
-
-Despite the highly nonlinear worst-case complexity, \figref{fig:timing} suggests our Python-only \simp{} prototype is fast enough for use on real data sets of sizes in the tens of thousands. Our casual attempt at parallelizing the computation of $p$ importances across $p$ CPU cores was thwarted by Python's dreaded ``global interpreter lock'' (threading) and passing data between processes (process-based threading).  We did, however, get increased performance using the Numba just-in-time compiler ({\tt\small http://numba.pydata.org}) on algorithm hotspots. Reimplementation in C would be the next step and should yield dramatic performance improvements over pure Python.
+In practice, importances for numerical variables are nearly linear and importances for categorical variables are mildly quadratic. \figref{fig:timing} summarizes the empirical time in seconds to compute importances for a range of subset sizes for the three Kaggle data sets. The ``time versus $n$'' and $R^2$ columns describe a quadratic fit to the curve representing the time (in seconds) required to compute subsets from $n=1$ to 30,000 stepping by 1,000. The rent data set has no categorical variables and grows linearly with $n$, possibly with a small quadratic component. The flight data set, on the other hand, shows clear quadratic behavior due to the (five) categorical variables. Despite the highly nonlinear worst-case complexity, \figref{fig:timing} suggests our Python-only \simp{} prototype is fast enough for use on real data sets of sizes in the tens of thousands. 
 
 \cut{
 cost of \spd{} is cost to train RF then cost to walk leaves and perform piecewise linear approximation for each leaf. Then average the slope-ranges.  piecewise linear approximation is a function of elements in leaf but in total, we are computing differences on all n elements. to average the slopes together, it's a function of how many slopes, which could be n If all values are unique. There are roughly unique x by n slopes in a matrix of values that we collapse to get average slope in a range.  Integrating the slopes, the partial derivatives, is O(unique x). 
@@ -506,7 +502,29 @@ flight has 5,819,080 records.
 
 
 
+The entire \simp{} code base is available at {\tt\small https://github.com/parrt/stratx} and running {\tt\small articles/imp/genfigs/RUNME.py} will regenerate all figures in this paper, after downloading the three Kaggle data sets.
 
+\section{Discussion and future work}
+
+In this paper, we propose a model-free technique for measuring feature $x_j$'s true impact upon a response variable, $y$, along with a mathematical definition of impact that is a function of $x_j$'s partial dependence curve. By weighting $x_j$'s partial dependence curve with $x_j$'s density, we also arrive at a mathematical definition of feature importance.   In contrast, most existing techniques and research focus on model feature selection via various definitions of feature importance.   The exception is SHAP, which provides a mathematical definition of feature impact, though based upon predictions from a fitted model, not the data directly.
+
+The focus on feature selection is understandable because practitioners commonly incorporate feature selection into the model development cycle in an effort to simplify models. For this purpose, though, only relative feature rank matters, not the specific importance values {\em per se}.  For example, permutation importance  computes model prediction accuracy differences from the full baseline model, which are related to but not the same as true feature impacts. Many (model-free) techniques, such as mRMR, provide just a ranking, without specific importance values.
+
+Obtaining feature importance through impact is valid because the most impactful features should be the most predictive in a variety of models, but the opposite is not the case.   Interpreting importances as feature impacts is inappropriate because predictive features does not always coincide with impactful features.  The same importance technique applied to the same data can get very different feature importances, depending on the model, which calls into question their validity as impact values.  Feature impacts, and hence business and medical insights, should be derived directly from the data, not through the lens of a model.
+
+To assess the quality of \simp's feature impacts, we compared \simp's recommended feature importance rankings to those of other techniques, as a proxy, in the last section. Despite not having access to predictions from a fitted model nor the 20\% validation set, \simp{} feature rankings are competitive for three real data sets. We conclude that \simp{} is a promising approach for obtaining feature impacts.  
+
+As for model feature selection, the bulldozer error curves in \figref{fig:topk-impact}(c) illustrate a case where \simp{} (ranked by impact not importance) gets half the error rate of the top features recommended by the other methods.  One would expect model-based techniques to easily identify the single most important model feature, or at least more readily than a model-free approach.  (\simp{} recommends the high-cardinality categorical variable {\tt ModelID}, whereas RF-based permutation importance and SHAP recommend ordinal {\tt ProductSize}.)  Even if such results are rare, misidentifying the single most important feature indicates that there is room for improvement in the feature importance research area. 
+
+It is also interesting to note that simple expedients like ranking features by Spearman's R coefficient between $x_j$ and $y$ or simple techniques like permutation importance perform well, at least for the first eight important features in our experiments. (We did not perform experiments on the least important features.) Also note that the error curves for SHAP and permutation importance mostly mirror each other for the first eight features.  Both techniques introduce potentially nonsensical records to avoid retraining models, but this does not appear to affect their ability to rank features for feature selection purposes.
+
+The best-performing feature selection techniques are typically expensive, depending on the data subsets size and model used (in the model-based case).  \simp{} has $O(n^2)$ asymptotic complexity but exhibits linear performance for numerical and mildly-quadratic behavior for categorical variables on the three real data sets tested here.  The execution time of the \simp{} prototype is satisfactory in our experiments, though the flight data set takes 2.5 minutes to analyze 30,000 records (compared to 13 seconds for the rent data set that does not have categorical variables).
+
+Each of the $p$ feature $x_j$ impact computations is independent and could proceed in parallel. Unfortunately, our casual attempts at parallelizing the algorithm across multiple CPU cores was thwarted by Python's dreaded ``global interpreter lock'' (threading) or passing data between processes (process-based threading).  We did, however, get increased performance using the Numba just-in-time compiler ({\tt\small http://numba.pydata.org}) on algorithm hotspots. Reimplementation in C would be the next step and should dramatically increase performance over the pure-Python prototype.
+
+The \simp{} approach relies on accurate partial dependences for both numerical and categorical variables, and considerable effort has gone into refining the current partial dependence algorithms. Extensive simulation has shown, however, that partial dependences computed using the stratification approach are highly sensitive to partial derivatives computed for the left edge of any $x_j$'s range. The partial dependence curve is the cumulative sum of the partial derivatives and so any changes at the left edge affect the entire curve.  This presents a problem when there are few samples with $x_j$ values in that range, as shown in the histogram of \figref{fig:yearmade}. We introduced a hyper-parameter called {\tt\small min\_slopes\_per\_x\_values} to ignore any partial derivatives estimated with too few records, which improved the accuracy and stability of the partial dependence estimates.  Any improvement in partial dependence curves would be useful in their own right and particularly helpful for \simp. And, finally, \simp{} currently works only on regressors, not classifiers, due to a lack of partial dependences operating on classification data sets.
+
+\cut{
 \begin{figure}
 \centering
 \begin{subfigure}{1\textwidth}
@@ -539,32 +557,7 @@ flight has 5,819,080 records.
 \caption[short]{blorttttt}
 \label{fig:features}
 \end{figure}
-
-Readers can find the entire \simp{} code base at {\tt\small https://github.com/parrt/stratx} and can regenerate all figures in this paper by downloading Kaggle data sets and running {\tt\small articles/imp/genfigs/RUNME.py}.
-
-\section{Discussion and future work}
-
-The bulldozer error curve in \figref{fig:topk}(c) is surprising because the top feature recommended by \simp{} gets half the error rate of the top features recommended by the other methods. One would expect model-based techniques to easily identify the single most important model feature, or at least more readily than a model-free approach.  (\simp{} recommends the high-cardinality categorical variable {\tt ModelID}, whereas RF-based permutation importance and SHAP recommend ordinal {\tt ProductSize}.)  Even if such results are rare, misidentifying the single most important feature indicates that there is room for improvement in this research area.
-
-even if recommendations are identified by their isolated contribution, the model is still taking the combination into consideration when fitting and hence the marginal errors are not necessarily reduced specifically because of the added feature at number $k$.
-
-seems to do well with noise as there are lots of unimportant features that don't confuse it.
-
-coefficients divided by variance outperform OLS SHAP.
-
-\todo{We need min samples per x to avoid left edge issues as they skew entire pdp, which severely skews mass AUC.}
-
-We deal with all possible combinations for codependency's because of the nature of the partial dependence mechanism.
-
-features important in one model are not exportable to another which also means that they're less likely to be useful for business insight.
- 
-For business insight purposes, practitioners often favor direct data analysis, but to perform machine learning model feature selection, practitioners strongly favor model-based techniques. The idea being that business insight should flow directly from the data without peering through a (possibly unneeded) predictive model.  Similarly, it stands to reason that computing feature importances using the intended predictive model would provide the most useful ranking.
-
-Our experience is that model analysis techniques dominate in practice, even for business insight purposes. Part of this is due to the prevalence of machine learning model usage but is also because we conflate predictive with important.  Predictiveness is sometimes a function of the model choice, however, rather than the inherent importance of the feature. For example, there could be a complex but one-to-one relationship between a variable and the response variable. A model unable to capture that relationship would show it as unpredictive, which is easy to confuse with unimportant.  On the other hand, important or not, tuning a model using what it considers predictive is useful in practice. Consequently, it might make sense to continue the bifurcation between data analysis for business insight and model analysis for model feature selection.
-
-research should now focus on getting more accurate partial dependence approximations.
-
-must define for classification
+}
 
 \vskip 0.2in
 \bibliography{pdimp}
