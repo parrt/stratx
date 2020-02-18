@@ -31,7 +31,7 @@
 \newcommand{\eg}{{\em e.g.}}
 \newcommand{\ith}{$i^{th}$}
 \newcommand{\cut}[1]{}
-\newcommand{\todo}[1]{{{\color{red}{[#1]}}}}
+\newcommand{\todo}[1]{{{\small\color{red}{[#1]}}}}
 
 \newcommand{\Ex}{\mathop{\mathbb{E}}}
 %\newcommand{\Imp}{\mathbf{I}}
@@ -99,7 +99,7 @@ Consider the feature importance charts in \figref{fig:diff-models} derived from 
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.6]{images/diff-models.pdf}
-\caption{Top 8 of 13 features. {\tt\footnotesize RandomForestRegressor(n\_estimators=30)}, {\tt\footnotesize XGBRegressor(max\_depth=5, eta=0.01, n\_estimators=50)}, {\tt\footnotesize SVR(gamma=0.001, C=100)} High var for RF. nshap=n test records. Rough timing for explaining 506 test records is (a) less than 1 second, (b) 10s, (c) 3s, and (d) 13 minutes.}
+\caption{\small Ranking and relative predictiveness of the top 8 of 13 Boston data set features determined by SHAP interrogating four different models.  There is considerable variation, particularly for the random forest (RF) model and we chose a random seed to highlight the possibility of conflicting results from the same technique applied to the same data. Rough timing for explaining $n$=506 test records is (a) less than 1 second, (b) 10s, (c) 3s, and (d) 13 minutes.  Scikit-learn model hyper-parameters: OLS normalized explanatory variables; RF with 30 trees; XGBoost with 50 trees, $\eta=0.01$, max depth 5; SVM with $\gamma=0.001$, $C=100$.}
 \label{fig:diff-models}
 \end{center}
 \end{figure}
@@ -139,13 +139,13 @@ To go from partial dependence to feature impact, we compare the area under the a
 \todo{even if we had perfect PD, I'm not sure the following is true unless we get rid of the absolute value operators: $\overline{|y|} = \sum_{k=1}^p \overline{|\text{\it PD}_k|}$, meaning we cannot simplify the denominator for impact}
 
 
-\noindent For example, consider quadratic equation $y = x_1^2 + x_2 + 100$ as a generator of data in $[0,3]$. The partial derivatives are $\frac{\partial y}{\partial x_1} = 2 x_1$ and $\frac{\partial y}{\partial x_2} = 1$, giving $\text{\it PD}_1 = x_1^2$ and $\text{\it PD}_2 = x_2$. The areas under the partial dependence curves in $[0,3]$ are $\Imp_1 = \frac{x_1^3}{3} \big |_0^3 = 9$ and $\Imp_2 = \frac{x_2^2}{2} \big |_0^3 = 4.5$.   Therefore, $x_1$ has twice the impact as $x_2$ for data generated in that interval with impacts $\Imp_1 = 0.\overline{66}$ and $\Imp_2 = 0.\overline{33}$. \figref{fig:quad-area} shows...
+\noindent For example, consider quadratic equation $y = x_1^2 + x_2 + 100$ as a generator of data in $[0,3]$. The partial derivatives are $\frac{\partial y}{\partial x_1} = 2 x_1$ and $\frac{\partial y}{\partial x_2} = 1$, giving $\text{\it PD}_1 = x_1^2$ and $\text{\it PD}_2 = x_2$. The areas under the partial dependence curves in $[0,3]$ are $\Imp_1 = \frac{x_1^3}{3} \big |_0^3 = 9$ and $\Imp_2 = \frac{x_2^2}{2} \big |_0^3 = 4.5$.   Therefore, $x_1$ has twice the impact as $x_2$ for data generated in that interval with impacts $\Imp_1 = 0.\overline{66}$ and $\Imp_2 = 0.\overline{33}$, as depicted in \figref{fig:quad-area}(a).
 
 
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.6]{images/quadratic-auc.pdf}
-\captionof{figure}{\small $\Imp_1$, $\Imp_2$ for partial dependence curves from $y = x_1^2 + x_2 + 100$ in $[0,3]$}
+\captionof{figure}{\small  (a) The area under $x_1$ and $x_2$ partial dependence curves represents $\Imp_1$, $\Imp_2$ for $y = x_1^2 + x_2 + 100$ in range $[0,3]$. Figures (b) and (c) illustrate the difference between the area straddling the mean and the area under the partial dependence curve.}
 \label{fig:quad-area}
 \end{center}
 \end{figure}
@@ -156,6 +156,7 @@ As originally defined, partial dependence curves are derived from fitted models 
 
 For categorical variables, \cspd{} uses the same stratification approach, but cannot apply  regression of $y$ on categorical $x_j$. Instead, a random reference category is chosen for each group and its $y$ value is subtracted from all leaf $y$ to get relative impacts between categories. The relative category impacts across groups are then averaged to get the impact of each $x_j$ on $y$.  (Note that \cspd{} and \spd{} never use predictions from any model---they use decision trees merely to stratify feature space and \spd{} uses piecewise linear regressors just to get slope estimates.)
 
+\cut{
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.65]{images/from-mean-auc.pdf}
@@ -163,13 +164,14 @@ For categorical variables, \cspd{} uses the same stratification approach, but ca
 \label{fig:combined-area}
 \end{center}
 \end{figure}
+}
 
-Intuitively, the impact of $x_j$ is how much, on average, the values of $x_j$ are expected to push $y$ away from zero. We deliberately chose this  definition instead of measuring how much $x_j$ pushes $y$ away from the average response, $\overline{y}$. The impact of $x_1$ on $y$ is $x_1^2$, not $\overline{y} - x_1^2$; $\overline{y}$ has contributions from all $x_j$  For example, at $x_j=0$, the impact on $y$ should be 0, not $\overline{y}-0 = \overline{y}$.  \figref{fig:combined-area} illustrates how the area under the $x_1^2$ and $x_2$ partial dependence curves from $y = x_1^2+x_2+100$ differ from the area straddling the means. The true area under-the-curve ratio of $x_1$-to-$x_2$ is 2-to-1 (9/4.5), whereas the ratio of the area straddling the mean has roughly a 3-to-1 ratio (6.95/2.26).
+Intuitively, the impact of $x_j$ is how much, on average, the values of $x_j$ are expected to push $y$ away from zero. We deliberately chose this  definition instead of measuring how much $x_j$ pushes $y$ away from the average response, $\overline{y}$. The impact of $x_1$ on $y$ is $x_1^2$, not $\overline{y} - x_1^2$; $\overline{y}$ has contributions from all $x_j$  For example, at $x_j=0$, the impact on $y$ should be 0, not $\overline{y}-0 = \overline{y}$.  \figref{fig:quad-area}(b) and \figref{fig:quad-area}(c) illustrate how the area under the $x_1^2$ and $x_2$ partial dependence curves from $y = x_1^2+x_2+100$ differ from the area straddling the means. The true area under-the-curve ratio of $x_1$-to-$x_2$ is 2-to-1 (9/4.5), whereas the ratio of the area straddling the mean has roughly a 3-to-1 ratio (6.95/2.26).
 
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.5]{images/bulldozer-YearMade.pdf}
-\captionof{figure}{\small AUC for bulldozer features weighted by evidence, 20, 000 records of 401,125}
+\captionof{figure}{\small The partial dependence of {\tt SalePrice} on feature {\tt YearMade} for the bulldozer data set including the feature histogram used to weight the partial dependence to obtain feature importances; this plot represents a 20k subsample of 401k records.}
 \label{fig:yearmade}
 \end{center}
 \end{figure}
@@ -256,7 +258,7 @@ y_{weight}  = 120 + 10(x_{height} - min(x_{height})) + 70x_{pregnant} - 1.5x_{ed
 \begin{center}
 \includegraphics[scale=0.5]{images/weight-shap-tree_path_dependent.pdf}~~
 \includegraphics[scale=0.5]{images/weight-shap-interventional.pdf}
-\caption{\small Plots of height versus body weight using 2000 observations from Equation \eqref{eq:weight} as drawn by SHAP library}
+\caption{\small SHAP partial dependence plots of response body weight on feature {\tt height} using 2000 synthetic observations from Equation \eqref{eq:weight}. SHAP interrogated an RF with 40 trees and explained all 2000 samples; the interventional case used 100 observations as background data.}
 \label{fig:shap-weight}
 \end{center}
 \end{figure}
@@ -266,7 +268,7 @@ y_{weight}  = 120 + 10(x_{height} - min(x_{height})) + 70x_{pregnant} - 1.5x_{ed
 \includegraphics[scale=0.5]{images/bulldozer-YearMade-marginal.pdf}~~
 \includegraphics[scale=0.5]{images/bulldozer-YearMade-shap.pdf}~~
 \includegraphics[scale=0.5]{images/bulldozer-YearMade-stratpd.pdf}
-\caption{\small Bulldozer age vs SalePrice, as drawn by SHAP library and StratPD. 1000 SHAP values, 20k samples for stratpd}
+\caption{\small (a) Marginal plot of bulldozer {\tt YearMade} versus {\tt SalePrice} using subsample of 20k observations, (b) partial dependence drawn by SHAP interrogating an RF with 40 trees and explaining 1000 values with 100 observations as background data, (c) \spd{} partial dependence.}
 \label{fig:shap-stratpd-YearMade}
 \end{center}
 \end{figure}
@@ -279,7 +281,7 @@ Assessing the quality of feature impact and importance is challenging because, e
 
 In this section, we present the results of several experiments using the toy Boston data set and three real data sets, NYC rent prices \citep{rent}, bulldozer auction sales \citep{bulldozer}, and flight delays \citep{flights}. We begin with a baseline comparison of \simp{}'s importance metric to two simple model-free methods using the top-$k$ ranked features, then compare \simp{} to permutation importance and SHAP. We finish up by examining \simp's efficiency on the Kaggle data sets.
 
-Our first experiment is to compare the feature rankings recommended by \simp{} to PCA's ranking (``loads'' associated with the first component) and to Spearman's R coefficients computed between each $x_j$ and the response variable, $y$. \figref{fig:baseline} shows mean absolute error  (MAE) versus the number of features using an RF model with 40 trees trained using the various top-$k$ feature rankings. Surprisingly, Spearman's R does a good job for all but the bulldozer data set. PCA is the opposite, performing well on bulldozer but poorly on the others. \simp{} is competitive with or surpasses these baseline techniques.  Rankings from ordinary least squares (OLS) regression coefficients, divided by their standard error, are included as a common reference curve on this and the following graphs. \todo{25k records, 80/20 split, 40 trees etc..., 10 runs, 5-fold CV}
+Our first experiment is to compare the feature rankings recommended by \simp{} to PCA's ranking (``loads'' associated with the first component) and to Spearman's R coefficients computed between each $x_j$ and the response variable, $y$. \figref{fig:baseline} shows mean absolute error  (MAE) versus the number of features using an RF model with 40 trees trained using the various top-$k$ feature rankings. Surprisingly, Spearman's R does a good job for all but the bulldozer data set. PCA is the opposite, performing well on bulldozer but poorly on the others. \simp{} is competitive with or surpasses these baseline techniques.  Rankings from ordinary least squares (OLS) regression coefficients, divided by their standard error, are included as a common reference curve on this and the following graphs. 
 
 \begin{figure}
 \centering
@@ -306,7 +308,7 @@ Our first experiment is to compare the feature rankings recommended by \simp{} t
 \includegraphics[scale=0.45]{images/rent-topk-baseline-Importance.pdf}
 \subcaption{\footnotesize foo  }
 \end{subfigure} 
-\caption{\small variation appears from run to run given the subset of overall data used for these experiments. OLS-based SHAP; {\tt\small LinearExplainer}; RF-based SHAP; {\tt\small TreeExplainer}, {\tt\small feature\_perturbation='interventional'}; RF has 40 trees for both feature ranking and error curves}
+\caption{\small The mean absolute error curves from 40-tree RF models trained on boston, flight, bulldozer, and rent data sets. Error curves represent 5-fold cross validation using the top-$k$ features from the following feature rankings: OLS coefficients divided by standard errors, Spearman's R between feature and response variable, PCA ``loads'' associated with the first component, and \simp{}. $n=506$ for Boston and random $n=25,000$ subsets are drawn for the other data sets. OLS used 80\% for model fitting to get coefficients, but standard errors were computed on the 20\% validation set.  Spearman's R and PCA operated on all $n$ records. \simp{} operated on just 80\% training data.}
 \label{fig:baseline}
 \end{figure}
 
@@ -337,7 +339,7 @@ Next, in \figref{fig:topk}, we compare \simp{}'s rankings to those of OLS, RF-ba
 \includegraphics[scale=0.45]{images/rent-topk-RF-Importance.pdf}
 \subcaption{\footnotesize foo}
 \end{subfigure}
-\caption[short]{Features from RF model, tested on RF}
+\caption[short]{\small The mean absolute error curves from 40-tree RF models trained on boston, flight, bulldozer, and rent data sets. Error curves represent 5-fold cross validation using the top-$k$ features from the following feature rankings: OLS as in \figref{fig:baseline}, SHAP interrogating OLS, SHAP interrogating 40-tree RF, permutation importance interrogating 40-tree RF, and \simp{}. All methods had access to 80\% training data from $n=25,000$ random sample (Boston has just 506 records).  All methods but \simp{} had access to the 20\% validation set.}
 \label{fig:topk}
 \end{figure}
 
@@ -352,27 +354,23 @@ The feature rankings derived from OLS perform poorly for the first few features,
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/boston-topk-RF-Impact.pdf}
-\subcaption{\footnotesize foo}
 \end{subfigure}%
 \hfill
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/flights-topk-RF-Impact.pdf}
-\subcaption{\footnotesize foo}
 \end{subfigure}
 \hfill
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/bulldozer-topk-RF-Impact.pdf}
-\subcaption{\footnotesize foo}
 \end{subfigure}%
 \hfill
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/rent-topk-RF-Impact.pdf}
-\subcaption{\footnotesize foo}
 \end{subfigure}
-\caption[short]{Features from RF model, tested on RF}
+\caption[short]{\small MAE curves as in \figref{fig:topk} except using a {\em impact} rather than {\em importance}.}
 \label{fig:topk-impact}
 \end{figure}
 
@@ -403,7 +401,7 @@ Features that are predictive in one model are not necessarily predictive in anot
 \includegraphics[scale=0.45]{images/rent-topk-GBM-Importance.pdf}
 \subcaption{\footnotesize foo}
 \end{subfigure}
-\caption[short]{\small Features from RF model, tested on gradient boosting machine ({\tt xgboost} 0.90 learning\_rate=0.5,  max\_depth=5,  n\_estimators=100)}
+\caption[short]{\small MAE curves as in \figref{fig:topk} except measuring {\tt xgboost} predictions, rather than RF, with learning rate 0.5,  max depth 5, and 100 trees.}
 \label{fig:topk-gbm}
 \end{figure}
 
@@ -413,7 +411,7 @@ Because GBMs are based upon decision trees (stumps) like random forests, the RF-
 \begin{center}
 \includegraphics[scale=0.5]{images/boston-topk-OLS-Importance.pdf}~~~
 \includegraphics[scale=0.5]{images/rent-topk-OLS-Importance.pdf}
-\captionof{figure}{\small OLS model}
+\caption[short]{\small MAE curves as in \figref{fig:topk} except measuring OLS predictions, rather than RF.}
 \label{fig:OLS}
 \end{center}
 \end{figure}
@@ -423,7 +421,7 @@ To compute the feature rankings described thus far, we set the random seed to 1 
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.65]{images/rent-stability-importance.pdf}~~~\includegraphics[scale=0.65]{images/rent-stability-impact.pdf}
-\captionof{figure}{\small stability of importance and impact}
+\captionof{figure}{\small  Average feature impact and importance across 10 trials on rent data set, with 75\% subsamples from 43k total records.  Error bars show two standard deviations; red indicates two standard deviations reaches zero.}
 \label{fig:stability}
 \end{center}
 \end{figure}
@@ -441,7 +439,7 @@ The cost of computing each $x_j$'s impact is dominated by the cost of computing 
 {\tt\small bulldozer} & 14 & 2 & 0.2s & 2.7s & 8.6s & 18.3s & {\small $0.078 n + 0.017 n^2$} & {\small 0.9997}\\
 {\tt\small rent} & 20 & 0 & 0.3s & 3.7s & 8.2s & 13.0s & {\small $0.385 n + 0.002 n^2$} & {\small 0.9985}\\
 \end{tabular}
-\caption{timing stuff}
+\caption{\small  Execution time for subsets of size 1,000 to 30,000 stepping by 1,000 43 real data sets. Rent has no categorical variables and exhibits linear performance, whereas categorical variables introduce mildly quadratic behavior. Final two columns describe how data fits to quadratic equations.}
 \label{fig:timing}
 \end{figure}
 
@@ -494,7 +492,7 @@ flight has 5,819,080 records.
 
 
 
-The entire \simp{} code base is available at {\tt\small https://github.com/parrt/stratx} and running {\tt\small articles/imp/genfigs/RUNME.py} will regenerate all figures in this paper, after downloading the three Kaggle data sets.
+The entire \simp{} code base is available at {\tt\small https://github.com/parrt/stratx} and running {\tt\small articles/imp/genfigs/RUNME.py} will regenerate all figures in this paper, after downloading the three Kaggle data sets.  Simulations were run on a 4.0 Ghz 32G RAM machine running OS X 10.13.6 with SHAP 0.34, scikit-learn                       0.21.3, XGBoost 0.90, and Python 3.7.4.
 
 \section{Discussion and future work}\label{sec:discussion}
 

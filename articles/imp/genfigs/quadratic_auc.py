@@ -10,11 +10,11 @@ impact_fill_color = '#FFE091'
 n = 300
 right = 3
 
-def quad():
+def quad(ax):
     lx = np.linspace(0, right, n)
     y = lx ** 2
     y2 = lx
-    fig, ax = plt.subplots(1, 1, figsize=(3.2, 2.6))
+    # fig, ax = plt.subplots(1, 1, figsize=(3.2, 2.6))
     ax.plot(lx, y, lw=.1, c='k')
     ax.plot(lx, y2, lw=.1, c='k')
     y_area = np.mean(np.abs(y)) * (right - 0)
@@ -23,7 +23,7 @@ def quad():
             fontname='Arial', horizontalalignment='right')
     ax.text(right, max(y) * .35, f"$x_1^2$ area = {y_area :.1f}",
             fontname='Arial', horizontalalignment='right')
-    ax.set_xlabel("$x_1, x_2$", fontname='Arial')
+    ax.set_xlabel("$x_1, x_2$\n(a)", fontname='Arial')
     ax.set_ylabel("$y$", fontname='Arial')
     ax.fill_between(lx, [0] * n, y, color=impact_fill_color)
     ax.fill_between(lx, [0] * n, y2, color=GREY, alpha=.5)
@@ -39,10 +39,10 @@ def quad():
     ax.spines['bottom'].set_smart_bounds(True)
 
     ax.set_yticks([0,2,4,6,8,9])
-
-    plt.tight_layout()
-    plt.savefig("../images/quadratic-auc.pdf", bbox_inches="tight", pad_inches=0)
-    plt.show()
+    #
+    # plt.tight_layout()
+    # plt.savefig("../images/quadratic-auc.pdf", bbox_inches="tight", pad_inches=0)
+    # plt.show()
 
 
 def quad_from_mean(ax):
@@ -66,7 +66,7 @@ def quad_from_mean(ax):
     ax.text(right, 0.2,
             f"$y$ area = {avg_dev_from_zero * (right - 0):.1f}", fontname='Arial',
             horizontalalignment='right')
-    ax.set_xlabel("$x_1$\n(a)", fontname='Arial')
+    ax.set_xlabel("$x_1$\n(b)", fontname='Arial')
     ax.set_ylabel("$y$", fontname='Arial')
     ax.fill_between(lx, [0] * n, y, color=impact_fill_color)
     ax.fill_between(lx, [m] * n, y, color=GREY, alpha=.8)
@@ -101,7 +101,7 @@ def linear_from_mean(ax):
     ax.text(right, 0.2,
             f"$y$ area = {avg_dev_from_zero * (right - 0):.1f}", fontname='Arial',
             horizontalalignment='right')
-    ax.set_xlabel("$x_2$\n(b)", fontname='Arial')
+    ax.set_xlabel("$x_2$\n(c)", fontname='Arial')
     ax.fill_between(lx, [0] * n, y, color=impact_fill_color)
     ax.fill_between(lx, [m] * n, y, color=GREY, alpha=.8)
 
@@ -114,11 +114,10 @@ def linear_from_mean(ax):
     ax.set_yticks([0,2,4,6,8,9])
 
 
-quad()
-
-fig, axes = plt.subplots(1, 2, figsize=(6.0, 2.7))
-quad_from_mean(axes[0])
-linear_from_mean(axes[1])
+fig, axes = plt.subplots(1, 3, figsize=(9.0, 2.7))
+quad(axes[0])
+quad_from_mean(axes[1])
+linear_from_mean(axes[2])
 plt.tight_layout()
-plt.savefig("../images/from-mean-auc.pdf", bbox_inches="tight", pad_inches=0)
+plt.savefig("../images/quadratic-auc.pdf", bbox_inches="tight", pad_inches=0)
 plt.show()
