@@ -288,23 +288,27 @@ Our first experiment is to compare the feature rankings recommended by \simp{} t
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/boston-topk-baseline-Importance.pdf}
+\subcaption{}
 \end{subfigure}%
 %\hfill
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/flights-topk-baseline-Importance.pdf}
+\subcaption{}
 \end{subfigure}
 %\hfill
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/bulldozer-topk-baseline-Importance.pdf}
+\subcaption{}
 \end{subfigure}
 %\hfill
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/rent-topk-baseline-Importance.pdf}
+\subcaption{}
 \end{subfigure} 
-\caption{\small The mean absolute error curves from 40-tree RF models trained on boston, flight, bulldozer, and rent data sets. Error curves represent 5-fold cross validation using the top-$k$ features from the following feature rankings: OLS coefficients divided by standard errors, Spearman's R between feature and response variable, PCA ``loads'' associated with the first component, and \simp{}. $n=506$ for Boston and random $n=25,000$ subsets are drawn for the other data sets. OLS used 80\% for model fitting to get coefficients, but standard errors were computed on the 20\% validation set.  Spearman's R and PCA operated on all $n$ records. \simp{} operated on just 80\% training data.}
+\caption{\small {\bf RF MAE curves from \underline{baseline} rankings}. The mean absolute error curves from 40-tree RF models trained on boston, flight, bulldozer, and rent data sets. Error curves represent 5-fold cross validation using the top-$k$ features from the following feature rankings: OLS coefficients divided by standard errors, Spearman's R between feature and response variable, PCA ``loads'' associated with the first component, and \simp{}. $n=506$ for Boston and random $n=25,000$ subsets are drawn for the other data sets. OLS used 80\% for model fitting to get coefficients, but standard errors were computed on the 20\% validation set.  Spearman's R and PCA operated on all $n$ records. \simp{} operated on just 80\% training data.}
 \label{fig:baseline}
 \end{figure}
 
@@ -315,23 +319,27 @@ Next, in \figref{fig:topk}, we compare \simp{}'s rankings to those of OLS, RF-ba
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/boston-topk-RF-Importance.pdf}
+\subcaption{}
 \end{subfigure}%
 \hfill
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/flights-topk-RF-Importance.pdf}
+\subcaption{}
 \end{subfigure}
 \hfill
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/bulldozer-topk-RF-Importance.pdf}
+\subcaption{}
 \end{subfigure}%
 \hfill
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/rent-topk-RF-Importance.pdf}
+\subcaption{}
 \end{subfigure}
-\caption[short]{\small The mean absolute error curves from 40-tree RF models trained on boston, flight, bulldozer, and rent data sets. Error curves represent 5-fold cross validation using the top-$k$ features from the following feature rankings: OLS as in \figref{fig:baseline}, SHAP interrogating OLS, SHAP interrogating 40-tree RF, permutation importance interrogating 40-tree RF, and \simp{}. All methods had access to 80\% training data from $n=25,000$ random sample (Boston has just 506 records).  All methods but \simp{} had access to the 20\% validation set.}
+\caption[short]{\small {\bf RF MAE curves from \underline{importance} rankings}. The mean absolute error curves from 40-tree RF models trained on boston, flight, bulldozer, and rent data sets. Error curves represent 5-fold cross validation using the top-$k$ features from the following feature rankings: OLS as in \figref{fig:baseline}, SHAP interrogating OLS, SHAP interrogating 40-tree RF, permutation importance interrogating 40-tree RF, and \simp{}. All methods had access to 80\% training data from $n=25,000$ random sample (Boston has just 506 records).  All methods but \simp{} had access to the 20\% validation set.}
 \label{fig:topk}
 \end{figure}
 
@@ -346,23 +354,27 @@ The feature rankings derived from OLS perform poorly for the first few features,
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/boston-topk-RF-Impact.pdf}
+\subcaption{}
 \end{subfigure}%
 \hfill
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/flights-topk-RF-Impact.pdf}
+\subcaption{}
 \end{subfigure}
 \hfill
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/bulldozer-topk-RF-Impact.pdf}
+\subcaption{}
 \end{subfigure}%
 \hfill
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/rent-topk-RF-Impact.pdf}
+\subcaption{}
 \end{subfigure}
-\caption[short]{\small MAE curves as in \figref{fig:topk} except using a {\em impact} rather than {\em importance}.}
+\caption[short]{\small MAE curves as in \figref{fig:topk} except using \simp{} {\em impact} rather than {\em importance}.}
 \label{fig:topk-impact}
 \end{figure}
 
@@ -373,16 +385,19 @@ Features that are predictive in one model are not necessarily predictive in anot
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/boston-topk-GBM-Importance.pdf}
+\subcaption{}
 \end{subfigure}%
 \hfill
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/flights-topk-GBM-Importance.pdf}
+\subcaption{}
 \end{subfigure}
 \hfill
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/bulldozer-topk-GBM-Importance.pdf}
+\subcaption{}
 \end{subfigure}%
 \hfill
 \begin{subfigure}{.245\textwidth}
@@ -408,7 +423,16 @@ To compute the feature rankings described thus far, we set the random seed to 1 
  
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[scale=0.65]{images/rent-stability-importance.pdf}~~~\includegraphics[scale=0.65]{images/rent-stability-impact.pdf}
+\begin{subfigure}{.45\textwidth}
+    \centering
+\includegraphics[scale=0.65]{images/rent-stability-importance.pdf}
+\subcaption{\simp{} Rent Importance}
+\end{subfigure}%
+\begin{subfigure}{.45\textwidth}
+    \centering
+\includegraphics[scale=0.65]{images/rent-stability-impact.pdf}
+\subcaption{\simp{} Rent Impact}
+\end{subfigure}%
 \captionof{figure}{\small  Average feature importance and impact across 10 trials on the rent data set, with 75\% subsamples from 48k total records.  Error bars show two standard deviations; red indicates two standard deviations reach zero.}
 \label{fig:stability}
 \end{center}
