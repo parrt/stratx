@@ -22,18 +22,13 @@ from rfpimp import plot_importances, dropcol_importances, importances
 def synthetic_interaction_data(n):
     df = pd.DataFrame()
     for i in range(2):
-        df[f'x{i + 1}'] = np.random.random_sample(size=n) * 2
+        df[f'x{i + 1}'] = np.random.random_sample(size=n) * 3
     yintercept = 100
-    df['y'] = df['x1'] * df['x2'] + yintercept
+    # df['y'] = df['x1'] * df['x2'] + yintercept
+    df['y'] = df['x1']**2 + df['x2'] + yintercept
     eqn = "y = x1 * x2"
     return df, eqn
 
-
-n = 1000
-shap_test_size = 1000
-df, eqn = synthetic_interaction_data(n)
-X = df.drop('y', axis=1)
-y = df['y']
 
 def OLS():
     lm = LinearRegression()
@@ -46,7 +41,7 @@ def OLS():
     return shap_values
 
 def RF():
-    rf = RandomForestRegressor(n_estimators=100, oob_score=True, n_jobs=-1)
+    rf = RandomForestRegressor(n_estimators=30, oob_score=True, n_jobs=-1)
     rf.fit(X,y)
     print("OOB", rf.oob_score_)
 
@@ -57,21 +52,27 @@ def RF():
     print("\nRF SHAP importances", list(shapimp), list(shapimp/s))
     return shap_values
 
+n = 1000
+shap_test_size = 1000
+df, eqn = synthetic_interaction_data(n)
+X = df.drop('y', axis=1)
+y = df['y']
+
 # shap_values = OLS()
 shap_values = RF()
 
-#print(shap_values)
+fig, ax = plt.subplots(1,1)
+shap.dependence_plot("x1", shap_values, X[:shap_test_size], interaction_index=None, ax=ax)
+plt.show()
 
-#shap.summary_plot(shap_values, X[:shap_test_size])
-shap.dependence_plot("x1", shap_values, X[:shap_test_size], interaction_index=None)
-shap.dependence_plot("x2", shap_values, X[:shap_test_size], interaction_index=None)
+fig, ax = plt.subplots(1,1)
+shap.dependence_plot("x2", shap_values, X[:shap_test_size], interaction_index=None, ax=ax)
+plt.show()
 
 # plot_stratpd_gridsearch(X, y, 'x1', 'price')
 
-plot_stratpd(X, y, colname='x1', targetname='y', min_samples_leaf=10,
-             min_slopes_per_x=5)
-plot_stratpd(X, y, colname='x2', targetname='y', min_samples_leaf=10,
-             min_slopes_per_x=5)
+plot_stratpd(X, y, colname='x1', targetname='y')
+plot_stratpd(X, y, colname='x2', targetname='y')
 
 """
 Looks like both shap and we get even contributions from x1, x2.

@@ -145,7 +145,7 @@ To go from partial dependence to feature impact, we compare the area under the a
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.6]{images/quadratic-auc.pdf}
-\captionof{figure}{\small  (a) The area under $x_1$ and $x_2$ partial dependence curves represent $\Imp_1$, $\Imp_2$ for $y = x_1^2 + x_2 + 100$ in range $[0,3]$. Figures (b) and (c) illustrate the difference between the area straddling the mean and the area under the partial dependence curve.}
+\captionof{figure}{\small  (a) The area under $x_1$ and $x_2$ partial dependence curves represent $\Imp_1$, $\Imp_2$ for $y = x_1^2 + x_2 + 100$ in range $[0,3]$. Figures (b) and (c) illustrate the difference between the area straddling the mean and the area under the partial dependence curve. Simulation of $n$=2,000 records: 10 trials of \simp{} gives impact (area-under-curve) for (b) and (c) as $x_1$ = 3.1739 ($\sigma=0.047$) and $x_2$ = 1.4696 ($\sigma=0.005$); SHAP gives impact as $x_1$ = 7.0812 and $x_2$ = 2.2108 (which were multiplied by the range of 3 to get area). These simulated area values coincide closely with the true areas under the curve (\simp) and areas straddling the $x_j$ means (SHAP).}
 \label{fig:quad-area}
 \end{center}
 \end{figure}
@@ -230,6 +230,11 @@ Rather than removing or permuting entire columns of data, LIME \citep{lime} and 
 SHAP has its roots in {\em Shapley regression values} \citep{shapley-regression} where (linear) models were trained on all possible subsets of features.  Each possible model pair differing in a single feature $x_j$ contributed the difference in model pair output towards the Shapley value for $x_j$. The complete Shapley value is the average model-pair difference weighted by the number of possible pairs differing in just $x_j$.  For completely independent features, drop-column importance is sufficient because the contribution of $x_j$ can be computed without considering how combinations of features affect model output.  In practice, features are rarely independent and the marginal effect of adding a new feature on model output depends on the order in which features are added.  
 
 To avoid training a combinatorial explosion of models with the various feature subsets, SHAP reuses the same model by running simplified feature vectors into the model. Simplified vectors replace ``missing'' $x_j$ features with the expected value of $x_j$ \todo{isn't it $E[f(z)]$? hold on, they are approximating $f(z_S)$ not missing $x_j$ features; another description indicates that you replace missing values with a random one selected from other records}, to simulate models trained on feature subsets. To further reduce computation costs, SHAP users typically compute values for a small subsample of the data set. SHAP has model-type-dependent optimizations for linear regression, deep learning, and decision-tree based models. 
+
+\todo{Ok, got it from code: ``Since most models aren't designed to handle arbitrary missing data at test
+        time, we simulate "missing" by replacing the feature with the values it takes in the
+        background dataset. So if the background dataset is a simple sample of all zeros, then
+        we would approximate a feature being missing by setting it to zero.''}
 
 While SHAP has very strong theoretical foundations, we cannot agree with the SHAP definition of feature impact for the simple reason that SHAP measures impact as the magnitude of deviations a feature causes from the mean model prediction, $\overline{y}$, rather than deviations from $y=0$.   For example, given equation $y=x_1^2 + x_2 + 100$ from \figref{fig:quad-area}, the effect of $x_1$ on $y$ is clearly $x_1^2$ (whose impact is the area of the orange region), not $|\overline{y} - x_1^2|$, as defined by SHAP (grey region area). 
 

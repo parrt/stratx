@@ -9,9 +9,12 @@ GREY = '#D9D9D9'
 impact_fill_color = '#FFE091'
 n = 300
 right = 3
+lx = np.linspace(0, right, n)
+y = lx**2 + lx + 100
+m = np.mean(y - 100)
+print("y bar", m)
 
 def quad(ax):
-    lx = np.linspace(0, right, n)
     y = lx ** 2
     y2 = lx
     # fig, ax = plt.subplots(1, 1, figsize=(3.2, 2.6))
@@ -46,18 +49,17 @@ def quad(ax):
 
 
 def quad_from_mean(ax):
-    lx = np.linspace(0, right, n)
-    y = lx ** 2
-    m = np.mean(y)
-    avg_dev_from_zero = np.mean(np.abs(y))
-    avg_dev_from_mean = np.mean(np.abs(y - m))
+    pdpy1 = lx ** 2
+    m = np.mean(pdpy1)
+    avg_dev_from_zero = np.mean(np.abs(pdpy1))
+    avg_dev_from_mean = np.mean(np.abs(pdpy1 - m))
 
     y2 = lx
     print(np.mean(y2))
     print(np.mean(np.abs(y2-np.mean(y2))))
 
-    ax.plot(lx, y, lw=.1, c='k')
-    # ax.plot(lx, np.abs(y-m), lw=.1, c='k')
+    ax.plot(lx, pdpy1, lw=.1, c='k')
+    # ax.plot(x1, np.abs(y-m), lw=.1, c='k')
 
     ax.plot([0,right], [m,m], '--', c='k', lw=.5)
     ax.text(right,m*1.1,"$\overline{y}$"+f" = {m:.1f}", fontname='Arial',
@@ -68,8 +70,8 @@ def quad_from_mean(ax):
             horizontalalignment='right')
     ax.set_xlabel("$x_1$\n(b)", fontname='Arial')
     ax.set_ylabel("$y$", fontname='Arial')
-    ax.fill_between(lx, [0] * n, y, color=impact_fill_color)
-    ax.fill_between(lx, [m] * n, y, color=GREY, alpha=.8)
+    ax.fill_between(lx, [0] * n, pdpy1, color=impact_fill_color)
+    ax.fill_between(lx, [m] * n, pdpy1, color=GREY, alpha=.8)
 
     ax.spines['left'].set_linewidth(.5)
     ax.spines['bottom'].set_linewidth(.5)
@@ -82,17 +84,16 @@ def quad_from_mean(ax):
 
 
 def linear_from_mean(ax):
-    lx = np.linspace(0, right, n)
-    y = lx
-    m = np.mean(y)
-    avg_dev_from_zero = np.mean(np.abs(y))
-    avg_dev_from_mean = np.mean(np.abs(y - m))
+    pdpy2 = lx
+    m = np.mean(pdpy2)
+    avg_dev_from_zero = np.mean(np.abs(pdpy2))
+    avg_dev_from_mean = np.mean(np.abs(pdpy2 - m))
 
     y2 = lx
     print(np.mean(y2))
     print(np.mean(np.abs(y2-np.mean(y2))))
 
-    ax.plot(lx, y, lw=.1, c='k')
+    ax.plot(lx, pdpy2, lw=.1, c='k')
 
     ax.plot([0,right], [m,m], '--', c='k', lw=.5)
     ax.text(right,m*1.08,"$\overline{y}$"+f" = {m:.1f}", fontname='Arial',
@@ -102,8 +103,8 @@ def linear_from_mean(ax):
             f"$y$ area = {avg_dev_from_zero * (right - 0):.1f}", fontname='Arial',
             horizontalalignment='right')
     ax.set_xlabel("$x_2$\n(c)", fontname='Arial')
-    ax.fill_between(lx, [0] * n, y, color=impact_fill_color)
-    ax.fill_between(lx, [m] * n, y, color=GREY, alpha=.8)
+    ax.fill_between(lx, [0] * n, pdpy2, color=impact_fill_color)
+    ax.fill_between(lx, [m] * n, pdpy2, color=GREY, alpha=.8)
 
     ax.spines['left'].set_linewidth(.5)
     ax.spines['bottom'].set_linewidth(.5)
