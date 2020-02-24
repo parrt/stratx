@@ -154,6 +154,21 @@ def shap_importances(model, X_train, X_test, n_shap, normalize=True, sort=True):
     return shapI
 
 
+def get_shap(rf,to_explain,backing=None,assume_independence=True):
+    if assume_independence:
+        explainer = shap.TreeExplainer(rf, feature_perturbation='tree_path_dependent')
+    else:
+        explainer = shap.TreeExplainer(rf, data=backing, feature_perturbation='interventional')
+    shap_values = explainer.shap_values(to_explain, check_additivity=False)
+    shapimp = np.mean(np.abs(shap_values), axis=0)
+    total_imp = np.sum(shapimp)
+    normalized_shap = shapimp / total_imp
+    I = pd.DataFrame(data={'Feature': to_explain.columns, 'Importance': normalized_shap})
+    I = I.set_index('Feature')
+    I = I.sort_values('Importance', ascending=False)
+    return I
+
+
 def cv_features(kfold_indexes, X, y, features, metric, catcolnames=None, model='RF'):
     # if time_sensitive:
     #     n_test = int(0.20 * len(X))
@@ -651,6 +666,15 @@ def get_multiple_imps(dataset,
                              supervised=supervised,
                              normalize=normalize)
         print("OURS\n",ours_I)
+
+    if "PDP" in include:
+        rf = RandomForestRegressor(n_estimators=30)
+        rf.fit(X, y)
+        pdpy = friedman_partial_dependences(rf, X, mean_centered=True)
+        pdp_I = pd.DataFrame(data={'Feature': X.columns})
+        pdp_I = pdp_I.set_index('Feature')
+        pdp_I['Importance'] = np.mean(np.mean(np.abs(pdpy)), axis=1)
+
     d = OrderedDict()
     d['Spearman'] = spear_I
     d['PCA'] = pca_I

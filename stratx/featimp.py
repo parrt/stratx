@@ -301,6 +301,24 @@ def importances_pvalues(X: pd.DataFrame,
     return impact_pvalues, importance_pvalues
 
 
+def pdp_importances(model,X,numx=30,normalize=True):
+    """
+    Use standard PDP then mean center and take average magnitude as impact. Return
+    an importance dataframe
+    """
+    pdpxs,pdpys = friedman_partial_dependences(model, X, numx=numx, mean_centered=True)
+    I = pd.DataFrame(data={'Feature': X.columns})
+    I = I.set_index('Feature')
+    Ivals = np.mean(np.abs(pdpys), axis=1)
+    if normalize:
+        total = np.sum(Ivals)
+        Ivals /= total
+    I['Importance'] = Ivals
+
+    return I.sort_values('Importance', ascending=False)
+
+
+
 class ImpViz:
     """
     For use with jupyter notebooks, plot_importances returns an instance

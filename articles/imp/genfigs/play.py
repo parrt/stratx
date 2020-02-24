@@ -6,10 +6,44 @@ use_oob=False
 metric = mean_absolute_error
 n = 25_000
 
-# X, y = load_rent(n=n)
-# print(X.shape)
-#
-# X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+X, y = load_rent(n=n)
+print(X.shape)
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+
+pdp_I = pdp_importances(X_train.copy(), y_train.copy(), numx=300)
+print("PDP\n",pdp_I)
+
+rf = RandomForestRegressor(n_estimators=40)
+rf.fit(X, y)
+# TODO: try w/o interventional
+explainer = shap.TreeExplainer(rf
+                               , data=shap.sample(X_train, 300)
+                               , feature_perturbation='interventional'
+                               # , feature_perturbation='tree_path_dependent'
+                               )
+shap_values = explainer.shap_values(X_test.sample(300), check_additivity=False)
+shapimp = np.mean(np.abs(shap_values), axis=0)
+total_imp = np.sum(shapimp)
+normalized_shap = shapimp / total_imp
+
+# print("SHAP", normalized_shap)
+shapI = pd.DataFrame(data={'Feature': X_test.columns, 'Importance': normalized_shap})
+shapI = shapI.set_index('Feature')
+shapI = shapI.sort_values('Importance', ascending=False)
+print("SHAP\n",shapI)
+
+fig, axes = plt.subplots(1,2)
+plot_importances(pdp_I, ax=axes[0], imp_range=(0,.4))
+plot_importances(shapI, ax=axes[1], imp_range=(0,.4))
+axes[0].set_xlabel("(a) RF $\overline{|PDP_j|}$ importance")
+axes[1].set_xlabel("(b) RF SHAP $j$ importance")
+plt.suptitle(f"NYC rent feature importance rankings", fontsize=10)
+plt.tight_layout()
+plt.savefig(f"/Users/parrt/Desktop/rent-pdp-vs-shap.pdf", pad_inches=0)
+
+plt.show()
+
 #
 # X_train = StandardScaler().fit_transform(X_train)
 # X_test = StandardScaler().fit_transform(X_test)
@@ -71,8 +105,8 @@ n = 25_000
 # plt.savefig(f"/Users/parrt/Desktop/rent-{colname}.pdf", pad_inches=0)
 # plt.show()
 
-X, y = load_bulldozer()
-print(X.shape)
+# X, y = load_bulldozer()
+# print(X.shape)
 
 # Most recent timeseries data is more relevant so get big recent chunk
 # then we can sample from that to get n

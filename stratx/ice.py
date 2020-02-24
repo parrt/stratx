@@ -9,6 +9,53 @@ This code was built just to generate ICE plots for comparison in the paper.
 We just hacked it together.
 """
 
+def friedman_partial_dependences(model,X,numx=100,mean_centered=True):
+    """
+    Plot with stuff like:
+
+    pdpy = friedman_partial_dependences(rf, X)
+    uniq_x1 = np.unique(X['x1'])
+    uniq_x2 = np.unique(X['x2'])
+    fig, ax = plt.subplots(1,1)
+    ax.plot(uniq_x1, pdpy[0], '.', markersize=1, label=f"x1 area={np.mean(np.abs(pdpy1))*3:2f}")
+    ax.plot(uniq_x2, pdpy[1], '.', markersize=1, label=f"x2 area={np.mean(np.abs(pdpy2))*3:2f}")
+    plt.legend()
+    plt.show()
+    """
+    pdpxs = []
+    pdpys = []
+    for i, colname in enumerate(X.columns):
+        print(colname)
+        pdpx, pdpy = friedman_partial_dependence(model,X,colname,numx=numx,mean_centered=mean_centered)
+        pdpxs.append(pdpx)
+        pdpys.append(pdpy)
+    return pdpxs, pdpys
+
+
+def friedman_partial_dependence(model,X,colname,numx=100,mean_centered=True):
+    """
+    Return the partial dependence curve for y on X[colname] using all
+    unique x values. For each unique x, replace entire X[colname] with
+    it then compute average prediction. That is PDP for that x.
+    """
+    save_x = X[colname].copy()
+    if numx is not None:
+        uniq_x = np.linspace(start=np.min(X[colname]), stop=np.max(X[colname]), num=numx)
+    else:
+        uniq_x = np.unique(X[colname])
+    pdpx = uniq_x
+    pdpy = np.empty(shape=(len(uniq_x),))
+    for i,x in enumerate(uniq_x):
+        X[colname] = x
+    #     print(X)
+        y_pred = model.predict(X)
+        pdpy[i] = y_pred.mean()
+    X[colname] = save_x
+    if mean_centered:
+        pdpy = pdpy - np.mean(pdpy)
+    return pdpx, pdpy
+
+
 def original_pdp(model, X, colname):
     """
     Return an ndarray with relative partial dependence line (average of ICE lines).
