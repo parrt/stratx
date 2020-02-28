@@ -55,7 +55,7 @@
 \addtolength{\topmargin}{-.8in}%
 }
 
-\ShortHeadings{Tech Report: Model-Free Feature Importance}{Parr, Wilson, and Hamrick}
+\ShortHeadings{Tech Report: Model-Free Feature Impact and Importance}{Parr, Wilson, and Hamrick}
 \firstpageno{1}
 
 \begin{document}
@@ -66,7 +66,7 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\title{\bf Tech Report: Model-Free Feature Importance}
+\title{\bf Tech Report: Model-Free Feature Impact and Importance}
 
 \author{Terence Parr \email parrt@cs.usfca.edu
 \addr University of San Francisco\\
@@ -124,6 +124,8 @@ To hold features constant for any smooth generator function, we can take the par
 \begin{equation}\label{eq:pd}
 \text{\it PD}_j(z) = \int_{min(x_j)}^z \frac{\partial y}{\partial x_j} dx_j
 \end{equation}
+
+\todo{This is zeroed to have the y-intercept removed  whereas the normal definition does not, SHAP is doing a "centered ICE plot" version where the anchor point is $\bar{y}$}
 
 $\text{\it PD}_j(z)$ is the value contributed to $y$ by $x_j$ at $x_j = z$. The advantages of this partial dependence definition are that it does not depend on a fitted model and is insensitive to collinear or otherwise codependent features, unlike the traditional definition that is accurate for data ``{\em dominated by low order interactions}'' per Friedman.  
 
@@ -530,6 +532,120 @@ The best-performing feature selection techniques are typically expensive, depend
 Each of the $p$ feature $x_j$ impact computations is independent and could proceed in parallel. Unfortunately, our casual attempts at parallelizing the algorithm across multiple CPU cores was thwarted by Python's dreaded ``global interpreter lock'' (threading) or passing data between processes (process-based threading).  We did, however, get increased performance using the Numba just-in-time compiler ({\tt\small http://numba.pydata.org}) on algorithm hotspots (at the cost of 5 seconds of compiler warmup time at runtime). Reimplementation in C would be the next step and should dramatically increase performance over the pure-Python prototype.
 
 The \simp{} approach relies on accurate partial dependences for both numerical and categorical variables, and considerable effort has gone into refining the current partial dependence algorithms. Extensive simulation has shown, however, that partial dependences computed using the stratification approach are highly sensitive to partial derivatives computed for the left edge of any $x_j$'s range. The partial dependence curve is the cumulative sum of the partial derivatives and so any changes at the left edge affect the entire curve.  This presents a problem when there are few samples with $x_j$ values in that range, as shown in the histogram of \figref{fig:yearmade}. (We introduced a hyper-parameter called {\tt\small min\_slopes\_per\_x\_values} to ignore any partial derivatives estimated with too few records, which improved the accuracy and stability of the partial dependence estimates.)  Any improvement in partial dependence curves would be useful in their own right and particularly helpful for \simp.    Another key area of improvement would be partial dependences for classification data sets, since \simp{} cannot compute impacts for classifiers until such partial dependences are available.
+
+\appendix
+
+\section{Proof relating SHAP values and partial dependence curves}
+
+Shapley regression values for features $F=\{1,..,p\}$ per \cite{shap} but using model $\hat{f}$ not $f$ and simplifying the weights:
+
+\begin{equation}\label{shapregr}
+\phi_j(\hat{f},x) = \sum_{S \subseteq F \texttt{\char`\\} \{j\}}\
+%\frac{|S|!(|F|-|S|-1)!}{|F|!}\
+\frac{1}{p{{p-1}\choose{|S|}}}\
+ [ \hat{f}_{S \cup \{j\}}(x_{S \cup \{j\}}) - \hat{f}_S(x_S) ]
+\end{equation}
+
+The contribution of feature $j$ is the difference between $\hat{f}(x)$ for $x$ with and without $j$, $\hat{f}(x_{S \cup \{j\}}) - \hat{f}(x_S)$. SHAP approximates $\hat{f}(x_S)$ with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}}) | {\bf X}_S = x_S]$ then further approximates with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$ by assuming independent features. \cite{janzing2019feature} argues that $\Ex[\hat{f}(x_{S},{\bf X}_{\overline{S}})]$ is ``... conceptually the right thing in the first place.''
+
+\begin{theorem}
+The Shapley regression values for $x^{(i)} \in \bf X$ estimate the mean-centered partial dependence curve as defined by \cite{PDP}, assuming independent features.
+\end{theorem}
+
+\begin{proof}
+For independent features, we can choose any subset $S \subseteq F \texttt{\char`\\} \{j\}$ to measure the impact of feature $j$, therefore, we choose $S = F \texttt{\char`\\} \{j\}$. Since ${{p-1}\choose{|S|}} = {{p-1}\choose{p-1}} = 1$, the weight reduces to $1/p$ for all $j$ features:
+
+\[
+\phi_j(\hat{f},x) = \sum_{S \subseteq F \texttt{\char`\\} \{j\}}\
+%\frac{|S|!(|F|-|S|-1)!}{|F|!}\
+\frac{1}{p}\
+ [ \hat{f}_{S \cup \{j\}}(x_{S \cup \{j\}}) - \hat{f}_S(x_S) ]
+\]
+
+\noindent Replacing $\hat{f}_S(x_{S})$ by $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$ and, because $S$ is fixed, the summation disappears:
+
+\[
+\phi_j(\hat{f},x) = \frac{1}{p}\
+ [ \Ex[\hat{f}(x_{S \cup \{j\}},{\bf X}_{\overline{S \cup \{j\}}})] - \Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})] ]
+\]
+
+\noindent Per {\tt\small bruteforce.py}\footnote{\tt https://github.com/slundberg/shap/blob/master/shap/explainers/bruteforce.py} in the SHAP codebase and Equation 11 in \cite{shap}, SHAP approximates the marginal expectation, assuming feature independence, as:
+
+\[
+\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})] = \
+    \frac{1}{n} \sum_{i=1}^n \hat{f}(x_S, x_{\bar{S}}^{(i)})
+\]
+
+\noindent But, that is equivalent to the approximation of $j$'s partial dependence (Equation 53 in \citealt{PDP}), \todo{use PDP for friedman as differs from our PD} giving:
+
+\[
+\phi_j(\hat{f},x) = \frac{1}{p}\
+ [  \text{\it PDP}_{S \cup \{j\}}(x) - \text{\it PDP}_{S}(x) ]
+\]
+
+\noindent or:
+
+\[
+\phi_j(\hat{f},x) = \text{\it PDP}_{F}(x) - \text{\it PDP}_{F \texttt{\char`\\} \{j\}}(x)
+\]
+
+\noindent  since $S = F \texttt{\char`\\} \{j\}$ and the $1/p$ weight is common to all features and can be dropped as it does not affect the relative impact of the features.
+
+$\phi_j$ is, therefore, the difference between points on two partial dependence curves, one curve derived using $F$ and one derived from $F \texttt{\char`\\} \{j\}$. The $\phi_j$ values across all $x^{(i)}$ constitute a mean-centered partial dependence curve. 
+
+Because $\text{\it PDP}_{F}(x) = \hat{f}_F(x_F) = \hat{f}(x)$, the equation simplifies to the marginal effect of $j$ on $\hat{f}(x)$:
+
+\[
+\phi_j(\hat{f},x) = \hat{f}(x) - \text{\it PDP}_{F \texttt{\char`\\} \{j\}}(x)
+\]
+
+The impact of $j$ on $y$ is the average $\phi_j(\hat{f},x^{(i)})$ magnitude:
+
+\[
+\frac{1}{n} \sum_{i=1}^n |  \hat{f}(x^{(i)}) - \text{\it PDP}_{F \texttt{\char`\\} \{j\}}(x^{(i)}) |
+\]
+
+ it doesn't follow but do we want to extract out $\bar{y}$?
+ 
+\[
+\frac{1}{n} \sum_{i=1}^n \hat{f}(x^{(i)}) - \frac{1}{n} \sum_{i=1}^n \text{\it PDP}_{F \texttt{\char`\\} \{j\}}(x^{(i)})
+\]
+
+\[
+\overline{\hat{f}({\bf X})} - \frac{1}{n} \sum_{i=1}^n \text{\it PDP}_{F \texttt{\char`\\} \{j\}}(x^{(i)})
+\]
+
+
+
+\end{proof}
+
+\cut{
+\noindent since $S = F \texttt{\char`\\} \{j\}$:
+
+\[
+\phi_j(\hat{f},x) = \frac{1}{p}\
+ [ \Ex[\hat{f}(x_F,{\bf X}_\emptyset)] - \Ex[\hat{f}(x_{F \texttt{\char`\\} \{j\}},{\bf X}_{j})] ]
+\]
+}
+
+Janzing says ``We now want to attribute the difference between f(x) and the expectation E[f(X)] to individual features.''
+
+
+The code in {\tt\small bruteforce.py}\footnote{\tt https://github.com/slundberg/shap/blob/master/shap/explainers/bruteforce.py} has a simple but inefficient implementation that computes $\phi$ values using  {\tt\small f\_without\_j}, which is $PDP_S(x)$ ($i$ changed to $j$ to be consistent with our notation):
+
+{\small
+\begin{verbatim}
+masker = lambda x, mask: x * mask + masker_data * np.invert(mask)
+mask[list(S)] = 1
+f_without_j = f(masker(x, mask)).mean(0)
+mask[j] = 1
+f_with_j = f(masker(x, mask)).mean(0)
+phi[j,:] += weight * (f_with_j - f_without_j)}
+\end{verbatim}}
+
+\[
+\text{\it PD}_i
+\]
 
 \cut{
 \begin{figure}
