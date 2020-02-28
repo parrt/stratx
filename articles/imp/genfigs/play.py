@@ -11,8 +11,8 @@ print(X.shape)
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
-pdp_I = pdp_importances(X_train.copy(), y_train.copy(), numx=300)
-print("PDP\n",pdp_I)
+# pdp_I = pdp_importances(X_train.copy(), y_train.copy(), numx=300)
+# print("PDP\n",pdp_I)
 
 rf = RandomForestRegressor(n_estimators=40)
 rf.fit(X, y)
@@ -23,6 +23,11 @@ explainer = shap.TreeExplainer(rf
                                # , feature_perturbation='tree_path_dependent'
                                )
 shap_values = explainer.shap_values(X_test.sample(300), check_additivity=False)
+shapmeans = np.mean(shap_values, axis=0)
+ranges = np.max(shap_values, axis=0) - np.min(shap_values, axis=0)
+print(ranges)
+print(shapmeans)
+print(shapmeans / ranges)
 shapimp = np.mean(np.abs(shap_values), axis=0)
 total_imp = np.sum(shapimp)
 normalized_shap = shapimp / total_imp

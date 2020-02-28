@@ -600,6 +600,30 @@ Because $\text{\it PDP}_{F}(x) = \hat{f}_F(x_F) = \hat{f}(x)$, the equation simp
 \phi_j(\hat{f},x) = \hat{f}(x) - \text{\it PDP}_{F \texttt{\char`\\} \{j\}}(x)
 \]
 
+What is expected value of $\phi_j$? Should be 0
+
+\[
+\Ex[ \phi_j(\hat{f},x) ] = \Ex [\hat{f}(x)] - \Ex[ \text{\it PDP}_{F \texttt{\char`\\} \{j\}}(x) ]
+\]
+
+Expand expectations across ${\bf X}$:
+
+\[
+\Ex[ \phi_j(\hat{f},x) ] = \frac{1}{n} \sum_{k=1}^n \hat{f}(x^{(k)}) - \
+\frac{1}{n} \sum_{k=1}^n \Ex[ \text{\it PDP}_{F \texttt{\char`\\} \{j\}}(x) ]
+\]
+
+\[
+\Ex[ \phi_j(\hat{f},x) ] = \overline{\hat{f}(x)} - \
+\frac{1}{n} \sum_{k=1}^n \frac{1}{n} \sum_{i=1}^n \hat{f}(x_{F \texttt{\char`\\} \{j\}}^{(k)}, x_j^{(i)})
+\]
+
+Since equal to 0,
+
+\[
+\overline{\hat{f}(x)} = \
+\frac{1}{n} \sum_{k=1}^n \frac{1}{n} \sum_{i=1}^n \hat{f}(x_{F \texttt{\char`\\} \{j\}}^{(k)}, x_j^{(i)})
+\]
 
 
 % -----------
