@@ -18,12 +18,12 @@ import matplotlib.pyplot as plt
 
 np.random.seed(1) # reproducible for paper
 
-width = 3
+xrange = 200
 
 def synthetic_interaction_data(n):
     df = pd.DataFrame()
     for i in range(2):
-        df[f'x{i + 1}'] = np.random.random_sample(size=n) * width
+        df[f'x{i + 1}'] = np.random.random_sample(size=n) * xrange
     yintercept = 100
     df['y'] = df['x1']**2 + df['x2'] + yintercept
     eqn = "y = x1 * x2"
@@ -35,11 +35,12 @@ def RF():
     rf.fit(X,y)
     print("OOB", rf.oob_score_)
 
-    explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100), feature_perturbation='interventional')
+    explainer = shap.TreeExplainer(rf, data=shap.sample(X, 300), feature_perturbation='interventional')
     shap_values = explainer.shap_values(X[:shap_test_size], check_additivity=False)
+    print("shap_j averages:", np.mean(shap_values, axis=0) )
     shapimp = np.mean(np.abs(shap_values), axis=0)
     s = np.sum(shapimp)
-    print("\nRF SHAP importances", list(shapimp), shapimp*width, list(shapimp/s))
+    print("\nRF SHAP importances", list(shapimp), shapimp * xrange, list(shapimp / s))
     return shap_values
 
 

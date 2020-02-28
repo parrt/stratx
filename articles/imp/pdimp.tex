@@ -583,13 +583,14 @@ For independent features, we can choose any subset $S \subseteq F \texttt{\char`
  [  \text{\it PDP}_{S \cup \{j\}}(x) - \text{\it PDP}_{S}(x) ]
 \]
 
-\noindent or:
+\noindent or, since $S = F \texttt{\char`\\} \{j\}$:
 
 \[
-\phi_j(\hat{f},x) = \text{\it PDP}_{F}(x) - \text{\it PDP}_{F \texttt{\char`\\} \{j\}}(x)
+\phi_j(\hat{f},x) = \frac{1}{p}\
+\text{\it PDP}_{F}(x) - \text{\it PDP}_{F \texttt{\char`\\} \{j\}}(x)
 \]
 
-\noindent  since $S = F \texttt{\char`\\} \{j\}$ and the $1/p$ weight is common to all features and can be dropped as it does not affect the relative impact of the features.
+\noindent  
 
 $\phi_j$ is, therefore, the difference between points on two partial dependence curves, one curve derived using $F$ and one derived from $F \texttt{\char`\\} \{j\}$. The $\phi_j$ values across all $x^{(i)}$ constitute a mean-centered partial dependence curve. 
 
@@ -599,6 +600,10 @@ Because $\text{\it PDP}_{F}(x) = \hat{f}_F(x_F) = \hat{f}(x)$, the equation simp
 \phi_j(\hat{f},x) = \hat{f}(x) - \text{\it PDP}_{F \texttt{\char`\\} \{j\}}(x)
 \]
 
+
+
+% -----------
+\cut{
 The impact of $j$ on $y$ is the average $\phi_j(\hat{f},x^{(i)})$ magnitude:
 
 \[
@@ -614,7 +619,7 @@ The impact of $j$ on $y$ is the average $\phi_j(\hat{f},x^{(i)})$ magnitude:
 \[
 \overline{\hat{f}({\bf X})} - \frac{1}{n} \sum_{i=1}^n \text{\it PDP}_{F \texttt{\char`\\} \{j\}}(x^{(i)})
 \]
-
+}
 
 
 \end{proof}
