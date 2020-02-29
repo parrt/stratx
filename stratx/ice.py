@@ -40,7 +40,7 @@ def friedman_partial_dependence(model,X,colname,numx=100,mean_centered=True):
     """
     save_x = X[colname].copy()
     if numx is not None:
-        uniq_x = np.linspace(start=np.min(X[colname]), stop=np.max(X[colname]), num=numx)
+        uniq_x = np.random.choice(X[colname], numx)
     else:
         uniq_x = np.unique(X[colname])
     pdpx = uniq_x

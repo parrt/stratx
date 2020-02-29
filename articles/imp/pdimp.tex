@@ -33,7 +33,9 @@
 \newcommand{\cut}[1]{}
 \newcommand{\todo}[1]{{{\small\color{red}{[#1]}}}}
 
-\newcommand{\Ex}{\mathop{\mathbb{E}}}
+%\newcommand{\Ex}{\mathop{\mathbb{E}}}
+\DeclareMathOperator{\Ex}{\mathbb{E}}
+
 %\newcommand{\Imp}{\mathbf{I}}
 \newcommand{\Imp}{\text{Impact}}
 
@@ -553,7 +555,7 @@ The Shapley regression values for $x^{(i)} \in \bf X$ estimate the mean-centered
 \end{theorem}
 
 \begin{proof}
-For independent features, we can choose any subset $S \subseteq F \texttt{\char`\\} \{j\}$ to measure the impact of feature $j$, therefore, we choose $S = F \texttt{\char`\\} \{j\}$. Since ${{p-1}\choose{|S|}} = {{p-1}\choose{p-1}} = 1$, the weight reduces to $1/p$ for all $j$ features:
+{\em Part 1: } Show $\phi_j(\hat{f},x)$ is the difference between $\hat{f}(x)$ and the partial dependence curve for all features except $j$, as defined by Friedman. For independent features, we can choose any subset $S \subseteq F \texttt{\char`\\} \{j\}$ to measure the impact of feature $j$, therefore, we choose $S = F \texttt{\char`\\} \{j\}$. Since ${{p-1}\choose{|S|}} = {{p-1}\choose{p-1}} = 1$, the weight reduces to $1/p$ for all $j$ features:
 
 \[
 \phi_j(\hat{f},x) = \sum_{S \subseteq F \texttt{\char`\\} \{j\}}\
@@ -576,7 +578,7 @@ For independent features, we can choose any subset $S \subseteq F \texttt{\char`
     \frac{1}{n} \sum_{i=1}^n \hat{f}(x_S, x_{\bar{S}}^{(i)})
 \]
 
-\noindent But, that is equivalent to the approximation of $j$'s partial dependence (Equation 53 in \citealt{PDP}), \todo{use PDP for friedman as differs from our PD} giving:
+\noindent But, that summation is equivalent to the approximation of $j$'s partial dependence (Equation 53 in \citealt{PDP}), \todo{use PDP for friedman as differs from our PD} giving:
 
 \[
 \phi_j(\hat{f},x) = \frac{1}{p}\
@@ -592,38 +594,95 @@ For independent features, we can choose any subset $S \subseteq F \texttt{\char`
 
 \noindent  
 
-$\phi_j$ is, therefore, the difference between points on two partial dependence curves, one curve derived using $F$ and one derived from $F \texttt{\char`\\} \{j\}$. The $\phi_j$ values across all $x^{(i)}$ constitute a mean-centered partial dependence curve. 
+$\phi_j$ is, therefore, the difference between points on two partial dependence curves, one curve derived using $F$, which is just $\hat{f}(x)$, and one derived from $F \texttt{\char`\\} \{j\}$. 
 
-Because $\text{\it PDP}_{F}(x) = \hat{f}_F(x_F) = \hat{f}(x)$, the equation simplifies to the marginal effect of $j$ on $\hat{f}(x)$:
+Because $\text{\it PDP}_{F}(x) = \hat{f}_F(x_F) = \hat{f}(x)$, the equation simplifies to the difference between $\hat{f}(x)$ and the marginal effect of $j$ at point $x$:
 
 \[
 \phi_j(\hat{f},x) = \hat{f}(x) - \text{\it PDP}_{F \texttt{\char`\\} \{j\}}(x)
 \]
 
-What is expected value of $\phi_j$? Should be 0
+\noindent {\em Part 2}. Show that SHAP curves are mean-centered PDP curves:
 
 \[
-\Ex[ \phi_j(\hat{f},x) ] = \Ex [\hat{f}(x)] - \Ex[ \text{\it PDP}_{F \texttt{\char`\\} \{j\}}(x) ]
+\phi_j(\hat{f},x) = \text{\it PDP}_j(x) - \bar{y}
 \]
 
-Expand expectations across ${\bf X}$:
+\noindent Take the expected value of $\phi_j(\hat{f},x)$, as defined in the previous part, across all $x \in X$:
 
 \[
-\Ex[ \phi_j(\hat{f},x) ] = \frac{1}{n} \sum_{k=1}^n \hat{f}(x^{(k)}) - \
-\frac{1}{n} \sum_{k=1}^n \Ex[ \text{\it PDP}_{F \texttt{\char`\\} \{j\}}(x) ]
+\Ex_{\bf X}[ \phi_j(\hat{f},x) ] = \Ex_{\bf X} [\hat{f}(x) - \text{\it PDP}_{F \texttt{\char`\\} \{j\}}(x) ]
 \]
 
 \[
-\Ex[ \phi_j(\hat{f},x) ] = \overline{\hat{f}(x)} - \
+\Ex_{\bf X}[ \phi_j(\hat{f},x) ] = \Ex_{\bf X} [\hat{f}(x) ] - \Ex_{\bf X} [ \text{\it PDP}_{F \texttt{\char`\\} \{j\}}(x) ]
+\]
+
+\noindent $\Ex_{\bf X} [\hat{f}(x)]$ is just $\overline{\hat{f}({\bf X})} = \bar{y}$ and $\text{\it PDP}_{F \texttt{\char`\\} \{j\}}(x)$ is equivalent to $ICE_j(x)$, the Individual Conditional Expectation ({\em ICE}) from \cite{ice}, which simplifies the equation to: 
+
+\[
+\Ex_{\bf X}[ \phi_j(\hat{f},x) ] = \bar{y} - \Ex_{\bf X}[ ICE_j(x) ]
+\]
+
+\noindent By definition, $PDP_j(x) = \Ex_{\bf X}[ ICE_j(x) ]$, the PDP curve is the average of all ICE curves derived from $x \in {\bf X}$:
+
+\cut{
+\[
+\Ex_{\bf X}[ \phi_j(\hat{f},x) ] = \bar{y} - \frac{1}{n} \sum_{i=1}^n ICE_j(x^{(i)})
+\]
+}
+
+\[
+\Ex_{\bf X}[ \phi_j(\hat{f},x) ] = \bar{y} - \text{\it PDP}_j(x)
+\]
+
+The shap values are not directly on the PDP curve but their average is:
+
+\[
+\text{\it PDP}_j(x) = \bar{y} - \Ex_{\bf X}[ \phi_j(\hat{f},x) ]
+\]
+
+\todo{ seems like it should be $\Ex_{\bf X}[ \phi_j(\hat{f},x) ] - \bar{y}$, with the flipped sign. also, maybe it needs to be conditioned:}
+
+\[
+\text{\it PDP}_j(x) = \bar{y} - \Ex[ \phi_j(\hat{f},x) | {\bf X}_j = x_j]
+\]
+
+Try alternative approach, which is to expand everything out:
+
+\[
+\Ex_{\bf X}[ \phi_j(\hat{f},x) ] = \frac{1}{n} \sum_{k=1}^n \hat{f}(x^{(k)}) - \
+\frac{1}{n} \sum_{k=1}^n \Ex_{\bf X}[ \text{\it PDP}_{F \texttt{\char`\\} \{j\}}(x) ]
+\]
+
+\[
+\Ex_{\bf X}[ \phi_j(\hat{f},x) ] = \bar{y} - \
 \frac{1}{n} \sum_{k=1}^n \frac{1}{n} \sum_{i=1}^n \hat{f}(x_{F \texttt{\char`\\} \{j\}}^{(k)}, x_j^{(i)})
 \]
 
-Since equal to 0,
+ Reorder the summations:
+ 
+\[
+\Ex_{\bf X}[ \phi_j(\hat{f},x) ] = \bar{y} - \
+\frac{1}{n} \sum_{i=1}^n \frac{1}{n} \sum_{k=1}^n  \hat{f}(x_{F \texttt{\char`\\} \{j\}}^{(k)}, x_j^{(i)})
+\]
+
+Then
 
 \[
-\overline{\hat{f}(x)} = \
-\frac{1}{n} \sum_{k=1}^n \frac{1}{n} \sum_{i=1}^n \hat{f}(x_{F \texttt{\char`\\} \{j\}}^{(k)}, x_j^{(i)})
+\Ex_{\bf X}[ \phi_j(\hat{f},x) ] = \bar{y} - \
+\frac{1}{n} \sum_{i=1}^n \text{\it PDP}_j(x^{(i)})
 \]
+
+The expected value of any PDP curve is $\hat{y}$ since the total of all $PDP_j(x)$ curves is $\hat{f}(x)$; divide by $n$ and we get $\bar{y}$. So:
+
+\[
+\Ex_{\bf X}[ \phi_j(\hat{f},x) ] = \bar{y} - \bar{y} = 0
+\] 
+
+\todo{ it makes sense that the expected value of the Shapley curve is 0 but I'm not sure that proves it's a mean centered PDP. lots of things could equal zero.}
+
+\end{proof}
 
 
 % -----------
@@ -645,8 +704,6 @@ The impact of $j$ on $y$ is the average $\phi_j(\hat{f},x^{(i)})$ magnitude:
 \]
 }
 
-
-\end{proof}
 
 \cut{
 \noindent since $S = F \texttt{\char`\\} \{j\}$:
