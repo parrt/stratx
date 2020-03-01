@@ -129,7 +129,7 @@ To hold features constant for any smooth generator function, we can take the par
 
 \todo{This is zeroed to have the y-intercept removed  whereas the normal definition does not, SHAP is doing a "centered ICE plot" version where the anchor point is $\bar{y}$}
 
-$\text{\it PD}_j(z)$ is the value contributed to $y$ by $x_j$ at $x_j = z$. The advantages of this partial dependence definition are that it does not depend on a fitted model and is insensitive to collinear or otherwise codependent features, unlike the traditional definition that is accurate for data ``{\em dominated by low order interactions}'' per Friedman.  
+$\text{\it PD}_j(z)$ is the value contributed to $y$ by $x_j$ at $x_j = z$. The advantages of this partial dependence definition are that it does not depend on a fitted model and is insensitive to collinear or otherwise codependent features, unlike the traditional definition that is accurate for data ``{\em dominated by low order interactions}'' per Friedman.  \todo{use FPD for friedman as differs from our PD} 
 
 To go from partial dependence to feature impact, we compare the area under the absolute value of each partial dependence curve. The larger the area under the curve, the larger the impact on $y$.   By the mean-value theorem of integrals, the area under $f(x)$ in interval $[a,b]$ is $\int_{a}^{b} f(x) dx = \overline{f(x)}(b-a)$.  For comparison purposes between variables, the actual area is not important and the $b-a$ term drops out, assuming the variables our normalized so all $x_j$ domains have the same range, such as $[0,1]$. The impact of $x_j$ is then just the average magnitude of $\text{\it PD}_j(x_j)$:
 
@@ -535,11 +535,12 @@ Each of the $p$ feature $x_j$ impact computations is independent and could proce
 
 The \simp{} approach relies on accurate partial dependences for both numerical and categorical variables, and considerable effort has gone into refining the current partial dependence algorithms. Extensive simulation has shown, however, that partial dependences computed using the stratification approach are highly sensitive to partial derivatives computed for the left edge of any $x_j$'s range. The partial dependence curve is the cumulative sum of the partial derivatives and so any changes at the left edge affect the entire curve.  This presents a problem when there are few samples with $x_j$ values in that range, as shown in the histogram of \figref{fig:yearmade}. (We introduced a hyper-parameter called {\tt\small min\_slopes\_per\_x\_values} to ignore any partial derivatives estimated with too few records, which improved the accuracy and stability of the partial dependence estimates.)  Any improvement in partial dependence curves would be useful in their own right and particularly helpful for \simp.    Another key area of improvement would be partial dependences for classification data sets, since \simp{} cannot compute impacts for classifiers until such partial dependences are available.
 
+
 \appendix
 
 \section{Proof relating SHAP values and partial dependence curves}
 
-Shapley regression values for features $F=\{1,..,p\}$ per \cite{shap} but using model $\hat{f}$ not $f$ and simplifying the weights:
+The shapley regression values for features $F=\{1,..,p\}$ per \cite{shap} are as follows, simplifying the weight term and using model $\hat{f}$.
 
 \begin{equation}\label{shapregr}
 \phi_j(\hat{f},x) = \sum_{S \subseteq F \texttt{\char`\\} \{j\}}\
@@ -548,14 +549,14 @@ Shapley regression values for features $F=\{1,..,p\}$ per \cite{shap} but using 
  [ \hat{f}_{S \cup \{j\}}(x_{S \cup \{j\}}) - \hat{f}_S(x_S) ]
 \end{equation}
 
-The contribution of feature $j$ is the difference between $\hat{f}(x)$ for $x$ with and without $j$, $\hat{f}(x_{S \cup \{j\}}) - \hat{f}(x_S)$. SHAP approximates $\hat{f}(x_S)$ with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}}) | {\bf X}_S = x_S]$ then further approximates with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$ by assuming independent features. \cite{janzing2019feature} argues that $\Ex[\hat{f}(x_{S},{\bf X}_{\overline{S}})]$ is ``... conceptually the right thing in the first place.''
+The contribution of feature $j$ is the difference between $\hat{f}(x)$ for $x$ with and without $j$, $\hat{f}(x_{S \cup \{j\}}) - \hat{f}(x_S)$. SHAP approximates $\hat{f}(x_S)$ with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}}) | {\bf X}_S = x_S]$ then further approximates with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$ by assuming independent features. \cite{janzing2019feature} argues that $\Ex[\hat{f}(x_{S},{\bf X}_{\overline{S}})]$ is ``... conceptually the right thing in the first place.'' To show the relationship between SHAP values and traditional FPD partial dependence curves, as defined by \cite{PDP}, we state and prove the following theorem.
 
 \begin{theorem}
-The Shapley regression values for $x^{(i)} \in \bf X$ estimate the mean-centered partial dependence curve as defined by \cite{PDP}, assuming independent features.
+The average of the SHAP values at any $x_j=z$ location estimates the mean-centered FPD partial dependence curve, assuming independent features: $\Ex[ \phi_j(\hat{f},x) | {\bf X}_j = z] = FPD_j(x) - \bar{y}$.
 \end{theorem}
 
 \begin{proof}
-{\em Part 1: } Show $\phi_j(\hat{f},x)$ is the difference between $\hat{f}(x)$ and the partial dependence curve for all features except $j$, as defined by Friedman. For independent features, we can choose any subset $S \subseteq F \texttt{\char`\\} \{j\}$ to measure the impact of feature $j$, therefore, we choose $S = F \texttt{\char`\\} \{j\}$. Since ${{p-1}\choose{|S|}} = {{p-1}\choose{p-1}} = 1$, the weight reduces to $1/p$ for all $j$ features:
+{\em Part 1: } Show $\phi_j(\hat{f},x)$ is the difference between $\hat{f}(x)$ and the FPD curve, as defined by Friedman, for features $F \texttt{\char`\\} \{j\}$ (all features except $j$). For independent features, we can choose any subset $S \subseteq F \texttt{\char`\\} \{j\}$ to measure the impact of feature $j$, therefore, we choose $S = F \texttt{\char`\\} \{j\}$. Since ${{p-1}\choose{|S|}} = {{p-1}\choose{p-1}} = 1$, the weight reduces to $1/p$:
 
 \[
 \phi_j(\hat{f},x) = \sum_{S \subseteq F \texttt{\char`\\} \{j\}}\
@@ -564,11 +565,11 @@ The Shapley regression values for $x^{(i)} \in \bf X$ estimate the mean-centered
  [ \hat{f}_{S \cup \{j\}}(x_{S \cup \{j\}}) - \hat{f}_S(x_S) ]
 \]
 
-\noindent Replacing $\hat{f}_S(x_{S})$ by $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$ and, because $S$ is fixed, the summation disappears:
+\noindent Replace $\hat{f}_S(x_{S})$ by $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$ and, because $S$ is fixed, remove the summation:
 
 \[
 \phi_j(\hat{f},x) = \frac{1}{p}\
- [ \Ex[\hat{f}(x_{S \cup \{j\}},{\bf X}_{\overline{S \cup \{j\}}})] - \Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})] ]
+ ( \Ex[\hat{f}(x_{S \cup \{j\}},{\bf X}_{\overline{S \cup \{j\}}})] - \Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})] )
 \]
 
 \noindent Per {\tt\small bruteforce.py}\footnote{\tt https://github.com/slundberg/shap/blob/master/shap/explainers/bruteforce.py} in the SHAP codebase and Equation 11 in \cite{shap}, SHAP approximates the marginal expectation, assuming feature independence, as:
@@ -578,47 +579,73 @@ The Shapley regression values for $x^{(i)} \in \bf X$ estimate the mean-centered
     \frac{1}{n} \sum_{i=1}^n \hat{f}(x_S, x_{\bar{S}}^{(i)})
 \]
 
-\noindent But, that summation is equivalent to the approximation of $j$'s partial dependence (Equation 53 in \citealt{PDP}), \todo{use PDP for friedman as differs from our PD} giving:
+\noindent But, that summation is equivalent to the approximation of $j$'s partial dependence curve (Equation 53 in \citealt{PDP}), giving:
 
 \[
 \phi_j(\hat{f},x) = \frac{1}{p}\
- [  \text{\it PDP}_{S \cup \{j\}}(x) - \text{\it PDP}_{S}(x) ]
+(  \text{\it FPD}_{S \cup \{j\}}(x) - \text{\it FPD}_{S}(x) )
 \]
 
 \noindent or, since $S = F \texttt{\char`\\} \{j\}$:
 
 \[
 \phi_j(\hat{f},x) = \frac{1}{p}\
-\text{\it PDP}_{F}(x) - \text{\it PDP}_{F \texttt{\char`\\} \{j\}}(x)
+(\text{\it FPD}_{F}(x) - \text{\it FPD}_{F \texttt{\char`\\} \{j\}}(x))
 \]
 
-\noindent  
-
+\cut{
 $\phi_j$ is, therefore, the difference between points on two partial dependence curves, one curve derived using $F$, which is just $\hat{f}(x)$, and one derived from $F \texttt{\char`\\} \{j\}$. 
+}
 
-Because $\text{\it PDP}_{F}(x) = \hat{f}_F(x_F) = \hat{f}(x)$, the equation simplifies to the difference between $\hat{f}(x)$ and the marginal effect of $j$ at point $x$:
-
-\[
-\phi_j(\hat{f},x) = \hat{f}(x) - \text{\it PDP}_{F \texttt{\char`\\} \{j\}}(x)
-\]
-
-\noindent {\em Part 2}. Show that SHAP curves are mean-centered PDP curves:
+\noindent  Because $\text{\it FPD}_{F}(x) = \hat{f}_F(x_F) = \hat{f}(x)$, the equation simplifies to the difference between $\hat{f}(x)$ and the marginal effect of $j$ at point $x$:
 
 \[
-\phi_j(\hat{f},x) = \text{\it PDP}_j(x) - \bar{y}
+\phi_j(\hat{f},x) = \frac{1}{p}( \hat{f}(x) - \text{\it FPD}_{F \texttt{\char`\\} \{j\}}(x) )
 \]
 
-\noindent Take the expected value of $\phi_j(\hat{f},x)$, as defined in the previous part, across all $x \in X$:
+\todo{Since $\frac{1}{p}$ is common to all features it's tempting to take it out, but it affects the Shapley value in the math so it seems like we should keep it in.  I verified that mean(abs(Friedman FPD)) is same as avg abs SHAP values so clearly that constant goes away somehow. it must have something to do with the $\bar{y}$ that is subtracted to get the mean centered version.} 
+
+\noindent {\em Part 2}. Show that the expected SHAP value at a specific $x_j=z$ value is a point on the mean-centered FPD curve:
+
 
 \[
-\Ex_{\bf X}[ \phi_j(\hat{f},x) ] = \Ex_{\bf X} [\hat{f}(x) - \text{\it PDP}_{F \texttt{\char`\\} \{j\}}(x) ]
+\Ex[ \phi_j(\hat{f},x) | {\bf X}_j = z] = \text{\it FPD}_j(x) - \bar{y}
 \]
+
+\noindent Take the expected value of $\phi_j(\hat{f},x)$ conditioned on each instance in $\bf X$ using value $z$ for feature $j$:
 
 \[
-\Ex_{\bf X}[ \phi_j(\hat{f},x) ] = \Ex_{\bf X} [\hat{f}(x) ] - \Ex_{\bf X} [ \text{\it PDP}_{F \texttt{\char`\\} \{j\}}(x) ]
+\Ex[ \phi_j(\hat{f},x) | {\bf X}_j = z ] = \Ex [\hat{f}(x) | {\bf X}_j = z ] - \Ex [ \text{\it FPD}_{F \texttt{\char`\\} \{j\}}(x) | {\bf X}_j = z ]
 \]
 
-\noindent $\Ex_{\bf X} [\hat{f}(x)]$ is just $\overline{\hat{f}({\bf X})} = \bar{y}$ and $\text{\it PDP}_{F \texttt{\char`\\} \{j\}}(x)$ is equivalent to $ICE_j(x)$, the Individual Conditional Expectation ({\em ICE}) from \cite{ice}, which simplifies the equation to: 
+\noindent $\Ex [\hat{f}(x) | {\bf X}_j = z ]$ is the expected value across all $\bf X$ with a fixed $x_j=z$ value taken from $x$, which is the definition of $FPD_j(x)$:
+
+\[
+\Ex[ \phi_j(\hat{f},x) | {\bf X}_j = z ] = FPD_j(x) - \Ex [ \text{\it FPD}_{F \texttt{\char`\\} \{j\}}(x) | {\bf X}_j = z ]
+\]
+
+\noindent $\text{\it FPD}_{F \texttt{\char`\\} \{j\}}(x)$  fixes $F \texttt{\char`\\} \{j\}$ and the conditional ${\bf X}_j = z$ fixes $j$, yielding 
+
+\[
+\Ex[ \phi_j(\hat{f},x) | {\bf X}_j = z ] = FPD_j(x) - \Ex_{\bf X} [ \text{\it FPD}_{F}(x) ]
+\]
+
+\todo{That conversion from conditional expectation to $\Ex_{\bf X}$ seems a bit off to me in the last step.}
+
+\noindent Since, $\text{\it FPD}_{F}(x) = \hat{f}(x)$:
+
+\[
+\Ex[ \phi_j(\hat{f},x) | {\bf X}_j = z ] = FPD_j(x) - \Ex_{\bf X} [ \hat{f}(x) ] = FPD_j(x) - \bar{y}
+\]
+
+\noindent which completes the proof.
+
+\end{proof}
+
+
+% -----------
+\cut{
+$\Ex_{\bf X} [\hat{f}(x)]$ is just $\overline{\hat{f}({\bf X})} = \bar{y}$ and $\text{\it PDP}_{F \texttt{\char`\\} \{j\}}(x)$ is equivalent to $ICE_j(x)$, the Individual Conditional Expectation ({\em ICE}) from \cite{ice}, which simplifies the equation to: 
 
 \[
 \Ex_{\bf X}[ \phi_j(\hat{f},x) ] = \bar{y} - \Ex_{\bf X}[ ICE_j(x) ]
@@ -682,11 +709,7 @@ The expected value of any PDP curve is $\hat{y}$ since the total of all $PDP_j(x
 
 \todo{ it makes sense that the expected value of the Shapley curve is 0 but I'm not sure that proves it's a mean centered PDP. lots of things could equal zero.}
 
-\end{proof}
 
-
-% -----------
-\cut{
 The impact of $j$ on $y$ is the average $\phi_j(\hat{f},x^{(i)})$ magnitude:
 
 \[
@@ -712,7 +735,6 @@ The impact of $j$ on $y$ is the average $\phi_j(\hat{f},x^{(i)})$ magnitude:
 \phi_j(\hat{f},x) = \frac{1}{p}\
  [ \Ex[\hat{f}(x_F,{\bf X}_\emptyset)] - \Ex[\hat{f}(x_{F \texttt{\char`\\} \{j\}},{\bf X}_{j})] ]
 \]
-}
 
 Janzing says ``We now want to attribute the difference between f(x) and the expectation E[f(X)] to individual features.''
 
@@ -726,12 +748,11 @@ mask[list(S)] = 1
 f_without_j = f(masker(x, mask)).mean(0)
 mask[j] = 1
 f_with_j = f(masker(x, mask)).mean(0)
-phi[j,:] += weight * (f_with_j - f_without_j)}
+phi[j,:] += weight * (f_with_j - f_without_j)
 \end{verbatim}}
 
-\[
-\text{\it PD}_i
-\]
+}
+
 
 \cut{
 \begin{figure}

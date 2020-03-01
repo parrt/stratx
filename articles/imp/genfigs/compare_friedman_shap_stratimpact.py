@@ -35,8 +35,13 @@ print("mean(X_1), mean(X_2) =", np.mean(X1), np.mean(X2))
 
 pdp_x1 = friedman_partial_dependence(rf, X, 'x1', numx=None, mean_centered=False)
 pdp_x2 = friedman_partial_dependence(rf, X, 'x2', numx=None, mean_centered=False)
+m1 = np.mean(pdp_x1[1])
+m2 = np.mean(pdp_x2[1])
 print("mean(PDP_1) =", np.mean(pdp_x1[1]))
 print("mean(PDP_2) =", np.mean(pdp_x2[1]))
+
+print("mean abs PDP_1-ybar", np.mean(np.abs(pdp_x1[1]-m1)))
+print("mean abs PDP_1-ybar", np.mean(np.abs(pdp_x2[1]-m2)))
 
 explainer = shap.TreeExplainer(rf, data=shap.sample(X, 400), feature_perturbation='interventional')
 shap_values = explainer.shap_values(X, check_additivity=False)
