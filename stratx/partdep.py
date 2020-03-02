@@ -328,18 +328,19 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         else:
             fig, ax = plt.subplots(1, 1)
 
-    if show_all_pdp:
+    avg_pdp_marker_size = pdp_marker_size
+    if show_all_pdp and n_trials>1:
         sorted_by_imp = np.argsort([np.mean(np.abs(v)) for v in all_pdpy])
         cmap = plt.get_cmap(pdp_marker_cmap)
         ax.set_prop_cycle(color=cmap(np.linspace(0,1,num=n_trials)))
         for i in range(n_trials):
-            ax.scatter(all_pdpx[sorted_by_imp[i]], all_pdpy[sorted_by_imp[i]],
-                       s=pdp_marker_size, label=colname, alpha=pdp_marker_alpha)
+            ax.plot(all_pdpx[sorted_by_imp[i]], all_pdpy[sorted_by_imp[i]],
+                    markersize=pdp_marker_size, alpha=pdp_marker_alpha)
+        avg_pdp_marker_size += 1
 
     # Get avg curve, reset pdpx and pdpy to the average
     pdpx, pdpy = avg_pd_curve(all_pdpx, all_pdpy)
-    # pdpx, pdpy = np.array(list(m.keys())), np.array(list(m.values()))
-    ax.scatter(pdpx, pdpy, c=pdp_marker_color, s=pdp_marker_size+1)
+    ax.plot(pdpx, pdpy, c=pdp_marker_color, markersize=avg_pdp_marker_size, label=colname)
 
     if show_pdp_line:
         ax.plot(pdpx, pdpy, lw=pdp_line_width, c=pdp_line_color)

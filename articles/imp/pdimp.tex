@@ -247,6 +247,15 @@ A SHAP implementation that never assumed independence would correctly isolate $x
 
 While SHAP has very strong theoretical foundations, there are several issues with the approach that should be brought to the fore.  First, we cannot agree with the formal SHAP definition of feature impact/importance for the simple reason that SHAP measures $x_j$ impact as the magnitude of the deviations $x_j$ causes from the mean model prediction, $\overline{y}$, rather than deviations from $y=0$.   For example, given equation $y=x_1^2 + x_2 + 100$ from \figref{fig:quad-area}, the effect of $x_1$ on $y$ is clearly $x_1^2$ (whose impact is the area of the orange region), not $|\overline{y} - x_1^2|$, as defined by SHAP (grey region area). 
 
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.6]{images/FPD-SHAP-PD.pdf}\vspace{-5mm}
+\caption{\small $y = x_1^2 + x_1 x_2 + 20*sin(3 x_2) + 10$ with $x_j \sim U(0,10)$ where $x_3$ has no effect on $y$ and $n=1000$.}
+\label{fig:shap-weight}
+\end{center}
+\end{figure}
+
+
 , then SHAP's implementation further approximates with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$ by assuming feature independence. \cite{janzing2019feature} argues that ``{\em unconditional} [emphasis theirs] rather than {\em conditional} expectations provide the right notion of dropping features.''  SHAP engages this behavior in ``interventional'' mode, and users can pass in a so-called {\em background set} that contains, for example, $x_j$ averages or even the entire $\bf X$ training set.
 
 The formal SHAP definition does not assume feature independence as the implementation does, leading to further problems

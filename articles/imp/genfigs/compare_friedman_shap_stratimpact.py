@@ -5,13 +5,15 @@ from stratx.partdep import plot_stratpd
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 from sklearn.ensemble import RandomForestRegressor
 
 def synthetic_interaction_data(n, yintercept = 10):
     df = pd.DataFrame()
-    df[f'x1'] = np.random.random(size=n)*10+1
-    df[f'x2'] = np.random.random(size=n)*10+1
-    df['y'] = df['x1']**2 + df['x1']*df['x2'] + np.sin(df['x2']*2)*10 + yintercept
+    df[f'x1'] = np.random.random(size=n)*10
+    df[f'x2'] = np.random.random(size=n)*10
+    df[f'x3'] = np.random.random(size=n)*10
+    df['y'] = df['x1']**2 + df['x1']*df['x2'] + np.sin(3*df['x2'])*20  + yintercept
 #     df['y'] = df['x1'] * df['x2'] + yintercept
     return df
 
@@ -20,11 +22,13 @@ def synthetic_interaction_data(n, yintercept = 10):
 #         return np.array([f(row) for row in x])
 #     return x[0]**2 + x[1] + y_intercept
 
-df = synthetic_interaction_data(400)
+n = 1000
+df = synthetic_interaction_data(n)
 
-X, y = df[['x1','x2']].copy(), df['y'].copy()
+X, y = df[['x1','x2','x3']].copy(), df['y'].copy()
 X1 = X.iloc[:,0]
 X2 = X.iloc[:,1]
+X3 = X.iloc[:,2]
 
 rf = RandomForestRegressor(n_estimators=10)
 rf.fit(X, y)
@@ -35,55 +39,92 @@ print("mean(X_1), mean(X_2) =", np.mean(X1), np.mean(X2))
 
 pdp_x1 = friedman_partial_dependence(rf, X, 'x1', numx=None, mean_centered=False)
 pdp_x2 = friedman_partial_dependence(rf, X, 'x2', numx=None, mean_centered=False)
+pdp_x3 = friedman_partial_dependence(rf, X, 'x3', numx=None, mean_centered=False)
 m1 = np.mean(pdp_x1[1])
 m2 = np.mean(pdp_x2[1])
+m3 = np.mean(pdp_x3[1])
 print("mean(PDP_1) =", np.mean(pdp_x1[1]))
 print("mean(PDP_2) =", np.mean(pdp_x2[1]))
+print("mean(PDP_2) =", np.mean(pdp_x3[1]))
 
 print("mean abs PDP_1-ybar", np.mean(np.abs(pdp_x1[1]-m1)))
-print("mean abs PDP_1-ybar", np.mean(np.abs(pdp_x2[1]-m2)))
+print("mean abs PDP_2-ybar", np.mean(np.abs(pdp_x2[1]-m2)))
+print("mean abs PDP_3-ybar", np.mean(np.abs(pdp_x3[1]-m3)))
 
-explainer = shap.TreeExplainer(rf, data=shap.sample(X, 400), feature_perturbation='interventional')
+explainer = shap.TreeExplainer(rf, data=shap.sample(X, n), feature_perturbation='interventional')
 shap_values = explainer.shap_values(X, check_additivity=False)
 shapavg = np.mean(shap_values, axis=0)
-print("SHAP avg x1,x2 =", shapavg)
+print("SHAP avg x1,x2,x3 =", shapavg)
 shapimp = np.mean(np.abs(shap_values), axis=0)
-print("SHAP avg |x1|,|x2| =", shapimp)
+print("SHAP avg |x1|,|x2|,|x3| =", shapimp)
 
-fig, axes = plt.subplots(1,3,figsize=(10,4.5))
+fig, axes = plt.subplots(1,3,figsize=(8.5,3))
 
-axes[0].plot(pdp_x1[0], pdp_x1[1], '.', markersize=5, c='#1E88E5', label='$PDP_1$', alpha=.5)
-axes[0].plot(pdp_x2[0], pdp_x2[1], '.', markersize=5, c='orange', label='$PDP_2$', alpha=.5)
-axes[0].plot([min(pdp_x1[0]),max(pdp_x1[0])], [np.mean(pdp_x1[1])]*2, ':', c='#1E88E5', label=r"$\overline{PDP_1}$")
-axes[0].plot([min(pdp_x2[0]),max(pdp_x2[0])], [np.mean(pdp_x2[1])]*2, ':', c='orange', label=r"$\overline{PDP_2}$")
-axes[0].set_xlabel("x1")
+x1_color = '#1E88E5'
+x2_color = 'orange'
+x3_color = '#A22396'
+
+axes[0].plot(pdp_x1[0], pdp_x1[1], '.', markersize=1, c=x1_color, label='$FPD_1$', alpha=.5)
+axes[0].plot(pdp_x2[0], pdp_x2[1], '.', markersize=1, c=x2_color, label='$FPD_2$', alpha=.5)
+axes[0].plot(pdp_x3[0], pdp_x3[1], '.', markersize=1, c=x3_color, label='$FPD_3$', alpha=.5)
+
+axes[0].text(0, 75, f"$\\bar{{y}}={np.mean(y):.1f}$", fontsize=13)
+axes[0].set_xticks([0,2,4,6,8,10])
+axes[0].set_xlabel("$x_1, x_2, x_3$", fontsize=10)
 axes[0].set_ylabel("y")
-axes[0].set_title(f"Friedman PDP\n$\\bar{{y}}={np.mean(y):.2f}$\n$y = x_1^2 + x_1 x_2 + sin(2 x_2) + 10$", fontsize=10)
-axes[0].legend(fontsize=9)
+axes[0].set_title(f"Friedman FPD")
+
+axes[0].spines['top'].set_linewidth(.5)
+axes[0].spines['right'].set_linewidth(.5)
+axes[0].spines['left'].set_linewidth(.5)
+axes[0].spines['bottom'].set_linewidth(.5)
+axes[0].spines['top'].set_color('none')
+axes[0].spines['right'].set_color('none')
+
+x1_patch = mpatches.Patch(color=x1_color, label='$FPD_1$')
+x2_patch = mpatches.Patch(color=x2_color, label='$FPD_2$')
+x3_patch = mpatches.Patch(color=x3_color, label='$FPD_3$')
+axes[0].legend(handles=[x1_patch,x2_patch,x3_patch], fontsize=10)
+
+# axes[0].legend(fontsize=10)
 
 #axes[1].plot(shap_values)
 shap.dependence_plot("x1", shap_values, X,
                      interaction_index=None, ax=axes[1], dot_size=10,
-                     show=False, alpha=.5)
+                     show=False, alpha=.5, color=x1_color)
 shap.dependence_plot("x2", shap_values, X,
                      interaction_index=None, ax=axes[1], dot_size=10,
-                     show=False, alpha=.5, color='orange')
-axes[1].set_xticks([2,4,6,8])
-axes[1].set_title("SHAP x1, x2")
-axes[1].set_ylabel("SHAP values")
+                     show=False, alpha=.5, color=x2_color)
+shap.dependence_plot("x3", shap_values, X,
+                     interaction_index=None, ax=axes[1], dot_size=10,
+                     show=False, alpha=.5, color=x3_color)
+axes[1].set_xticks([0,2,4,6,8,10])
+axes[1].set_xlabel("$x_1, x_2, x_3$", fontsize=10)
+axes[1].set_title("SHAP")
+axes[1].set_ylabel("SHAP values", fontsize=10)
 
 
 plot_stratpd(X, y, "x1", "y", ax=axes[2], pdp_marker_size=1,
-             pdp_marker_color='#1E88E5',
+             pdp_marker_color=x1_color,
              show_x_counts=False, n_trials=1, show_slope_lines=False)
 plot_stratpd(X, y, "x2", "y", ax=axes[2], pdp_marker_size=1,
-             pdp_marker_color='orange',
+             pdp_marker_color=x2_color,
              show_x_counts=False, n_trials=1, show_slope_lines=False)
-axes[2].set_ylim(-10,180)
-axes[2].set_xlabel("x1,x2")
+plot_stratpd(X, y, "x3", "y", ax=axes[2], pdp_marker_size=1,
+             pdp_marker_color=x3_color,
+             show_x_counts=False, n_trials=1, show_slope_lines=False)
+axes[1].set_xticks([0,2,4,6,8,10])
+axes[2].set_ylim(-10,150)
+axes[2].set_xlabel("$x_1, x_2, x_3$", fontsize=10)
 axes[2].set_ylabel("y")
-axes[2].set_title("StratImpact x1, x2")
+axes[2].set_title("StratImpact")
+axes[2].spines['top'].set_linewidth(.5)
+axes[2].spines['right'].set_linewidth(.5)
+axes[2].spines['left'].set_linewidth(.5)
+axes[2].spines['bottom'].set_linewidth(.5)
+axes[2].spines['top'].set_color('none')
+axes[2].spines['right'].set_color('none')
 
 plt.tight_layout()
-plt.savefig("/Users/parrt/Desktop/all.pdf")
+plt.savefig("../images/FPD-SHAP-PD.pdf")
 plt.show()
