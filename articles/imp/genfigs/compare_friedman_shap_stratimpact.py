@@ -64,14 +64,15 @@ x1_color = '#1E88E5'
 x2_color = 'orange'
 x3_color = '#A22396'
 
-axes[0].plot(pdp_x1[0], pdp_x1[1], '.', markersize=1, c=x1_color, label='$FPD_1$', alpha=.5)
-axes[0].plot(pdp_x2[0], pdp_x2[1], '.', markersize=1, c=x2_color, label='$FPD_2$', alpha=.5)
-axes[0].plot(pdp_x3[0], pdp_x3[1], '.', markersize=1, c=x3_color, label='$FPD_3$', alpha=.5)
+axes[0].plot(pdp_x1[0], pdp_x1[1], '.', markersize=1, c=x1_color, label='$FPD_1$', alpha=1)
+axes[0].plot(pdp_x2[0], pdp_x2[1], '.', markersize=1, c=x2_color, label='$FPD_2$', alpha=1)
+axes[0].plot(pdp_x3[0], pdp_x3[1], '.', markersize=1, c=x3_color, label='$FPD_3$', alpha=1)
 
 axes[0].text(0, 75, f"$\\bar{{y}}={np.mean(y):.1f}$", fontsize=13)
 axes[0].set_xticks([0,2,4,6,8,10])
 axes[0].set_xlabel("$x_1, x_2, x_3$", fontsize=10)
 axes[0].set_ylabel("y")
+axes[0].set_ylim(-10,160)
 axes[0].set_title(f"Friedman FPD")
 
 axes[0].spines['top'].set_linewidth(.5)
@@ -113,7 +114,7 @@ plot_stratpd(X, y, "x2", "y", ax=axes[2], pdp_marker_size=1,
 plot_stratpd(X, y, "x3", "y", ax=axes[2], pdp_marker_size=1,
              pdp_marker_color=x3_color,
              show_x_counts=False, n_trials=1, show_slope_lines=False)
-axes[1].set_xticks([0,2,4,6,8,10])
+axes[2].set_xticks([0,2,4,6,8,10])
 axes[2].set_ylim(-10,150)
 axes[2].set_xlabel("$x_1, x_2, x_3$", fontsize=10)
 axes[2].set_ylabel("y")

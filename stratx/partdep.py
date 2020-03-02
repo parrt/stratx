@@ -335,12 +335,12 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         ax.set_prop_cycle(color=cmap(np.linspace(0,1,num=n_trials)))
         for i in range(n_trials):
             ax.plot(all_pdpx[sorted_by_imp[i]], all_pdpy[sorted_by_imp[i]],
-                    markersize=pdp_marker_size, alpha=pdp_marker_alpha)
+                    '.', markersize=pdp_marker_size, alpha=pdp_marker_alpha)
         avg_pdp_marker_size += 1
 
     # Get avg curve, reset pdpx and pdpy to the average
     pdpx, pdpy = avg_pd_curve(all_pdpx, all_pdpy)
-    ax.plot(pdpx, pdpy, c=pdp_marker_color, markersize=avg_pdp_marker_size, label=colname)
+    ax.plot(pdpx, pdpy, '.', c=pdp_marker_color, markersize=avg_pdp_marker_size, label=colname)
 
     if show_pdp_line:
         ax.plot(pdpx, pdpy, lw=pdp_line_width, c=pdp_line_color)

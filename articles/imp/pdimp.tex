@@ -205,11 +205,11 @@ The definition of impact in \eqnref{eq:Epd2a} assumes that each $x_j$ value is e
 
 \section{Existing methods}\label{sec:existing}
 
-\todo{yikes, This is getting too big and must be split apart or subsectioned}
-
 In this paper, we are primarily concerned with identifying the most impactful features for business or medical applications. But, because virtually all research focuses on feature importance and because practitioners commonly assume feature importance is the same as feature impact, it is appropriate to compare \simp{} to  feature importance methods.
 
 Feature importance methods for labeled data sets (with $\bf X$ and $\bf y$) are broadly categorized into data analysis and model analysis techniques, sometimes called {\em filter} and {\em wrapper} methods \citep{tsanas}. Data analysis techniques analyze the data directly to identify important features, whereas model analysis techniques rely on predictions from fitted models.  The data analysis techniques further split into techniques for regression and techniques for classification, with most of the research going into classification.
+
+\subsection{Model-free techniques}
 
 The simplest technique to identify important or relevant regression features is to rank them by their Spearman's rank correlation coefficient \citep{spearmans}; the feature with the largest coefficient is taken to be the most important. This method works well for independent features, but suffers in the presence of codependent features.   Groups of features with similar relationships to the response variable receive the same or similar ranks, even though just one should be considered important.
 
@@ -226,7 +226,9 @@ J_{mRMR}(x_k) = I(x_k, y) - \frac{1}{|S|} \sum_{x_k \in S} I(x_k, x_j)
 \noindent where $I(x_k, x_j)$ is some measure of mutual information between $x_k$ and $x_j$, $S$ is the growing set of selected features, and $x_k$ is the candidate feature. mRMR only considers single-feature relationships with the response variable, and is limited to classification as originally defined. See \citep{ubermRMR} for a recent application of mRMR at Uber Technologies.  For more on model-free feature importances, see the survey by \citep{survey}.  \citet{tsanas} suggests using spearman's rank not mutual information. \citet{meyer-microarray} looks for pairs of features to response variable associations as an improvement, while retaining reasonable efficiency. See \citet{filter-benchmark} for benchmarks of filter versus filter methods.
 
 The fundamental problem faced by all of these data analysis techniques is that they measure relevance by the strength of the association between (typically) a single feature to response $y$, but $y$ contains the impact of all $x_j$ variables. Computing an appropriate association metric between categorical and numeric values also presents a challenge.  In contrast, the definitions of impact and importance proposed in this paper isolate the effect of each $x_j$ on $y$, holding all other variables constant, and also support categorical features.
- 
+
+\subsection{Model-based techniques}
+
 Turning to model-based techniques, feature importance methods are typically variations on a theme: tweak the model and measure the effect on model prediction accuracy or expected model output. The simplest approach is {\em drop-column importance}, which defines $x_j$ importance as the difference in model accuracy between a model with all features (the baseline) and a model with $x_j$ removed. The model must be retrained $p$ times and highly similar features yield low or zero importances because codependent features cover for the dropped column in the model.
 
 To avoid retraining the model, $x_j$ can be permuted instead of dropped for {\em permutation importance}. This approach is faster but can introduce nonsensical observations by permuting invalid values into records; e.g., shifting a true {\tt\small pregnant} value into a male's record. Codependent features tend to share importance, at least when permutation importance is applied to random forest models.
@@ -237,33 +239,68 @@ SHAP has its roots in {\em Shapley regression values} \citep{shapley-regression}
 
 To avoid training a combinatorial explosion of models with the various feature subsets, $\hat{f}_S(x_S)$, SHAP reuses the same fitted model by running simplified feature vectors into the model. One possible implementation for simplified vectors is to replace ``missing'' $x_j$ features with the expected value of $x_j$. SHAP uses a more general approach that approximates $\hat{f}_S(x_S)$, with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}}) | {\bf X}_S = x_S]$ where ${\bf X}$ is called the {\em background set} and users can pass in, for example, $x_j$ averages or even the entire training set.  For efficiency reasons, SHAP's implementation (in ``interventional'' mode)  approximates $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}}) | {\bf X}_S = x_S]$ with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$, which assumes feature independence.  To further reduce computation costs, SHAP users typically explain a very small subsample of the data set, with potentially a commensurate reduction in the explanatory resolution of the underlying population. SHAP has model-type-dependent optimizations for linear regression, deep learning, and decision-tree based models.
 
-SHAP's implementation assumes feature independence for the purpose of simulating models with missing features, but still attempts to isolate $x_j$'s effect on $y$ by measuring the average effect of introducing $x_j$ to all possible features subsets.  Assuming feature independence throughout would make checking feature subsets unnecessary. In fact, assuming independence, there is a simple relationship between SHAP and mean-centered FPDs, the partial dependence curves as originally defined by Friedman: the average magnitude (importance) of SHAP values and mean-centered FPD curves coincide.  We state the following theorem and prove it in the appendix.
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.6]{images/FPD-SHAP-PD.pdf}\vspace{-5mm}
+\caption{\small $y = x_1^2 + x_1 x_2 + 20*sin(3 x_2) + 10$ with $x_j \sim U(0,10)$ where $x_3$ has no effect on $y$ and $n=1000$}
+\label{fig:shap-weight}
+\end{center}
+\end{figure}
+
+SHAP and \simp{} appear dissimilar on the surface, but they share the same overall strategy: Isolate the effect of $x_j$ upon $y$, even in the presence of highly-codependent features, then measure the average $x_j$ deviation (at several $x_j=z$ locations) from a common reference point. The techniques differ only in how they isolate $x_j$ from the effects of other features and in the common reference point. SHAP isolates $x_j$ by tracking $x_j$'s $\hat{f}(x)$ marginal contribution to all possible feature subsets, whereas \simp{} stratifies and examines the data set directly (via \spd{} and \cspd). SHAP measures deviations from $\bar{y}$ to obtain the area straddling $\bar{y}$ and \simp{} measures deviations from 0 to obtain the area under the PD curve.
+
+The similarities between SHAP and \simp{} go even deeper.  If we assume for the moment that all features are independent, there is a simple relationship between SHAP and mean-centered FPDs, the partial dependence curves as originally defined by Friedman.  \figref{fig:FPD_vs_SHAP}(a) and \figref{fig:FPD_vs_SHAP}(b) illustrate a clear similarity between FPD-$\bar{y}$ and a plot of SHAP values $(x_j^{(i)}, \phi(\hat{f},x_j^{(i)}))$. \figref{fig:FPD_vs_SHAP}(c) shows that the \spd{} curves have the same shape but use 0 as the common reference point.   Assuming feature independence, the average SHAP value at any $x_j = z$ is a point on the $FPD_j - \bar{y}$ curve and so $\overline{|FPD_j-\bar{y}|}$ = $\overline{|\phi_j(\hat{f},x)|}$.  We state the following theorem and prove it in the appendix.
 
 \begin{theorem}
 The average of the SHAP values at any $x_j=z$ location estimates the mean-centered FPD partial dependence curve, assuming independent features: $\Ex[ \phi_j(\hat{f},x) | {\bf X}_j = z] = FPD_j(x) - \bar{y}$.
 \end{theorem}
 
-A SHAP implementation that never assumed independence would correctly isolate $x_j$'s importance and, thus, have a clear advantage over the FPD approach, which is biased in the presence of codependencies. The PD partial dependence defined above, on the other hand, isolates $x_j$ even in the presence of codependent features. That means that SHAP importance is equivalent to the average magnitude of a mean-centered PD curve. (Note that \simp{} measures impact as area under the PD curve rather than the area straddling the mean-centered PD curve.) SHAP and \simp{}, therefore, both measure importance as a function of hopefully-unbiased partial dependence curves, SHAP using feature subset permutations to isolate $x_j$ effects and \simp{} using data stratification. This neatly fits SHAP into the framework described in this paper.
+Any technique that computes partial dependence curves neatly fits into the framework described in this paper, though curves derived from fitted models yield $x_j$ effects that should be interpreted as importances not impacts. FPD, \spd{}, and SHAP are three such techniques, which differ in efficiency and ability to accurately isolate $x_j$'s effect upon $y$. FPD is efficient but feature codependence quickly biases the curves. \spd{} isolates feature impact well and the current Python implementation is fast enough to analyze data subsets in the tens of thousands of records. (It has a worst-case quadratic complexity but exhibits linear behavior for numeric and slightly quadratic behavior for categorical features; see experimental results). SHAP is less efficient due to the combinatorial problem of subsetting features and codependent features can cause biased partial dependence curves, as we discuss in the next section.
 
-While SHAP has very strong theoretical foundations, there are several issues with the approach that should be brought to the fore.  First, we cannot agree with the formal SHAP definition of feature impact/importance for the simple reason that SHAP measures $x_j$ impact as the magnitude of the deviations $x_j$ causes from the mean model prediction, $\overline{y}$, rather than deviations from $y=0$.   For example, given equation $y=x_1^2 + x_2 + 100$ from \figref{fig:quad-area}, the effect of $x_1$ on $y$ is clearly $x_1^2$ (whose impact is the area of the orange region), not $|\overline{y} - x_1^2|$, as defined by SHAP (grey region area). 
+\subsection{A critique of SHAP}
 
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.6]{images/FPD-SHAP-PD.pdf}\vspace{-5mm}
-\caption{\small $y = x_1^2 + x_1 x_2 + 20*sin(3 x_2) + 10$ with $x_j \sim U(0,10)$ where $x_3$ has no effect on $y$ and $n=1000$.}
-\label{fig:shap-weight}
-\end{center}
-\end{figure}
+While SHAP has very strong theoretical foundations, there are several issues with the approach that should be discussed.  First, we cannot agree with the formal SHAP definition of feature importance for the simple reason that SHAP measures $x_j$ impact as the magnitude of the deviations $x_j$ causes from the mean model prediction, $\overline{y}$, rather than deviations from $y=0$.   For example, given equation $y=x_1^2 + x_2 + 100$ from \figref{fig:quad-area}, the effect of $x_1$ on $y$ is clearly $x_1^2$ (whose impact is the area of the orange region), not $|\overline{y} - x_1^2|$, as defined by SHAP (grey region area). 
 
+Second, while the formal SHAP definition does not assume feature independence, the SHAP implementation does in order to simulate models trained on feature subsets. The SHAP definition approximates $\hat{f}_S(x_S)$ with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}}) | {\bf X}_S = x_S]$, but SHAP's implementation approximates $\hat{f}_S(x_S)$ with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$, which requires feature independence for accuracy. \cite{janzing2019feature} argues that ``{\em unconditional} [as implemented] rather than {\em conditional} [as defined] expectations provide the right notion of dropping features.''
 
-, then SHAP's implementation further approximates with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$ by assuming feature independence. \cite{janzing2019feature} argues that ``{\em unconditional} [emphasis theirs] rather than {\em conditional} expectations provide the right notion of dropping features.''  SHAP engages this behavior in ``interventional'' mode, and users can pass in a so-called {\em background set} that contains, for example, $x_j$ averages or even the entire $\bf X$ training set.
+In practice, however, we have observed several instances of questionable SHAP partial dependence curves for features important to the model.  \figref{fig:shap-stratpd-YearMade} gives one such example, comparing the marginal plot of  bulldozer {\tt YearMade} to {\tt SalePrice} (a), SHAP partial dependence of SalePrice on YearMade (b), and \spd{}'s curve (c). The SHAP plot does not show the expected relationship, that of decreased value for older bulldozers. One reasonable possibility is that other features are bleeding in, biasing the effect of {\tt YearMade}.
 
-The formal SHAP definition does not assume feature independence as the implementation does, leading to further problems
+To explore the ability of SHAP to disentangle codependent features, we tested the SHAP implementation on a synthetic body weight data set with codependent {\tt\small sex}/{\tt\small pregnant}/{\tt\small height} features (Equation (7) from \citealt{stratpd}):
+
+\begin{equation}\label{eq:weight}
+y_{weight}  = 120 + 10(x_{height} - min(x_{height})) + 70x_{pregnant} - 1.5x_{education}
+\end{equation}
+
+\noindent with 50/50 male/female, half of the women are pregnant, and women gain an exaggerated 70 pounds to make the bias more prominent. \figref{fig:shap-weight}(a) illustrates the SHAP ``tree path dependent'' partial dependence between {\tt height} and {\tt weight} and (b) shows that the interventional SHAP curve is better but still biased by codependent features.  The exact partial dependence relationship between {\tt height} and {\tt weight} should be a line with slope 10, which is what \spd{} computes and draws on top of the SHAP plots (using righthand scale) in \figref{fig:shap-weight}; see \citet{stratpd} for more details.
 
 The bias arises because of the marginal expectation $FPD_S(x) = \Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$ (Equation 53 in \citealt{PDP} gives the equivalent summation).  Computing $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$ effectively replaces the $S$ features in all $\bf X$ records with $x_S$, which potentially conjures up nonsensical records, or at least records not in $\hat{f}$'s training set.  This introduces bias into each feature subset's estimate of $x_j$'s marginal effect on $y$, and it is unclear that the biases average out.
 
-\figref{fig:shap-weight}, \figref{fig:FPD_vs_SHAP}
+Our final concern is that SHAP effectively limits the user's choice of model to those with model-type-dependent implementations, such as {\tt\small TreeExplainer}, for efficiency reasons. For example, SHAP applied to a support vector machine (without a mode-specific optimization) trained on Boston's 506 records takes 13 minutes to explain the same 506 records.  Large data sets also pose problems even for the model-type-dependent optimizations. SHAP applied to a modest 50-tree random forest trained on the 1.2M record ``League of legends'' data set \citep{lol} takes 25 minutes to process a sample of size 1000.
 
+ SHAP goes to great lengths to isolate features using subsets then biases the results by assuming independence for efficiency reasons.  
+
+
+** partial dependence curve seems off which led us to check...
+
+** permutation biases results
+
+** speed limits choice
+
+** if it is biased may be FPD is good enough. see graphs
+
+, then SHAP's implementation further approximates with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$ by assuming feature independence.   SHAP engages this behavior in ``interventional'' mode, and users can pass in a so-called {\em background set} that contains, for example, $x_j$ averages or even the entire $\bf X$ training set.
+
+SHAP's implementation assumes feature independence for the purpose of simulating models with missing features, but still attempts to isolate $x_j$'s effect on $y$ by measuring the average effect of introducing $x_j$ to all possible features subsets.  Assuming feature independence throughout would make checking feature subsets unnecessary. In fact, 
+
+
+A SHAP implementation that never assumed independence would correctly isolate $x_j$'s importance and, thus, have a clear advantage over the FPD approach, which is biased in the presence of codependencies. The PD partial dependence defined above, on the other hand, isolates $x_j$ even in the presence of codependent features. That means that SHAP importance is equivalent to the average magnitude of a mean-centered PD curve. (Note that \simp{} measures impact as area under the PD curve rather than the area straddling the mean-centered PD curve.) SHAP and \simp{}, therefore, both measure importance as a function of hopefully-unbiased partial dependence curves, SHAP using feature subset permutations to isolate $x_j$ effects and \simp{} using data stratification. This neatly fits SHAP into the framework described in this paper.
+
+
+The formal SHAP definition does not assume feature independence as the implementation does, leading to further problems
+
+
+
+\figref{fig:shap-weight}, 
 We also see several practical SHAP disadvantages:
 
 \begin{itemize}
