@@ -251,7 +251,7 @@ SHAP and \simp{} appear dissimilar on the surface, but they share the same overa
 
 The similarities between SHAP and \simp{} go even deeper.  If we assume for the moment that all features are independent, there is a simple relationship between SHAP and mean-centered FPDs, the partial dependence curves as originally defined by Friedman.  \figref{fig:FPD_vs_SHAP}(a) and \figref{fig:FPD_vs_SHAP}(b) illustrate a clear similarity between FPD-$\bar{y}$ and a plot of SHAP values $(x_j^{(i)}, \phi(\hat{f},x_j^{(i)}))$. \figref{fig:FPD_vs_SHAP}(c) shows that the \spd{} curves have the same shape but use 0 as the common reference point.   Assuming feature independence, the average SHAP value at any $x_j = z$ is a point on the $FPD_j - \bar{y}$ curve and so $\overline{|FPD_j-\bar{y}|}$ = $\overline{|\phi_j(\hat{f},x)|}$.  We state the following theorem and prove it in the appendix.
 
-\begin{theorem}
+\begin{theorem}\label{thm}
 The average of the SHAP values at any $x_j=z$ location estimates the mean-centered FPD partial dependence curve, assuming independent features: $\Ex[ \phi_j(\hat{f},x) | {\bf X}_j = z] = FPD_j(x) - \bar{y}$.
 \end{theorem}
 
@@ -563,59 +563,44 @@ The \simp{} approach relies on accurate partial dependences for both numerical a
 
 \section{Proof relating SHAP values and partial dependence curves}
 
-The shapley regression values for features $F=\{1,..,p\}$ per \cite{shap} are as follows, simplifying the weight term and using model $\hat{f}$.
+The shapley regression values for features $F=\{1,..,p\}$ per \cite{shap} are as follows  using model $\hat{f}$.
 
-\begin{equation}\label{shapregr}
+\[
 \phi_j(\hat{f},x) = \sum_{S \subseteq F \texttt{\char`\\} \{j\}}\
-%\frac{|S|!(|F|-|S|-1)!}{|F|!}\
-\frac{1}{p{{p-1}\choose{|S|}}}\
+\frac{|S|!(|F|-|S|-1)!}{|F|!}\
  [ \hat{f}_{S \cup \{j\}}(x_{S \cup \{j\}}) - \hat{f}_S(x_S) ]
-\end{equation}
+\]
 
-The contribution of feature $j$ is the weighted average difference between $\hat{f}(x)$ for $x$ with and without $j$, $\hat{f}(x_{S \cup \{j\}}) - \hat{f}(x_S)$. SHAP approximates the model trained on just $S$ features, $\hat{f}_S(x_S)$, with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}}) | {\bf X}_S = x_S]$ then further approximates with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$ by assuming independent features. \cite{janzing2019feature} argues that $\Ex[\hat{f}(x_{S},{\bf X}_{\overline{S}})]$ is ``... conceptually the right thing in the first place.'' \todo{that stuff is repeat} To show the relationship between SHAP values and traditional FPD partial dependence curves, as defined by \cite{PDP}, we state and prove the following theorem. \todo{ I moved the proof}
-
-\begin{theorem}
-The average of the SHAP values at any $x_j=z$ location estimates the mean-centered FPD partial dependence curve, assuming independent features: $\Ex[ \phi_j(\hat{f},x) | {\bf X}_j = z] = FPD_j(x) - \bar{y}$.
-\end{theorem}
+\noindent In this section, we prove \thmref{thm}: $\Ex[ \phi_j(\hat{f},x) | {\bf X}_j = z] = FPD_j(x) - \bar{y}$.
 
 \begin{proof}
-{\em Part 1: } Show $\phi_j(\hat{f},x)$ is the difference between $\hat{f}(x)$ and the FPD curve, as defined by Friedman, for features $F \texttt{\char`\\} \{j\}$ (all features except $j$). For independent features, we can choose any subset $S \subseteq F \texttt{\char`\\} \{j\}$ to measure the impact of feature $j$, therefore, we choose $S = F \texttt{\char`\\} \{j\}$. Since ${{p-1}\choose{|S|}} = {{p-1}\choose{p-1}} = 1$, the weight reduces to $1/p$:
+{\em Part 1: } Show $\phi_j(\hat{f},x)$ is the difference between $\hat{f}(x)$ and the FPD curve, as defined by Friedman, for features $F \texttt{\char`\\} \{j\}$ (all features except $j$). For independent features, we can choose any single subset $S \subseteq F \texttt{\char`\\} \{j\}$ to measure the impact of feature $j$, therefore, we choose $S = F \texttt{\char`\\} \{j\}$.  With a single subset, the summation and weight term drop out:
 
 \[
-\phi_j(\hat{f},x) = \sum_{S \subseteq F \texttt{\char`\\} \{j\}}\
-%\frac{|S|!(|F|-|S|-1)!}{|F|!}\
-\frac{1}{p}\
- [ \hat{f}_{S \cup \{j\}}(x_{S \cup \{j\}}) - \hat{f}_S(x_S) ]
+\phi_j(\hat{f},x) = \hat{f}_{S \cup \{j\}}(x_{S \cup \{j\}}) - \hat{f}_S(x_S)
 \]
 
-\noindent Replace $\hat{f}_S(x_{S})$ by $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$ and, because $S$ is fixed, remove the summation:
+\noindent SHAP's implementation approximates $\hat{f}$ trained on just $S$ features, $\hat{f}_S(x_S)$, with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$ by assuming independent features.  (SHAP unit testing support code in {\tt\small bruteforce.py}\footnote{\tt https://github.com/slundberg/shap/blob/master/shap/explainers/bruteforce.py} assumes independent features to approximate $\hat{f}_S(x_S)$.)
 
 \[
-\phi_j(\hat{f},x) = \frac{1}{p}\
- ( \Ex[\hat{f}(x_{S \cup \{j\}},{\bf X}_{\overline{S \cup \{j\}}})] - \Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})] )
+\phi_j(\hat{f},x) = \
+ \Ex[\hat{f}(x_{S \cup \{j\}},{\bf X}_{\overline{S \cup \{j\}}})] - \Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]
 \]
 
-\todo{ah ha! 1/p goes away because it is counting the number of permutations but we are only using one}
-
-\noindent Per {\tt\small bruteforce.py}\footnote{\tt https://github.com/slundberg/shap/blob/master/shap/explainers/bruteforce.py} in the SHAP codebase and Equation 11 in \cite{shap}, SHAP approximates the marginal expectation, assuming feature independence, as:
+\noindent  That expectation expands to summation:
 
 \[
 \Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})] = \
     \frac{1}{n} \sum_{i=1}^n \hat{f}(x_S, x_{\bar{S}}^{(i)})
 \]
 
-\noindent But, that summation is equivalent to the approximation of $j$'s partial dependence curve (Equation 53 in \citealt{PDP}), giving:
+\noindent But, that is equivalent to the approximation of $S$'s partial dependence curve (Equation 53 in \citealt{PDP}), giving:
 
 \[
-\phi_j(\hat{f},x) = \frac{1}{p}\
-(  \text{\it FPD}_{S \cup \{j\}}(x) - \text{\it FPD}_{S}(x) )
-\]
-
-\noindent or, since $S = F \texttt{\char`\\} \{j\}$:
-
-\[
-\phi_j(\hat{f},x) = \frac{1}{p}\
-(\text{\it FPD}_{F}(x) - \text{\it FPD}_{F \texttt{\char`\\} \{j\}}(x))
+\begin{split}
+\phi_j(\hat{f},x) & = \text{\it FPD}_{S \cup \{j\}}(x) - \text{\it FPD}_{S}(x)\\
+ & = \text{\it FPD}_{F}(x) - \text{\it FPD}_{F \texttt{\char`\\} \{j\}}(x)
+\end{split}
 \]
 
 \cut{
@@ -625,10 +610,8 @@ $\phi_j$ is, therefore, the difference between points on two partial dependence 
 \noindent  Because $\text{\it FPD}_{F}(x) = \hat{f}_F(x_F) = \hat{f}(x)$, the equation simplifies to the difference between $\hat{f}(x)$ and the marginal effect of $j$ at point $x$:
 
 \[
-\phi_j(\hat{f},x) = \frac{1}{p}( \hat{f}(x) - \text{\it FPD}_{F \texttt{\char`\\} \{j\}}(x) )
+\phi_j(\hat{f},x) = \hat{f}(x) - \text{\it FPD}_{F \texttt{\char`\\} \{j\}}(x)
 \]
-
-\todo{Since $\frac{1}{p}$ is common to all features it's tempting to take it out, but it affects the Shapley value in the math so it seems like we should keep it in.  I verified that mean(abs(Friedman FPD)) is same as avg abs SHAP values so clearly that constant goes away somehow. it must have something to do with the $\bar{y}$ that is subtracted to get the mean centered version.} 
 
 \noindent {\em Part 2}. Show that the expected SHAP value at a specific $x_j=z$ value is a point on the mean-centered FPD curve:
 
@@ -643,9 +626,7 @@ $\phi_j$ is, therefore, the difference between points on two partial dependence 
 \Ex[ \phi_j(\hat{f},x) | {\bf X}_j = z ] = \Ex [\hat{f}(x) | {\bf X}_j = z ] - \Ex [ \text{\it FPD}_{F \texttt{\char`\\} \{j\}}(x) | {\bf X}_j = z ]
 \]
 
-\todo{is $\Ex [\hat{f}(x) | {\bf X}_j = z ]$ actually $FPD_j(x)$, which is $\Ex [\hat{f}(x_j, {\bf X}_{\bar{j}} ]$? maybe if independent that condition doesn't affect anything}
-
-\noindent $\Ex [\hat{f}(x) | {\bf X}_j = z ]$ is the expected value across all $\bf X$ with a fixed $x_j=z$ value taken from $x$, which is the definition of $FPD_j(x)$:
+\noindent  Because of independence, $\Ex [\hat{f}(x) | {\bf X}_j = z ] = \Ex [\hat{f}(x_j,x_{\bar{j}}) ]$, which is the definition of $FPD_j(x)$:
 
 \[
 \Ex[ \phi_j(\hat{f},x) | {\bf X}_j = z ] = FPD_j(x) - \Ex [ \text{\it FPD}_{F \texttt{\char`\\} \{j\}}(x) | {\bf X}_j = z ]
@@ -657,12 +638,13 @@ $\phi_j$ is, therefore, the difference between points on two partial dependence 
 \Ex[ \phi_j(\hat{f},x) | {\bf X}_j = z ] = FPD_j(x) - \Ex_{\bf X} [ \text{\it FPD}_{F}(x) ]
 \]
 
-\todo{That conversion from conditional expectation to $\Ex_{\bf X}$ seems a bit off to me in the last step.}
-
 \noindent Since, $\text{\it FPD}_{F}(x) = \hat{f}(x)$:
 
 \[
-\Ex[ \phi_j(\hat{f},x) | {\bf X}_j = z ] = FPD_j(x) - \Ex_{\bf X} [ \hat{f}(x) ] = FPD_j(x) - \bar{y}
+\begin{split}
+\Ex[ \phi_j(\hat{f},x) | {\bf X}_j = z ] &= FPD_j(x) - \Ex_{\bf X} [ \hat{f}(x) ]\\
+ & = FPD_j(x) - \bar{y}
+\end{split}
 \]
 
 \noindent which completes the proof.
