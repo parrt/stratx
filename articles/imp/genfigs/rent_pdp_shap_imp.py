@@ -14,6 +14,7 @@ to_explain = X_test.sample(300)
 
 rf = RandomForestRegressor(n_estimators=40)
 rf.fit(X_train, y_train)
+print("R^2 test",rf.score(X_test,y_test))
 
 pdp_I = pdp_importances(rf, backing.copy(), numx=300)
 print("PDP\n",pdp_I)

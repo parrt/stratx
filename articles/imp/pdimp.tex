@@ -242,12 +242,12 @@ To avoid training a combinatorial explosion of models with the various feature s
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.6]{images/FPD-SHAP-PD.pdf}\vspace{-5mm}
-\caption{\small $y = x_1^2 + x_1 x_2 + 20*sin(3 x_2) + 10$ with $x_j \sim U(0,10)$ where $x_3$ has no effect on $y$ and $n=1000$}
+\caption{\small $y = x_1^2 + x_1 x_2 + 20*sin(3 x_2) + 10$ with $x_j \sim U(0,10)$ where $x_3$ has no effect on $y$ and $n=1000$. RF with 10 trees.}
 \label{fig:shap-weight}
 \end{center}
 \end{figure}
 
-SHAP and \simp{} appear dissimilar on the surface, but they share the same overall strategy: Isolate the effect of $x_j$ upon $y$, even in the presence of highly-codependent features, then measure the average $x_j$ deviation (at several $x_j=z$ locations) from a common reference point. The techniques differ only in how they isolate $x_j$ from the effects of other features and in the common reference point. SHAP isolates $x_j$ by tracking $x_j$'s $\hat{f}(x)$ marginal contribution to all possible feature subsets, whereas \simp{} stratifies and examines the data set directly (via \spd{} and \cspd). SHAP measures deviations from $\bar{y}$ to obtain the area straddling $\bar{y}$ and \simp{} measures deviations from 0 to obtain the area under the PD curve.
+SHAP and \simp{} appear dissimilar on the surface, but they share the same overall strategy: Isolate the effect of $x_j$ upon $y$, even in the presence of highly-codependent features, then measure the average $x_j$ deviation (at several $x_j=z$ locations) from a common reference point. The techniques differ only in how they isolate $x_j$ from the effects of other features and in the common reference point. SHAP isolates $x_j$ by tracking $x_j$'s marginal contribution to model $\hat{f}(x)$ via all possible feature subsets, whereas \simp{} stratifies and examines the data set directly (via \spd{} and \cspd). SHAP measures deviations from $\bar{y}$ to obtain the area straddling $\bar{y}$ and \simp{} measures deviations from 0 to obtain the area under the PD curve.
 
 The similarities between SHAP and \simp{} go even deeper.  If we assume for the moment that all features are independent, there is a simple relationship between SHAP and mean-centered FPDs, the partial dependence curves as originally defined by Friedman.  \figref{fig:FPD_vs_SHAP}(a) and \figref{fig:FPD_vs_SHAP}(b) illustrate a clear similarity between FPD-$\bar{y}$ and a plot of SHAP values $(x_j^{(i)}, \phi(\hat{f},x_j^{(i)}))$. \figref{fig:FPD_vs_SHAP}(c) shows that the \spd{} curves have the same shape but use 0 as the common reference point.   Assuming feature independence, the average SHAP value at any $x_j = z$ is a point on the $FPD_j - \bar{y}$ curve and so $\overline{|FPD_j-\bar{y}|}$ = $\overline{|\phi_j(\hat{f},x)|}$.  We state the following theorem and prove it in the appendix.
 
@@ -255,15 +255,13 @@ The similarities between SHAP and \simp{} go even deeper.  If we assume for the 
 The average of the SHAP values at any $x_j=z$ location estimates the mean-centered FPD partial dependence curve, assuming independent features: $\Ex[ \phi_j(\hat{f},x) | {\bf X}_j = z] = FPD_j(x) - \bar{y}$.
 \end{theorem}
 
-Any technique that computes partial dependence curves neatly fits into the framework described in this paper, though curves derived from fitted models yield $x_j$ effects that should be interpreted as importances not impacts. FPD, \spd{}, and SHAP are three such techniques, which differ in efficiency and ability to accurately isolate $x_j$'s effect upon $y$. FPD is efficient but feature codependence quickly biases the curves. \spd{} isolates feature impact well and the current Python implementation is fast enough to analyze data subsets in the tens of thousands of records. (It has a worst-case quadratic complexity but exhibits linear behavior for numeric and slightly quadratic behavior for categorical features; see experimental results). SHAP is less efficient due to the combinatorial problem of subsetting features and codependent features can cause biased partial dependence curves, as we discuss in the next section.
+Any technique that computes partial dependence curves neatly fits into the framework described in this paper, though curves derived from fitted models yield $x_j$ effects that should be interpreted as importances not impacts. FPD, \spd{}, and SHAP are three such techniques, which differ in efficiency and ability to accurately isolate $x_j$'s effect upon $y$. FPD is efficient but feature codependence quickly biases the curves. \spd{} isolates feature impact well and the current Python implementation is fast enough to analyze data subsets in the tens of thousands of records. (It has a worst-case quadratic complexity but exhibits linear behavior for numeric and slightly quadratic behavior for categorical features; see experimental results). SHAP is less efficient due to the combinatorial problem of subsetting features and, empirically, codependent features can cause biased partial dependence curves, as we discuss in the next section.
 
 \subsection{A critique of SHAP}
 
 While SHAP has very strong theoretical foundations, there are several issues with the approach that should be discussed.  First, we cannot agree with the formal SHAP definition of feature importance for the simple reason that SHAP measures $x_j$ impact as the magnitude of the deviations $x_j$ causes from the mean model prediction, $\overline{y}$, rather than deviations from $y=0$.   For example, given equation $y=x_1^2 + x_2 + 100$ from \figref{fig:quad-area}, the effect of $x_1$ on $y$ is clearly $x_1^2$ (whose impact is the area of the orange region), not $|\overline{y} - x_1^2|$, as defined by SHAP (grey region area). 
 
-Second, while the formal SHAP definition does not assume feature independence, the SHAP implementation does in order to simulate models trained on feature subsets. The SHAP definition approximates $\hat{f}_S(x_S)$ with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}}) | {\bf X}_S = x_S]$, but SHAP's implementation approximates $\hat{f}_S(x_S)$ with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$, which requires feature independence for accuracy. \cite{janzing2019feature} argues that ``{\em unconditional} [as implemented] rather than {\em conditional} [as defined] expectations provide the right notion of dropping features.''
-
-In practice, however, we have observed several instances of questionable SHAP partial dependence curves for features important to the model.  \figref{fig:shap-stratpd-YearMade} gives one such example, comparing the marginal plot of  bulldozer {\tt YearMade} to {\tt SalePrice} (a), SHAP partial dependence of SalePrice on YearMade (b), and \spd{}'s curve (c). The SHAP plot does not show the expected relationship, that of decreased value for older bulldozers. One reasonable possibility is that other features are bleeding in, biasing the effect of {\tt YearMade}.
+Second, while the formal SHAP definition does not assume feature independence, the SHAP implementation does so for the specific purpose of simulating models trained on feature subsets. The SHAP definition approximates $\hat{f}_S(x_S)$ with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}}) | {\bf X}_S = x_S]$, but SHAP's implementation approximates $\hat{f}_S(x_S)$ with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$, which requires feature independence for accuracy. \cite{janzing2019feature} argues that ``{\em unconditional} [as implemented] rather than {\em conditional} [as defined] expectations provide the right notion of dropping features.'' In practice, however, we have observed several instances of questionable SHAP partial dependence curves for features important to the model.  \figref{fig:shap-stratpd-YearMade} gives one such example, comparing the marginal plot of  bulldozer {\tt YearMade} to {\tt SalePrice} (a), SHAP partial dependence of {\tt SalePrice} on {\tt YearMade} (b), and \spd{}'s curve (c). The SHAP plot does not show the expected relationship, that of decreased value for older bulldozers. One reasonable possibility is that other features are bleeding in, biasing the effect of {\tt YearMade}.
 
 To explore the ability of SHAP to disentangle codependent features, we tested the SHAP implementation on a synthetic body weight data set with codependent {\tt\small sex}/{\tt\small pregnant}/{\tt\small height} features (Equation (7) from \citealt{stratpd}):
 
@@ -271,56 +269,21 @@ To explore the ability of SHAP to disentangle codependent features, we tested th
 y_{weight}  = 120 + 10(x_{height} - min(x_{height})) + 70x_{pregnant} - 1.5x_{education}
 \end{equation}
 
-\noindent with 50/50 male/female, half of the women are pregnant, and women gain an exaggerated 70 pounds to make the bias more prominent. \figref{fig:shap-weight}(a) illustrates the SHAP ``tree path dependent'' partial dependence between {\tt height} and {\tt weight} and (b) shows that the interventional SHAP curve is better but still biased by codependent features.  The exact partial dependence relationship between {\tt height} and {\tt weight} should be a line with slope 10, which is what \spd{} computes and draws on top of the SHAP plots (using righthand scale) in \figref{fig:shap-weight}; see \citet{stratpd} for more details.
+\noindent with 50/50 male/female, half of the women are pregnant, and women gain an exaggerated 70 pounds to make the bias more prominent. \figref{fig:shap-weight}(a) illustrates the SHAP ``tree path dependent mode'' partial dependence between {\tt height} and response {\tt weight} and (b) shows that the interventional mode SHAP curve is better but still biased by codependent features.  The exact partial dependence relationship between {\tt height} and {\tt weight} should be a line with slope 10, which is what \spd{} computes and draws on top of the SHAP plots (using the righthand scale) in \figref{fig:shap-weight}; see \citet{stratpd} for more details.
 
-The bias arises because of the marginal expectation $FPD_S(x) = \Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$ (Equation 53 in \citealt{PDP} gives the equivalent summation).  Computing $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$ effectively replaces the $S$ features in all $\bf X$ records with $x_S$, which potentially conjures up nonsensical records, or at least records not in $\hat{f}$'s training set.  This introduces bias into each feature subset's estimate of $x_j$'s marginal effect on $y$, and it is unclear that the biases average out.
+This bias arises because the marginal expectation $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$ effectively replaces the $S$ features in all $\bf X$ records with $x_S$, which potentially conjures up nonsensical records, or at least records not in $\hat{f}$'s training set.  In this case, SHAP asks $\hat{f}$ to compute the body weight of pregnant males. From the mathematical perspective, the bias is clear because $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$ is equivalent to $FPD_S(x)$ that is known to be biased by codependent features. (Equation 53 in \citealt{PDP} gives a summation equivalent to $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$).  
 
-Our final concern is that SHAP effectively limits the user's choice of model to those with model-type-dependent implementations, such as {\tt\small TreeExplainer}, for efficiency reasons. For example, SHAP applied to a support vector machine (without a mode-specific optimization) trained on Boston's 506 records takes 13 minutes to explain the same 506 records.  Large data sets also pose problems even for the model-type-dependent optimizations. SHAP applied to a modest 50-tree random forest trained on the 1.2M record ``League of legends'' data set \citep{lol} takes 25 minutes to process a sample of size 1000.
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.53]{images/rent-pdp-vs-shap.pdf}\includegraphics[scale=0.53]{images/bulldozer-pdp-vs-shap.pdf}
+\caption[short]{\small  Feature importance ranking of top 8 for rent and bulldozer data sets demonstrating similarity between average magnitude of Friedman's partial dependence curves, (a) \& (c), and average magnitude of SHAP values, (b) \& (d). 20,000 training records and 300 records to explain. RF with 40 trees; Rent $R^2 = 0.82$, bulldozer $R^2 = 0.86$.}
+\label{fig:FPD_vs_SHAP}
+\end{center}
+\end{figure}
 
- SHAP goes to great lengths to isolate features using subsets then biases the results by assuming independence for efficiency reasons.  
+If the individual $\hat{f}(x_{S \texttt{\char`\\} \{j\}}) - \hat{f}(x_{S})$ contributions are known to be biased, measuring the effect of many $S$ permutations is likely unproductive. That begs the question of whether or not a one-off FPD curve would be just as effective as a SHAP implementation that  simulates feature dropping with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$.  \figref{fig:FPD_vs_SHAP} compares feature importances derived from FPD curves and SHAP values for two real data sets, rent and bulldozer. The rank and magnitude of the feature importances are extremely similar between the techniques for all $p$ features (top 8 shown here). At least for these examples, the complex machinery of SHAP is unnecessary because FPD gets virtually the same answer.
 
-
-** partial dependence curve seems off which led us to check...
-
-** permutation biases results
-
-** speed limits choice
-
-** if it is biased may be FPD is good enough. see graphs
-
-, then SHAP's implementation further approximates with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$ by assuming feature independence.   SHAP engages this behavior in ``interventional'' mode, and users can pass in a so-called {\em background set} that contains, for example, $x_j$ averages or even the entire $\bf X$ training set.
-
-SHAP's implementation assumes feature independence for the purpose of simulating models with missing features, but still attempts to isolate $x_j$'s effect on $y$ by measuring the average effect of introducing $x_j$ to all possible features subsets.  Assuming feature independence throughout would make checking feature subsets unnecessary. In fact, 
-
-
-A SHAP implementation that never assumed independence would correctly isolate $x_j$'s importance and, thus, have a clear advantage over the FPD approach, which is biased in the presence of codependencies. The PD partial dependence defined above, on the other hand, isolates $x_j$ even in the presence of codependent features. That means that SHAP importance is equivalent to the average magnitude of a mean-centered PD curve. (Note that \simp{} measures impact as area under the PD curve rather than the area straddling the mean-centered PD curve.) SHAP and \simp{}, therefore, both measure importance as a function of hopefully-unbiased partial dependence curves, SHAP using feature subset permutations to isolate $x_j$ effects and \simp{} using data stratification. This neatly fits SHAP into the framework described in this paper.
-
-
-The formal SHAP definition does not assume feature independence as the implementation does, leading to further problems
-
-
-
-\figref{fig:shap-weight}, 
-We also see several practical SHAP disadvantages:
-
-\begin{itemize}
-\item  For performance reasons, SHAP effectively limits the user's choice of model to those with model-type-dependent implementations, such as {\tt\small TreeExplainer}; e.g., SHAP applied to a support vector machine trained on Boston's 506 records takes 13 minutes to explain the same 506 records.  Large data sets also pose problems even for the model-type-dependent optimizations; e.g., SHAP applied to a modest 50-tree random forest trained on 1.2M record ``League of legends'' data set \citep{lol} takes 25 minutes to process a sample of size 1000.
-
-\item As with permutation methods, replacing feature values with their expectations or a random selection introduces the possibility of creating nonsensical feature vectors.  For example, replacing the bulldozer {\tt\small YearMade} feature with the overall {\tt\small YearMade} average, risks conjuring up a type of bulldozer that did not exist in that year. This biases the feature contribution estimates.
-
-\item SHAP documentation claims to break ``the dependencies between features according to the rules dictated by casual inference'' citing \citet{janzing2019feature}, but we find that SHAP ``interventional'' mode is still unable to disentangle codependent features for a synthetic body weight data set with codependent {\tt\small sex}/{\tt\small pregnant}/{\tt\small height} features (Equation (7) from \citealt{stratpd}):
-
-\begin{equation}\label{eq:weight}
-y_{weight}  = 120 + 10(x_{height} - min(x_{height})) + 70x_{pregnant} - 1.5x_{education}
-\end{equation}
-
-\noindent with 50/50 male/female, half of the women are pregnant, and women gain an exaggerated 70 pounds to make the bias more prominent. \figref{fig:shap-weight}(a) illustrates the original SHAP partial dependence between height and weight and (b) shows that the interventional SHAP is improved but still biased by codependent features.  The exact partial dependence relationship between height and weight should be a line with slope 10, which is what \spd{} computes and draws on top of the SHAP plots (using righthand scale) in \figref{fig:shap-weight}; see \citet{stratpd} for more details.
-
-\item SHAP often gives plausible partial dependence curves, but we found several questionable cases for features identified as important. \figref{fig:shap-stratpd-YearMade} gives one such example, comparing the marginal plot of  bulldozer YearMade to SalePrice (a), SHAP partial dependence of SalePrice on YearMade (b), and \spd{}'s curve (c). The SHAP does not show the expected relationship, that of decreased value for older bulldozers. 
-
-\end{itemize}
-
-\todo{maybe we move the two partial dependence items in the bullet list to the partial dependence paper and reference them here?}
+Our final concern is that SHAP effectively limits the user's choice of model to those with model-type-dependent implementations, such as {\tt\small TreeExplainer}, for efficiency reasons. For example, SHAP applied to a support vector machine (without a model-specific optimization) trained on Boston's 506 records takes 13 minutes to explain the same 506 records.  Large data sets also pose problems even for the model-type-dependent optimizations. SHAP applied to a modest 50-tree random forest trained on the 1.2M record ``League of legends'' data set \citep{lol} takes 25 minutes to explain a sample of size 1000.
 
 \begin{figure}[htbp]
 \begin{center}
@@ -341,7 +304,7 @@ y_{weight}  = 120 + 10(x_{height} - min(x_{height})) + 70x_{pregnant} - 1.5x_{ed
 \end{center}
 \end{figure}
 
-Summarize our benefits. we do not alter the data in any way. model free not just model agnostic, insensitive to codependencies, avoids having to look at subsets of features by isolating the effect of features on the response, show in the next section it is efficient. It is a simple definition and implementation based upon the stratification approach to partial dependence. 
+\todo{Summarize our benefits.} we do not alter the data in any way. model free not just model agnostic, insensitive to codependencies, avoids having to look at subsets of features by isolating the effect of features on the response, show in the next section it is efficient. It is a simple definition and implementation based upon the stratification approach to partial dependence. 
 
 \section{Experimental results}\label{sec:experiments}
 
@@ -478,16 +441,6 @@ Features that are predictive in one model are not necessarily predictive in anot
 
 Because GBMs are based upon decision trees (stumps) like random forests, the RF-based feature rankings would likely export well to GBM models.  To check feature exportation to a very different model, we computed error curves for the Boston and rent  data sets using OLS regressors, as shown in \figref{fig:OLS}, again using the \simp{}, OLS, and RF-derived rankings. (The Boston and rent data sets are the only ones without categorical variables, and we wanted to avoid creating tens of thousands of dummy variables for the flight and bulldozer data sets.) The error curves derived from OLS model predictions are all higher than those from RFs, as expected, but no technique's feature ranking fails to export.
 
-We have argued that feature importance rankings derived from FPDs are the same as those derived from SHAP if the SHAP implementation approximates $\hat{f}_j(x)$ with $\Ex[\hat{f}(x_j,{\bf X}_{\bar{j}})]$, which assumes feature independence. \figref{fig:FPD_vs_SHAP} demonstrates this using the rent and bulldozer data sets. The rank and magnitude of the feature importances are extremely similar between the techniques for all $p$ features (top 8 shown here).
-
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.53]{images/rent-pdp-vs-shap.pdf}\includegraphics[scale=0.53]{images/bulldozer-pdp-vs-shap.pdf}
-\caption[short]{\small  Feature importance ranking of top 8 for rent and bulldozer data sets demonstrating similarity between average magnitude of Friedman's partial dependence curves, (a) \& (c), and average magnitude of SHAP values, (b) \& (d).}
-\label{fig:FPD_vs_SHAP}
-\end{center}
-\end{figure}
-
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.5]{images/boston-topk-OLS-Importance.pdf}~~~
@@ -618,7 +571,7 @@ The shapley regression values for features $F=\{1,..,p\}$ per \cite{shap} are as
  [ \hat{f}_{S \cup \{j\}}(x_{S \cup \{j\}}) - \hat{f}_S(x_S) ]
 \end{equation}
 
-The contribution of feature $j$ is the weighted average difference between $\hat{f}(x)$ for $x$ with and without $j$, $\hat{f}(x_{S \cup \{j\}}) - \hat{f}(x_S)$. SHAP approximates the model trained on just $S$ features, $\hat{f}_S(x_S)$, with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}}) | {\bf X}_S = x_S]$ then further approximates with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$ by assuming independent features. \cite{janzing2019feature} argues that $\Ex[\hat{f}(x_{S},{\bf X}_{\overline{S}})]$ is ``... conceptually the right thing in the first place.'' \todo{that stuff is repeat} To show the relationship between SHAP values and traditional FPD partial dependence curves, as defined by \cite{PDP}, we state and prove the following theorem.
+The contribution of feature $j$ is the weighted average difference between $\hat{f}(x)$ for $x$ with and without $j$, $\hat{f}(x_{S \cup \{j\}}) - \hat{f}(x_S)$. SHAP approximates the model trained on just $S$ features, $\hat{f}_S(x_S)$, with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}}) | {\bf X}_S = x_S]$ then further approximates with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$ by assuming independent features. \cite{janzing2019feature} argues that $\Ex[\hat{f}(x_{S},{\bf X}_{\overline{S}})]$ is ``... conceptually the right thing in the first place.'' \todo{that stuff is repeat} To show the relationship between SHAP values and traditional FPD partial dependence curves, as defined by \cite{PDP}, we state and prove the following theorem. \todo{ I moved the proof}
 
 \begin{theorem}
 The average of the SHAP values at any $x_j=z$ location estimates the mean-centered FPD partial dependence curve, assuming independent features: $\Ex[ \phi_j(\hat{f},x) | {\bf X}_j = z] = FPD_j(x) - \bar{y}$.
@@ -689,7 +642,7 @@ $\phi_j$ is, therefore, the difference between points on two partial dependence 
 \Ex[ \phi_j(\hat{f},x) | {\bf X}_j = z ] = \Ex [\hat{f}(x) | {\bf X}_j = z ] - \Ex [ \text{\it FPD}_{F \texttt{\char`\\} \{j\}}(x) | {\bf X}_j = z ]
 \]
 
-\todo{is $\Ex [\hat{f}(x) | {\bf X}_j = z ]$ actually $FPD_j(x)$, which is $\Ex [\hat{f}(x_j, {\bf X}_{\bar{j}} ]$?}
+\todo{is $\Ex [\hat{f}(x) | {\bf X}_j = z ]$ actually $FPD_j(x)$, which is $\Ex [\hat{f}(x_j, {\bf X}_{\bar{j}} ]$? maybe if independent that condition doesn't affect anything}
 
 \noindent $\Ex [\hat{f}(x) | {\bf X}_j = z ]$ is the expected value across all $\bf X$ with a fixed $x_j=z$ value taken from $x$, which is the definition of $FPD_j(x)$:
 
