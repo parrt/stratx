@@ -57,7 +57,7 @@
 \addtolength{\topmargin}{-.8in}%
 }
 
-\ShortHeadings{Tech Report: Model-Free Feature Impact and Importance}{Parr, Wilson, and Hamrick}
+\ShortHeadings{Tech Report:  Nonparametric Feature Impact and Importance}{Parr, Wilson, and Hamrick}
 \firstpageno{1}
 
 \begin{document}
@@ -68,7 +68,7 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\title{\bf Tech Report: Model-Free Feature Impact and Importance}
+\title{\bf Tech Report: Nonparametric Feature Impact and Importance}
 
 \author{Terence Parr \email parrt@cs.usfca.edu
 \addr University of San Francisco\\
@@ -80,7 +80,7 @@
 \maketitle
 
 \begin{abstract}%
-Practitioners use feature importance to rank and eliminate weak predictors during model development in an effort to simplify models and improve generality.  Unfortunately, they also routinely conflate such feature importance measures with feature impact, the isolated effect of an explanatory variable on the response variable.   This can lead to real-world consequences when importance is inappropriately interpreted as impact for business or medical insight purposes. The dominant approach for computing importances is through interrogation of a fitted model, which works well for feature selection, but gives distorted measures of feature impact. The same technique applied to the same data set can yield different feature importances, depending on the model, leading us to conclude that impact should be computed directly from the data.  While there are model-free feature selection algorithms, they typically yield just feature rankings, rather than measures of impact or importance. In this paper, we give mathematical definitions of feature impact and importance that operate directly on the data and, to assess their quality, show that features ranked by these definitions are competitive with existing techniques for feature selection using three real data sets. \todo{should we reference shap, permutation importance, mRMR in abstract?}
+Practitioners use feature importance to rank and eliminate weak predictors during model development in an effort to simplify models and improve generality.  Unfortunately, they also routinely conflate such feature importance measures with feature impact, the isolated effect of an explanatory variable on the response variable.   This can lead to real-world consequences when importance is inappropriately interpreted as impact for business or medical insight purposes. The dominant approach for computing importances is through interrogation of a fitted model, which works well for feature selection, but gives distorted measures of feature impact. The same technique applied to the same data set can yield different feature importances, depending on the model, leading us to conclude that impact should be computed directly from the data.  While there are nonparametric feature selection algorithms, they typically yield just feature rankings, rather than measures of impact or importance. In this paper, we give mathematical definitions of feature impact and importance that operate directly on the data and, to assess their quality, show that features ranked by these definitions are competitive with existing techniques for feature selection using three real data sets. \todo{should we reference shap, permutation importance, mRMR in abstract?}
 \end{abstract}
 
 \begin{keywords}
@@ -92,7 +92,7 @@ feature importance, business insights, medical insights, partial dependence, mod
 
 Among data analysis techniques, feature importance is one of the most widely applied and practitioners use it for two key purposes. First, to select features for predictive models (dropping the least predictive features to simplify and potentially increase the generality of the model). Second, to gain business or medical insights, such as identifying product characteristics valued by customers or treatments contributing to patient recovery.  To distinguish the two use cases, we will refer to feature predictiveness for modeling purposes as {\em importance} (the usual meaning) and the effect of features on business or medical response variables as {\em impact}.
 
-While some feature importance approaches work directly on the data, such as minimal-redundancy-maximal-relevance (mRMR) by \cite{mRMR}, almost all algorithms used in practice rank features by interrogating a specific fitted model (e.g., SHAP by \citealt{shap}, permutation importance by \citealt{RF}, and drop column importance), or even interrogating subsidiary models to analyze such fitted models (e.g., LIME by \citealt{lime}). It is accepted as self-evident that identifying the most important features for a model is best done through interrogation of that  model, but this is not always the case.  For example, when asked to identify the single most important feature of a real dataset \citep{bulldozer}, through interrogation and validation on a random forest, the features selected by model-based techniques get twice the validation error of the model-free technique proposed in this paper; see \figref{fig:topk}(c). Still, model interrogation is generally effective in practice for feature importance purposes. (In our experience, it is best to get importances using multiple techniques and to view the combined results as a clue rather than the gospel truth.)
+While some feature importance approaches work directly on the data, such as minimal-redundancy-maximal-relevance (mRMR) by \cite{mRMR}, almost all algorithms used in practice rank features by interrogating a specific fitted model (e.g., SHAP by \citealt{shap}, permutation importance by \citealt{RF}, and drop column importance), or even interrogating subsidiary models to analyze such fitted models (e.g., LIME by \citealt{lime}). It is accepted as self-evident that identifying the most important features for a model is best done through interrogation of that  model, but this is not always the case.  For example, when asked to identify the single most important feature of a real dataset \citep{bulldozer}, through interrogation and validation on a random forest, the features selected by model-based techniques get twice the validation error of the nonparametric technique proposed in this paper; see \figref{fig:topk}(c). Still, model interrogation is generally effective in practice for feature importance purposes. (In our experience, it is best to get importances using multiple techniques and to view the combined results as a clue rather than the gospel truth.)
 
 Feature importance should not, however, be interpreted as feature impact for several reasons. First, predictive features do not always coincide with impactful features; e.g., models unable to capture complex nonlinear feature-response relationships rank such features as unimportant, even if they have large impacts on the response. Next, practitioners must develop models accurate enough to yield meaningful feature importances, but there is no definition of ``accurate enough.'' Finally, it is possible to get very different feature importances (and hence impacts) running the same algorithm on the same data, just by choosing a different model. This is despite the fact that true feature impacts are relationships that exist in the data, with or without a model.
 
@@ -110,7 +110,7 @@ Unfortunately, practitioners routinely conflate model-based feature importance w
 
 In this paper, we address this deficiency by contributing (1) a simple mathematical formula for computing feature impact that is purely a function of the training data, rather than a fitted model  provided by the user, and (2) an efficient implementation called \simp{} that yields plausible feature impacts.   In order to measure the quality of feature impacts, we observe that features with the most impact on the response variable should coincide with the most predictive features, particularly if variable density among the validation records is taken into consideration. We, therefore, define feature importance as a weighted variation of feature impact. Using impact-derived importances as a proxy for impacts, our experiments on real data show that \simp{} is competitive with existing importance techniques, as measured by cross-validation errors on models trained using the top importances.   We emphasize that these impact and importance definitions are insensitive to codependencies among features and apply to both numerical and categorical features.  (The latter is essential because virtually all real-world datasets have categorical variables.) While we focus solely on regression here, a similar approach would work for classification.
 
-We begin by giving definitions of feature impact and importance in \secref{sec:def}, then survey  existing model-free and model-dependent techniques in \secref{sec:existing}. \secref{sec:experiments} assesses the quality of \simp{} impact values by measuring their effectiveness as feature rankings. We finish in \secref{sec:discussion} with a discussion of the proposed technique's effectiveness, prototype implementation's performance, and future work.
+We begin by giving definitions of feature impact and importance in \secref{sec:def}, then survey  existing nonparametric and model-dependent techniques in \secref{sec:existing}. \secref{sec:experiments} assesses the quality of \simp{} impact values by measuring their effectiveness as feature rankings. We finish in \secref{sec:discussion} with a discussion of the proposed technique's effectiveness, prototype implementation's performance, and future work.
 
 \section{Mathematical definitions of impact and importance}\label{sec:def}
 
@@ -121,7 +121,7 @@ In special circumstances, we know the precise impact of each feature $x_j$. Assu
 To hold features constant for any smooth generator function, we can take the partial derivatives of $y$ with respect to each feature $x_j$. For any smooth function $f:\mathbb{R}^{p} \rightarrow \mathbb{R}$ that precisely maps each $\xi$ to $y^{(i)}$, ${y^{(i)}} = f(\xi)$, the partial derivative of $y$ with respect to $x_j$ gives the change in $y$ holding all other variables constant; e.g., for linear functions, $\frac{\partial y}{\partial x_j}=\beta_j$. Integrating the partial derivative then gives the {\em partial dependence}  of $y$ on $x_j$, the isolated contribution of $x_j$ to $y$. But, rather than relying on a fitted model as originally formulated by \citep{PDP}, this definition of partial dependence relies on the partial derivative of a known function that generated the data set.
 
 ~\\
-\noindent {\bf Definition 1} The {\em model-free partial dependence} of $y$ on feature $x_j$ for smooth generator function $f:\mathbb{R}^{p} \rightarrow \mathbb{R}$ evaluated at $x_j = z$ is the cumulative sum up to $z$:
+\noindent {\bf Definition 1} The {\em nonparametric partial dependence} of $y$ on feature $x_j$ for smooth generator function $f:\mathbb{R}^{p} \rightarrow \mathbb{R}$ evaluated at $x_j = z$ is the cumulative sum up to $z$:
 
 \begin{equation}\label{eq:pd}
 \text{\it PD}_j(z) = \int_{min(x_j)}^z \frac{\partial y}{\partial x_j} dx_j
@@ -189,7 +189,7 @@ The definition of impact in \eqnref{eq:Epd2a} assumes that each $x_j$ value is e
 }
 
 ~\\
-\noindent {\bf Definition 3} The {\em model-free feature importance} of $x_j$ is the ratio of $x_j$'s expected partial dependence value to the total of all expected values, when all $x_j$ variables are normalized to the same fixed range:
+\noindent {\bf Definition 3} The {\em nonparametric feature importance} of $x_j$ is the ratio of $x_j$'s expected partial dependence value to the total of all expected values, when all $x_j$ variables are normalized to the same fixed range:
 
 \begin{equation}\label{eq:Epd2b}
 \text{Importance}_j = \frac{\Ex[|\text{\it PD}_j|]}{\sum_{k=1}^p \Ex[|\text{\it PD}_k|]}
@@ -209,7 +209,7 @@ In this paper, we are primarily concerned with identifying the most impactful fe
 
 Feature importance methods for labeled data sets (with $\bf X$ and $\bf y$) are broadly categorized into data analysis and model analysis techniques, sometimes called {\em filter} and {\em wrapper} methods \citep{tsanas}. Data analysis techniques analyze the data directly to identify important features, whereas model analysis techniques rely on predictions from fitted models.  The data analysis techniques further split into techniques for regression and techniques for classification, with most of the research going into classification.
 
-\subsection{Model-free techniques}
+\subsection{nonparametric techniques}
 
 The simplest technique to identify important or relevant regression features is to rank them by their Spearman's rank correlation coefficient \citep{spearmans}; the feature with the largest coefficient is taken to be the most important. This method works well for independent features, but suffers in the presence of codependent features.   Groups of features with similar relationships to the response variable receive the same or similar ranks, even though just one should be considered important.
 
@@ -259,7 +259,7 @@ Any technique that computes partial dependence curves neatly fits into the frame
 
 \subsection{A critique of SHAP}
 
-While SHAP has very strong theoretical foundations, there are several issues with the approach that should be discussed.  First, we cannot agree with the formal SHAP definition of feature importance for the simple reason that SHAP measures $x_j$ impact as the magnitude of the deviations $x_j$ causes from the mean model prediction, $\overline{y}$, rather than deviations from $y=0$.   For example, given equation $y=x_1^2 + x_2 + 100$ from \figref{fig:quad-area}, the effect of $x_1$ on $y$ is clearly $x_1^2$ (whose impact is the area of the orange region), not $|\overline{y} - x_1^2|$, as defined by SHAP (grey region area). 
+While SHAP has very strong theoretical foundations and its implementation is impressive, there are several issues with the approach that should be discussed.  First, we cannot agree with the formal SHAP definition of feature importance for the simple reason that SHAP measures $x_j$ impact as the magnitude of the deviations $x_j$ causes from the mean model prediction, $\overline{y}$, rather than deviations from $y=0$.   For example, given equation $y=x_1^2 + x_2 + 100$ from \figref{fig:quad-area}, the effect of $x_1$ on $y$ is clearly $x_1^2$ (whose impact is the area of the orange region), not $|\overline{y} - x_1^2|$, as defined by SHAP (grey region area). 
 
 \begin{figure}[htbp]
 \begin{center}
@@ -271,30 +271,7 @@ While SHAP has very strong theoretical foundations, there are several issues wit
 \end{center}
 \end{figure}
 
-Second, while the formal SHAP definition does not assume feature independence, the SHAP implementation does so for the specific purpose of simulating models trained on feature subsets. The SHAP definition approximates $\hat{f}_S(x_S)$ with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}}) | {\bf X}_S = x_S]$, but SHAP's implementation approximates $\hat{f}_S(x_S)$ with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$, which requires feature independence for accuracy. \cite{janzing2019feature} argues that ``{\em unconditional} [as implemented] rather than {\em conditional} [as defined] expectations provide the right notion of dropping features.'' In practice, however, we have observed several instances of questionable SHAP partial dependence curves for features important to the model.  \figref{fig:shap-stratpd-YearMade} gives one such example, comparing the marginal plot of  bulldozer {\tt YearMade} to {\tt SalePrice} (a), SHAP partial dependence of {\tt SalePrice} on {\tt YearMade} (b), and \spd{}'s curve (c). The SHAP plot does not show the expected relationship, that of decreased value for older bulldozers. One reasonable possibility is that other features are bleeding in, biasing the effect of {\tt YearMade}.
-
-To explore the ability of SHAP to disentangle codependent features, we tested the SHAP implementation on a synthetic body weight data set with codependent {\tt\small sex}/{\tt\small pregnant}/{\tt\small height} features (Equation (7) from \citealt{stratpd}):
-
-\begin{equation}\label{eq:weight}
-y_{weight}  = 120 + 10(x_{height} - min(x_{height})) + 70x_{pregnant} - 1.5x_{education}
-\end{equation}
-
-\noindent with 50/50 male/female, half of the women are pregnant, and women gain an exaggerated 70 pounds to make the bias more prominent. \figref{fig:shap-weight}(a) illustrates the SHAP ``tree path dependent mode'' partial dependence between {\tt height} and response {\tt weight} and (b) shows that the interventional mode SHAP curve is better but still biased by codependent features.  The exact partial dependence relationship between {\tt height} and {\tt weight} should be a line with slope 10, which is what \spd{} computes and draws on top of the SHAP plots (using the righthand scale) in \figref{fig:shap-weight}; see \citet{stratpd} for more details.
-
-This bias arises because the marginal expectation $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$ effectively replaces the $S$ features in all $\bf X$ records with $x_S$, which potentially conjures up nonsensical records, or at least records not in $\hat{f}$'s training set.  In this case, SHAP asks $\hat{f}$ to compute the body weight of pregnant males. From the mathematical perspective, the bias is clear because $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$ is equivalent to $FPD_S(x)$ that is known to be biased by codependent features. (Equation 53 in \citealt{PDP} gives a summation equivalent to $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$).  
-
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.53]{images/rent-pdp-vs-shap.pdf}\includegraphics[scale=0.53]{images/bulldozer-pdp-vs-shap.pdf}
-\caption[short]{\small  Feature importance ranking of top 8 for rent and bulldozer data sets demonstrating similarity between average magnitude of Friedman's partial dependence curves, (a) \& (c), and average magnitude of SHAP values, (b) \& (d). 20,000 training records and 300 records to explain. RF with 40 trees; Rent $R^2 = 0.82$, bulldozer $R^2 = 0.86$.}
-\label{fig:FPD_vs_SHAP}
-\end{center}
-\end{figure}
-
-If the individual $\hat{f}(x_{S \texttt{\char`\\} \{j\}}) - \hat{f}(x_{S})$ contributions are known to be biased, measuring the effect of many $S$ permutations is likely unproductive. That begs the question of whether or not a one-off FPD curve would be just as effective as a SHAP implementation that  simulates feature dropping with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$.  \figref{fig:FPD_vs_SHAP} compares feature importances derived from FPD curves and SHAP values for two real data sets, rent and bulldozer. The rank and magnitude of the feature importances are extremely similar between the techniques for all $p$ features (top 8 shown here). At least for these examples, the complex machinery of SHAP is unnecessary because FPD gets virtually the same answer.
-
-Our final concern is that SHAP effectively limits the user's choice of model to those with model-type-dependent implementations, such as {\tt\small TreeExplainer}, for efficiency reasons. For example, SHAP applied to a support vector machine (without a model-specific optimization) trained on Boston's 506 records takes 13 minutes to explain the same 506 records.  Large data sets also pose problems even for the model-type-dependent optimizations. SHAP applied to a modest 50-tree random forest trained on the 1.2M record ``League of legends'' data set \citep{lol} takes 25 minutes to explain a sample of size 1000.
-
+Second, while the formal SHAP definition does not assume feature independence, the SHAP implementation does so for the specific purpose of simulating models trained on feature subsets. The SHAP definition approximates $\hat{f}_S(x_S)$ with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}}) | {\bf X}_S = x_S]$, but SHAP's implementation approximates $\hat{f}_S(x_S)$ with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$, which requires feature independence for accuracy. \cite{janzing2019feature} argues that ``{\em unconditional} [as implemented] rather than {\em conditional} [as defined] expectations provide the right notion of dropping features.'' In practice, however, we have observed several instances of questionable SHAP partial dependence curves for features important to the model.  \figref{fig:shap-stratpd-YearMade} gives one such example, comparing (a) the marginal plot of  bulldozer {\tt YearMade} to {\tt SalePrice}, (b) SHAP partial dependence of {\tt SalePrice} on {\tt YearMade}, and (c) \spd{}'s curve. The SHAP plot does not show the expected relationship, that of decreased value for older bulldozers. One reasonable possibility is that other features are bleeding in, biasing the effect of {\tt YearMade}.
 
 \begin{figure}[htbp]
 \begin{center}
@@ -304,6 +281,30 @@ Our final concern is that SHAP effectively limits the user's choice of model to 
 \label{fig:shap-weight}
 \end{center}
 \end{figure}
+
+
+To explore the ability of SHAP to disentangle codependent features, we tested the SHAP implementation on a synthetic body weight data set with codependent {\tt\small sex}/{\tt\small pregnant}/{\tt\small height} features (Equation (7) from \citealt{stratpd}):
+
+\begin{equation}\label{eq:weight}
+y_{weight}  = 120 + 10(x_{height} - min(x_{height})) + 70x_{pregnant} - 1.5x_{education}
+\end{equation}
+
+\noindent with 50/50 male/female, half of the women are pregnant, and women gain an exaggerated 70 pounds to make the bias more prominent. \figref{fig:shap-weight}(a) illustrates the SHAP ``tree path dependent mode'' partial dependence between {\tt height} and response {\tt weight} and (b) shows that the interventional mode SHAP curve is better but still biased by codependent features.  The exact partial dependence relationship between {\tt height} and {\tt weight} should be a line with slope 10, which is what \spd{} computes and draws on top of the SHAP plots (using the righthand scale) in \figref{fig:shap-weight}; see \citet{stratpd} for more details.
+
+This bias arises because the marginal expectation $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$ effectively replaces the $S$ features in all $\bf X$ records with $x_S$, which potentially conjures up nonsensical records, or at least records not in $\hat{f}$'s training set.  In this case, SHAP asks $\hat{f}$ to compute the body weight of pregnant males. From a mathematical perspective, the bias is clear because $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$ is equivalent to $FPD_S(x)$ that is known to be biased by codependent features. (Equation 53 in \citealt{PDP} gives a summation equivalent to $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$).  
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.53]{images/rent-pdp-vs-shap.pdf}\includegraphics[scale=0.53]{images/bulldozer-pdp-vs-shap.pdf}
+\caption[short]{\small  Feature importance ranking of top 8 for rent and bulldozer data sets demonstrating similarity between average magnitude of Friedman's partial dependence curves, (a) \& (c), and average magnitude of SHAP values, (b) \& (d). 20,000 training records and 300 records to explain. RF with 40 trees; Rent $R^2 = 0.82$, bulldozer $R^2 = 0.86$.}
+\label{fig:FPD_vs_SHAP}
+\end{center}
+\end{figure}
+
+If the individual $\hat{f}(x_{S \texttt{\char`\\} \{j\}}) - \hat{f}(x_{S})$ contributions are known to be biased, measuring the effect of many $S$ permutations is likely unproductive. That begs the question of whether a one-off FPD curve would be just as effective as a SHAP implementation that  simulates feature dropping with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$.  \figref{fig:FPD_vs_SHAP} compares feature importances derived from FPD curves and SHAP values for two real data sets, rent and bulldozer. The rank and magnitude of the feature importances are extremely similar between the techniques for all $p$ features (top 8 shown here). At least for these examples, the complex machinery of SHAP is unnecessary because FPD gets virtually the same answer.
+
+Our final concern is that SHAP effectively limits the user's choice of model to those with model-type-dependent implementations, such as {\tt\small TreeExplainer}, for efficiency reasons. For example, SHAP applied to a support vector machine (without a model-specific optimization) trained on Boston's 506 records takes 13 minutes to explain the same 506 records.  Large data sets also pose problems even for the model-type-dependent optimizations. SHAP applied to a modest 50-tree random forest trained on the 1.2M record ``League of legends'' data set \citep{lol} takes 25 minutes to explain a sample of size 1000.
+
 
 \todo{Summarize our benefits.} we do not alter the data in any way. model free not just model agnostic, insensitive to codependencies, avoids having to look at subsets of features by isolating the effect of features on the response, show in the next section it is efficient. It is a simple definition and implementation based upon the stratification approach to partial dependence. 
 
@@ -540,7 +541,7 @@ The entire \simp{} code base is available at {\tt\small https://github.com/parrt
 
 \section{Discussion and future work}\label{sec:discussion}
 
-In this paper, we propose a model-free approach for measuring feature $x_j$'s true impact upon the response variable, $y$, based upon a mathematical definition of impact that is a function of $x_j$'s partial dependence curve. By weighting $x_j$'s partial dependence curve with $x_j$'s density, we also arrive at a mathematical definition of feature importance.   In contrast, most existing techniques and research focus on model feature selection, through a plurality of feature importance definitions.   The exception is SHAP, which provides a mathematical definition of feature impact, though based upon predictions from a fitted model, rather than directly from the data.
+In this paper, we propose a nonparametric approach for measuring feature $x_j$'s true impact upon the response variable, $y$, based upon a mathematical definition of impact that is a function of $x_j$'s partial dependence curve. By weighting $x_j$'s partial dependence curve with $x_j$'s density, we also arrive at a mathematical definition of feature importance.   In contrast, most existing techniques and research focus on model feature selection, through a plurality of feature importance definitions.   The exception is SHAP, which provides a mathematical definition of feature impact, though based upon predictions from a fitted model, rather than directly from the data.
 
 The focus on feature selection is understandable because practitioners commonly incorporate feature selection into the model development cycle in an effort to simplify models. For this purpose, though, only relative feature ranks matter, not the specific importance values {\em per se}.  For example, permutation importance  computes model prediction accuracy differences from the full baseline model, which are related to but not the same as feature impacts. Many (model-free) techniques, such as mRMR, provide just a ranking, without specific importance values.
 
@@ -548,7 +549,7 @@ Obtaining feature importance through impact is valid because the most impactful 
 
 To assess the quality of \simp's feature impacts, we compared \simp's recommended feature importance rankings to those of other techniques, as a proxy, in the previous section. Despite not having access to predictions from a fitted model nor the 20\% validation set, \simp{} feature rankings are competitive for three real data sets. We conclude that \simp{} is a promising approach for obtaining feature impacts.  
 
-As for model feature selection, the bulldozer error curves in \figref{fig:topk-impact}(c) illustrate a case where \simp{} (ranked by impact not importance) gets half the error rate of the top features recommended by the other methods.  One would expect model-based techniques to easily identify the single most important model feature, or at least more readily than a model-free approach.  (\simp{} recommends the high-cardinality categorical variable {\tt ModelID}, whereas RF-based permutation importance and SHAP recommend ordinal {\tt ProductSize}.)  Even if such results are rare, misidentifying the single most important feature indicates that there is room for improvement in the feature importance research area. 
+As for model feature selection, the bulldozer error curves in \figref{fig:topk-impact}(c) illustrate a case where \simp{} (ranked by impact not importance) gets half the error rate of the top features recommended by the other methods.  One would expect model-based techniques to easily identify the single most important model feature, or at least more readily than an approach not using model predictions.  (\simp{} recommends the high-cardinality categorical variable {\tt ModelID}, whereas RF-based permutation importance and SHAP recommend ordinal {\tt ProductSize}.)  Even if such results are rare, misidentifying the single most important feature indicates that there is room for improvement in the feature importance research area. 
 
 It is also interesting to note that simple expedients like ranking features by Spearman's R coefficient between $x_j$ and $y$ or simple techniques like permutation importance perform well, at least for the first eight important features in our experiments. (We did not perform experiments on the least important features.) Also note that the error curves for SHAP and permutation importance generally mirror each other for the first eight features.  Both techniques introduce potentially nonsensical records to avoid retraining models, but this does not appear to affect their ability to rank features for feature selection purposes.
 
