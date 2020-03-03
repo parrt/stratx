@@ -261,6 +261,16 @@ Any technique that computes partial dependence curves neatly fits into the frame
 
 While SHAP has very strong theoretical foundations, there are several issues with the approach that should be discussed.  First, we cannot agree with the formal SHAP definition of feature importance for the simple reason that SHAP measures $x_j$ impact as the magnitude of the deviations $x_j$ causes from the mean model prediction, $\overline{y}$, rather than deviations from $y=0$.   For example, given equation $y=x_1^2 + x_2 + 100$ from \figref{fig:quad-area}, the effect of $x_1$ on $y$ is clearly $x_1^2$ (whose impact is the area of the orange region), not $|\overline{y} - x_1^2|$, as defined by SHAP (grey region area). 
 
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.5]{images/bulldozer-YearMade-marginal.pdf}~~
+\includegraphics[scale=0.5]{images/bulldozer-YearMade-shap.pdf}~~
+\includegraphics[scale=0.5]{images/bulldozer-YearMade-stratpd.pdf}
+\caption{\small (a) Marginal plot of bulldozer {\tt YearMade} versus {\tt SalePrice} using subsample of 20k observations, (b) partial dependence drawn by SHAP interrogating an RF with 40 trees and explaining 1000 values with 100 observations as background data, (c) \spd{} partial dependence.}
+\label{fig:shap-stratpd-YearMade}
+\end{center}
+\end{figure}
+
 Second, while the formal SHAP definition does not assume feature independence, the SHAP implementation does so for the specific purpose of simulating models trained on feature subsets. The SHAP definition approximates $\hat{f}_S(x_S)$ with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}}) | {\bf X}_S = x_S]$, but SHAP's implementation approximates $\hat{f}_S(x_S)$ with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$, which requires feature independence for accuracy. \cite{janzing2019feature} argues that ``{\em unconditional} [as implemented] rather than {\em conditional} [as defined] expectations provide the right notion of dropping features.'' In practice, however, we have observed several instances of questionable SHAP partial dependence curves for features important to the model.  \figref{fig:shap-stratpd-YearMade} gives one such example, comparing the marginal plot of  bulldozer {\tt YearMade} to {\tt SalePrice} (a), SHAP partial dependence of {\tt SalePrice} on {\tt YearMade} (b), and \spd{}'s curve (c). The SHAP plot does not show the expected relationship, that of decreased value for older bulldozers. One reasonable possibility is that other features are bleeding in, biasing the effect of {\tt YearMade}.
 
 To explore the ability of SHAP to disentangle codependent features, we tested the SHAP implementation on a synthetic body weight data set with codependent {\tt\small sex}/{\tt\small pregnant}/{\tt\small height} features (Equation (7) from \citealt{stratpd}):
@@ -285,22 +295,13 @@ If the individual $\hat{f}(x_{S \texttt{\char`\\} \{j\}}) - \hat{f}(x_{S})$ cont
 
 Our final concern is that SHAP effectively limits the user's choice of model to those with model-type-dependent implementations, such as {\tt\small TreeExplainer}, for efficiency reasons. For example, SHAP applied to a support vector machine (without a model-specific optimization) trained on Boston's 506 records takes 13 minutes to explain the same 506 records.  Large data sets also pose problems even for the model-type-dependent optimizations. SHAP applied to a modest 50-tree random forest trained on the 1.2M record ``League of legends'' data set \citep{lol} takes 25 minutes to explain a sample of size 1000.
 
+
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.5]{images/weight-shap-tree_path_dependent.pdf}~~
 \includegraphics[scale=0.5]{images/weight-shap-interventional.pdf}
 \caption{\small SHAP partial dependence plots of response body weight on feature {\tt height} using 2000 synthetic observations from Equation \eqref{eq:weight}. SHAP interrogated an RF with 40 trees and explained all 2000 samples; the interventional case used 100 observations as background data.}
 \label{fig:shap-weight}
-\end{center}
-\end{figure}
-
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.5]{images/bulldozer-YearMade-marginal.pdf}~~
-\includegraphics[scale=0.5]{images/bulldozer-YearMade-shap.pdf}~~
-\includegraphics[scale=0.5]{images/bulldozer-YearMade-stratpd.pdf}
-\caption{\small (a) Marginal plot of bulldozer {\tt YearMade} versus {\tt SalePrice} using subsample of 20k observations, (b) partial dependence drawn by SHAP interrogating an RF with 40 trees and explaining 1000 values with 100 observations as background data, (c) \spd{} partial dependence.}
-\label{fig:shap-stratpd-YearMade}
 \end{center}
 \end{figure}
 
