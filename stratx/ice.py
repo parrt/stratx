@@ -9,9 +9,88 @@ This code was built just to generate ICE plots for comparison in the paper.
 We just hacked it together.
 """
 
-from stratx.partdep import getcats
+def friedman_partial_dependences(model,X,numx=100,mean_centered=True):
+    """
+    Plot with stuff like:
 
-def predict_catice(model, X:pd.DataFrame, colname:str, targetname, cats=None, ncats=None):
+    pdpy = friedman_partial_dependences(rf, X)
+    uniq_x1 = np.unique(X['x1'])
+    uniq_x2 = np.unique(X['x2'])
+    fig, ax = plt.subplots(1,1)
+    ax.plot(uniq_x1, pdpy[0], '.', markersize=1, label=f"x1 area={np.mean(np.abs(pdpy1))*3:2f}")
+    ax.plot(uniq_x2, pdpy[1], '.', markersize=1, label=f"x2 area={np.mean(np.abs(pdpy2))*3:2f}")
+    plt.legend()
+    plt.show()
+    """
+    pdpxs = []
+    pdpys = []
+    for i, colname in enumerate(X.columns):
+        print(colname)
+        pdpx, pdpy = friedman_partial_dependence(model,X,colname,numx=numx,mean_centered=mean_centered)
+        pdpxs.append(pdpx)
+        pdpys.append(pdpy)
+    return pdpxs, pdpys
+
+
+def friedman_partial_dependence(model,X,colname,numx=100,mean_centered=True):
+    """
+    Return the partial dependence curve for y on X[colname] using all
+    unique x values. For each unique x, replace entire X[colname] with
+    it then compute average prediction. That is PDP for that x.
+    """
+    save_x = X[colname].copy()
+    if numx is not None:
+        uniq_x = np.random.choice(X[colname], numx)
+    else:
+        uniq_x = np.unique(X[colname])
+    pdpx = uniq_x
+    pdpy = np.empty(shape=(len(uniq_x),))
+    for i,x in enumerate(uniq_x):
+        X[colname] = x
+    #     print(X)
+        y_pred = model.predict(X)
+        pdpy[i] = y_pred.mean()
+    X[colname] = save_x
+    if mean_centered:
+        pdpy = pdpy - np.mean(pdpy)
+    return pdpx, pdpy
+
+
+def original_pdp(model, X, colname):
+    """
+    Return an ndarray with relative partial dependence line (average of ICE lines).
+    Attempt is made to get first pdp y to 0.
+    """
+    ice = predict_ice(model, X, colname)
+    #  Row 0 is actually the sorted unique X[colname] values used to get predictions.
+    pdp_curve = np.mean(ice[1:], axis=0)
+    min_pdp_y = pdp_curve[0]
+    # if 0 is in x feature and not on left/right edge, get y at 0
+    # and shift so that is x,y 0 point.
+    linex = ice.iloc[0, :]  # get unique x values from first row
+    nx = len(linex)
+    if linex[int(nx * 0.05)] < 0 or linex[-int(nx * 0.05)] > 0:
+        closest_x_to_0 = np.argmin(
+            np.abs(np.array(linex - 0.0)))  # do argmin w/o depr warning
+        min_pdp_y = pdp_curve[closest_x_to_0]
+
+    pdp_curve -= min_pdp_y
+    return pdp_curve.values
+
+
+def original_catpdp(model, X, colname):
+    """
+    Return an ndarray with relative partial dependence line (average of ICE lines).
+    Attempt is made to get first pdp y to 0.
+    """
+    ice = predict_catice(model, X, colname)
+    #  Row 0 is actually the sorted unique X[colname] values used to get predictions.
+    pdp_curve = np.mean(ice[1:], axis=0)
+
+    return pdp_curve.values
+
+
+def predict_catice(model, X:pd.DataFrame, colname:str, targetname="target", cats=None, ncats=None):
     if cats is None:
         cats = np.unique(X[colname]) # get unique codes
     return predict_ice(model=model, X=X, colname=colname, targetname=targetname,
@@ -109,7 +188,7 @@ def plot_ice(ice, colname, targetname="target", ax=None, linewidth=.5, linecolor
     linex = ice.iloc[0,:] # get unique x values from first row
     nx = len(linex)
     if linex[int(nx*0.05)]<0 or linex[-int(nx*0.05)]>0:
-        closest_x_to_0 = np.abs(linex - 0.0).argmin()
+        closest_x_to_0 = np.argmin(np.abs(np.array(linex - 0.0))) # do argmin w/o depr warning
         min_pdp_y = avg_y[closest_x_to_0]
 
     lines = ice2lines(ice)
@@ -169,6 +248,7 @@ def plot_catice(ice, colname, targetname,
     nobs = lines.shape[0]
     nx = lines.shape[1]
 
+    from stratx.partdep import getcats
     catcodes, _, catcode2name = getcats(None, colname, catnames)
     sorted_catcodes = catcodes
     if sort == 'ascending':
