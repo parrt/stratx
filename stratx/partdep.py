@@ -1514,6 +1514,7 @@ def plot_catstratpd(X, y,
                     show_xlabel=True,
                     show_xticks=True,
                     show_ylabel=True,
+                    style:('strip','scatter')='strip',
                     verbose=False,
                     figsize=(5,3)):
     """
@@ -1601,6 +1602,16 @@ def plot_catstratpd(X, y,
     colors=cmap(np.linspace(0, 1, num=n_trials))
     min_y = 9999999999999
     max_y = -min_y
+
+    """
+    if style == 'strip':
+        sigma = .02
+        mu = 0
+        x_noise = np.random.normal(mu, sigma, size=nleaves) # to make strip plot
+    else:
+        x_noise = np.zeros(shape=(nleaves,))
+    """
+
     for i in range(n_trials):
         avg_per_cat = all_avg_per_cat[i]
         if np.nanmin(avg_per_cat) < min_y:
