@@ -31,6 +31,15 @@ import statsmodels.api as sm
 
 # For data sources, please see notebooks/examples.ipynb
 
+def df_split_dates(df,colname):
+    df["saleyear"] = df[colname].dt.year
+    df["salemonth"] = df[colname].dt.month
+    df["saleday"] = df[colname].dt.day
+    df["saledayofweek"] = df[colname].dt.dayofweek
+    df["saledayofyear"] = df[colname].dt.dayofyear
+    df[colname] = df[colname].astype(np.int64) # convert to seconds since 1970
+
+
 def df_string_to_cat(df: pd.DataFrame) -> dict:
     catencoders = {}
     for colname in df.columns:
@@ -99,7 +108,7 @@ def load_rent():
     Go to the Kaggle [data page](https://www.kaggle.com/c/two-sigma-connect-rental-listing-inquiries/data)
     and save `train.json`
     """
-    df = pd.read_json('../notebooks/data/train.json')
+    df = pd.read_json('data/train.json')
 
     # Create ideal numeric data set w/o outliers etc...
     df = df[(df.price > 1_000) & (df.price < 10_000)]
@@ -111,6 +120,67 @@ def load_rent():
     df_rent = df[['bedrooms', 'bathrooms', 'latitude', 'longitude', 'price']]
 
     return df_rent
+
+
+def load_bulldozer():
+    """
+    Download Train.csv data from https://www.kaggle.com/c/bluebook-for-bulldozers/data
+    and save in data subdir
+    """
+    if os.path.exists("data/bulldozer-train-all.feather"):
+        print("Loading cached version...")
+        df = pd.read_feather("data/bulldozer-train-all.feather")
+    else:
+        dtypes = {col: str for col in
+                  ['fiModelSeries', 'Coupler_System', 'Grouser_Tracks', 'Hydraulics_Flow']}
+        df = pd.read_csv('data/Train.csv', dtype=dtypes, parse_dates=['saledate'])  # 35s load
+        df = df.sort_values('saledate')
+        df = df.reset_index(drop=True)
+        df.to_feather("data/bulldozer-train-all.feather")
+
+    df['MachineHours'] = df['MachineHoursCurrentMeter']  # shorten name
+    df.loc[df.eval("MachineHours==0"),
+           'MachineHours'] = np.nan
+    fix_missing_num(df, 'MachineHours')
+
+    # df.loc[df.YearMade < 1950, 'YearMade'] = np.nan
+    # fix_missing_num(df, 'YearMade')
+    df = df.loc[df.YearMade > 1950].copy()
+    df_split_dates(df, 'saledate')
+    df['age'] = df['saleyear'] - df['YearMade']
+    df['YearMade'] = df['YearMade'].astype(int)
+    sizes = {None: 0, 'Mini': 1, 'Compact': 1, 'Small': 2, 'Medium': 3,
+             'Large / Medium': 4, 'Large': 5}
+    df['ProductSize'] = df['ProductSize'].map(sizes).values
+
+    df['Enclosure'] = df['Enclosure'].replace('EROPS w AC', 'EROPS AC')
+    df['Enclosure'] = df['Enclosure'].replace('None or Unspecified', np.nan)
+    df['Enclosure'] = df['Enclosure'].replace('NO ROPS', np.nan)
+    df['AC'] = df['Enclosure'].fillna('').str.contains('AC')
+    df['AC'] = df['AC'].astype(int)
+    # print(df.columns)
+
+    # del df['SalesID']  # unique sales ID so not generalizer (OLS clearly overfits)
+    # delete MachineID as it has inconsistencies and errors per Kaggle
+
+    basefeatures = ['ModelID',
+                    'datasource', 'YearMade',
+                    # some missing values but use anyway:
+                    'auctioneerID',
+                    'MachineHours'
+                    ]
+    X = df[basefeatures+
+           [
+            'age',
+            'AC',
+            'ProductSize',
+            'MachineHours_na',
+            'saleyear', 'salemonth', 'saleday', 'saledayofweek', 'saledayofyear']
+           ]
+
+    X = X.fillna(0)  # flip missing numeric values to zeros
+    y = df['SalePrice']
+    return X, y
 
 
 def rent():
@@ -178,6 +248,7 @@ def rent_grid():
     plot_stratpd_gridsearch(X, y, 'latitude', 'price',
                             min_samples_leaf_values=[5,10,30,50],
                             yrange=(-500,3500),
+                            show_slope_lines=True,
                             marginal_alpha=0.05
                             )
 
@@ -186,6 +257,7 @@ def rent_grid():
     plot_stratpd_gridsearch(X, y, 'longitude', 'price',
                             min_samples_leaf_values=[5,10,30,50],
                             yrange=(1000,-4000),
+                            show_slope_lines=True,
                             marginal_alpha=0.05
                             )
 
@@ -194,6 +266,7 @@ def rent_grid():
     plot_stratpd_gridsearch(X, y, 'bathrooms', 'price',
                             min_samples_leaf_values=[5,10,30,50],
                             yrange=(-500,4000),
+                            show_slope_lines=True,
                             slope_line_alpha=.15)
 
     savefig("bathrooms_meta")
@@ -400,7 +473,7 @@ def plot_with_dup_col(df, colname, min_samples_leaf):
     plot_stratpd(X, y, colname, 'price', ax=axes[0, 2], slope_line_alpha=.15, show_xlabel=True,
                  min_samples_leaf=min_samples_leaf,
                  show_ylabel=False,
-                 ntrees=15,
+                 n_trees=15,
                  max_features=1,
                  bootstrap=False,
                  verbose=verbose
@@ -496,7 +569,7 @@ def rent_ntrees():
                          supervised=supervised,
                          show_ylabel=t == 1,
                          pdp_marker_size=2 if row==2 else 8,
-                         ntrees=t,
+                         n_trees=t,
                          max_features='auto',
                          bootstrap=True,
                          verbose=False)
@@ -530,6 +603,7 @@ def meta_boston():
 
 
     plot_stratpd_gridsearch(X, y, 'AGE', 'MEDV',
+                            show_slope_lines=True,
                             min_samples_leaf_values=[2,5,10,20,30],
                             yrange=(-10,10))
 
@@ -562,7 +636,7 @@ def plot_meta_multivar(X, y, colnames, targetname, nbins, yranges=None):
             plot_stratpd(X, y, colname, targetname, ax=axes[row, col],
                          min_samples_leaf=msl,
                          yrange=yranges[i],
-                         ntrees=1)
+                         n_trees=1)
             axes[row, col].set_title(
                 f"leafsz={msl}, nbins={nbins:.2f}",
                 fontsize=9)
@@ -675,11 +749,8 @@ def weather():
     plot_catstratpd(X, y, 'state', 'temperature', catnames=catnames,
                     min_samples_leaf=30,
                     alpha=.3,
-                    style='strip',
                     ax=ax,
-                    yrange=(-2, 60),
-                    use_weighted_avg=False
-                    )
+                    yrange=(-2, 60))
 
     ax.set_title("(b) StratPD")
     savefig(f"state_vs_temp_stratpd")
@@ -773,6 +844,7 @@ def meta_weather():
     savefig(f"state_temp_meta")
 
     plot_stratpd_gridsearch(X, y, 'dayofyear', 'temp',
+                            show_slope_lines=True,
                             min_samples_leaf_values=[2,5,10,20,30],
                             yrange=(-10,10),
                             slope_line_alpha=.15)
@@ -793,7 +865,7 @@ def weight():
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'education', 'weight', ax=ax,
                  # min_samples_leaf=2,
-                 yrange=(-12, 0), slope_line_alpha=.1, nlines=700, show_ylabel=True)
+                 yrange=(-12, 0), slope_line_alpha=.1, show_ylabel=True)
     #    ax.get_yaxis().set_visible(False)
     ax.set_title("StratPD", fontsize=10)
     ax.set_xlim(10,18)
@@ -803,7 +875,7 @@ def weight():
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'height', 'weight', ax=ax,
                  # min_samples_leaf=2,
-                 yrange=(0, 160), slope_line_alpha=.1, nlines=700, show_ylabel=False)
+                 yrange=(0, 160), slope_line_alpha=.1, show_ylabel=False)
     #    ax.get_yaxis().set_visible(False)
     ax.set_title("StratPD", fontsize=10)
     savefig(f"height_vs_weight_stratpd")
@@ -873,9 +945,9 @@ def unsup_weight():
 
     fig, axes = plt.subplots(2, 2, figsize=(4, 4))
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 0],
-                 yrange=(-12, 0), slope_line_alpha=.1, nlines=700, supervised=False)
+                 yrange=(-12, 0), slope_line_alpha=.1, supervised=False)
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 1],
-                 yrange=(-12, 0), slope_line_alpha=.1, nlines=700, supervised=True)
+                 yrange=(-12, 0), slope_line_alpha=.1, supervised=True)
 
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 0],
                     catnames=df_raw['pregnant'].unique(),
@@ -917,36 +989,36 @@ def weight_ntrees():
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 0],
                  min_samples_leaf=5,
                  yrange=(-12, 0), slope_line_alpha=.1, pdp_marker_size=10, show_ylabel=True,
-                 ntrees=1, max_features=1.0, bootstrap=False)
+                 n_trees=1, max_features=1.0, bootstrap=False)
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 1],
                  min_samples_leaf=5,
                  yrange=(-12, 0), slope_line_alpha=.1, pdp_marker_size=10, show_ylabel=False,
-                 ntrees=5, max_features='auto', bootstrap=True)
+                 n_trees=5, max_features='auto', bootstrap=True)
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 2],
                  min_samples_leaf=5,
                  yrange=(-12, 0), slope_line_alpha=.08, pdp_marker_size=10, show_ylabel=False,
-                 ntrees=10, max_features='auto', bootstrap=True)
+                 n_trees=10, max_features='auto', bootstrap=True)
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 3],
                  min_samples_leaf=5,
                  yrange=(-12, 0), slope_line_alpha=.05, pdp_marker_size=10, show_ylabel=False,
-                 ntrees=30, max_features='auto', bootstrap=True)
+                 n_trees=30, max_features='auto', bootstrap=True)
 
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 0],
                     catnames={0:False, 1:True}, show_ylabel=True,
                     yrange=(0, 35),
-                    ntrees=1, max_features=1.0, bootstrap=False)
+                    n_trees=1, max_features=1.0, bootstrap=False)
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 1],
                     catnames={0:False, 1:True}, show_ylabel=False,
                     yrange=(0, 35),
-                    ntrees=5, max_features='auto', bootstrap=True)
+                    n_trees=5, max_features='auto', bootstrap=True)
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 2],
                     catnames={0:False, 1:True}, show_ylabel=False,
                     yrange=(0, 35),
-                    ntrees=10, max_features='auto', bootstrap=True)
+                    n_trees=10, max_features='auto', bootstrap=True)
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 3],
                     catnames={0:False, 1:True}, show_ylabel=False,
                     yrange=(0, 35),
-                    ntrees=30, max_features='auto', bootstrap=True)
+                    n_trees=30, max_features='auto', bootstrap=True)
 
     savefig(f"education_pregnant_vs_weight_ntrees")
     plt.close()
@@ -963,11 +1035,13 @@ def meta_weight():
     y = df['weight']
 
     plot_stratpd_gridsearch(X, y, colname='education', targetname='weight',
+                            show_slope_lines=True,
                             xrange=(10,18),
                             yrange=(-12,0))
     savefig("education_weight_meta")
 
-    plot_stratpd_gridsearch(X, y, colname='height', targetname='weight', yrange=(0,150))
+    plot_stratpd_gridsearch(X, y, colname='height', targetname='weight', yrange=(0,150),
+                            show_slope_lines=True)
     savefig("height_weight_meta")
 
 
@@ -1181,16 +1255,16 @@ def unsup_boston():
     axes[3].set_title("PD/ICE")
 
     plot_stratpd(X, y, 'AGE', 'MEDV', ax=axes[1], yrange=(-20, 20),
-                 ntrees=20,
+                 n_trees=20,
                  bootstrap=True,
                  # min_samples_leaf=10,
                  max_features='auto',
                  supervised=False, show_ylabel=False,
                  verbose=True,
-                 slope_line_alpha=.1, nlines=1000)
+                 slope_line_alpha=.1)
     plot_stratpd(X, y, 'AGE', 'MEDV', ax=axes[2], yrange=(-20, 20),
                  min_samples_leaf=5,
-                 ntrees=1,
+                 n_trees=1,
                  supervised=True, show_ylabel=False)
 
     axes[1].text(5, 15, f"20 trees, bootstrap")
@@ -1300,6 +1374,7 @@ def meta_cars():
     y = df_cars['mpg']
 
     plot_stratpd_gridsearch(X, y, colname='horsepower', targetname='mpg',
+                            show_slope_lines=True,
                             min_samples_leaf_values=[2,5,10,20,30],
                             nbins_values=[1,2,3,4,5],
                             yrange=(-20, 20))
@@ -1307,6 +1382,7 @@ def meta_cars():
     savefig("horsepower_meta")
 
     plot_stratpd_gridsearch(X, y, colname='weight', targetname='mpg',
+                            show_slope_lines=True,
                             min_samples_leaf_values=[2,5,10,20,30],
                             nbins_values=[1,2,3,4,5],
                             yrange=(-20, 20))
@@ -1319,7 +1395,7 @@ def bulldozer():  # warning: takes like 5 minutes to run
 
     # np.random.seed(42)
 
-    def onecol(df, X, y, colname, axes, row, xrange, yrange):
+    def onecol(X, y, colname, axes, row, xrange, yrange):
         axes[row, 0].scatter(X[colname], y, alpha=0.07, s=1)
         axes[row, 0].set_ylabel("SalePrice")  # , fontsize=12)
         axes[row, 0].set_xlabel(colname)  # , fontsize=12)
@@ -1338,44 +1414,23 @@ def bulldozer():  # warning: takes like 5 minutes to run
         axes[row, 1].set_xlabel(colname)  # , fontsize=12)
         axes[row, 1].set_ylim(*yrange)
 
-    """
-    *Data use rules prevent me from storing this data in this repo*.
-    Download the data set from Kaggle. (You must be a registered Kaggle user and
-    must be logged in.) Go to
-    
-        https://www.kaggle.com/c/bluebook-for-bulldozers/data
-        
-    save `Train.csv` (might have to uncompress).
-    
-    The raw csv is superslow to load, but feather is fast so load as csv then save
-    as feather:
-    """
-    # df = pd.read_csv("data/Train.csv", parse_dates=['saledate'], low_memory=False)
-    # df.to_feather("data/bulldozer-train.feather")
-    
-    # There are 401,126 records with 52 columns
+    X, y = load_bulldozer()
 
-    df = pd.read_feather("../notebooks/data/bulldozer-train.feather")
-    df['MachineHours'] = df['MachineHoursCurrentMeter']  # shorten name
-    basefeatures = ['ModelID', 'YearMade', 'MachineHours']
+    # Most recent timeseries data is more relevant so get big recent chunk
+    # then we can sample from that to get n
+    X = X.iloc[-50_000:]
+    y = y.iloc[-50_000:]
 
-    df = df[df['YearMade'] >= 1960]
-    df = df[df['MachineHours'] > 0]
-
-    df = df[basefeatures + ['SalePrice']].reindex()
-    df = df.dropna(axis='rows')  # drop any rows with nan
-
-    # Get subsample; it's a (sorted) timeseries so get last records not random
-    df = df.iloc[-10_000:]  # take only last 10,000 records
-
-    X, y = df[basefeatures], df['SalePrice']
+    n = 10_000
+    idxs = resample(range(50_000), n_samples=n, replace=False, )
+    X, y = X.iloc[idxs], y.iloc[idxs]
 
     print(f"Avg bulldozer price is {np.mean(y):.2f}$")
 
     fig, axes = plt.subplots(3, 3, figsize=(7, 6))
 
-    onecol(df, X, y, 'YearMade', axes, 0, xrange=(1960, 2012), yrange=(-1000, 60000))
-    onecol(df, X, y, 'MachineHours', axes, 1, xrange=(0, 35_000),
+    onecol(X, y, 'YearMade', axes, 0, xrange=(1960, 2012), yrange=(-1000, 60000))
+    onecol(X, y, 'MachineHours', axes, 1, xrange=(0, 35_000),
            yrange=(-40_000, 40_000))
 
     # show marginal plot sorted by model's sale price
@@ -1397,16 +1452,13 @@ def bulldozer():  # warning: takes like 5 minutes to run
     axes[2, 0].set_xlabel('ModelID')  # , fontsize=12)
     axes[2, 0].tick_params(axis='x', which='both', bottom=False)
 
-
     plot_catstratpd(X, y, 'ModelID', 'SalePrice',
                     min_samples_leaf=5,
-                    use_weighted_avg=False,
                     ax=axes[2, 1],
                     sort='ascending',
                     yrange=(0, 130000),
                     show_ylabel=False,
                     alpha=0.1,
-                    style='scatter',
                     # style='strip',
                     marker_size=3,
                     show_xticks=False,
@@ -1496,7 +1548,7 @@ def multi_joint_distr():
         for j in range(4):
             axes[i, j].set_xlim(0, 15)
 
-    leaf_xranges, leaf_slopes, pdpx, pdpy, ignored = \
+    pdpx, pdpy, ignored = \
         plot_stratpd(X, y, 'x1', 'y', ax=axes[1, 0], xrange=(0, 13),
                      min_samples_leaf=min_samples_leaf,
                      yrange=yrange, show_xlabel=False, show_ylabel=True)
@@ -1506,7 +1558,7 @@ def multi_joint_distr():
     r.fit(pdpx.reshape(-1, 1), pdpy)
     axes[1, 0].text(1, 10, f"Slope={r.coef_[0]:.2f}")
 
-    leaf_xranges, leaf_slopes, pdpx, pdpy, ignored = \
+    pdpx, pdpy, ignored = \
         plot_stratpd(X, y, 'x2', 'y', ax=axes[1, 1], xrange=(0, 13),
                      # show_dx_line=True,
                      min_samples_leaf=min_samples_leaf,
@@ -1515,7 +1567,7 @@ def multi_joint_distr():
     r.fit(pdpx.reshape(-1, 1), pdpy)
     axes[1, 1].text(1, 10, f"Slope={r.coef_[0]:.2f}")
 
-    leaf_xranges, leaf_slopes, pdpx, pdpy, ignored = \
+    pdpx, pdpy, ignored = \
         plot_stratpd(X, y, 'x3', 'y', ax=axes[1, 2], xrange=(0, 13),
                      # show_dx_line=True,
                      min_samples_leaf=min_samples_leaf,
@@ -1524,7 +1576,7 @@ def multi_joint_distr():
     r.fit(pdpx.reshape(-1, 1), pdpy)
     axes[1, 2].text(1, 10, f"Slope={r.coef_[0]:.2f}")
 
-    leaf_xranges, leaf_slopes, pdpx, pdpy, ignored = \
+    pdpx, pdpy, ignored = \
         plot_stratpd(X, y, 'x4', 'y', ax=axes[1, 3], xrange=(0, 13),
                      # show_dx_line=True,
                      min_samples_leaf=min_samples_leaf,
@@ -1593,21 +1645,21 @@ if __name__ == '__main__':
     # FROM PAPER:
     # bulldozer()
     # rent()
-    rent_grid()
-    rent_ntrees()
-    rent_extra_cols()
-    unsup_rent()
-    unsup_boston()
-    weight()
-    weight_ntrees()
-    unsup_weight()
-    meta_weight()
+    # rent_grid()
+    # rent_ntrees()
+    # rent_extra_cols()
+    # unsup_rent()
+    # unsup_boston()
+    # weight()
+    # weight_ntrees()
+    # unsup_weight()
+    # meta_weight()
     weather()
     meta_weather()
-    additivity()
-    meta_additivity()
-    bigX()
-    multi_joint_distr()
+    # additivity()
+    # meta_additivity()
+    # bigX()
+    # multi_joint_distr()
 
     # EXTRA GOODIES
     # meta_boston()

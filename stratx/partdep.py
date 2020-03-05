@@ -233,9 +233,9 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
 
 
 def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
-                 min_slopes_per_x=15,  # ignore pdp y values derived from too few slopes (usually at edges)
+                 min_slopes_per_x=5,  # ignore pdp y values derived from too few slopes (usually at edges)
                  # important for getting good starting point of PD so AUC isn't skewed.
-                 n_trials=10, # how many pd curves to show (subsampling by 2/3 to get diff X sets)
+                 n_trials=5, # how many pd curves to show (subsampling by 2/3 to get diff X sets)
                  n_trees=1,
                  min_samples_leaf=10,
                  bootstrap=False,
@@ -755,7 +755,7 @@ def avg_values_at_x_nonparallel_jit(uniq_x, leaf_ranges, leaf_slopes):
 def plot_stratpd_gridsearch(X, y, colname, targetname,
                             min_samples_leaf_values=(2,5,10,20,30),
                             min_slopes_per_x_values=(5,), # Show default count only by default
-                            n_trials=10,
+                            n_trials=5,
                             nbins_values=(1,2,3,4,5),
                             nbins_smoothing=None,
                             binned=False,
@@ -890,7 +890,6 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
                                min_samples_leaf_values=(2, 5, 10, 20, 30),
                                min_y_shifted_to_zero=True,  # easier to read if values are relative to 0 (usually); do this for high cardinality cat vars
                                show_xticks=True,
-                               show_impact=False,
                                show_all_cat_deltas=True,
                                catnames=None,
                                yrange=None,
@@ -920,7 +919,6 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
                                 yrange=yrange,
                                 n_trees=1,
                                 show_xticks=show_xticks,
-                                show_impact=show_impact,
                                 show_all_deltas=show_all_cat_deltas,
                                 show_ylabel=False,
                                 sort=sort,
@@ -1496,8 +1494,6 @@ def plot_catstratpd(X, y,
                     yrange=None,
                     title=None,
                     supervised=True,
-                    use_weighted_avg=False,
-                    # show_impact=False,
                     show_all_deltas=True,
                     show_x_counts=True,
                     impact_color='#D73028',
@@ -1513,7 +1509,7 @@ def plot_catstratpd(X, y,
                     barchart_size=0.20,
                     barchar_alpha=0.9,
                     ticklabel_fontsize=10,
-                    min_y_shifted_to_zero=False,
+                    min_y_shifted_to_zero=True,
                     # easier to read if values are relative to 0 (usually); do this for high cardinality cat vars
                     show_xlabel=True,
                     show_xticks=True,
@@ -1681,9 +1677,10 @@ def plot_catstratpd(X, y,
     ax.tick_params(axis='both', which='major', labelsize=ticklabel_fontsize)
 
     if show_xticks:
-        ax.set_xticks(uniq_catcodes)
+        ax.set_xticks(range(len(uniq_catcodes)))
         if catnames is not None:
-            ax.set_xticklabels(catnames[uniq_catcodes])
+            labels = [catnames[c] for c in uniq_catcodes]
+            ax.set_xticklabels(labels)
         else:
             ax.set_xticklabels(uniq_catcodes)
         for tick in ax.get_xticklabels():
