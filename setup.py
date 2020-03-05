@@ -23,20 +23,20 @@ SOFTWARE.
 """
 
 from setuptools import setup, find_packages, Extension
-from Cython.Build import cythonize
-from Cython.Distutils import build_ext
+# from Cython.Build import cythonize
+# from Cython.Distutils import build_ext
 from glob import glob
-import numpy as np
+# import numpy as np
 
 # Run with "export CC=gcc-8; python setup.py install" if using cython
 
-extensions = [
-    Extension(
-        'stratx.cy_partdep',
-        glob('stratx/*.pyx'),
-        extra_compile_args=['-O3','-fopenmp'], # brew install libomp
-        extra_link_args=['-fopenmp','-Wl,-rpath,/usr/local/Cellar/gcc/8.2.0/lib/gcc/8'])
-]
+# extensions = [
+#     Extension(
+#         'stratx.cy_partdep',
+#         glob('stratx/*.pyx'),
+#         extra_compile_args=['-O3','-fopenmp'], # brew install libomp
+#         extra_link_args=['-fopenmp','-Wl,-rpath,/usr/local/Cellar/gcc/8.2.0/lib/gcc/8'])
+# ]
 
 setup(
     name='stratx',
