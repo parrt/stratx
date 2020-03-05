@@ -56,7 +56,7 @@ def toy_weather_data(n = 1000, p=50, n_outliers=None):
     """
     def noise(state): return np.random.normal(-5, 5, sum(df['state'] == state))
 
-    df_avgs = pd.read_csv("../articles/imp/genfigs/data/weather.csv")
+    df_avgs = pd.read_csv("weather.csv")
     avgtemp = df_avgs['avgtemp']
 
     df = pd.DataFrame()
@@ -114,15 +114,14 @@ def viz_clean_synth_uniform(n,p,max_x,min_samples_leaf, seed=None):
     df, eqn = synthetic_poly_data(n, p=p, max_x=max_x, dtype=int)
     X = df.drop('y', axis=1)
     y = df['y']
-    uniq_catcodes, avg_per_cat, ignored = \
+    uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored = \
         plot_catstratpd(X, y, colname='x1', targetname='y',
                         n_trials=1,
                         min_samples_leaf=min_samples_leaf,
                         show_x_counts=True,
                         show_xticks=True,
-                        show_impact=True,
                         min_y_shifted_to_zero=True,
-                        verbose=True,
+                        verbose=False,
                         figsize=(10, 4)
                         # yrange=(-1000,1000)
                         )
@@ -139,10 +138,10 @@ def viz_clean_synth_uniform(n,p,max_x,min_samples_leaf, seed=None):
         compare(caller_fname)
 
 def viz_clean_synth_uniform_n1000_xrange10_minleaf2():
-    viz_clean_synth_gauss(1000,2,10,2, seed=222)
+    viz_clean_synth_uniform(1000,2,10,2, seed=222)
 
 def viz_clean_synth_uniform_n1000_xrange100_minleaf2():
-    viz_clean_synth_gauss(1000,2,100,2, seed=222)
+    viz_clean_synth_uniform(1000,2,100,2, seed=222)
 
 def viz_clean_synth_gauss(n,p,max_x,min_samples_leaf, seed=None):
     if seed is not None:
@@ -158,7 +157,6 @@ def viz_clean_synth_gauss(n,p,max_x,min_samples_leaf, seed=None):
                         min_samples_leaf=min_samples_leaf,
                         show_x_counts=True,
                         show_xticks=True,
-                        show_impact=True,
                         min_y_shifted_to_zero=True,
                         verbose=True,
                         figsize=(10, 4)
@@ -214,7 +212,6 @@ def viz_weather(n, p, min_samples_leaf, n_outliers=0, seed=None, show_truth=True
                         show_x_counts=True,
                         ticklabel_fontsize=6,
                         pdp_marker_size=10,
-                        show_impact=True,
                         yrange=(0,50),
                         min_y_shifted_to_zero=True,
                         ax=ax,

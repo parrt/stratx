@@ -1497,7 +1497,7 @@ def plot_catstratpd(X, y,
                     title=None,
                     supervised=True,
                     use_weighted_avg=False,
-                    show_impact=False,
+                    # show_impact=False,
                     show_all_deltas=True,
                     show_x_counts=True,
                     impact_color='#D73028',
@@ -1532,8 +1532,6 @@ def plot_catstratpd(X, y,
             fig, ax = plt.subplots(1, 1, figsize=figsize)
         else:
             fig, ax = plt.subplots(1, 1)
-
-    X = compress_catcodes(X, catcolnames=[colname])
 
     uniq_catcodes = np.unique(X[colname])
     max_catcode = max(uniq_catcodes)
