@@ -5,6 +5,7 @@ from sklearn.ensemble import RandomForestRegressor
 
 from stratx.partdep import *
 
+# WARNING: I don't think these are working
 
 def slopes(X, y, colname, min_samples_leaf=10):
     rf = RandomForestRegressor(n_estimators=1,

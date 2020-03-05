@@ -91,7 +91,7 @@ def toy_weather_data(n = 1000, p=50):
     """
     def noise(state): return np.random.normal(-5, 5, sum(df['state'] == state))
 
-    df_avgs = pd.read_csv("../articles/imp/genfigs/data/weather.csv")
+    df_avgs = pd.read_csv("weather.csv")
     print("avg of states' avg temps:",np.mean(df_avgs['avgtemp']))
 
     df = pd.DataFrame()
