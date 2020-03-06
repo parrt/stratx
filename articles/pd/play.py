@@ -90,8 +90,8 @@ def weather():
                     # min_samples_leaf=30,
                     n_trials=10,
                     min_y_shifted_to_zero=True,
-                    show_x_counts=True,
-                    alpha=.3,
+                    show_x_counts=False,
+                    bootstrap=True,
                     yrange=(-2, 60),
                     figsize=(2.1,2.5)
                     )

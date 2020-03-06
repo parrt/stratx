@@ -153,6 +153,26 @@ def toy_weight_data(n):
     return X, y, df, eqn
 
 
+def toy_weather_data():
+    def temp(x): return np.sin((x + 365 / 2) * (2 * np.pi) / 365)
+
+    def noise(state): return np.random.normal(-5, 5, sum(df['state'] == state))
+
+    df = pd.DataFrame()
+    df['dayofyear'] = range(1, 365 + 1)
+    df['state'] = np.random.choice(['CA', 'CO', 'AZ', 'WA'], len(df))
+    df['temperature'] = temp(df['dayofyear'])
+    df.loc[df['state'] == 'CA', 'temperature'] = 70 + df.loc[
+        df['state'] == 'CA', 'temperature'] * noise('CA')
+    df.loc[df['state'] == 'CO', 'temperature'] = 40 + df.loc[
+        df['state'] == 'CO', 'temperature'] * noise('CO')
+    df.loc[df['state'] == 'AZ', 'temperature'] = 90 + df.loc[
+        df['state'] == 'AZ', 'temperature'] * noise('AZ')
+    df.loc[df['state'] == 'WA', 'temperature'] = 60 + df.loc[
+        df['state'] == 'WA', 'temperature'] * noise('WA')
+    return df
+
+
 def load_bulldozer():
     """
     Download Train.csv data from https://www.kaggle.com/c/bluebook-for-bulldozers/data

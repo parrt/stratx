@@ -1489,12 +1489,9 @@ def plot_catstratpd(X, y,
                     yrange=None,
                     title=None,
                     show_x_counts=True,
-                    alpha=.15,
-                    color='#2c7fb8',
                     pdp_marker_lw=1,
-                    pdp_marker_size=3,
+                    pdp_marker_size=6,
                     pdp_marker_alpha=.6,
-                    marker_size=5,
                     pdp_color='black',
                     fontname='Arial',
                     title_fontsize=11,
@@ -1551,11 +1548,13 @@ def plot_catstratpd(X, y,
     ignored = 0
     merge_ignored = 0
     for i in range(n_trials):
-        # idxs = resample(range(n), n_samples=n, replace=True) # bootstrap
         if n_trials>1:
             # idxs = resample(range(n), n_samples=int(n*2/3), replace=False) # subset
             # idxs = resample(range(n), n_samples=n, replace=True)
-            idxs = resample(range(n), n_samples=int(n * subsample_size), replace=False)
+            if bootstrap:
+                idxs = resample(range(n), n_samples=n, replace=True)
+            else: # use subsetting
+                idxs = resample(range(n), n_samples=int(n * subsample_size), replace=False)
             X_, y_ = X.iloc[idxs], y.iloc[idxs]
         else:
             X_, y_ = X, y
@@ -1607,13 +1606,6 @@ def plot_catstratpd(X, y,
             collect_deltas.append(cat_delta)
         ax.plot(collect_cats, collect_deltas, '.', c=mpl.colors.rgb2hex(colors[impact_order[i]]),
                 markersize=pdp_marker_size, alpha=pdp_marker_alpha)
-    # c = pdp_color if n_trials==1 else mpl.colors.rgb2hex(colors[impact_order[i]])
-    # for cat, delta in zip(collect_cats, collect_deltas):
-    #     ax.plot([cat-0.5,cat+0.5], [delta,delta], '-',
-    #             lw=0.5, c=c, alpha=pdp_marker_alpha)
-
-    # show 0 line
-    # ax.plot([0,len(uniq_catcodes)], [0,0], '--', c='grey', lw=.5)
 
     # Show avg line
     xloc = 0
@@ -1627,11 +1619,11 @@ def plot_catstratpd(X, y,
     for cat, delta in zip(range(len(uniq_catcodes)), avg_delta):
         one_line = [(cat-0.5, delta), (cat+0.5, delta)]
         segments.append(one_line)
-        ax.plot([cat-0.5,cat+0.5], [delta,delta], '-',
-                lw=1.0, c=pdp_color, alpha=pdp_marker_alpha)
+        # ax.plot([cat-0.5,cat+0.5], [delta,delta], '-',
+        #         lw=1.0, c=pdp_color, alpha=pdp_marker_alpha)
         # ax.plot(range(len(uniq_catcodes)), avg_delta, '.', c='k', markersize=pdp_marker_size + 1)
-    # lines = LineCollection(segments, alpha=pdp_marker_alpha, color=pdp_color, linewidths=pdp_marker_lw)
-    # ax.add_collection(lines)
+    lines = LineCollection(segments, alpha=pdp_marker_alpha, color=pdp_color, linewidths=pdp_marker_lw)
+    ax.add_collection(lines)
 
     leave_room_scaler = 1.3
 
