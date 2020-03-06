@@ -90,7 +90,7 @@ def weather():
                     # min_samples_leaf=30,
                     n_trials=10,
                     min_y_shifted_to_zero=True,
-                    show_x_counts=False,
+                    show_x_counts=True,
                     alpha=.3,
                     yrange=(-2, 60),
                     figsize=(2.1,2.5)
@@ -169,4 +169,4 @@ def bigX():
     axes[0, 1].set_title("PD/ICE", fontsize=10)
     plt.show()
 
-bigX()
+weather()

@@ -37,14 +37,10 @@ import collections
 from timeit import default_timer as timer
 from sklearn.utils import resample
 
-# from stratx.cy_partdep import cy_avg_values_at_x_double
-
 from dtreeviz.trees import *
-from snowballstemmer.dutch_stemmer import lab0
 from numba import jit, prange
 import numba
 
-from featimp import compute_importance, cat_compute_importance
 
 def leaf_samples(rf, X_not_col:np.ndarray) -> Sequence:
     """
@@ -255,7 +251,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  show_impact=False,
                  show_impact_dots=True,
                  show_impact_line=True,
-                 pdp_marker_size=4,
+                 pdp_marker_size=2,
                  pdp_marker_alpha=.5,
                  pdp_line_width=.5,
                  slope_line_color='#2c7fb8',
@@ -484,9 +480,9 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
 
     if show_xlabel:
         xl = colname
-        if show_impact:
-            impact, importance = compute_importance(X_col, pdpx, pdpy)
-            xl += f" (Impact {impact:.2f}, importance {importance:.2f})"
+        # if show_impact:
+        #     impact, importance = compute_importance(X_col, pdpx, pdpy)
+        #     xl += f" (Impact {impact:.2f}, importance {importance:.2f})"
         ax.set_xlabel(xl, fontsize=label_fontsize, fontname=fontname)
     if show_ylabel:
         ax.set_ylabel(targetname, fontsize=label_fontsize, fontname=fontname)
@@ -1484,19 +1480,18 @@ def plot_catstratpd(X, y,
                     # None implies use np.unique(X[colname]) values
                     # Must be 0-indexed list of names if list
                     n_trials=5,
+                    subsample_size = .75,
+                    bootstrap=False,
                     ax=None,
                     n_trees=1,
                     min_samples_leaf=5,
                     max_features=1.0,
-                    bootstrap=False,
                     yrange=None,
                     title=None,
-                    supervised=True,
-                    show_all_deltas=True,
                     show_x_counts=True,
-                    impact_color='#D73028',
                     alpha=.15,
                     color='#2c7fb8',
+                    pdp_marker_lw=1,
                     pdp_marker_size=3,
                     pdp_marker_alpha=.6,
                     marker_size=5,
@@ -1552,7 +1547,6 @@ def plot_catstratpd(X, y,
         return m
 
     impacts = []
-    weighted_impacts = []
     all_avg_per_cat = []
     ignored = 0
     merge_ignored = 0
@@ -1561,7 +1555,7 @@ def plot_catstratpd(X, y,
         if n_trials>1:
             # idxs = resample(range(n), n_samples=int(n*2/3), replace=False) # subset
             # idxs = resample(range(n), n_samples=n, replace=True)
-            idxs = resample(range(n), n_samples=int(n*.75), replace=False)
+            idxs = resample(range(n), n_samples=int(n * subsample_size), replace=False)
             X_, y_ = X.iloc[idxs], y.iloc[idxs]
         else:
             X_, y_ = X, y
@@ -1575,9 +1569,7 @@ def plot_catstratpd(X, y,
                                    max_features=max_features,
                                    bootstrap=False,
                                    verbose=verbose)
-        impact, importance = cat_compute_importance(avg_per_cat, count_per_cat)
-        impacts.append(impact)
-        weighted_impacts.append(importance)
+        impacts.append(np.nanmean(np.abs(avg_per_cat)))
         if min_y_shifted_to_zero:
             avg_per_cat -= np.nanmin(avg_per_cat)
         ignored += ignored_
@@ -1592,16 +1584,14 @@ def plot_catstratpd(X, y,
 
     impact_order = np.argsort(impacts)
     print("impacts", impacts)
-    print("weighted impacts", weighted_impacts)
     print("avg impact", np.mean(impacts))
-    print("avg weighted impact", np.mean(weighted_impacts))
 
     cmap = plt.get_cmap('coolwarm')
     colors=cmap(np.linspace(0, 1, num=n_trials))
     min_y = 9999999999999
     max_y = -min_y
 
-    for i in range(n_trials):
+    for i in range(1,n_trials): # only do if > 1 trial
         avg_per_cat = all_avg_per_cat[i]
         if np.nanmin(avg_per_cat) < min_y:
             min_y = np.nanmin(avg_per_cat)
@@ -1615,32 +1605,33 @@ def plot_catstratpd(X, y,
             xloc += 1
             collect_cats.append(xloc)
             collect_deltas.append(cat_delta)
-        for cat, delta in zip(collect_cats, collect_deltas):
-            ax.plot([cat-0.5,cat+0.5], [delta,delta], '-',
-                    lw=0.5,
-                    c=mpl.colors.rgb2hex(colors[impact_order[i]]),
-                    markersize=pdp_marker_size, alpha=pdp_marker_alpha)
-
-        # ax.plot(collect_cats, collect_deltas, '.', c=mpl.colors.rgb2hex(colors[impact_order[i]]),
-        #         markersize=pdp_marker_size, alpha=pdp_marker_alpha)
+        ax.plot(collect_cats, collect_deltas, '.', c=mpl.colors.rgb2hex(colors[impact_order[i]]),
+                markersize=pdp_marker_size, alpha=pdp_marker_alpha)
+    # c = pdp_color if n_trials==1 else mpl.colors.rgb2hex(colors[impact_order[i]])
+    # for cat, delta in zip(collect_cats, collect_deltas):
+    #     ax.plot([cat-0.5,cat+0.5], [delta,delta], '-',
+    #             lw=0.5, c=c, alpha=pdp_marker_alpha)
 
     # show 0 line
     # ax.plot([0,len(uniq_catcodes)], [0,0], '--', c='grey', lw=.5)
 
     # Show avg line
-    if n_trials>1:
-        xloc = 0
-        avg_delta = []
-        for cat in uniq_catcodes:
-            cat_delta = combined_avg_per_cat[cat]
-            avg_delta.append(cat_delta)
-            xloc += 1
-        # Show combined cat values if more than one trials
-        for cat, delta in zip(range(len(uniq_catcodes)), avg_delta):
-            ax.plot([cat-0.5,cat+0.5], [delta,delta], '-',
-                    lw=1.0,
-                    c='k', markersize=pdp_marker_size + 1, alpha=pdp_marker_alpha)
+    xloc = 0
+    avg_delta = []
+    for cat in uniq_catcodes:
+        cat_delta = combined_avg_per_cat[cat]
+        avg_delta.append(cat_delta)
+        xloc += 1
+    # Show combined cat values if more than one trials
+    segments = []
+    for cat, delta in zip(range(len(uniq_catcodes)), avg_delta):
+        one_line = [(cat-0.5, delta), (cat+0.5, delta)]
+        segments.append(one_line)
+        ax.plot([cat-0.5,cat+0.5], [delta,delta], '-',
+                lw=1.0, c=pdp_color, alpha=pdp_marker_alpha)
         # ax.plot(range(len(uniq_catcodes)), avg_delta, '.', c='k', markersize=pdp_marker_size + 1)
+    # lines = LineCollection(segments, alpha=pdp_marker_alpha, color=pdp_color, linewidths=pdp_marker_lw)
+    # ax.add_collection(lines)
 
     leave_room_scaler = 1.3
 
@@ -1650,10 +1641,6 @@ def plot_catstratpd(X, y,
     if show_x_counts:
         # Only show cat counts for those which are present in X[colname] (unlike stratpd plot)
         _, cat_counts = np.unique(X_col[np.isin(X_col, uniq_catcodes)], return_counts=True)
-        # x_width = len(uniq_catcodes)
-        # count_bar_width = x_width / len(pdpx)
-        # if count_bar_width/x_width < 0.002:
-        #     count_bar_width = x_width * 0.002 # don't make them so skinny they're invisible
         count_bar_width=1
         ax2 = ax.twinx()
         # scale y axis so the max count height is 10% of overall chart
@@ -1670,12 +1657,7 @@ def plot_catstratpd(X, y,
             ax.set_ylim(yrange[0]-(yrange[1]-yrange[0])*barchart_size * leave_room_scaler, yrange[1])
         else:
             ax.set_ylim(min_y-(max_y-min_y)*barchart_size * leave_room_scaler, max_y)
-        # ax2.set_xticks(range(len(uniq_catcodes)))
-        # ax2.set_xticklabels([])
         plt.setp(ax2.get_xticklabels(), visible=False)
-        # ax2.tick_params(axis='both', which='major', labelsize=ticklabel_fontsize)
-        # for tick in ax2.get_xticklabels():
-        #     tick.set_visible(False)
         for tick in ax2.get_yticklabels():
             tick.set_fontname(fontname)
         ax2.spines['top'].set_linewidth(.5)
@@ -1683,9 +1665,10 @@ def plot_catstratpd(X, y,
         ax2.spines['left'].set_linewidth(.5)
         ax2.spines['bottom'].set_linewidth(.5)
 
-    # np.where(combined_avg_per_cat!=0)[0]
     ax.tick_params(axis='both', which='major', labelsize=ticklabel_fontsize)
 
+    # leave .8 on either size of graph
+    ax.set_xlim(0-.8,len(uniq_catcodes)-1+0.8)
     if show_xticks:
         ax.set_xticks(range(len(uniq_catcodes)))
         if catnames is not None:
@@ -1825,6 +1808,7 @@ def nanavg_vectors(a, b, wa=1.0, wb=1.0):
     c[in_a_not_b] = a[in_a_not_b] # copy stuff where a has only value
     return c
 
+
 def nanmerge_matrix_cols(A):
     """
     Add all vertical vectors in A but support nan+x==x and nan+nan=nan.
@@ -1835,71 +1819,17 @@ def nanmerge_matrix_cols(A):
     s[all_nan_entries.all(axis=1)] = np.nan
     return s
 
+
 def zero_as_one(a):
     return np.where(a == 0, 1, a)
+
 
 def parray(a):
     if type(a[0])==np.int64:
         return '[ ' + (' '.join([f"{x:6d}" for x in a])).strip() + ' ]'
     else:
         return '[ ' + (' '.join([f"{x:6.2f}" for x in a])).strip() + ' ]'
+
+
 def parray3(a):
     return '[ ' + (' '.join([f"{x:6.3f}" for x in a])).strip() + ' ]'
-
-'''
-@jit(nopython=True)
-def set_random_seed(s):
-    # numpy and numba seeds are diff; gotta make sure they are same
-    np.random.seed(s)
-
-
-@jit(nopython=True)
-def nanavg_vectors(a, b, wa=1.0, wb=1.0) -> np.ndarray:
-    "Add two vectors a+b but support nan+x==x and nan+nan=nan"
-    a_nan = np.isnan(a)
-    b_nan = np.isnan(b)
-    # both_nan = a_nan & b_nan
-    c = a*wa + b*wb # weighted average where both are non-nan
-    c /= zero_as_one(wa+wb) # weighted avg
-    # c = np.where(a_nan, 0, a) * wa + np.where(b_nan, 0, b) * wb
-    # if adding nan to nan, leave as nan
-    c[a_nan] = b[a_nan]   # copy any stuff where b has only value (unweighted into result)
-    in_a_not_b = (~a_nan) & b_nan
-    c[in_a_not_b] = a[in_a_not_b] # copy stuff where a has only value
-    return c
-
-@jit(nopython=True)
-def nanmerge_matrix_cols(A) -> np.ndarray:
-    """
-    Add all vertical vectors in A but support nan+x==x and nan+nan=nan.
-    """
-    n, p = A.shape
-    # Simulate s = np.nansum(A, axis=1)
-    s = np.zeros(shape=(n,))
-    all_nan_entries = np.empty(shape=(n,), dtype=np.bool_)
-    for i in range(n):
-        all_nan_entries[i] = np.isnan(A[i,:]).all()
-        s[i] = np.nansum(A[i, :])
-
-    # all_nan_entries = np.isnan(A)
-    # if all entries for a cat are nan, make sure sum s is nan for that cat
-    s[all_nan_entries] = np.nan
-    return s
-
-@jit(nopython=True)
-def zero_as_one(a):
-    return np.where(a == 0, 1, a)
-
-
-@jit(nopython=True)
-def pdarray(a:np.ndarray):
-    return '[ ' + (' '.join(["%6d" % (x,) for x in a])).strip() + ' ]'
-
-@jit(nopython=True)
-def parray(a:np.ndarray):
-    return '[ ' + (' '.join(["%6.2f" % (x,) for x in a])).strip() + ' ]'
-
-@jit(nopython=True)
-def parray3(a:np.ndarray):
-    return '[ ' + (' '.join(["%6.3f" % (x,) for x in a])).strip() + ' ]'
-'''
