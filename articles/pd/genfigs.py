@@ -339,19 +339,16 @@ def rent_int():
 
     plot_stratpd(X, y, 'bedrooms', 'price',
                  min_samples_leaf=stratpd_min_samples_leaf_partition,
-                 nbins=1,
                  ax=axes[0, 1], slope_line_alpha=.2, show_ylabel=False)
     axes[0, 1].set_ylim(-500, 5000)
 
     plot_catstratpd(X, y, 'bedrooms', 'price', catnames=np.unique(X['bedrooms']),
                     min_samples_leaf=catstratpd_min_samples_leaf_partition,
-                    ax=axes[0, 2], slope_line_alpha=.2, show_ylabel=False,
-                    sort=None)
+                    ax=axes[0, 2], show_ylabel=False)
     axes[0, 2].set_ylim(-500, 5000)
 
     plot_stratpd(X, y, 'bathrooms', 'price',
                  min_samples_leaf=stratpd_min_samples_leaf_partition,
-                 nbins=1,
                  ax=axes[1, 1], slope_line_alpha=.2, show_ylabel=False)
     axes[1, 1].set_ylim(-500, 5000)
 
@@ -359,8 +356,7 @@ def rent_int():
     baths = np.unique(X['bathrooms'])
     plot_catstratpd(X, y, 'bathrooms', 'price', catnames=baths,
                     min_samples_leaf=catstratpd_min_samples_leaf_partition,
-                    ax=axes[1, 2], slope_line_alpha=.2, show_ylabel=False,
-                    sort=None)
+                    ax=axes[1, 2], show_ylabel=False)
     axes[1, 2].set_ylim(-500, 5000)
 
     axes[0, 0].set_title("Marginal")  # , fontsize=12)
@@ -1455,7 +1451,6 @@ def bulldozer():  # warning: takes like 5 minutes to run
     plot_catstratpd(X, y, 'ModelID', 'SalePrice',
                     min_samples_leaf=5,
                     ax=axes[2, 1],
-                    sort='ascending',
                     yrange=(0, 130000),
                     show_ylabel=False,
                     alpha=0.1,
@@ -1643,23 +1638,23 @@ def multi_joint_distr():
 
 if __name__ == '__main__':
     # FROM PAPER:
-    # bulldozer()
-    # rent()
-    # rent_grid()
-    # rent_ntrees()
-    # rent_extra_cols()
-    # unsup_rent()
-    # unsup_boston()
-    # weight()
-    # weight_ntrees()
-    # unsup_weight()
-    # meta_weight()
+    bulldozer()
+    rent()
+    rent_grid()
+    rent_ntrees()
+    rent_extra_cols()
+    unsup_rent()
+    unsup_boston()
+    weight()
+    weight_ntrees()
+    unsup_weight()
+    meta_weight()
     weather()
     meta_weather()
-    # additivity()
-    # meta_additivity()
-    # bigX()
-    # multi_joint_distr()
+    additivity()
+    meta_additivity()
+    bigX()
+    multi_joint_distr()
 
     # EXTRA GOODIES
     # meta_boston()

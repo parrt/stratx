@@ -484,8 +484,9 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
 
     if show_xlabel:
         xl = colname
-        impact, importance = compute_importance(X_col, pdpx, pdpy)
-        xl += f" (Impact {impact:.2f}, importance {importance:.2f})"
+        if show_impact:
+            impact, importance = compute_importance(X_col, pdpx, pdpy)
+            xl += f" (Impact {impact:.2f}, importance {importance:.2f})"
         ax.set_xlabel(xl, fontsize=label_fontsize, fontname=fontname)
     if show_ylabel:
         ax.set_ylabel(targetname, fontsize=label_fontsize, fontname=fontname)
@@ -893,7 +894,6 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
                                show_all_cat_deltas=True,
                                catnames=None,
                                yrange=None,
-                               sort='ascending',
                                cellwidth=2.5,
                                cellheight=2.5):
 
@@ -921,7 +921,6 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
                                 show_xticks=show_xticks,
                                 show_all_deltas=show_all_cat_deltas,
                                 show_ylabel=False,
-                                sort=sort,
                                 min_y_shifted_to_zero=min_y_shifted_to_zero)
         except ValueError:
             axes[col].set_title(f"Can't gen: leafsz={msl}", fontsize=8)
@@ -1484,9 +1483,8 @@ def plot_catstratpd(X, y,
                     # must pass dict or series if catcodes are not 1..n contiguous
                     # None implies use np.unique(X[colname]) values
                     # Must be 0-indexed list of names if list
-                    n_trials=10,
+                    n_trials=5,
                     ax=None,
-                    sort='ascending',
                     n_trees=1,
                     min_samples_leaf=5,
                     max_features=1.0,
@@ -1514,7 +1512,7 @@ def plot_catstratpd(X, y,
                     show_xlabel=True,
                     show_xticks=True,
                     show_ylabel=True,
-                    style:('strip','scatter')='strip',
+                    show_impact=False,
                     verbose=False,
                     figsize=(5,3)):
     """
@@ -1603,15 +1601,6 @@ def plot_catstratpd(X, y,
     min_y = 9999999999999
     max_y = -min_y
 
-    """
-    if style == 'strip':
-        sigma = .02
-        mu = 0
-        x_noise = np.random.normal(mu, sigma, size=nleaves) # to make strip plot
-    else:
-        x_noise = np.zeros(shape=(nleaves,))
-    """
-
     for i in range(n_trials):
         avg_per_cat = all_avg_per_cat[i]
         if np.nanmin(avg_per_cat) < min_y:
@@ -1626,8 +1615,14 @@ def plot_catstratpd(X, y,
             xloc += 1
             collect_cats.append(xloc)
             collect_deltas.append(cat_delta)
-        ax.plot(collect_cats, collect_deltas, '.', c=mpl.colors.rgb2hex(colors[impact_order[i]]),
-                markersize=pdp_marker_size, alpha=pdp_marker_alpha)
+        for cat, delta in zip(collect_cats, collect_deltas):
+            ax.plot([cat-0.5,cat+0.5], [delta,delta], '-',
+                    lw=0.5,
+                    c=mpl.colors.rgb2hex(colors[impact_order[i]]),
+                    markersize=pdp_marker_size, alpha=pdp_marker_alpha)
+
+        # ax.plot(collect_cats, collect_deltas, '.', c=mpl.colors.rgb2hex(colors[impact_order[i]]),
+        #         markersize=pdp_marker_size, alpha=pdp_marker_alpha)
 
     # show 0 line
     # ax.plot([0,len(uniq_catcodes)], [0,0], '--', c='grey', lw=.5)
@@ -1641,7 +1636,11 @@ def plot_catstratpd(X, y,
             avg_delta.append(cat_delta)
             xloc += 1
         # Show combined cat values if more than one trials
-        ax.plot(range(len(uniq_catcodes)), avg_delta, '.', c='k', markersize=pdp_marker_size + 1)
+        for cat, delta in zip(range(len(uniq_catcodes)), avg_delta):
+            ax.plot([cat-0.5,cat+0.5], [delta,delta], '-',
+                    lw=1.0,
+                    c='k', markersize=pdp_marker_size + 1, alpha=pdp_marker_alpha)
+        # ax.plot(range(len(uniq_catcodes)), avg_delta, '.', c='k', markersize=pdp_marker_size + 1)
 
     leave_room_scaler = 1.3
 
@@ -1701,7 +1700,9 @@ def plot_catstratpd(X, y,
         ax.set_xticklabels([])
 
     if show_xlabel:
-        label = colname+f" (Impact {np.mean(impacts):.1f}, importance {np.mean(weighted_impacts):.1f})"
+        label = colname
+        if show_impact:
+            label += f" (Impact {np.mean(impacts):.1f}, importance {np.mean(weighted_impacts):.1f})"
         ax.set_xlabel(label, fontsize=label_fontsize, fontname=fontname)
     if show_ylabel:
         ax.set_ylabel(targetname, fontsize=label_fontsize, fontname=fontname)
