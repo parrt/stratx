@@ -57,7 +57,6 @@ pd.set_option('display.width', 300)
 import rfpimp
 
 from stratx.partdep import *
-from stratx.featimp import *
 
 import shap
 

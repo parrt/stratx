@@ -235,6 +235,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  n_trees=1,
                  min_samples_leaf=10,
                  bootstrap=False,
+                 subsample_size=.75,
                  max_features=1.0,
                  supervised=True,
                  ax=None,
@@ -320,11 +321,11 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
     n = len(X)
     ignored = 0
     for i in range(n_trials):
-        # idxs = resample(range(n), n_samples=n, replace=True) # bootstrap
         if n_trials>1:
-            # idxs = resample(range(n), n_samples=int(n * 2 / 3), replace=False)  # subset
-            # idxs = resample(range(n), n_samples=n, replace=True)
-            idxs = resample(range(n), n_samples=int(n*.75), replace=False)
+            if bootstrap:
+                idxs = resample(range(n), n_samples=n, replace=True) # bootstrap
+            else: # subsample
+                idxs = resample(range(n), n_samples=int(n*subsample_size), replace=False)
             X_, y_ = X.iloc[idxs], y.iloc[idxs]
         else:
             X_, y_ = X, y
@@ -1549,8 +1550,6 @@ def plot_catstratpd(X, y,
     merge_ignored = 0
     for i in range(n_trials):
         if n_trials>1:
-            # idxs = resample(range(n), n_samples=int(n*2/3), replace=False) # subset
-            # idxs = resample(range(n), n_samples=n, replace=True)
             if bootstrap:
                 idxs = resample(range(n), n_samples=n, replace=True)
             else: # use subsetting
@@ -1590,33 +1589,21 @@ def plot_catstratpd(X, y,
     min_y = 9999999999999
     max_y = -min_y
 
-    for i in range(1,n_trials): # only do if > 1 trial
+    for i in range(0,n_trials): # find min/max from all trials
         avg_per_cat = all_avg_per_cat[i]
         if np.nanmin(avg_per_cat) < min_y:
             min_y = np.nanmin(avg_per_cat)
         if np.nanmax(avg_per_cat) > max_y:
             max_y = np.nanmax(avg_per_cat)
-        xloc = -1 # go from 0 but must count nan entries
-        collect_cats = []
-        collect_deltas = []
-        for cat in uniq_catcodes:
-            cat_delta = avg_per_cat[cat]
-            xloc += 1
-            collect_cats.append(xloc)
-            collect_deltas.append(cat_delta)
-        ax.plot(collect_cats, collect_deltas, '.', c=mpl.colors.rgb2hex(colors[impact_order[i]]),
+
+    # Show a dot for each cat in all trials
+    for i in range(1,n_trials): # only do if > 1 trial
+        ax.plot(range(len(uniq_catcodes)), all_avg_per_cat[i][uniq_catcodes], '.', c=mpl.colors.rgb2hex(colors[impact_order[i]]),
                 markersize=pdp_marker_size, alpha=pdp_marker_alpha)
 
     # Show avg line
-    xloc = 0
-    avg_delta = []
-    for cat in uniq_catcodes:
-        cat_delta = combined_avg_per_cat[cat]
-        avg_delta.append(cat_delta)
-        xloc += 1
-    # Show combined cat values if more than one trials
     segments = []
-    for cat, delta in zip(range(len(uniq_catcodes)), avg_delta):
+    for cat, delta in zip(range(len(uniq_catcodes)), combined_avg_per_cat[uniq_catcodes]):
         one_line = [(cat-0.5, delta), (cat+0.5, delta)]
         segments.append(one_line)
         # ax.plot([cat-0.5,cat+0.5], [delta,delta], '-',

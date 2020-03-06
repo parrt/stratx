@@ -158,9 +158,8 @@ def viz_clean_synth_gauss(n,p,max_x,min_samples_leaf, seed=None):
                         show_x_counts=True,
                         show_xticks=True,
                         min_y_shifted_to_zero=True,
-                        verbose=True,
+                        verbose=False,
                         figsize=(10, 4)
-                        # yrange=(-1000,1000)
                         )
 
     if seed is not None:
