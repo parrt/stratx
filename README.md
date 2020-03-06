@@ -1,5 +1,7 @@
 # A Stratification Approach to Partial Dependence for Codependent Variables
 
+*Warning: work in progress. March 2020*
+
 ## Abstract 
 
 This repo provides pip package `stratx` for the StratPD and CatStratPD algorithms for computing model-independent partial dependence. Source is Python 3 and MIT license.
