@@ -30,7 +30,7 @@
 \usepackage{alltt}
 \usepackage{listings}
 \usepackage{array}
-\usepackage[noline, boxed, linesnumbered, procnumbered, titlenumbered]{algorithm2e}
+\usepackage[noline, procnumbered]{algorithm2e}
 \usepackage{lmodern}
 \usepackage{caption}
 \usepackage{subcaption}
@@ -50,21 +50,13 @@
 
 \newcommand{\spd}{\fontfamily{cmr}\textsc{\small StratPD}}
 \newcommand{\cspd}{\fontfamily{cmr}\textsc{\small CatStratPD}}
-\newcommand{\xnc}{$x_{\overline{c}}$}
+\newcommand{\xnc}{${\bf X}_{\overline{c}}$}
 \newcommand{\xnC}{$x_{\overline{C}}$}
 
 %\setlist[enumerate]{itemsep=-1mm}
 
 \title{Technical Report:\\
 A Stratification Approach to Partial Dependence for Codependent Variables}
-
-% The \author macro works with any number of authors. There are two commands
-% used to separate the names and addresses of multiple authors: \And and \AND.
-%
-% Using \And between authors leaves it to LaTeX to determine where to break the
-% lines. Using \AND forces a line break at that point. So, if LaTeX puts 3 of 4
-% authors names on the first line, and the last on the second line, try using
-% \AND instead of \And before the third author name.
 
 \author{%
   Terence Parr \\
@@ -124,6 +116,59 @@ ICE
 ALE
 
 SHAP
+\pagebreak
+\section{Algorithms}
+
+
+\setlength{\algomargin}{5pt}
+\begin{algorithm}[]
+\DontPrintSemicolon
+\SetAlgorithmName{Algorithm}{List of Algorithms}
+\SetAlgoSkip{}
+\TitleOfAlgo{{\em StratPD}}
+\KwIn{{\bf X}, {\bf y}, c, {\it min\_samples\_leaf}, {\it min\_slopes\_per\_x}}
+\KwOut{Collection of partial dependence values across $x_c$}
+Train decision tree regressor $T$ on (\xnc{}, $\bf y$) with hyper-parameter: ${\it min\_samples\_leaf}$\;
+\For{each leaf $l \in T$}{
+        $({\bf x}_l, {\bf y}_l)$ = $\{(x_c^{(i)},  y^{(i)})\}_{i \in l}$\\
+        {\bf ux} := $unique({\bf x}_l)$\\
+	Group leaf records $({\bf x}_l, {\bf y}_l)$ by $x_c$, computing $\bar{y}$ per unique $x_c$\\
+	${\bf dx}$ := ${\bf ux}^{(i+1)} - {\bf ux}^{(i)}_{i=1..|{\bf ux}|-1}$~~~({\it discrete difference})\\
+	${\bf dy}$ := $\bar{\bf y}^{(i+1)} - \bar{\bf y}^{(i)}_{i=1..|{\bf ux}|-1}$\\
+	Add tuples ${({\bf ux}^{(i)}, {\bf ux}^{(i+1)},~ {\bf dy}^{(i)}/{\bf dx}^{(i)})}_{i=1..|{\bf ux}|-1}$ to list ${\bf d}$\\
+}
+$\bf ux$ := $unique(\{x_c^{(i)}\}_{i=1..n})$\\
+\For{each $x \in {\bf ux}$}{
+	$slopes$ := [$slope$ for $(a,b,slope) \in \bf d$ if $x \ge a$ and $x <b$]\\
+	${\bf c}_x$ := $|slopes|$, ${\bf dydx}_x$ := $\overline{slopes}$\\
+}
+${\bf dy}$ := ${\bf dy}[{\bf c} \ge min\_slopes\_per\_x]$~~~ ({\it Drop slope estimates computed from too few})\\
+${\bf ux}$ := ${\bf ux}[{\bf c} \ge min\_slopes\_per\_x]$\\
+$\bf dx$ := ${\bf ux}^{(i+1)} - {\bf ux}^{(i)}_{i=1..|{\bf ux}|-1}$\\
+$\bf pd$ := [0] + cumulative\_sum(${\bf dydx} * \bf dx$)~~~({\it integrate, inserting 0 for leftmost $x_c$})\\
+\Return{$\bf pd$}
+\label{alg:CatStratPD}
+\end{algorithm}
+
+
+\setlength{\algomargin}{5pt}
+\begin{algorithm}[]
+\DontPrintSemicolon
+\SetAlgorithmName{Algorithm}{List of Algorithms}
+\SetAlgoSkip{}
+\TitleOfAlgo{{\em CatStratPD}}
+\KwIn{$\begin{array}[t]{l}
+{\bf X}, {\bf y}, c,\\
+{\it n_trials}, {\it min\_samples\_leaf}\\
+\end{array}$
+}
+\KwOut{$\begin{array}[t]{l}
+\Delta^{(k)} = \text{category } k \text{'s effect on } y \text{ where } mean(\Delta^{(k)})=0\\
+n^{(k)} = \text{number of supported observations per category $k$}\\
+\end{array}$
+}
+\label{alg:CatStratPD}
+\end{algorithm}
 
 \section*{References}
 

@@ -169,4 +169,5 @@ def bigX():
     axes[0, 1].set_title("PD/ICE", fontsize=10)
     plt.show()
 
-weather()
+# weather()
+bigX()

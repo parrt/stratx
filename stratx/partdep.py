@@ -208,7 +208,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
     pdpx = real_uniq_x[idx]
 
     # Integrate the partial derivative estimate in slope_at_x across pdpx to get dependence
-    dx = np.diff(pdpx)
+    dx = np.diff(pdpx) # we lose a value here
     dydx = slope_at_x[:-1] # ignore last point as dx is always one smaller
 
     '''
@@ -222,7 +222,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
 
     y_deltas = dydx * dx   # change in y from dx[i] to dx[i+1]
     # print(f"y_deltas: {y_deltas}")
-    pdpy = np.cumsum(y_deltas)                    # we lose one value here
+    pdpy = np.cumsum(y_deltas)                    # we lose one value from np.diff(pdpx)
     pdpy = np.concatenate([np.array([0]), pdpy])  # add back the 0 we lost
 
     return leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored
