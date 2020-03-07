@@ -127,26 +127,26 @@ SHAP
 \SetAlgoSkip{}
 \TitleOfAlgo{{\em StratPD}}
 \KwIn{{\bf X}, {\bf y}, c, {\it min\_samples\_leaf}, {\it min\_slopes\_per\_x}}
-\KwOut{Collection of partial dependence values across $x_c$}
+\KwOut{$\bf pdx, pdy$: Unique $x_c$, partial dependence values across $x_c$}
 Train decision tree regressor $T$ on (\xnc{}, $\bf y$) with hyper-parameter: ${\it min\_samples\_leaf}$\;
 \For{each leaf $l \in T$}{
         $({\bf x}_l, {\bf y}_l)$ = $\{(x_c^{(i)},  y^{(i)})\}_{i \in l}$\\
         {\bf ux} := $unique({\bf x}_l)$\\
 	Group leaf records $({\bf x}_l, {\bf y}_l)$ by $x_c$, computing $\bar{y}$ per unique $x_c$\\
-	${\bf dx}$ := ${\bf ux}^{(i+1)} - {\bf ux}^{(i)}_{i=1..|{\bf ux}|-1}$~~~({\it discrete difference})\\
+	${\bf dx}$ := ${\bf ux}^{(i+1)} - {\bf ux}^{(i)}_{i=1..|{\bf ux}|-1}$\tcp*{\it Discrete difference}
 	${\bf dy}$ := $\bar{\bf y}^{(i+1)} - \bar{\bf y}^{(i)}_{i=1..|{\bf ux}|-1}$\\
 	Add tuples ${({\bf ux}^{(i)}, {\bf ux}^{(i+1)},~ {\bf dy}^{(i)}/{\bf dx}^{(i)})}_{i=1..|{\bf ux}|-1}$ to list ${\bf d}$\\
 }
-$\bf ux$ := $unique(\{x_c^{(i)}\}_{i=1..n})$\\
+$\bf ux$ := $unique(\{x_c^{(i)}\}_{i=1..n})$\tcp*{\it Compute average slope per unique $x_c$ value}
 \For{each $x \in {\bf ux}$}{
 	$slopes$ := [$slope$ for $(a,b,slope) \in \bf d$ if $x \ge a$ and $x <b$]\\
 	${\bf c}_x$ := $|slopes|$, ${\bf dydx}_x$ := $\overline{slopes}$\\
 }
-${\bf dy}$ := ${\bf dy}[{\bf c} \ge min\_slopes\_per\_x]$~~~ ({\it Drop slope estimates computed from too few})\\
+${\bf dy}$ := ${\bf dy}[{\bf c} \ge min\_slopes\_per\_x]$\tcp*{\it Drop slope estimates computed from too few}
 ${\bf ux}$ := ${\bf ux}[{\bf c} \ge min\_slopes\_per\_x]$\\
-$\bf dx$ := ${\bf ux}^{(i+1)} - {\bf ux}^{(i)}_{i=1..|{\bf ux}|-1}$\\
-$\bf pd$ := [0] + cumulative\_sum(${\bf dydx} * \bf dx$)~~~({\it integrate, inserting 0 for leftmost $x_c$})\\
-\Return{$\bf pd$}
+$\bf pdx$ := ${\bf ux}^{(i+1)} - {\bf ux}^{(i)}_{i=1..|{\bf ux}|-1}$\\
+$\bf pdy$ := [0] + cumulative\_sum(${\bf dydx} * \bf pdx$)~~~\tcp*{\it integrate, inserting 0 for leftmost $x_c$}
+\Return{$\bf pdx, pdy$}
 \label{alg:CatStratPD}
 \end{algorithm}
 
