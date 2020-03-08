@@ -51,14 +51,16 @@ import xgboost as xgb
 from sklearn import svm
 from sklearn.model_selection import KFold
 
-pd.set_option('display.max_columns', 10)
-pd.set_option('display.width', 300)
-
-import rfpimp
-
 from stratx.partdep import *
 
-import shap
+# WARNING: THIS FILE IS INTENDED FOR USE BY PARRT TO TEST / GENERATE SAMPLE IMAGES
+
+datadir = "/Users/parrt/data"
+
+def set_data_dir(dir):
+    global datadir
+    datadir = dir
+
 
 def df_string_to_cat(df:pd.DataFrame) -> dict:
     catencoders = {}
@@ -95,7 +97,7 @@ def load_flights(n):
     flight-delays.zip; unzip to convenient data dir.  Save time by storing as
     feather.  5.8M records.
     """
-    dir = "data/flight-delays"
+    dir = f"{datadir}/flight-delays"
     if os.path.exists(dir+"/flights.feather"):
         df_flights = pd.read_feather(dir + "/flights.feather")
     else:
@@ -185,32 +187,32 @@ def toy_weather_data():
     df['dayofyear'] = range(1, 365 + 1)
     df['state'] = np.random.choice(['CA', 'CO', 'AZ', 'WA'], len(df))
     df['temperature'] = temp(df['dayofyear'])
-    df.loc[df['state'] == 'CA', 'temperature'] = 70 + df.loc[
-        df['state'] == 'CA', 'temperature'] * noise('CA')
-    df.loc[df['state'] == 'CO', 'temperature'] = 40 + df.loc[
-        df['state'] == 'CO', 'temperature'] * noise('CO')
-    df.loc[df['state'] == 'AZ', 'temperature'] = 90 + df.loc[
-        df['state'] == 'AZ', 'temperature'] * noise('AZ')
-    df.loc[df['state'] == 'WA', 'temperature'] = 60 + df.loc[
-        df['state'] == 'WA', 'temperature'] * noise('WA')
+    df.loc[df['state'] == 'CA', 'temperature'] = \
+        70 + df.loc[df['state'] == 'CA', 'temperature'] * noise('CA')
+    df.loc[df['state'] == 'CO', 'temperature'] = \
+        40 + df.loc[df['state'] == 'CO', 'temperature'] * noise('CO')
+    df.loc[df['state'] == 'AZ', 'temperature'] = \
+        90 + df.loc[df['state'] == 'AZ', 'temperature'] * noise('AZ')
+    df.loc[df['state'] == 'WA', 'temperature'] = \
+        60 + df.loc[df['state'] == 'WA', 'temperature'] * noise('WA')
     return df
 
 
-def load_bulldozer():
+def load_bulldozer(n):
     """
     Download Train.csv data from https://www.kaggle.com/c/bluebook-for-bulldozers/data
     and save in data subdir
     """
-    if os.path.exists("data/bulldozer-train-all.feather"):
+    if os.path.exists(f"{datadir}/bulldozer-train-all.feather"):
         print("Loading cached version...")
-        df = pd.read_feather("data/bulldozer-train-all.feather")
+        df = pd.read_feather(f"{datadir}/bulldozer-train-all.feather")
     else:
         dtypes = {col: str for col in
                   ['fiModelSeries', 'Coupler_System', 'Grouser_Tracks', 'Hydraulics_Flow']}
-        df = pd.read_csv('data/Train.csv', dtype=dtypes, parse_dates=['saledate'])  # 35s load
+        df = pd.read_csv(f'{datadir}/Train.csv', dtype=dtypes, parse_dates=['saledate'])  # 35s load
         df = df.sort_values('saledate')
         df = df.reset_index(drop=True)
-        df.to_feather("data/bulldozer-train-all.feather")
+        df.to_feather(f"{datadir}/bulldozer-train-all.feather")
 
     df['MachineHours'] = df['MachineHoursCurrentMeter']  # shorten name
     df.loc[df.eval("MachineHours==0"),
@@ -254,6 +256,15 @@ def load_bulldozer():
 
     X = X.fillna(0)  # flip missing numeric values to zeros
     y = df['SalePrice']
+
+    # Most recent timeseries data is more relevant so get big recent chunk
+    # then we can sample from that to get n
+    X = X.iloc[-50_000:]
+    y = y.iloc[-50_000:]
+
+    idxs = resample(range(50_000), n_samples=n, replace=False, )
+    X, y = X.iloc[idxs], y.iloc[idxs]
+
     return X, y
 
 
@@ -262,7 +273,7 @@ def load_rent(n:int=None, clean_prices=True):
     Download train.json from https://www.kaggle.com/c/two-sigma-connect-rental-listing-inquiries/data
     and save into data subdir.
     """
-    df = pd.read_json('data/train.json')
+    df = pd.read_json(f'{datadir}/train.json')
 
     # Create ideal numeric data set w/o outliers etc...
 
