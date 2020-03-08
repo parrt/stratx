@@ -772,81 +772,46 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
                             cellwidth=2.5,
                             cellheight=2.5):
     ncols = len(min_samples_leaf_values)
-    if not binned:
-        fig, axes = plt.subplots(len(min_slopes_per_x_values), ncols + 1,
-                                 figsize=((ncols + 1) * cellwidth, len(min_slopes_per_x_values)*cellheight))
-        if len(min_slopes_per_x_values)==1:
-            axes = axes.reshape(1,-1)
-        for row,min_slopes_per_x in enumerate(min_slopes_per_x_values):
-            marginal_plot_(X, y, colname, targetname, ax=axes[row][0],
-                           show_regr_line=show_regr_line, alpha=marginal_alpha,
-                           label_fontsize=label_fontsize,
-                           ticklabel_fontsize=ticklabel_fontsize)
-            col = 1
-            axes[row][0].set_title("Marginal", fontsize=title_fontsize)
-            for msl in min_samples_leaf_values:
-                #print(f"---------- min_samples_leaf={msl} ----------- ")
-                try:
-                    pdpx, pdpy, ignored = \
-                        plot_stratpd(X, y, colname, targetname, ax=axes[row][col],
-                                     min_samples_leaf=msl,
-                                     min_slopes_per_x=min_slopes_per_x,
-                                     n_trials=n_trials,
-                                     xrange=xrange,
-                                     yrange=yrange,
-                                     n_trees=1,
-                                     show_ylabel=False,
-                                     slope_line_alpha=slope_line_alpha,
-                                     show_slope_lines=show_slope_lines,
-                                     show_impact=show_impact,
-                                     show_slope_counts=show_slope_counts,
-                                     show_x_counts=show_x_counts,
-                                     label_fontsize=label_fontsize,
-                                     ticklabel_fontsize=ticklabel_fontsize)
-                    # print(f"leafsz {msl} avg abs curve value: {np.mean(np.abs(pdpy)):.2f}, mean {np.mean(pdpy):.2f}, min {np.min(pdpy):.2f}, max {np.max(pdpy)}")
-                except ValueError as e:
-                    print(e)
-                    axes[row][col].set_title(f"Can't gen: leafsz={msl}", fontsize=8)
-                else:
-                    title = f"leafsz={msl}, min_slopes={min_slopes_per_x}"
-                    if ignored>0:
-                        title = f"leafsz={msl}, min_slopes={min_slopes_per_x},\nignored={100 * ignored / len(X):.2f}%"
-                    axes[row][col].set_title(title, fontsize=title_fontsize)
-                col += 1
-
-    else:
-        # more or less ignoring this branch these days
-        nrows = len(nbins_values)
-        fig, axes = plt.subplots(nrows, ncols + 1,
-                                 figsize=((ncols + 1) * 2.5, nrows * 2.5))
-
-        row = 0
-        for i, nbins in enumerate(nbins_values):
-            marginal_plot_(X, y, colname, targetname, ax=axes[row, 0], show_regr_line=show_regr_line)
-            if row==0:
-                axes[row,0].set_title("Marginal", fontsize=10)
-            col = 1
-            for msl in min_samples_leaf_values:
-                #print(f"---------- min_samples_leaf={msl}, nbins={nbins:.2f} ----------- ")
-                try:
-                    leaf_xranges, leaf_slopes, Xbetas, plot_x, plot_y, ignored = \
-                        plot_stratpd_binned(X, y, colname, targetname, ax=axes[row, col],
-                                            nbins=nbins,
-                                            min_samples_leaf=msl,
-                                            nbins_smoothing=nbins_smoothing,
-                                            yrange=yrange,
-                                            show_ylabel=False,
-                                            n_trees=1)
-                except ValueError:
-                    axes[row, col].set_title(
-                        f"Can't gen: leafsz={msl}, nbins={nbins}",
-                        fontsize=8)
-                else:
-                    axes[row, col].set_title(
-                        f"leafsz={msl}, nbins={nbins},\nignored={100*ignored/len(X):.2f}%",
-                        fontsize=9)
-                col += 1
-            row += 1
+    fig, axes = plt.subplots(len(min_slopes_per_x_values), ncols + 1,
+                             figsize=((ncols + 1) * cellwidth, len(min_slopes_per_x_values)*cellheight))
+    if len(min_slopes_per_x_values)==1:
+        axes = axes.reshape(1,-1)
+    for row,min_slopes_per_x in enumerate(min_slopes_per_x_values):
+        marginal_plot_(X, y, colname, targetname, ax=axes[row][0],
+                       show_regr_line=show_regr_line, alpha=marginal_alpha,
+                       label_fontsize=label_fontsize,
+                       ticklabel_fontsize=ticklabel_fontsize)
+        col = 1
+        axes[row][0].set_title("Marginal", fontsize=title_fontsize)
+        for msl in min_samples_leaf_values:
+            #print(f"---------- min_samples_leaf={msl} ----------- ")
+            try:
+                pdpx, pdpy, ignored = \
+                    plot_stratpd(X, y, colname, targetname, ax=axes[row][col],
+                                 min_samples_leaf=msl,
+                                 min_slopes_per_x=min_slopes_per_x,
+                                 n_trials=n_trials,
+                                 xrange=xrange,
+                                 yrange=yrange,
+                                 n_trees=1,
+                                 show_ylabel=False,
+                                 slope_line_alpha=slope_line_alpha,
+                                 show_slope_lines=show_slope_lines,
+                                 show_impact=show_impact,
+                                 show_slope_counts=show_slope_counts,
+                                 show_x_counts=show_x_counts,
+                                 label_fontsize=label_fontsize,
+                                 ticklabel_fontsize=ticklabel_fontsize)
+                # print(f"leafsz {msl} avg abs curve value: {np.mean(np.abs(pdpy)):.2f}, mean {np.mean(pdpy):.2f}, min {np.min(pdpy):.2f}, max {np.max(pdpy)}")
+            except ValueError as e:
+                print(e)
+                axes[row][col].set_title(f"Can't gen: leafsz={msl}", fontsize=8)
+            else:
+                title = f"leafsz={msl}, min_slopes={min_slopes_per_x}"
+                if ignored>0:
+                    title = f"leafsz={msl}, min_slopes={min_slopes_per_x},\nignored={100 * ignored / len(X):.2f}%"
+                axes[row][col].set_title(title, fontsize=title_fontsize)
+            col += 1
 
 
 def marginal_plot_(X, y, colname, targetname, ax, alpha=.1, show_regr_line=True,
@@ -1591,7 +1556,7 @@ def plot_catstratpd(X, y,
     if show_xlabel:
         label = colname
         if show_impact:
-            label += f" (Impact {np.mean(impacts):.1f}, importance {np.mean(weighted_impacts):.1f})"
+            label += f" (Impact {np.mean(impacts):.1f})"
         ax.set_xlabel(label, fontsize=label_fontsize, fontname=fontname)
     if show_ylabel:
         ax.set_ylabel(targetname, fontsize=label_fontsize, fontname=fontname)
