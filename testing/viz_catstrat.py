@@ -56,7 +56,7 @@ def toy_weather_data(n = 1000, p=50, n_outliers=None):
     """
     def noise(state): return np.random.normal(-5, 5, sum(df['state'] == state))
 
-    df_avgs = pd.read_csv("weather.csv")
+    df_avgs = pd.read_csv("state_avgtemp.csv")
     avgtemp = df_avgs['avgtemp']
 
     df = pd.DataFrame()
@@ -177,8 +177,8 @@ def viz_clean_synth_gauss(n,p,max_x,min_samples_leaf, seed=None):
 def viz_clean_synth_gauss_n1000_xrange25_minleaf2():
     viz_clean_synth_gauss(1000,2,25,2, seed=222)
 
-def viz_clean_synth_gauss_n20_xrange12_minleaf2():
-    viz_clean_synth_gauss(20,2,12,2, seed=222)
+def viz_clean_synth_gauss_n100_xrange12_minleaf2():
+    viz_clean_synth_gauss(100,2,12,2, seed=222)
 
 def viz_clean_synth_gauss_n20_xrange10_minleaf5():
     viz_clean_synth_gauss(20,2,10,5, seed=222)
@@ -247,6 +247,9 @@ def viz_clean_weather_n100_p10_minleaf5():
 def viz_clean_weather_n100_p20_minleaf5():
     viz_weather(100, 20, 5, seed=222)
 
+def viz_clean_weather_n100_p5_minleaf5():
+    viz_weather(100, 5, 5, seed=222)
+
 def viz_clean_weather_n100_p20_minleaf10():
     viz_weather(100, 20, 10, seed=222)
 
@@ -258,7 +261,7 @@ def viz_outlier8_weather_n100_p17_minleaf5(): # play
 
 
 viz_clean_synth_uniform_n1000_xrange10_minleaf2()
-viz_clean_synth_gauss_n20_xrange12_minleaf2()
+viz_clean_synth_gauss_n100_xrange12_minleaf2()
 viz_clean_synth_gauss_n20_xrange10_minleaf5()
 viz_clean_synth_uniform_n1000_xrange100_minleaf2()
 viz_clean_synth_gauss_n1000_xrange25_minleaf2()
@@ -268,5 +271,6 @@ viz_clean_weather_n100_p4_minleaf5()
 viz_clean_weather_n100_p10_minleaf5()
 viz_outlier8_weather_n100_p17_minleaf5()
 viz_clean_weather_n100_p20_minleaf10()
+viz_clean_weather_n100_p5_minleaf5()
 viz_clean_weather_n100_p20_minleaf5()
 viz_outlier8_weather_n100_p10_minleaf5()
