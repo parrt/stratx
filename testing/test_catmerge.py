@@ -107,6 +107,7 @@ def synthetic_poly_data(n=1000,p=3,dtype=float):
     eqn = "y = " + ' + '.join(terms) + " where x_i ~ U(0,10)"
     return df, eqn
 
+
 def toy_weather_data(n = 1000, p=50):
     """
     For each state, create a (fictional) ramp of data from day 1 to 365 so mean is not
@@ -114,7 +115,7 @@ def toy_weather_data(n = 1000, p=50):
     """
     def noise(state): return np.random.normal(-5, 5, sum(df['state'] == state))
 
-    df_avgs = pd.read_csv("weather.csv")
+    df_avgs = pd.read_csv("state_avgtemp.csv")
     print("avg of states' avg temps:",np.mean(df_avgs['avgtemp']))
 
     df = pd.DataFrame()
@@ -122,6 +123,7 @@ def toy_weather_data(n = 1000, p=50):
     df['state'] = np.random.randint(0, p, size=n) # get only p states
     df['temp'] = .1 * df['dayofyear'] + df_avgs['avgtemp'].iloc[df['state']].values
     return df.drop('temp', axis=1), df['temp'], df_avgs['state'].values, df_avgs.iloc[0:p]
+
 
 def test_single_leaf():
     set_random_seed(999)
@@ -153,7 +155,8 @@ def test_two_leaves_with_one_refcat():
     # print("leaf_deltas\n",leaf_deltas)
     leaf_counts = (~np.isnan(leaf_deltas)).astype(int)
     refcats = np.array([0,0])
-    avg_per_cat, count_per_cat, merge_ignored = avg_values_at_cat(leaf_deltas, leaf_counts, refcats)
+    avg_per_cat, count_per_cat, merge_ignored = \
+        avg_values_at_cat(leaf_deltas, leaf_counts, refcats, verbose=True)
     expected_avg_per_cat = np.array([0,  3,  2.5, 2,  0,  nan])
     expected_count_per_cat = np.array([2, 2, 2, 1, 1, 0])
     np.testing.assert_array_almost_equal(avg_per_cat, expected_avg_per_cat, decimal=2)
@@ -330,7 +333,8 @@ def test_4state_temperature():
     """
     leaf_deltas, leaf_counts, refcats, ignored = stratify_cats(X,y,colname="state",min_samples_leaf=3)
 
-    avg_per_cat, count_per_cat, merge_ignored = avg_values_at_cat(leaf_deltas, leaf_counts, refcats)
+    avg_per_cat, count_per_cat, merge_ignored = \
+        avg_values_at_cat(leaf_deltas, leaf_counts, refcats)#, verbose=True)
     expected = np.array([-13.29, -38.19, 5.78, 0])
     np.testing.assert_array_almost_equal(avg_per_cat, expected)
     assert merge_ignored==0
@@ -338,33 +342,32 @@ def test_4state_temperature():
 
 def test_temperature():
     """
-    avgs per refcat
-    [[   nan   7.65    nan    nan]
-     [-19.48 -19.      nan    nan]
-     [ 10.59    nan    nan    nan]
-     [  3.51    nan  15.38  -3.98]
-     [   nan   4.27    nan   0.  ]
-     [   nan    nan   0.   -12.31]
-     [ -3.78   0.     4.84 -14.97]
-     [  0.      nan   8.52    nan]]
+    leaf_deltas
+    [[   nan  26.85  -2.47]
+     [-28.67   0.   -30.37]
+     [ 10.3     nan   0.  ]
+     [  4.72  23.99  -6.03]
+     [  0.    21.47 -11.  ]]
 
     counts
-    [[0 2 0 0]
-     [1 1 0 0]
-     [1 0 0 0]
-     [1 0 2 1]
-     [0 1 0 2]
-     [0 0 1 1]
-     [1 1 1 1]
-     [1 0 1 0]]
+    [[0 2 1]
+    [1 1 1]
+    [1 0 2]
+    [1 2 2]
+    [2 3 1]]
     """
     set_random_seed(999)
-    X,y,states,df_avgs = toy_weather_data(n=20, p=8)
+    X,y,states,df_avgs = toy_weather_data(n=20, p=5)
 
-    leaf_deltas, leaf_counts, refcats, ignored = stratify_cats(X,y,colname="state",min_samples_leaf=5)
+    leaf_deltas, leaf_counts, refcats, ignored = \
+        stratify_cats(X,y,colname="state",min_samples_leaf=5)
 
-    avg_per_cat, count_per_cat, merge_ignored = avg_values_at_cat(leaf_deltas, leaf_counts, refcats)
-    expected = np.array([7.17, -19.48, 10.59, 4.26, 3.79, -8.52, -4.78, 0])
+    print(leaf_deltas)
+    print(leaf_counts)
+
+    avg_per_cat, count_per_cat, merge_ignored = \
+        avg_values_at_cat(leaf_deltas, leaf_counts, refcats, verbose=True)
+    expected = np.array([  7.81, -22.52,  10.6 ,   4.72,   1.06])
     np.testing.assert_array_almost_equal(avg_per_cat, expected, decimal=2)
     assert merge_ignored==0
 

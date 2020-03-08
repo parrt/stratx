@@ -1271,168 +1271,93 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose=Fal
     """
     In leaf_deltas, we have information from the leaves indicating how much
     above or below each category was from the reference category of that leaf.
-    The reference category is the one with the minimum cat code (not y value), so the
-    refcat's relative value in the leaf column will be 0. Categories not mentioned
-    in the leaf, will have nan values in that column.
+    The reference category is randomly selected, so the
+    refcat's relative y value in the leaf will be 0. Categories not mentioned
+    in the leaf, will have NAN values. refcats[leaf] tells us which category
+    is the reference category for leaf.
 
-    The goal is to combine all of these relative category bumps and drops,
-    despite the fact that they do not have the same reference category. We
-    collect all of the leaves with a reference category level i and average them
-    together (for all unique categories mentioned in min_cats).  Now we have
-    a list of relative value vectors, one per category level used as a reference.
+    The goal is to merge all of the columns in leaf_deltas,
+    despite the fact that they do not have the same reference category. We init a
+    running average vector to be the first column of category deltas. Then we attempt
+    to merge each of the other columns into the running average. We make multiple passes
+    over the columns of leaf_deltas until nothing changes, we hit the maximum number
+    of iterations, or everything has merged.
 
-    The list is sorted in order of unique reference category. (Hopefully this
-    will be much smaller than the number of categories total for speed.) Note these
-    sum vectors might have np.nan values to represent unknown category info.
-    I set all refcat values to np.nan to ease computation then set the smallest
-    refcat relative value to 0 right before function exit.  This sorting is important
-    so data can feed forward; refcat i uses the value of refcat i in the running sum
-    of refcat vectors. (see 2nd loop)
+    To merge vector v (column j of leaf_deltas) into catavg, select a category, index ix, in common at random.
+    Subtract v[ix] from v so that ix is v's new reference and v[ix]=0. Add catavg[ix] to
+    the adjusted v so that v is now comparable to catavg. We can now do a weighted
+    average of catavg and v, paying careful attention of NaN.
 
-    Now we have to create a result vector, sums_per_cat, that combines the
-    relative vectors. The problem is of course the different reference categories.
-    We initialize sums_per_cat to be the average relative to the first unique
-    reference category. Let's assume that the first refcat is 0, which means we take
-    the first element from the avg_for_refcats list to initialize sums_per_cat. To add
-    in the next vector, we first have to compensate for the difference in
-    reference category. refcats[i] tells us which category the vector is
-    relative to so we take the corresponding value from the running sum, sums_per_cat,
-    at position refcats[i] and add that to all elements of the avg_for_refcats[i]
-    vector.
-
-    BTW, it's possible that more than a single value within a leaf_deltas vector will be 0.
+    It's possible that more than a single value within a leaf_deltas vector is 0.
     I.e., the reference category value is always 0 in the vector, but there might be
-    another category whose value was the same y, giving a 0 relative value. I set them
-    to nan, however, when combining histos for same refcat.
+    another category whose value was the same y, giving a 0 relative value.
 
     Example:
 
-    refcats: [0,1]
+    leaf_deltas
 
-    sums_for_refcats
-     [[nan nan]
-     [ 1. nan]
-     [ 2.  3.]
-     [nan  2.]
-     [ 0. nan]
-     [nan nan]]
+        [[   nan  26.85  -2.47]
+         [-28.67   0.   -30.37]
+         [ 10.3     nan   0.  ]
+         [  4.72  23.99  -6.03]
+         [  0.    21.47 -11.  ]]
 
-    counts
-     [[0 0]
-     [1 0]
-     [1 1]
-     [0 1]
-     [1 0]
-     [0 0]]
+    leaf_counts
 
-    Then to combine, we see a loop with an iteration per unique min cat:
+        [[0 2 1]
+         [1 1 1]
+         [1 0 2]
+         [1 2 2]
+         [2 3 1]]
 
-    0 : initial  = [nan  1.  2. nan  0. nan] 	sums_per_cat = [nan  1.  2. nan  0. nan]
-    1 : adjusted = [nan nan  4.  3. nan nan] 	sums_per_cat = [nan  1.  6.  3.  0. nan]
+    refcats
+
+        [4, 1, 2]
+
+    Init catavg to [7.58  -23.97  10.30   4.72   1.32]
+    work = {1, 2} as catavg is index 0.
+
+    Then we loop until nothing changes, combining columns of leaf_deltas. We have to do
+    weighted average so keep track of the count for each category, catavg_weight, for
+    the running sum in catavg.
+
+     1 : vec to add = [ 26.85   0.00    nan  23.99  21.47 ] - 23.99
+         shifted    = [ 2.86  -23.99    nan   0.00  -2.52 ] + 4.72
+         adjusted   = [ 7.58  -19.27    nan   4.72   2.20 ] * [2 1 0 2 3]
+         prev avg   = [ nan   -28.67  10.30   4.72   0.00 ] * [0 1 1 1 2]
+         new avg    = [ 7.58  -23.97  10.30   4.72   1.32 ]
+
+     2 : vec to add = [ -2.47 -30.37   0.00  -6.03 -11.00 ] - -6.03
+         shifted    = [ 3.56  -24.34   6.03   0.00  -4.97 ] + 4.72
+         adjusted   = [ 8.28  -19.62  10.75   4.72  -0.25 ] * [1 1 2 2 1]
+         prev avg   = [ 7.58  -23.97  10.30   4.72   1.32 ] * [2 2 1 3 5]
+         new avg    = [ 7.81  -22.52  10.60   4.72   1.06 ]
+
+    final cat avgs [ 7.813 -22.520 10.600  4.720  1.058 ]
 
     Then divide by
 
     So we get a final avg per cat of:  [ 0.  1.  3.  3.  0. nan]
 
-    Notes:
-
-    * 2 diff ignores
-    * num values per leaf isn't super important; want min to remove effects of
-      other vars but big enough not to find just one cat in the leaf
-    * refcat choice isn't big deal except for efficiency. want to merge
-      leaves with same refcat quickly; more with same refcat reduces vectors
-      to process
-    * if unlucky and refcat y value in leaf is outlier, it biases all
-      cat deltas in that leaf. Gotta rotate and get more estimates.
-      imagine people heights with same height but ref person is sitting.
-      all deltas will look huge instead of 0.
-    * number of values we average for each cat matters; more values means
-      noise should cancel out or we get better estimate one way or another
-    * might need min_values_per_cat hyperparameter akin to min_slopes_per_x
-    * wow. choosing random refcat helps avoid focusing on some outliers by accident
-      and after merging same (random) refcat, use random refcat to merge in 2nd loop.
-      even less likely to hit outlier 2x in row.
-
-    :param leaf_deltas: A 2D matrix where rows are category levels/values and
-                        columns hold y values for categories.
-    :param refcats: For each leaf, we must know what category was used as the reference.
-                     I.e., which category had the smallest y value in the leaf?
-    :return:
+    Choosing random refcat helps avoid focusing on some outliers by accident
+    and after merging same (random) refcat, use random refcat to merge in the loop.
+    even less likely to hit outlier 2x in row.
     """
-    # FIRST LOOP COMBINES LEAF VECTORS WITH SAME REFCAT FOR EFFICIENCY
-    uniq_refcats = np.unique(refcats)
-    if verbose:
-        print("refcats =", refcats)
-        print("uniq_refcats =", uniq_refcats)
-        print("leaf_deltas\n", leaf_deltas[0:30])
-        print("leaf_counts\n", leaf_counts[0:30])
-        # print("leaf_deltas reordered by refcat order\n", leaf_deltas[0:30,np.argsort(refcats)])
-
-    avg_for_refcats = np.empty(shape=(len(leaf_deltas), len(uniq_refcats)))
-    counts_for_refcats = np.empty(shape=(len(leaf_deltas), len(uniq_refcats)), dtype=int)
-
-    for j,cat in enumerate(uniq_refcats):
-        # collect and add up vectors from all leaves with cat as the reference category
-        idxs_of_same_cat = np.where(refcats == cat)[0]
-        leaves_with_same_refcat = leaf_deltas[:, idxs_of_same_cat]
-        counts_with_same_refcat = leaf_counts[:, idxs_of_same_cat]
-        s = nanmerge_matrix_cols(leaves_with_same_refcat*counts_with_same_refcat)
-        # count how many non-nan values values across all leaves with cat as ref category
-        c = np.sum(counts_with_same_refcat, axis=1)
-        avg_for_refcats[:,j] = s / zero_as_one(c)
-        counts_for_refcats[:,j] = c
-
-    # print("unsorted counts\n", counts_for_refcats[0:30])
-    # We want to initial group to be one with most weight in hopes of merging
-    # more vectors in a single pass
-    weight_for_refcats = np.sum(counts_for_refcats, axis=0)
-
-    # Sort to get most populated vectors to the left of matrix; more chance of intersection
-    uniq_refcats_by_weight_idxs = np.argsort(weight_for_refcats)[::-1]
-    avg_for_refcats = avg_for_refcats[:,uniq_refcats_by_weight_idxs]
-    weight_for_refcats = weight_for_refcats[uniq_refcats_by_weight_idxs]
-    uniq_refcats = uniq_refcats[uniq_refcats_by_weight_idxs]
-    counts_for_refcats = counts_for_refcats[:,uniq_refcats_by_weight_idxs]
-
-    if verbose:
-        print("counts\n", counts_for_refcats[0:30])
-        cats_with_values_count = np.sum(counts_for_refcats, axis=1)
-        nonzero_idx = np.where(cats_with_values_count>0)[0]
-        print(f"counts per cat>0 ({len(cats_with_values_count[nonzero_idx])}/{len(cats_with_values_count)}): ", cats_with_values_count[nonzero_idx])
-        # print("counts per cat\n", counts_for_refcats[np.where(np.sum(counts_for_refcats, axis=1)>0)[0]])
-        print("refcat weights\n", weight_for_refcats)
-        print("sorted refcats", uniq_refcats)
-        # print("sums_for_refcats (reordered by weight)\n", sums_for_refcats[:30])
-        print("avgs per refcat\n", avg_for_refcats[0:30])
-
-
-    # SECOND LOOP SUMS COMBINED VECTORS USING RELATIVE VALUE FROM RUNNING SUM
-    """
-    [[nan nan nan nan nan nan nan nan  0. nan]
-     [nan nan nan nan  0. nan nan nan nan nan]
-     [nan  0. nan nan nan nan nan nan nan nan]
-     [ 0. nan nan nan nan nan nan nan nan nan]
-     [ 1. nan nan nan nan nan  0. nan nan nan]
-     [ 2.  3.  0.  6.  7. nan  1. nan 13. nan]
-     [nan nan  1. nan nan nan nan  5. nan nan]
-     [ 4. nan nan  7.  8. nan nan nan nan nan]
-     [ 5.  6. nan nan nan  0.  4. nan nan nan]
-     [nan nan nan nan nan nan nan  8. 17.  0.]
-     [ 7. nan  5. nan nan  2. nan nan nan nan]
-    """
-    # catavg is the running sum vector
-    catavg = avg_for_refcats[:,0] # init with first ref category (column)
-    catavg_weight = counts_for_refcats[:,0]
+    # catavg is the running average vector and starts out as the first column
+    catavg = leaf_deltas[:,0] # init with first ref category (column)
+    catavg_weight = leaf_counts[:,0]
     merge_ignored = 0
-    work = set(range(1,len(uniq_refcats)))
+    weight_for_refcats = np.sum(leaf_counts, axis=0)
+
+    work = set(range(1,leaf_deltas.shape[1]))
     completed = {-1} # init to any nonempty set to enter loop
     iteration = 1
     while len(work)>0 and len(completed)>0 and iteration<=max_iter:
-        #print(f"PASS {iteration} len(work)", len(work))
+        # print(f"PASS {iteration} len(work)", len(work))
         completed = set()
         for j in work:      # for each refcat, avg in the vectors
-            cat = uniq_refcats[j]
-            v = avg_for_refcats[:,j]
+            cat = refcats[j]
+            v = leaf_deltas[:,j]
             intersection_idx = np.where(~np.isnan(catavg) & ~np.isnan(v))[0]
 
             # print(intersection_idx)
@@ -1442,14 +1367,14 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose=Fal
             # pick random category in intersection to use as common refcat
             ix = np.random.choice(intersection_idx, size=1)[0]
 
-            # modifying columns in place to be mergeable
-            shifted_v = v - v[ix]        # make ix the reference cat in common
-            relative_to_value = catavg[ix]
-            adjusted_v = shifted_v + relative_to_value     # now v is mergeable with catavg
-            cur_weight  = counts_for_refcats[:,j]
-            prev_catavg = catavg
+            # Merge column j into catavg vector
+            shifted_v = v - v[ix]                       # make ix the reference cat in common
+            relative_to_value = catavg[ix]              # corresponding value in catavg
+            adjusted_v = shifted_v + relative_to_value  # adjust so v is mergeable with catavg
+            cur_weight  = leaf_counts[:,j]
+            prev_catavg = catavg                        # track only for verbose/debugging purposes
             catavg = nanavg_vectors(catavg, adjusted_v, catavg_weight, cur_weight)
-            # Update weight of running sum to incorporate "mass" from v
+            # Update weight of running avg to incorporate "mass" from v
             catavg_weight += cur_weight
             if verbose:
                 print(f"{cat:-2d} : vec to add =", parray(v), f"- {v[ix]:.2f}")
@@ -1463,11 +1388,11 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose=Fal
         work = work - completed
 
     if len(work)>0:
-        #print(f"Left {len(work)} leaves in work list")
+        print(f"Left {len(work)} leaves/unique cats in work list")
         # hmm..couldn't merge some vectors; total up the samples we ignored
         for j in work:
             merge_ignored += weight_for_refcats[j]
-        if verbose: print(f"cats {uniq_refcats[list(work)]} couldn't be merged into running sum; ignored={merge_ignored}")
+        if verbose: print(f"cats {refcats[list(work)]} couldn't be merged into running sum; ignored={merge_ignored}")
 
     if verbose: print("final cat avgs", parray3(catavg))
     return catavg, catavg_weight, merge_ignored # last one is count of values per cat actually incorporated
