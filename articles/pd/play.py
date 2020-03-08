@@ -88,11 +88,11 @@ def weather():
 
     plot_catstratpd(X, y, 'state', 'temperature', catnames=catnames,
                     # min_samples_leaf=30,
-                    n_trials=10,
-                    min_y_shifted_to_zero=True,
+                    n_trials=1,
+                    min_y_shifted_to_zero=False,
                     show_x_counts=False,
                     bootstrap=True,
-                    yrange=(-2, 60),
+                    #yrange=(-60, 60),
                     figsize=(2.1,2.5)
                     )
 
@@ -169,5 +169,5 @@ def bigX():
     axes[0, 1].set_title("PD/ICE", fontsize=10)
     plt.show()
 
-# weather()
-bigX()
+weather()
+#bigX()

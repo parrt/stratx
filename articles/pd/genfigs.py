@@ -710,14 +710,14 @@ def toy_weather_data():
     df['dayofyear'] = range(1, 365 + 1)
     df['state'] = np.random.choice(['CA', 'CO', 'AZ', 'WA'], len(df))
     df['temperature'] = temp(df['dayofyear'])
-    df.loc[df['state'] == 'CA', 'temperature'] = 70 + df.loc[
-        df['state'] == 'CA', 'temperature'] * noise('CA')
-    df.loc[df['state'] == 'CO', 'temperature'] = 40 + df.loc[
-        df['state'] == 'CO', 'temperature'] * noise('CO')
-    df.loc[df['state'] == 'AZ', 'temperature'] = 90 + df.loc[
-        df['state'] == 'AZ', 'temperature'] * noise('AZ')
-    df.loc[df['state'] == 'WA', 'temperature'] = 60 + df.loc[
-        df['state'] == 'WA', 'temperature'] * noise('WA')
+    df.loc[df['state'] == 'CA', 'temperature'] = \
+        70 + df.loc[df['state'] == 'CA', 'temperature'] * noise('CA')
+    df.loc[df['state'] == 'CO', 'temperature'] = \
+        40 + df.loc[df['state'] == 'CO', 'temperature'] * noise('CO')
+    df.loc[df['state'] == 'AZ', 'temperature'] = \
+        90 + df.loc[df['state'] == 'AZ', 'temperature'] * noise('AZ')
+    df.loc[df['state'] == 'WA', 'temperature'] = \
+        60 + df.loc[df['state'] == 'WA', 'temperature'] * noise('WA')
     return df
 
 

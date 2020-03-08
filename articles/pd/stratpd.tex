@@ -34,6 +34,10 @@
 \usepackage{lmodern}
 \usepackage{caption}
 \usepackage{subcaption}
+\usepackage{xcolor}
+\newcommand\mycommfont[1]{\footnotesize\ttfamily\textcolor{gray}{#1}}
+\SetCommentSty{mycommfont}
+
 
 \newcommand{\secref}[1]{Section~\ref{#1}}
 \newcommand{\tblref}[1]{Table~\ref{#1}}
@@ -119,6 +123,24 @@ SHAP
 \pagebreak
 \section{Algorithms}
 
+{\bf StratPD}\begin{alltt}\small
+For tree regressor to all but x_c with hyper parameter min_slopes_per_x
+For each leaf:
+    y bar = Group leaf samples by x_c, computing average y per unique x_c
+    dx = discrete difference between adjacent unique x_c
+    dy = discrete difference between adjacent average y bar
+    add (x[i], x[i+1], dy[i]/dx[i]) for each unique x_c to list D
+
+for each x in unique x_c from X:
+    slopes = [slope for (a, b, slope) in D if x >= a and x < b]
+    count[x] = |slopes|
+    dydx[x] = mean(slopes)
+
+Drop slope estimates computed using fewer than min_slopes_per_x values
+pdx = discrete difference between adjacent unique x_c
+pdy = cumulative sum of dydx * pdx
+return pdx, [0]+pdy  // insert 0 for pdx[0] since sum contributed from beyond left is 0
+\end{alltt}
 
 \setlength{\algomargin}{5pt}
 \begin{algorithm}[]
@@ -128,21 +150,22 @@ SHAP
 \TitleOfAlgo{{\em StratPD}}
 \KwIn{{\bf X}, {\bf y}, c, {\it min\_samples\_leaf}, {\it min\_slopes\_per\_x}}
 \KwOut{$\bf pdx, pdy$: Unique $x_c$, partial dependence values across $x_c$}
-Train decision tree regressor $T$ on (\xnc{}, $\bf y$) with hyper-parameter: ${\it min\_samples\_leaf}$\;
+$T$ := Decision tree regressor fit to (\xnc{}, $\bf y$) with hyper-parameter: ${\it min\_samples\_leaf}$\;
 \For{each leaf $l \in T$}{
-        $({\bf x}_l, {\bf y}_l)$ = $\{(x_c^{(i)},  y^{(i)})\}_{i \in l}$\\
+        $({\bf x}_l, {\bf y}_l)$ = $\{(x_c^{(i)},  y^{(i)})\}_{i \in l}$\tcp*{\it Get leaf samples}
         {\bf ux} := $unique({\bf x}_l)$\\
-	Group leaf records $({\bf x}_l, {\bf y}_l)$ by $x_c$, computing $\bar{y}$ per unique $x_c$\\
+	$\bar{\bf y}$ := Group leaf records $({\bf x}_l, {\bf y}_l)$ by value of ${\bf x}_l$, computing $\bar{y}$ per unique value\\
 	${\bf dx}$ := ${\bf ux}^{(i+1)} - {\bf ux}^{(i)}_{i=1..|{\bf ux}|-1}$\tcp*{\it Discrete difference}
 	${\bf dy}$ := $\bar{\bf y}^{(i+1)} - \bar{\bf y}^{(i)}_{i=1..|{\bf ux}|-1}$\\
 	Add tuples ${({\bf ux}^{(i)}, {\bf ux}^{(i+1)},~ {\bf dy}^{(i)}/{\bf dx}^{(i)})}_{i=1..|{\bf ux}|-1}$ to list ${\bf d}$\\
 }
-$\bf ux$ := $unique(\{x_c^{(i)}\}_{i=1..n})$\tcp*{\it Compute average slope per unique $x_c$ value}
-\For{each $x \in {\bf ux}$}{
+$\bf ux$ := $unique(\{x_c^{(i)}\}_{i=1..n})$\\
+\For{each $x \in {\bf ux}$\tcp*{\it Counts slopes, compute average slope per unique $x_c$ value}}{
 	$slopes$ := [$slope$ for $(a,b,slope) \in \bf d$ if $x \ge a$ and $x <b$]\\
-	${\bf c}_x$ := $|slopes|$, ${\bf dydx}_x$ := $\overline{slopes}$\\
+	${\bf c}_x$ := $|slopes|$\\
+	${\bf dydx}_x$ := $\overline{slopes}$\\
 }
-${\bf dy}$ := ${\bf dy}[{\bf c} \ge min\_slopes\_per\_x]$\tcp*{\it Drop slope estimates computed from too few}
+${\bf dydx}$ := ${\bf dydx}[{\bf c} \ge min\_slopes\_per\_x]$\tcp*{\it Drop slope estimates computed from too few}
 ${\bf ux}$ := ${\bf ux}[{\bf c} \ge min\_slopes\_per\_x]$\\
 $\bf pdx$ := ${\bf ux}^{(i+1)} - {\bf ux}^{(i)}_{i=1..|{\bf ux}|-1}$\\
 $\bf pdy$ := [0] + cumulative\_sum(${\bf dydx} * \bf pdx$)~~~\tcp*{\it integrate, inserting 0 for leftmost $x_c$}
@@ -150,6 +173,27 @@ $\bf pdy$ := [0] + cumulative\_sum(${\bf dydx} * \bf pdx$)~~~\tcp*{\it integrate
 \label{alg:CatStratPD}
 \end{algorithm}
 
+\pagebreak
+
+{\bf CatStratPD}\begin{alltt}\small
+For tree regressor to all but x_c with hyper parameter min_slopes_per_x
+For each leaf:
+    y bar = Group leaf samples by categories of x_c, computing average y per unique category x_c
+    Compute unique categories and counts per category
+    refcat is randomly chosen category from x_c
+    For each unique category x in leaf:
+        delta[cat,leaf] = Subtract y for refcat from all y bar (refcat delta will be 0)
+end
+Let Avg[cat] be vector with running sum mapping category to count
+work = set of leaf indexes
+while more work and something changed and less than max iterations:
+    for each leaf in leaves:
+        if cat in delta[:,leaf] intersects with Avg:
+            j = random category in intersection
+            adjust delta[:,leaf] to be relative to j and add Avg[j]
+            merge into Avg
+    work -= all j merged this iteration
+\end{alltt}
 
 \setlength{\algomargin}{5pt}
 \begin{algorithm}[]
@@ -157,16 +201,32 @@ $\bf pdy$ := [0] + cumulative\_sum(${\bf dydx} * \bf pdx$)~~~\tcp*{\it integrate
 \SetAlgorithmName{Algorithm}{List of Algorithms}
 \SetAlgoSkip{}
 \TitleOfAlgo{{\em CatStratPD}}
-\KwIn{$\begin{array}[t]{l}
-{\bf X}, {\bf y}, c,\\
-{\it n_trials}, {\it min\_samples\_leaf}\\
-\end{array}$
-}
+\KwIn{${\bf X}, {\bf y}, c, {\it min\_samples\_leaf}$}
 \KwOut{$\begin{array}[t]{l}
 \Delta^{(k)} = \text{category } k \text{'s effect on } y \text{ where } mean(\Delta^{(k)})=0\\
 n^{(k)} = \text{number of supported observations per category $k$}\\
 \end{array}$
 }
+$T$ := Decision tree regressor fit to (\xnc{}, $\bf y$) with hyper-parameter: ${\it min\_samples\_leaf}$\;
+\tcp{\it Get average $y$ delta relative to random ref category for each sample in each leaf}
+Let $\Delta_{x,l}$ be dictionary mapping (category, leaf) to delta from ref category\\
+Let ${\it Count}_{x,l}$ be dictionary mapping (category, leaf) to count\\
+\For{each leaf $l \in T$}{
+        $({\bf x}_l, {\bf y}_l)$ = $\{(x_c^{(i)},  y^{(i)})\}_{i \in l}$\tcp*{\it Get leaf samples}
+        ${\bf ux}$, ${\bf cx}$ := $unique({\bf x}_l)$\tcp*{\it Get unique categories, counts from leaf samples}
+	$\bar{\bf y}$ := Group leaf records $({\bf x}_l, {\bf y}_l)$ by categories of ${\bf x}_l$, computing $\bar{y}$ per unique category\\
+	${\it refcat}_l$ := random category from ${\bf y}$\\
+%	$y_{\it ref}$ := random choice from $\bar{\bf y}$\\
+	\For{each $x \in {\bf ux}$}{
+		${\it Count}_{x,l}$ := ${\bf cx}_x$\\
+        		$\Delta_{x,l}$ := $\bar{\bf y} - y[{\it refcat}_l]$\\
+	}
+}
+work := 1 .. $|uniq\_refcats|$\\
+Let $Avg_x$ be vector with running sum mapping category to count\\
+\While{len(work) > 0 and len(completed)>0 and iteration<=max\_iter}{
+}
+
 \label{alg:CatStratPD}
 \end{algorithm}
 
