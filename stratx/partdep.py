@@ -1616,6 +1616,8 @@ def plot_catstratpd(X, y,
 
     if yrange is not None:
         ax.set_ylim(*yrange)
+    else:
+        ax.set_ylim(min_y*1.05, max_y*1.05)
 
     if show_x_counts:
         # Only show cat counts for those which are present in X[colname] (unlike stratpd plot)
