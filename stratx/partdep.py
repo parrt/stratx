@@ -1360,7 +1360,7 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose=Fal
     :return:
     """
     # FIRST LOOP COMBINES LEAF VECTORS WITH SAME REFCAT FOR EFFICIENCY
-    uniq_refcats = np.array(sorted(np.unique(refcats)))
+    uniq_refcats = np.unique(refcats)
     if verbose:
         print("refcats =", refcats)
         print("uniq_refcats =", uniq_refcats)
