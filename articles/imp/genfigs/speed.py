@@ -6,7 +6,7 @@ from sklearn.linear_model import Ridge
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
 
-forcerun = False
+forcerun = True
 warmedup = False
 
 def get_timing(dataset, X, y, catcolnames=set(), cat_min_samples_leaf=5, max_size = 30_000):
