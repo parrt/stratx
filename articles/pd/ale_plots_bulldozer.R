@@ -1,34 +1,28 @@
 # Generate a single ALE plot per variable in `weight` dataset
 
 # Load the necessary packages
-library(dplyr)  # I had to do: install.packages("dplyr")
+library(dplyr)
 library(magrittr)
-library(readr)  # I had to do: install.packages("readr")
-library(randomForest)  # I had to do: install.packages("randomForest")
-library(ALEPlot)  # I had to do: install.packages("ALEPlot")
+library(readr)
+library(randomForest)
+library(ALEPlot)
 
 # Load, modify data ----------------------------------------------------------------------
-df_weight <- read_csv('weight.csv')
-df_weight$sex <- as.factor(df_weight$sex)
-df_weight$pregnant <- as.factor(df_weight$pregnant)
+df_bd <- read_csv('bulldozer10k.csv')
+X <- df_bd %>% select(-SalePrice) %>% as.data.frame
+y <- df_bd$SalePrice
 
 # Utils ----------------------------------------------------------------------------------
 rf_predict <- function(X.model, newdata) {
   return (as.numeric(predict(X.model, newdata)))
 }
 
-# Fit RandomForest model to weight data -------------------------------------------------
-X <- df_weight %>% select(-weight) %>% as.data.frame
-y <- df_weight$weight
-# set.seed(3)
-rf_weight <- randomForest(X, y, ntree=500, nodesize=1) # hyperparams found using gridsearch
-print("R^2")
-predicted <- predict(rf_weight, X)
-print( 1 - sum((y-predicted)^2)/sum((y-mean(y))^2) )
+# Fit RandomForest model to bulldozer data -------------------------------------------------
+rf_bd <- randomForest(X, y, ntree=100, nodesize=5, mtry=14) # hyperparams found using gridsearch
 
 # Make plots -----------------------------------------------------------------------------
 make_plots <- function(X, features=names(X), intervals=rep(100, length(features)),
-                       base_filename='weight_', width=5, height=5) {
+                       base_filename='bulldozer_', width=5, height=5) {
   # Generate ALE plots for the specified variables and save each plot to PDF
   # Saves PDF to current working directory.
   #
@@ -48,12 +42,10 @@ make_plots <- function(X, features=names(X), intervals=rep(100, length(features)
     filename <- paste0(base_filename, features[i], '_', K, '.pdf')
     pdf(file=filename, width=width, height=height)
     message(paste0('Saving ', filename))
-    ALEPlot(X, rf_weight, pred.fun=rf_predict, J=col_idx, K=K)
+    ALEPlot(X, rf_bd, pred.fun=rf_predict, J=col_idx, K=K)
     dev.off()
   }
 }
 
 # Create ALE plot PDFs.  Here we can assign K to each feature.
-# e.g. c('height', 'education') with intervals c(100, 200)
-# uses K = 100 for 'height', 200 for 'education'
-make_plots(X, names(X), intervals=rep(100, ncol(X)))
+make_plots(X, c('YearMade', 'ProductSize'), intervals=rep(400, 2))

@@ -768,7 +768,7 @@ def weather():
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_catstratpd(X, y, 'state', 'temperature', catnames=catnames,
                     min_samples_leaf=30,
-                    alpha=.3,
+                    # alpha=.3,
                     ax=ax,
                     yrange=(-2, 60))
 
@@ -1662,23 +1662,23 @@ def multi_joint_distr():
 
 if __name__ == '__main__':
     # FROM PAPER:
-    bulldozer()
-    rent()
-    rent_grid()
-    rent_ntrees()
-    rent_extra_cols()
-    unsup_rent()
-    unsup_boston()
-    weight()
-    weight_ntrees()
-    unsup_weight()
-    meta_weight()
+    # bulldozer()
+    # rent()
+    # rent_grid()
+    # rent_ntrees()
+    # rent_extra_cols()
+    # unsup_rent()
+    # unsup_boston()
+    # weight()
+    # weight_ntrees()
+    # unsup_weight()
+    # meta_weight()
     weather()
-    meta_weather()
-    additivity()
-    meta_additivity()
-    bigX()
-    multi_joint_distr()
+    # meta_weather()
+    # additivity()
+    # meta_additivity()
+    # bigX()
+    # multi_joint_distr()
 
     # EXTRA GOODIES
     # meta_boston()

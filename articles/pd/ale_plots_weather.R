@@ -8,7 +8,7 @@ library(randomForest)
 library(ALEPlot)
 
 # Load, modify data ----------------------------------------------------------------------
-df_weather <- read_csv('weather.csv') %>% select(-X1)  # Load df, drop X1 column
+df_weather <- read_csv('weather.csv')
 df_weather$state <- as.factor(df_weather$state)  # Convert `state` to factor (categorical)
 
 # Utils ----------------------------------------------------------------------------------
