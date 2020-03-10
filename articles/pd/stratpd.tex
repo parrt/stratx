@@ -84,7 +84,7 @@ A Stratification Approach to Partial Dependence for Codependent Variables}
 
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[scale=0.55]{images/bathrooms_vs_price.pdf}
+\includegraphics[scale=0.5]{images/bathrooms_vs_price.pdf}
 \caption{\footnotesize Plots of bathrooms versus rent price using New York City apartment rent data. (a) marginal plot, (b) PD/ICE plot derived from random forest, (c) PD/ICE plot derived from gradient boosted machine, and (d) PD/ICE plot derived from ordinary least squares regression; sample size is 10,000 observations of \textasciitilde50k. The PD/ICE plots are  different for the same data set, depending on the chosen user model.}
 \label{fig:baths_price}
 \end{center}
@@ -150,7 +150,7 @@ SHAP
 \includegraphics[scale=0.35]{images/weight_interventional_shap.pdf}~~
 \includegraphics[scale=0.25]{images/height_300_ale.pdf}~~
 \caption{\small SHAP partial dependence plots of response body weight on feature {\tt height} using 2000 synthetic observations from Equation \eqref{eq:weight}. SHAP interrogated an RF with 40 trees and explained all 2000 samples; the interventional case used 100 observations as background data.}
-\label{fig:shap-weight}
+\label{fig:heightweight}
 \end{center}
 \end{figure}
 
@@ -161,7 +161,7 @@ SHAP
 \includegraphics[scale=0.25]{images/state_5_ale.pdf}~~
 \includegraphics[scale=0.4]{images/state_vs_temp_stratpd.pdf}~~
 \caption{\small foo.}
-\label{fig:shap-weight}
+\label{fig:statetemp}
 \end{center}
 \end{figure}
 
@@ -169,7 +169,15 @@ SHAP
 \begin{center}
 \includegraphics[scale=0.4]{images/interactions.pdf}
 \caption{\small $y = x_1^2 + x_1 x_2 + 5 x_1 sin(3 x_2) + 10$ where $x_1,x_2,x_3 \sim U(0,10)$ and $x_3$ does not affect $y$. No noise added.}
-\label{fig:shap-weight}
+\label{fig:interactions}
+\end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.4]{images/noise.pdf}
+\caption{\small $y = x_1^2 + x_1 + 10 + N(0,\sigma)$ where $x_1,x_2 \sim U(-2,2)$ and $\sigma \in [0,0.5,1,2]$.}
+\label{fig:noise}
 \end{center}
 \end{figure}
 

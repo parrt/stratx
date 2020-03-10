@@ -28,6 +28,7 @@ from typing import Mapping, List, Tuple
 from collections import defaultdict, OrderedDict
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from openpyxl.styles.alignment import horizontal_alignments
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression, Lasso
 from sklearn.ensemble import RandomForestClassifier
@@ -140,7 +141,7 @@ def rent():
     X,y = load_rent(n=10_000)
     df_rent = X.copy()
     df_rent['price'] = y
-    figsize = (9, 2.7)
+    figsize = (8, 2)
     colname = 'bedrooms'
     xticks = [0, 2, 4, 6, 8]
     colname = 'bathrooms'
@@ -1141,11 +1142,11 @@ def meta_weight():
     savefig("height_weight_meta")
 
 
-def additivity_data(n, sd=1.0):
-    x1 = np.random.uniform(-1, 1, size=n)
-    x2 = np.random.uniform(-1, 1, size=n)
+def noisy_poly_data(n, sd=1.0):
+    x1 = np.random.uniform(-2, 2, size=n)
+    x2 = np.random.uniform(-2, 2, size=n)
 
-    y = x1 ** 2 + x2 + np.random.normal(0, sd, size=n)
+    y = x1 ** 2 + x2 + 10 + np.random.normal(0, sd, size=n)
     df = pd.DataFrame()
     df['x1'] = x1
     df['x2'] = x2
@@ -1153,56 +1154,60 @@ def additivity_data(n, sd=1.0):
     return df
 
 
-def additivity():
+def noise():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     n = 1000
-    df = additivity_data(n=n, sd=1)  # quite noisy
-    X = df.drop('y', axis=1)
-    y = df['y']
 
-    fig, axes = plt.subplots(2, 2, figsize=(4, 4))  # , sharey=True)
-    plot_stratpd(X, y, 'x1', 'y',
-                 pdp_marker_size=1,
-                 show_x_counts=False,
-                 ax=axes[0, 0], yrange=(-3, 3))
+    fig, axes = plt.subplots(1, 4, figsize=(8, 2), sharey=True)
 
-    plot_stratpd(X, y, 'x2', 'y',
-                 pdp_marker_size=1,
-                 show_x_counts=False,
-                 ax=axes[1, 0],
-                 yrange=(-3,3))
+    sds = [0,.5,1,2]
 
-    # axes[0, 0].set_ylim(-2, 2)
-    # axes[1, 0].set_ylim(-2, 2)
+    for i,sd in enumerate(sds):
+        df = noisy_poly_data(n=n, sd=sd)
+        X = df.drop('y', axis=1)
+        y = df['y']
+        plot_stratpd(X, y, 'x1', 'y',
+                     pdp_marker_size=1,
+                     show_x_counts=False,
+                     ax=axes[i], yrange=(-4, .5))
 
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
-    rf.fit(X, y)
-    print(f"RF OOB {rf.oob_score_}")
+    for i,ax in enumerate(axes):
+        ax.text(0, -1, f"$\sigma = {sds[i]}$", horizontalalignment='center')
+        ax.set_xlabel('$x_1$')
+        ax.set_xticks([-2,-1,0,1,2])
 
-    ice = predict_ice(rf, X, 'x1', 'y', numx=20, nlines=700)
-    plot_ice(ice, 'x1', 'y', ax=axes[0, 1], yrange=(-3, 3), show_ylabel=False)
+    # rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
+    # rf.fit(X, y)
+    # print(f"RF OOB {rf.oob_score_}")
+    #
+    # ice = predict_ice(rf, X, 'x1', 'y', numx=20, nlines=700)
+    # plot_ice(ice, 'x1', 'y', ax=axes[0, 1],
+    #          yrange=(-3, 3), show_ylabel=False,
+    #          min_y_shifted_to_zero=True)
+    #
+    # ice = predict_ice(rf, X, 'x2', 'y', numx=20, nlines=700)
+    # plot_ice(ice, 'x2', 'y', ax=axes[1, 1],
+    #          yrange=(-3, 3), show_ylabel=False,
+    #          min_y_shifted_to_zero=True)
+    #
+    # axes[0, 0].set_title("StratPD", fontsize=10)
+    # axes[0, 1].set_title("PD/ICE", fontsize=10)
 
-    ice = predict_ice(rf, X, 'x2', 'y', numx=20, nlines=700)
-    plot_ice(ice, 'x2', 'y', ax=axes[1, 1], yrange=(-3, 3), show_ylabel=False)
-
-    axes[0, 0].set_title("StratPD", fontsize=10)
-    axes[0, 1].set_title("PD/ICE", fontsize=10)
-
-    savefig(f"additivity")
+    savefig(f"noise")
 
 
-def meta_additivity():
+def meta_noise():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     n = 1000
     noises = [0, .5, .8, 1.0]
     sizes = [2, 10, 30, 50]
 
-    fig, axes = plt.subplots(len(noises) + 1, len(sizes), figsize=(7, 8), sharey=True,
+    fig, axes = plt.subplots(len(noises), len(sizes), figsize=(7, 6), sharey=True,
                              sharex=True)
 
     row = 0
     for sd in noises:
-        df = additivity_data(n=n, sd=sd)
+        df = noisy_poly_data(n=n, sd=sd)
         X = df.drop('y', axis=1)
         y = df['y']
         col = 0
@@ -1214,10 +1219,10 @@ def meta_additivity():
             print(f"------------------- noise {sd}, SIZE {s} --------------------")
             if col > 1: axes[row, col].get_yaxis().set_visible(False)
             plot_stratpd(X, y, 'x1', 'y', ax=axes[row, col],
+                         show_x_counts=False,
                          min_samples_leaf=s,
-                         yrange=(-1.5, .5),
+                         yrange=(-3.5, .5),
                          pdp_marker_size=1,
-                         slope_line_alpha=.4,
                          show_ylabel=False,
                          show_xlabel=show_xlabel)
             if col == 0:
@@ -1231,8 +1236,6 @@ def meta_additivity():
 
     lastrow = len(noises)
 
-    axes[lastrow, 0].set_ylabel(f'$y$ vs $x_c$ partition')
-
     # row = 0
     # for sd in noises:
     #     axes[row, 0].scatter(X['x1'], y, slope_line_alpha=.12, label=None)
@@ -1242,18 +1245,19 @@ def meta_additivity():
     #     axes[row, 0].set_title(f"$y = x_1^2 + x_2 + \epsilon$, $\epsilon \sim N(0,{sd:.2f})$")
     #     row += 1
 
-    col = 0
-    for s in sizes:
-        rtreeviz_univar(axes[lastrow, col],
-                        X['x2'], y,
-                        min_samples_leaf=s,
-                        feature_name='x2',
-                        target_name='y',
-                        fontsize=10, show={'splits'},
-                        split_linewidth=.5,
-                        markersize=5)
-        axes[lastrow, col].set_xlabel("x2")
-        col += 1
+    # axes[lastrow, 0].set_ylabel(f'$y$ vs $x_c$ partition')
+    # col = 0
+    # for s in sizes:
+    #     rtreeviz_univar(axes[lastrow, col],
+    #                     X['x2'], y,
+    #                     min_samples_leaf=s,
+    #                     feature_name='x2',
+    #                     target_name='y',
+    #                     fontsize=10, show={'splits'},
+    #                     split_linewidth=.5,
+    #                     markersize=5)
+    #     axes[lastrow, col].set_xlabel("x2")
+    #     col += 1
 
     savefig(f"meta_additivity_noise")
 
@@ -1840,9 +1844,9 @@ def interactions():
 
 if __name__ == '__main__':
     # FROM PAPER:
-    interactions()
+    # interactions()
     # yearmade()
-    # rent()
+    rent()
     # rent_ntrees()
     # unsup_rent()
     # unsup_boston()
@@ -1854,8 +1858,8 @@ if __name__ == '__main__':
     # meta_weight()
     # weather()
     # meta_weather()
-    # additivity()
-    # meta_additivity()
+    # noise()
+    # meta_noise()
     # bigX()
     # multi_joint_distr()
 
