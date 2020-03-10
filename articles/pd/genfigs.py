@@ -1754,15 +1754,15 @@ if __name__ == '__main__':
     # yearmade()
     # rent()
     # rent_ntrees()
-    unsup_rent()
-    unsup_boston()
-    weight()
-    shap_weight(feature_perturbation='tree_path_dependent', twin=True) # more biased but faster
-    shap_weight(feature_perturbation='interventional', twin=True) # takes 04:45 minutes
-    weight_ntrees()
-    unsup_weight()
-    meta_weight()
-    weather()
+    # unsup_rent()
+    # unsup_boston()
+    # weight()
+    # shap_weight(feature_perturbation='tree_path_dependent', twin=True) # more biased but faster
+    # shap_weight(feature_perturbation='interventional', twin=True) # takes 04:45 minutes
+    # weight_ntrees()
+    # unsup_weight()
+    # meta_weight()
+    # weather()
     meta_weather()
     additivity()
     meta_additivity()

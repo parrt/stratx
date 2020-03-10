@@ -881,7 +881,6 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
                                 yrange=yrange,
                                 n_trees=1,
                                 show_xticks=show_xticks,
-                                show_all_deltas=show_all_cat_deltas,
                                 show_ylabel=False,
                                 min_y_shifted_to_zero=min_y_shifted_to_zero)
         except ValueError:
