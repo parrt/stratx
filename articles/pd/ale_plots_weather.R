@@ -24,7 +24,7 @@ rf_weather <- randomForest(X, y, ntree=150, nodesize=5, mtry=3)  # hyperparams f
 
 # Make plots -----------------------------------------------------------------------------
 make_plots <- function(X, features=c('dayofyear', 'state'),
-                       intervals=rep(100, length(features)), base_filename='weather_',
+                       intervals=rep(100, length(features)), base_filename='images/',
                        width=5, height=5) {
   # Generate ALE plots for the specified variables and save each plot to PDF
   # Saves PDF to current working directory.
@@ -42,7 +42,7 @@ make_plots <- function(X, features=c('dayofyear', 'state'),
   for (i in 1:length(features)) {
     col_idx <- which(names(X) == features[i])
     K <- intervals[i]
-    filename <- paste0(base_filename, features[i], '_', K, '.pdf')
+    filename <- paste0(base_filename, features[i], '_', K, '_ale.pdf')
     pdf(file=filename, width=width, height=height)
     message(paste0('Saving ', filename))
     ALEPlot(X, rf_weather, pred.fun=rf_predict, J=col_idx, K=K)

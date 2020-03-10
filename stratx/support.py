@@ -162,7 +162,7 @@ def toy_weight_data(n):
     df.loc[df['sex'] == 'F', 'education'] = 12 + np.random.randint(0, 8, size=nwomen)
     df['weight'] = 120 \
                    + (df['height'] - df['height'].min()) * 10 \
-                   + df['pregnant'] * 70 \
+                   + df['pregnant'] * 40 \
                    - df['education'] * 1.5
     df['pregnant'] = df['pregnant'].astype(bool)
     df['education'] = df['education'].astype(int)
@@ -196,6 +196,15 @@ def toy_weather_data_1yr():
     df.loc[df['state'] == 'NV', 'temperature'] = \
         80 + df.loc[df['state'] == 'NV', 'temperature'] * noise('NV')
 
+    return df
+
+
+def synthetic_interaction_data(n, yintercept = 10):
+    df = pd.DataFrame()
+    df[f'x1'] = np.random.random(size=n)*10
+    df[f'x2'] = np.random.random(size=n)*10
+    df[f'x3'] = np.random.random(size=n)*10
+    df['y'] = df['x1']**2 + df['x1']*df['x2'] + 5*df['x1']*np.sin(3*df['x2'])  + yintercept
     return df
 
 
@@ -285,6 +294,7 @@ def load_rent(n:int=None, clean_prices=True):
     and save into data subdir.
     """
     df = pd.read_json(f'{datadir}/train.json')
+    print(f"Rent has {len(df)} records")
 
     # Create ideal numeric data set w/o outliers etc...
 

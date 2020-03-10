@@ -19,6 +19,7 @@
 
 \usepackage[utf8]{inputenc} % allow utf-8 input
 \usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{graphicx}
 \usepackage{hyperref}       % hyperlinks
 \usepackage{url}            % simple URL typesetting
 \usepackage{booktabs}       % professional-quality tables
@@ -81,6 +82,14 @@ A Stratification Approach to Partial Dependence for Codependent Variables}
 
 \section{Introduction}
 
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.55]{images/bathrooms_vs_price.pdf}
+\caption{\footnotesize Plots of bathrooms versus rent price using New York City apartment rent data. (a) marginal plot, (b) PD/ICE plot derived from random forest, (c) PD/ICE plot derived from gradient boosted machine, and (d) PD/ICE plot derived from ordinary least squares regression; sample size is 10,000 observations of \textasciitilde50k. The PD/ICE plots are  different for the same data set, depending on the chosen user model.}
+\label{fig:baths_price}
+\end{center}
+\end{figure}
+
 partial dependence is important because...
 
 Existing techniques, such as FPD, ICE, ALE, SHAP peer through the lens of a model's predictions. For the same data applying the same technique but using different models, we get different answers, which calls into question the validity of the curves.
@@ -120,6 +129,51 @@ ICE
 ALE
 
 SHAP
+
+\section{Experimental results}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.35]{images/bulldozer_YearMade_marginal.pdf}~~
+\includegraphics[scale=0.35]{images/bulldozer_YearMade_shap.pdf}~~
+\includegraphics[scale=0.25]{images/YearMade_400_ale.pdf}~~
+\includegraphics[scale=0.35]{images/bulldozer_YearMade_stratpd.pdf}
+\caption{\small (a) Marginal plot of bulldozer {\tt YearMade} versus {\tt SalePrice} using subsample of 20k observations, (b) partial dependence drawn by SHAP interrogating an RF with 40 trees and explaining 1000 values with 100 observations as background data, (c) \spd{} partial dependence.}
+\label{fig:shap-stratpd-YearMade}
+\end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.46]{images/height_vs_weight_pdp.pdf}~~
+\includegraphics[scale=0.35]{images/weight_tree_path_dependent_shap.pdf}~~
+\includegraphics[scale=0.35]{images/weight_interventional_shap.pdf}~~
+\includegraphics[scale=0.25]{images/height_300_ale.pdf}~~
+\caption{\small SHAP partial dependence plots of response body weight on feature {\tt height} using 2000 synthetic observations from Equation \eqref{eq:weight}. SHAP interrogated an RF with 40 trees and explained all 2000 samples; the interventional case used 100 observations as background data.}
+\label{fig:shap-weight}
+\end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.4]{images/state_vs_temp.pdf}~~
+\includegraphics[scale=0.4]{images/state_vs_temp_pdp.pdf}~~
+\includegraphics[scale=0.25]{images/state_5_ale.pdf}~~
+\includegraphics[scale=0.4]{images/state_vs_temp_stratpd.pdf}~~
+\caption{\small foo.}
+\label{fig:shap-weight}
+\end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.4]{images/interactions.pdf}
+\caption{\small $y = x_1^2 + x_1 x_2 + 5 x_1 sin(3 x_2) + 10$ where $x_1,x_2,x_3 \sim U(0,10)$ and $x_3$ does not affect $y$. No noise added.}
+\label{fig:shap-weight}
+\end{center}
+\end{figure}
+
+
 \pagebreak
 \section{Algorithms}
 

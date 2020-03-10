@@ -50,6 +50,7 @@ from stratx.partdep import *
 from stratx.ice import *
 import inspect
 import statsmodels.api as sm
+import matplotlib.patches as mpatches
 
 import shap
 import xgboost as xgb
@@ -625,7 +626,7 @@ def unsup_rent():
 
 def weather():
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    TUNE_RF = False
+    TUNE_RF = True
     figsize = (2.5, 2.5)
 
     df_raw = toy_weather_data()
@@ -646,7 +647,7 @@ def weather():
     if TUNE_RF:
         rf, bestparams = tune_RF(X, y)
         # RF best: {'max_features': 0.9, 'min_samples_leaf': 5, 'n_estimators': 150}
-        # validation R^2 0.9658949217156879
+        # validation R^2 0.9500072628270099
     else:
         rf = RandomForestRegressor(n_estimators=150, min_samples_leaf=5, max_features=0.9, oob_score=True)
         rf.fit(X, y) # Use full data set for plotting
@@ -771,7 +772,7 @@ def meta_weather():
 
 def weight():
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_raw = toy_weight_data(2000)
+    X, y, df_raw, eqn = toy_weight_data(2000)
     df = df_raw.copy()
     df_string_to_cat(df)
     df_cat_to_catcode(df)
@@ -805,7 +806,7 @@ def weight():
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_catstratpd(X, y, 'sex', 'weight', ax=ax,
                     show_x_counts=False,
-                    catnames={1: 'F', 2: 'M'},
+                    catnames={0:'M',1:'F'},
                     yrange=(-1, 35),
                     )
     ax.set_title("StratPD", fontsize=10)
@@ -846,7 +847,7 @@ def weight():
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = predict_catice(rf, X, 'sex', 'weight')
-    plot_catice(ice, 'sex', 'weight', catnames={0:'M',1:'F'}, ax=ax, yrange=(0, 30),
+    plot_catice(ice, 'sex', 'weight', catnames={0:'M',1:'F'}, ax=ax, yrange=(0, 35),
                 pdp_marker_size=15)
     ax.set_title("PD/ICE", fontsize=10)
     savefig(f"sex_vs_weight_pdp")
@@ -862,7 +863,7 @@ def weight():
 def shap_weight(feature_perturbation, twin=False):
     n = 2000
     shap_test_size = 2000
-    df_raw = toy_weight_data(n=n)
+    X, y, df_raw, eqn = toy_weight_data(n=n)
     df = df_raw.copy()
     df_string_to_cat(df)
     df_cat_to_catcode(df)
@@ -1161,11 +1162,13 @@ def additivity():
 
     fig, axes = plt.subplots(2, 2, figsize=(4, 4))  # , sharey=True)
     plot_stratpd(X, y, 'x1', 'y',
-                 min_samples_leaf=10,
+                 pdp_marker_size=1,
+                 show_x_counts=False,
                  ax=axes[0, 0], yrange=(-3, 3))
 
     plot_stratpd(X, y, 'x2', 'y',
-                 min_samples_leaf=10,
+                 pdp_marker_size=1,
+                 show_x_counts=False,
                  ax=axes[1, 0],
                  yrange=(-3,3))
 
@@ -1726,8 +1729,118 @@ def multi_joint_distr():
     savefig("multivar_multimodel_normal")
 
 
+def interactions():
+    n = 2000
+    df = synthetic_interaction_data(n)
+
+    X, y = df[['x1', 'x2', 'x3']].copy(), df['y'].copy()
+    X1 = X.iloc[:, 0]
+    X2 = X.iloc[:, 1]
+    X3 = X.iloc[:, 2] # UNUSED in y
+
+    rf = RandomForestRegressor(n_estimators=10)
+    rf.fit(X, y)
+    print("R^2 ", rf.score(X, y))
+
+    print("mean(y) =", np.mean(y))
+    print("mean(X_1), mean(X_2) =", np.mean(X1), np.mean(X2))
+
+    pdp_x1 = friedman_partial_dependence(rf, X, 'x1', numx=None, mean_centered=False)
+    pdp_x2 = friedman_partial_dependence(rf, X, 'x2', numx=None, mean_centered=False)
+    pdp_x3 = friedman_partial_dependence(rf, X, 'x3', numx=None, mean_centered=False)
+    m1 = np.mean(pdp_x1[1])
+    m2 = np.mean(pdp_x2[1])
+    m3 = np.mean(pdp_x3[1])
+    print("mean(PDP_1) =", np.mean(pdp_x1[1]))
+    print("mean(PDP_2) =", np.mean(pdp_x2[1]))
+    print("mean(PDP_2) =", np.mean(pdp_x3[1]))
+
+    print("mean abs PDP_1-ybar", np.mean(np.abs(pdp_x1[1] - m1)))
+    print("mean abs PDP_2-ybar", np.mean(np.abs(pdp_x2[1] - m2)))
+    print("mean abs PDP_3-ybar", np.mean(np.abs(pdp_x3[1] - m3)))
+
+    explainer = shap.TreeExplainer(rf, data=shap.sample(X, n),
+                                   feature_perturbation='interventional')
+    shap_values = explainer.shap_values(X, check_additivity=False)
+    shapavg = np.mean(shap_values, axis=0)
+    print("SHAP avg x1,x2,x3 =", shapavg)
+    shapimp = np.mean(np.abs(shap_values), axis=0)
+    print("SHAP avg |x1|,|x2|,|x3| =", shapimp)
+
+    fig, axes = plt.subplots(1,3,figsize=(8.5,3))
+
+    x1_color = '#1E88E5'
+    x2_color = 'orange'
+    x3_color = '#A22396'
+
+    axes[0].plot(pdp_x1[0], pdp_x1[1], '.', markersize=1, c=x1_color, label='$FPD_1$', alpha=1)
+    axes[0].plot(pdp_x2[0], pdp_x2[1], '.', markersize=1, c=x2_color, label='$FPD_2$', alpha=1)
+    axes[0].plot(pdp_x3[0], pdp_x3[1], '.', markersize=1, c=x3_color, label='$FPD_3$', alpha=1)
+
+    axes[0].text(0, 75, f"$\\bar{{y}}={np.mean(y):.1f}$", fontsize=13)
+    axes[0].set_xticks([0,2,4,6,8,10])
+    axes[0].set_xlabel("$x_1, x_2, x_3$", fontsize=10)
+    axes[0].set_ylabel("y")
+    axes[0].set_ylim(-10,160)
+    axes[0].set_title(f"Friedman FPD")
+
+    axes[0].spines['top'].set_linewidth(.5)
+    axes[0].spines['right'].set_linewidth(.5)
+    axes[0].spines['left'].set_linewidth(.5)
+    axes[0].spines['bottom'].set_linewidth(.5)
+    axes[0].spines['top'].set_color('none')
+    axes[0].spines['right'].set_color('none')
+
+    x1_patch = mpatches.Patch(color=x1_color, label='$FPD_1$')
+    x2_patch = mpatches.Patch(color=x2_color, label='$FPD_2$')
+    x3_patch = mpatches.Patch(color=x3_color, label='$FPD_3$')
+    axes[0].legend(handles=[x1_patch,x2_patch,x3_patch], fontsize=10)
+
+    # axes[0].legend(fontsize=10)
+
+    #axes[1].plot(shap_values)
+    shap.dependence_plot("x1", shap_values, X,
+                         interaction_index=None, ax=axes[1], dot_size=5,
+                         show=False, alpha=.5, color=x1_color)
+    shap.dependence_plot("x2", shap_values, X,
+                         interaction_index=None, ax=axes[1], dot_size=5,
+                         show=False, alpha=.5, color=x2_color)
+    shap.dependence_plot("x3", shap_values, X,
+                         interaction_index=None, ax=axes[1], dot_size=5,
+                         show=False, alpha=.5, color=x3_color)
+    axes[1].set_xticks([0,2,4,6,8,10])
+    axes[1].set_xlabel("$x_1, x_2, x_3$", fontsize=10)
+    axes[1].set_ylim(-95,110)
+    axes[1].set_title("SHAP")
+    axes[1].set_ylabel("SHAP values", fontsize=10)
+
+    plot_stratpd(X, y, "x1", "y", ax=axes[2], pdp_marker_size=1,
+                 pdp_marker_color=x1_color,
+                 show_x_counts=False, n_trials=1, show_slope_lines=False)
+    plot_stratpd(X, y, "x2", "y", ax=axes[2], pdp_marker_size=1,
+                 pdp_marker_color=x2_color,
+                 show_x_counts=False, n_trials=1, show_slope_lines=False)
+    plot_stratpd(X, y, "x3", "y", ax=axes[2], pdp_marker_size=1,
+                 pdp_marker_color=x3_color,
+                 show_x_counts=False, n_trials=1, show_slope_lines=False)
+    axes[2].set_xticks([0,2,4,6,8,10])
+    axes[2].set_ylim(-20,160)
+    axes[2].set_xlabel("$x_1, x_2, x_3$", fontsize=10)
+    axes[2].set_ylabel("y")
+    axes[2].set_title("StratPD")
+    axes[2].spines['top'].set_linewidth(.5)
+    axes[2].spines['right'].set_linewidth(.5)
+    axes[2].spines['left'].set_linewidth(.5)
+    axes[2].spines['bottom'].set_linewidth(.5)
+    axes[2].spines['top'].set_color('none')
+    axes[2].spines['right'].set_color('none')
+
+    savefig("interactions")
+
+
 if __name__ == '__main__':
     # FROM PAPER:
+    interactions()
     # yearmade()
     # rent()
     # rent_ntrees()
@@ -1739,7 +1852,7 @@ if __name__ == '__main__':
     # weight_ntrees()
     # unsup_weight()
     # meta_weight()
-    weather()
+    # weather()
     # meta_weather()
     # additivity()
     # meta_additivity()

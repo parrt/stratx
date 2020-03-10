@@ -21,14 +21,14 @@ rf_predict <- function(X.model, newdata) {
 X <- df_weight %>% select(-weight) %>% as.data.frame
 y <- df_weight$weight
 # set.seed(3)
-rf_weight <- randomForest(X, y, ntree=500, nodesize=1) # hyperparams found using gridsearch
+rf_weight <- randomForest(X, y, ntree=200, nodesize=1, mtry=3) # hyperparams found using gridsearch
 print("R^2")
 predicted <- predict(rf_weight, X)
 print( 1 - sum((y-predicted)^2)/sum((y-mean(y))^2) )
 
 # Make plots -----------------------------------------------------------------------------
 make_plots <- function(X, features=names(X), intervals=rep(100, length(features)),
-                       base_filename='images/weight_', width=5, height=5) {
+                       base_filename='images/', width=5, height=5) {
   # Generate ALE plots for the specified variables and save each plot to PDF
   # Saves PDF to current working directory.
   #
@@ -45,7 +45,7 @@ make_plots <- function(X, features=names(X), intervals=rep(100, length(features)
   for (i in 1:length(features)) {
     col_idx <- which(names(X) == features[i])
     K <- intervals[i]
-    filename <- paste0(base_filename, features[i], '_', K, '.pdf')
+    filename <- paste0(base_filename, features[i], '_', K, '_ale.pdf')
     pdf(file=filename, width=width, height=height)
     message(paste0('Saving ', filename))
     ALEPlot(X, rf_weight, pred.fun=rf_predict, J=col_idx, K=K)
