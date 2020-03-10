@@ -198,6 +198,7 @@ def ice2lines(ice:np.ndarray) -> np.ndarray:
 
 
 def plot_ice(ice, colname, targetname="target", ax=None, linewidth=.5, linecolor='#9CD1E3',
+             min_y_shifted_to_zero=False, # easier to read if values are relative to 0 (usually)
              alpha=.1, title=None, xrange=None, yrange=None, pdp=True, pdp_linewidth=.5, pdp_alpha=1,
              pdp_color='black', show_xlabel=True, show_ylabel=True):
     start = time.time()
@@ -216,7 +217,8 @@ def plot_ice(ice, colname, targetname="target", ax=None, linewidth=.5, linecolor
         min_pdp_y = avg_y[closest_x_to_0]
 
     lines = ice2lines(ice)
-    lines[:,:,1] = lines[:,:,1] - min_pdp_y
+    if min_y_shifted_to_zero:
+        lines[:,:,1] = lines[:,:,1] - min_pdp_y
     # lines[:,:,0] scans all lines, all points in a line, and gets x column
     minx, maxx = np.min(lines[:,:,0]), np.max(lines[:,:,0])
     miny, maxy = np.min(lines[:,:,1]), np.max(lines[:,:,1])
@@ -239,7 +241,11 @@ def plot_ice(ice, colname, targetname="target", ax=None, linewidth=.5, linecolor
         ax.set_xlim(minx, maxx)
 
     uniq_x = ice.iloc[0, :]
-    pdp_curve = avg_y - min_pdp_y
+    if min_y_shifted_to_zero:
+        pdp_curve = avg_y - min_pdp_y
+    else:
+        pdp_curve = avg_y
+
     if pdp:
         ax.plot(uniq_x, pdp_curve,
                 alpha=pdp_alpha, linewidth=pdp_linewidth, c=pdp_color)

@@ -28,6 +28,7 @@ from typing import Mapping, List, Tuple
 from collections import defaultdict, OrderedDict
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression, Lasso
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
@@ -44,10 +45,13 @@ from sklearn.neighbors import KNeighborsRegressor
 from pdpbox import pdp
 from rfpimp import *
 from scipy.integrate import cumtrapz
+from stratx.support import *
 from stratx.partdep import *
 from stratx.ice import *
 import inspect
 import statsmodels.api as sm
+
+import xgboost as xgb
 
 # This genfigs.py code is just demonstration code to generate figures for the paper.
 # There are lots of programming sins committed here; to not take this to be
@@ -97,8 +101,8 @@ def savefig(filename, pad=0):
     # plt.savefig(f"images/{filename}.pdf")
     plt.savefig(f"images/{filename}.png", dpi=150)
 
-    # plt.tight_layout()
-    # plt.show()
+    plt.tight_layout()
+    plt.show()
 
     plt.close()
 
@@ -125,27 +129,7 @@ def toy_weight_data(n):
     return df
 
 
-def load_rent():
-    """
-    *Data use rules prevent us from storing this data in this repo*. Download the data
-    set from Kaggle. (You must be a registered Kaggle user and must be logged in.)
-    Go to the Kaggle [data page](https://www.kaggle.com/c/two-sigma-connect-rental-listing-inquiries/data)
-    and save `train.json`
-    """
-    df = pd.read_json('data/train.json')
-
-    # Create ideal numeric data set w/o outliers etc...
-    df = df[(df.price > 1_000) & (df.price < 10_000)]
-    df = df[df.bathrooms <= 4]  # There's almost no data for above with small sample
-    df = df[(df.longitude != 0) | (df.latitude != 0)]
-    df = df[(df['latitude'] > 40.55) & (df['latitude'] < 40.94) &
-            (df['longitude'] > -74.1) & (df['longitude'] < -73.67)]
-    df = df.sort_values('created')
-    df_rent = df[['bedrooms', 'bathrooms', 'latitude', 'longitude', 'price']]
-
-    return df_rent
-
-
+'''
 def load_bulldozer():
     """
     Download Train.csv data from https://www.kaggle.com/c/bluebook-for-bulldozers/data
@@ -205,59 +189,142 @@ def load_bulldozer():
     X = X.fillna(0)  # flip missing numeric values to zeros
     y = df['SalePrice']
     return X, y
+'''
 
 
 def rent():
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_rent = load_rent()
-    df_rent = df_rent[-10_000:]  # get a small subsample since SVM is slowwww
-    X = df_rent.drop('price', axis=1)
-    y = df_rent['price']
-    figsize = (5, 4)
+    X,y = load_rent(n=10_000)
+    df_rent = X.copy()
+    df_rent['price'] = y
+    figsize = (9, 2.7)
     colname = 'bedrooms'
+    xticks = [0, 2, 4, 6, 8]
+    colname = 'bathrooms'
+    xticks = list(range(0,9))
 
-    fig, axes = plt.subplots(2, 2, figsize=figsize)
+    TUNE_RF = False
+    # TUNE_SVM = False
+    TUNE_XGB = False
 
-    axes[0, 0].set_title("(a) Marginal", fontsize=10)
-    axes[0, 0].set_xlim(0,8); axes[0, 0].set_xticks([0,2,4,6,8])
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
-    axes[0, 1].set_title("(b) PD/ICE RF", fontsize=10)
-    axes[0, 1].set_xlim(0,8); axes[0, 1].set_xticks([0,2,4,6,8])
+    if TUNE_RF:
+        tuned_parameters = {'n_estimators': [50, 100, 125, 150, 200],
+                            'min_samples_leaf': [1, 3, 5, 7],
+                            'max_features': [.1, .3, .5, .7, .9]}
+        grid = GridSearchCV(
+            RandomForestRegressor(), tuned_parameters, scoring='r2',
+            cv=5,
+            n_jobs=-1
+            # verbose=2
+        )
+        grid.fit(X, y)  # does CV on entire data set
+        rf = grid.best_estimator_
+        print("RF best:", grid.best_params_)
+        rf.fit(X_train, y_train)
+        print("validation R^2", rf.score(X_test, y_test))
+        # bedrooms
+        # RF best: {'max_features': 0.3, 'min_samples_leaf': 1, 'n_estimators': 125}
+        # validation R^2 0.7873724127323822
+        # bathrooms
+        # RF best: {'max_features': 0.3, 'min_samples_leaf': 1, 'n_estimators': 150}
+        # validation R^2 0.7797272189776407
+    else:
+        rf = RandomForestRegressor(n_estimators=150, min_samples_leaf=1, max_features=.3)
+        rf.fit(X_train, y_train)
+        print("RF validation R^2", rf.score(X_test, y_test))
+        rf.fit(X, y) # Use full data set for drawing
 
-    axes[1, 0].set_title("(c) PD/ICE SVM", fontsize=10)
-    axes[1, 0].set_xlim(0,8); axes[1, 0].set_xticks([0,2,4,6,8])
+    if TUNE_XGB:
+        tuned_parameters = {'n_estimators': [50, 100, 150, 200, 250],
+                            'max_depth': [3, 5, 7, 9]}
+        grid = GridSearchCV(
+            xgb.XGBRegressor(), tuned_parameters, scoring='r2',
+            cv=5,
+            n_jobs=-1
+            # verbose=2
+        )
+        grid.fit(X, y)  # does CV on entire data set
+        b = grid.best_estimator_
+        print("XGB best:", grid.best_params_)
+        b.fit(X_train, y_train)
+        print("XGB validation R^2", b.score(X_test, y_test))
+        # bedrooms
+        # XGB best: {'max_depth': 7, 'n_estimators': 250}
+        # XGB validation R^2 0.7945797751555217
+        # bathrooms
+        # XGB best: {'max_depth': 9, 'n_estimators': 250}
+        # XGB validation R^2 0.7907897088836073
+    else:
+        b = xgb.XGBRegressor(n_estimators=250, max_depth=9)
+        b.fit(X_train, y_train)
+        print("XGB validation R^2", b.score(X_test, y_test))
+        b.fit(X, y)  # Use full data set for drawing
 
-    axes[1, 1].set_title("(d) StratPD", fontsize=10)
-    axes[1, 1].set_xlim(0,8); axes[1, 1].set_xticks([0,2,4,6,8])
+    '''
+    if TUNE_SVM:
+        tuned_parameters = {'kernel': ['poly', 'linear'],
+                            'gamma': np.linspace(0.0004, 1, num=5),
+                            'C': [1e2,1e3,1e4,1e5,1e6,1e7,1e8]}
+        grid = GridSearchCV(svm.SVR(), cv=5, param_grid=tuned_parameters,
+                            n_jobs=-1, verbose=2)
+        grid.fit(X, y)
+        svr = grid.best_estimator_
+        print("SVM best:",grid.best_params_)
+        svr.fit(X_train, y_train)
+        print("SVM validation R^2", svr.score(X_test, y_test))
+    else:
+        # svr = svm.SVR(C=1e6, gamma='scale', kernel='poly')
+        # svr = svm.SVR(C=1e5, gamma='scale', kernel='linear')
+        svr = svm.SVR(C=1, gamma='scale', kernel='poly')
+        svr.fit(X_train, y_train)
+        print("SVM validation R^2", svr.score(X_test, y_test))
+        svr.fit(X, y) # Use full data set for drawing
+    '''
+
+    fig, axes = plt.subplots(1, 4, figsize=figsize, sharey=True)
+
+    axes[0].set_title("(a) Marginal", fontsize=10)
+    axes[0].set_xlim(0,8);
+    axes[0].set_xticks(xticks)
+
+    axes[1].set_title("(b) RF PD/ICE", fontsize=10)
+    axes[1].set_xlim(0,8); axes[1].set_xticks(xticks)
+
+    axes[2].set_title("(c) XGBoost PD/ICE", fontsize=10)
+    axes[2].set_xlim(0,8); axes[2].set_xticks(xticks)
+
+    axes[3].set_title("(d) OLS PD/ICE", fontsize=10)
+    axes[3].set_xlim(0,8); axes[3].set_xticks(xticks)
 
     avg_per_baths = df_rent.groupby(colname).mean()['price']
-    axes[0, 0].scatter(df_rent[colname], df_rent['price'], alpha=0.07,
+    axes[0].scatter(df_rent[colname], df_rent['price'], alpha=0.07,
                        s=5)  # , label="observation")
-    axes[0, 0].scatter(np.unique(df_rent[colname]), avg_per_baths, s=6, c='black',
+    axes[0].scatter(np.unique(df_rent[colname]), avg_per_baths, s=6, c='black',
                        label="average price/{colname}")
-    axes[0, 0].set_ylabel("price")  # , fontsize=12)
-    axes[0, 0].set_ylim(0, 10_000)
+    axes[0].set_ylabel("price")  # , fontsize=12)
+    axes[0].set_ylim(0, 12_000)
+    axes[0].set_yticks(np.array(range(0,12))*1000)
 
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
-    rf.fit(X, y)
 
-    ice = predict_ice(rf, X, colname, 'price', nlines=1000)
-    plot_ice(ice, colname, 'price', alpha=.05, ax=axes[0, 1], show_xlabel=False,
+    ice = predict_ice(rf, X, colname, 'price', numx=30, nlines=100)
+    plot_ice(ice, colname, 'price', alpha=.3, ax=axes[1], show_xlabel=False,
              show_ylabel=False)
-    axes[0, 1].set_ylim(-1000, 5000)
+    # axes[1].set_ylim(-1000, 5000)
 
-    nfeatures = 4
-    m = svm.SVR(gamma=1 / nfeatures)
-    # m = KNeighborsRegressor()
-    # m = Lasso()
-    m.fit(X, y)
+    ice = predict_ice(b, X, colname, 'price', numx=30, nlines=100)
+    plot_ice(ice, colname, 'price', alpha=.3, ax=axes[2], show_ylabel=True)
+    # axes[2].set_ylim(-1000, 5000)
 
-    ice = predict_ice(m, X, colname, 'price', nlines=1000)
-    plot_ice(ice, colname, 'price', alpha=.3, ax=axes[1, 0], show_ylabel=True)
-    axes[1, 0].set_ylim(-1000, 5000)
-
-    plot_stratpd(X, y, colname, 'price', ax=axes[1, 1], slope_line_alpha=.1, show_ylabel=False, pdp_marker_size=8)
-    axes[1, 1].set_ylim(-1000, 5000)
+    lm = LinearRegression()
+    lm.fit(X_train, y_train)
+    # OLS validation R^2 0.6529604563013247
+    print("OLS validation R^2", lm.score(X_test, y_test))
+    lm.fit(X, y)
+    ice = predict_ice(lm, X, colname, 'price', numx=30, nlines=100)
+    plot_ice(ice, colname, 'price', alpha=.3, ax=axes[3], show_ylabel=True)
+    # axes[3].set_ylim(-1000, 5000)
 
     savefig(f"{colname}_vs_price")
 
@@ -327,67 +394,6 @@ def rent_alone():
     onevar('longitude', row=3, col=0, slope_line_alpha=.08, yrange=(-3000, 1000))
 
     savefig(f"rent_all")
-    plt.close()
-
-
-def rent_int():
-    # np.random.seed(42)
-    print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_rent = load_rent()
-    df_rent = df_rent[-10_000:]  # get a small subsample since SVM is slowwww
-    X = df_rent.drop('price', axis=1)
-    y = df_rent['price']
-    figsize = (5, 4)
-
-    fig, axes = plt.subplots(2, 3, figsize=(6, 4))
-
-    avg_per_baths = df_rent.groupby('bedrooms').mean()['price']
-    axes[0, 0].scatter(df_rent['bedrooms'], df_rent['price'], alpha=0.07,
-                       s=5)  # , label="observation")
-    axes[0, 0].scatter(np.unique(df_rent['bedrooms']), avg_per_baths, s=6, c='black',
-                       label="average price/bedrooms")
-    axes[0, 0].set_xlabel("bedrooms")  # , fontsize=12)
-    axes[0, 0].set_ylabel("price")  # , fontsize=12)
-    axes[0, 0].set_ylim(0, 10_000)
-    avg_per_baths = df_rent.groupby('bathrooms').mean()['price']
-    axes[1, 0].scatter(df_rent['bathrooms'], df_rent['price'], alpha=0.07,
-                       s=5)  # , label="observation")
-    axes[1, 0].scatter(np.unique(df_rent['bathrooms']), avg_per_baths, s=6, c='black',
-                       label="average price/bathrooms")
-    axes[1, 0].set_xlabel("bathrooms")  # , fontsize=12)
-    axes[1, 0].set_ylabel("price")  # , fontsize=12)
-    axes[1, 0].set_ylim(0, 10_000)
-
-    stratpd_min_samples_leaf_partition = 40  # the default
-    catstratpd_min_samples_leaf_partition = 10
-
-    plot_stratpd(X, y, 'bedrooms', 'price',
-                 min_samples_leaf=stratpd_min_samples_leaf_partition,
-                 ax=axes[0, 1], slope_line_alpha=.2, show_ylabel=False)
-    axes[0, 1].set_ylim(-500, 5000)
-
-    plot_catstratpd(X, y, 'bedrooms', 'price', catnames=np.unique(X['bedrooms']),
-                    min_samples_leaf=catstratpd_min_samples_leaf_partition,
-                    ax=axes[0, 2], show_ylabel=False)
-    axes[0, 2].set_ylim(-500, 5000)
-
-    plot_stratpd(X, y, 'bathrooms', 'price',
-                 min_samples_leaf=stratpd_min_samples_leaf_partition,
-                 ax=axes[1, 1], slope_line_alpha=.2, show_ylabel=False)
-    axes[1, 1].set_ylim(-500, 5000)
-
-    X['bathrooms'] = X['bathrooms'].astype(str)
-    baths = np.unique(X['bathrooms'])
-    plot_catstratpd(X, y, 'bathrooms', 'price', catnames=baths,
-                    min_samples_leaf=catstratpd_min_samples_leaf_partition,
-                    ax=axes[1, 2], show_ylabel=False)
-    axes[1, 2].set_ylim(-500, 5000)
-
-    axes[0, 0].set_title("Marginal")  # , fontsize=12)
-    axes[0, 1].set_title("StratPD")  # , fontsize=12)
-    axes[0, 2].set_title("CatStratPD")  # , fontsize=12)
-
-    savefig(f"rent_intcat")
     plt.close()
 
 
@@ -759,7 +765,7 @@ def weather():
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'dayofyear', 'temperature', ax=ax,
                  yrange=(-10, 10),
-                 pdp_marker_size=2, slope_line_alpha=.5)
+                 pdp_marker_size=2, slope_line_alpha=.5, n_trials=1)
 
     ax.set_title("(b) StratPD")
     savefig(f"dayofyear_vs_temp_stratpd")
@@ -875,7 +881,7 @@ def weight():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     df_raw = toy_weight_data(2000)
     df = df_raw.copy()
-    catencoders = df_string_to_cat(df)
+    df_string_to_cat(df)
     df_cat_to_catcode(df)
     df['pregnant'] = df['pregnant'].astype(int)
     X = df.drop('weight', axis=1)
@@ -884,8 +890,9 @@ def weight():
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'education', 'weight', ax=ax,
-                 # min_samples_leaf=2,
-                 yrange=(-12, 0), slope_line_alpha=.1, show_ylabel=True)
+                 show_x_counts=False,
+                 pdp_marker_size=5,
+                 yrange=(-12, 0.05), slope_line_alpha=.1, show_ylabel=True)
     #    ax.get_yaxis().set_visible(False)
     ax.set_title("StratPD", fontsize=10)
     ax.set_xlim(10,18)
@@ -894,26 +901,25 @@ def weight():
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'height', 'weight', ax=ax,
-                 # min_samples_leaf=2,
-                 yrange=(0, 160), slope_line_alpha=.1, show_ylabel=False)
+                 pdp_marker_size=.2,
+                 show_x_counts=False,
+                 yrange=(0, 160), show_ylabel=False)
     #    ax.get_yaxis().set_visible(False)
     ax.set_title("StratPD", fontsize=10)
     savefig(f"height_vs_weight_stratpd")
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_catstratpd(X, y, 'sex', 'weight', ax=ax,
-                    # min_samples_leaf=50,
-                    alpha=.2,
+                    show_x_counts=False,
                     catnames={1: 'F', 2: 'M'},
-                    yrange=(0, 5),
+                    yrange=(-1, 35),
                     )
     ax.set_title("StratPD", fontsize=10)
     savefig(f"sex_vs_weight_stratpd")
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=ax,
-                    # min_samples_leaf=15,
-                    alpha=.2,
+                    show_x_counts=False,
                     catnames={0:False, 1:True},
                     yrange=(-5, 35),
                     )
@@ -925,7 +931,7 @@ def weight():
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = predict_ice(rf, X, 'education', 'weight')
-    plot_ice(ice, 'education', 'weight', ax=ax, yrange=(-12, 0))
+    plot_ice(ice, 'education', 'weight', ax=ax, yrange=(-12, 0), min_y_shifted_to_zero=True)
     ax.set_xlim(10,18)
     ax.set_xticks([10,12,14,16,18])
     ax.set_title("PD/ICE", fontsize=10)
@@ -933,14 +939,14 @@ def weight():
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = predict_ice(rf, X, 'height', 'weight')
-    plot_ice(ice, 'height', 'weight', ax=ax, yrange=(0, 160))
+    plot_ice(ice, 'height', 'weight', ax=ax, yrange=(0, 160), min_y_shifted_to_zero=True)
     ax.set_title("PD/ICE", fontsize=10)
     ax.set_title("PD/ICE", fontsize=10)
     savefig(f"height_vs_weight_pdp")
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = predict_catice(rf, X, 'sex', 'weight')
-    plot_catice(ice, 'sex', 'weight', catnames=df_raw['sex'].unique(), ax=ax, yrange=(0, 5),
+    plot_catice(ice, 'sex', 'weight', catnames=df_raw['sex'].unique(), ax=ax, yrange=(0, 30),
                 pdp_marker_size=15)
     ax.set_title("PD/ICE", fontsize=10)
     savefig(f"sex_vs_weight_pdp")
@@ -971,10 +977,10 @@ def unsup_weight():
 
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 0],
                     catnames=df_raw['pregnant'].unique(),
-                    yrange=(-5, 35), supervised=False)
+                    yrange=(-5, 35))
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 1],
                     catnames=df_raw['pregnant'].unique(),
-                    yrange=(-5, 35), supervised=True)
+                    yrange=(-5, 35))
 
     axes[0, 0].set_title("Unsupervised")
     axes[0, 1].set_title("Supervised")
@@ -1669,11 +1675,11 @@ if __name__ == '__main__':
     # rent_extra_cols()
     # unsup_rent()
     # unsup_boston()
-    # weight()
+    weight()
     # weight_ntrees()
     # unsup_weight()
     # meta_weight()
-    weather()
+    # weather()
     # meta_weather()
     # additivity()
     # meta_additivity()

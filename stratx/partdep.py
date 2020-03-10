@@ -231,7 +231,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
 def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  min_slopes_per_x=5,  # ignore pdp y values derived from too few slopes (usually at edges)
                  # important for getting good starting point of PD so AUC isn't skewed.
-                 n_trials=5, # how many pd curves to show (subsampling by 2/3 to get diff X sets)
+                 n_trials=1, # how many pd curves to show (subsampling by 2/3 to get diff X sets)
                  n_trees=1,
                  min_samples_leaf=10,
                  bootstrap=False,
@@ -246,7 +246,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  show_ylabel=True,
                  show_pdp_line=False,
                  show_all_pdp=True,
-                 show_slope_lines=True,
+                 show_slope_lines=False,
                  show_slope_counts=False,
                  show_x_counts=True,
                  show_impact=False,
@@ -753,7 +753,7 @@ def avg_values_at_x_nonparallel_jit(uniq_x, leaf_ranges, leaf_slopes):
 def plot_stratpd_gridsearch(X, y, colname, targetname,
                             min_samples_leaf_values=(2,5,10,20,30),
                             min_slopes_per_x_values=(5,), # Show default count only by default
-                            n_trials=5,
+                            n_trials=1,
                             nbins_values=(1,2,3,4,5),
                             nbins_smoothing=None,
                             binned=False,
@@ -849,7 +849,7 @@ def marginal_catplot_(X, y, colname, targetname, ax, catnames, alpha=.1, show_xt
         ax.set_xticks([])
 
 def plot_catstratpd_gridsearch(X, y, colname, targetname,
-                               n_trials=3,
+                               n_trials=1,
                                min_samples_leaf_values=(2, 5, 10, 20, 30),
                                min_y_shifted_to_zero=True,  # easier to read if values are relative to 0 (usually); do this for high cardinality cat vars
                                show_xticks=True,
@@ -1370,7 +1370,7 @@ def plot_catstratpd(X, y,
                     # must pass dict or series if catcodes are not 1..n contiguous
                     # None implies use np.unique(X[colname]) values
                     # Must be 0-indexed list of names if list
-                    n_trials=5,
+                    n_trials=1,
                     subsample_size = .75,
                     bootstrap=False,
                     ax=None,
