@@ -150,8 +150,6 @@ def toy_weight_data(n):
     df = pd.DataFrame()
     nmen = n // 2 # 50/50 men/women
     nwomen = n // 2
-    # nmen = int(.7 * n)
-    # nwomen = int(.3 * n)
     df['sex'] = ['M'] * nmen + ['F'] * nwomen
     df.loc[df['sex'] == 'F', 'pregnant'] = np.random.randint(0, 2, size=(nwomen,))
     # df.loc[df['sex'] == 'F', 'pregnant'] = 1 # assume all women are pregnant
@@ -178,14 +176,14 @@ def toy_weight_data(n):
     return X, y, df, eqn
 
 
-def toy_weather_data():
+def toy_weather_data_1yr():
     def temp(x): return np.sin((x + 365 / 2) * (2 * np.pi) / 365)
 
     def noise(state): return np.random.normal(-5, 5, sum(df['state'] == state))
 
     df = pd.DataFrame()
     df['dayofyear'] = range(1, 365 + 1)
-    df['state'] = np.random.choice(['CA', 'CO', 'AZ', 'WA'], len(df))
+    df['state'] = np.random.choice(['CA', 'CO', 'AZ', 'WA', 'NV'], len(df))
     df['temperature'] = temp(df['dayofyear'])
     df.loc[df['state'] == 'CA', 'temperature'] = \
         70 + df.loc[df['state'] == 'CA', 'temperature'] * noise('CA')
@@ -195,6 +193,21 @@ def toy_weather_data():
         90 + df.loc[df['state'] == 'AZ', 'temperature'] * noise('AZ')
     df.loc[df['state'] == 'WA', 'temperature'] = \
         60 + df.loc[df['state'] == 'WA', 'temperature'] * noise('WA')
+    df.loc[df['state'] == 'NV', 'temperature'] = \
+        80 + df.loc[df['state'] == 'NV', 'temperature'] * noise('NV')
+
+    return df
+
+
+def toy_weather_data():
+    df_yr1 = toy_weather_data_1yr()
+    df_yr1['year'] = 1980
+    df_yr2 = toy_weather_data_1yr()
+    df_yr2['year'] = 1981
+    df_yr3 = toy_weather_data_1yr()
+    df_yr3['year'] = 1982
+    df_raw = pd.concat([df_yr1, df_yr2, df_yr3], axis=0)
+    df = df_raw.copy()
     return df
 
 

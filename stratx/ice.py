@@ -27,6 +27,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from  matplotlib.collections import LineCollection
 import time
+from stratx.partdep import getcats
 
 """
 This code was built just to generate ICE plots for comparison in the paper.
@@ -264,7 +265,7 @@ def plot_catice(ice, colname, targetname,
                 marker_size=10,
                 show_xlabel=True, show_ylabel=True,
                 show_xticks=True,
-                sort='ascending'):
+                sort:('ascending','descending',None)=None):
     start = time.time()
     if ax is None:
         fig, ax = plt.subplots(1,1)
@@ -276,10 +277,9 @@ def plot_catice(ice, colname, targetname,
     lines = ice2lines(ice)
 
     nobs = lines.shape[0]
-    nx = lines.shape[1]
 
-    from stratx.partdep import getcats
     catcodes, _, catcode2name = getcats(None, colname, catnames)
+    sorted_indexes = np.array(range(len(catcodes)))
     sorted_catcodes = catcodes
     if sort == 'ascending':
         sorted_indexes = avg_y.argsort()
@@ -294,8 +294,8 @@ def plot_catice(ice, colname, targetname,
     pdp_curve = avg_y - min_pdp_y
 
     # plot predicted values for each category at each observation point
-    if True in catnames or False in catnames:
-        xlocs = np.arange(0, ncats)
+    if isinstance(list(catnames.keys())[0], bool):
+        xlocs = np.arange(0, 1+1)
     else:
         xlocs = np.arange(1,ncats+1)
     # print(f"shape {lines.shape}, ncats {ncats}, nx {nx}, len(pdp) {len(pdp_curve)}")
@@ -316,10 +316,7 @@ def plot_catice(ice, colname, targetname,
     if title is not None:
         ax.set_title(title)
 
-    if True in catnames or False in catnames:
-        ax.set_xticks(range(0, 1+1))
-    else:
-        ax.set_xticks(range(1, ncats+1))
+    ax.set_xticks(xlocs)
 
     if show_xticks: # sometimes too many
         ax.set_xticklabels(catcode2name[sorted_catcodes])

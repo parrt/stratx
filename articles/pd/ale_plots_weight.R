@@ -28,7 +28,7 @@ print( 1 - sum((y-predicted)^2)/sum((y-mean(y))^2) )
 
 # Make plots -----------------------------------------------------------------------------
 make_plots <- function(X, features=names(X), intervals=rep(100, length(features)),
-                       base_filename='weight_', width=5, height=5) {
+                       base_filename='images/weight_', width=5, height=5) {
   # Generate ALE plots for the specified variables and save each plot to PDF
   # Saves PDF to current working directory.
   #
@@ -56,4 +56,4 @@ make_plots <- function(X, features=names(X), intervals=rep(100, length(features)
 # Create ALE plot PDFs.  Here we can assign K to each feature.
 # e.g. c('height', 'education') with intervals c(100, 200)
 # uses K = 100 for 'height', 200 for 'education'
-make_plots(X, names(X), intervals=rep(100, ncol(X)))
+make_plots(X, names(X), intervals=rep(300, ncol(X)))

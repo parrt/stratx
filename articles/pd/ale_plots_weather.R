@@ -20,7 +20,7 @@ rf_predict <- function(X.model, newdata) {
 X <- df_weather %>% select(-temperature) %>% as.data.frame
 y <- df_weather$temperature
 # set.seed(3)
-rf_weather <- randomForest(X, y, ntree=60, nodesize=10, mtry=3)  # hyperparams found using gridsearch
+rf_weather <- randomForest(X, y, ntree=150, nodesize=5, mtry=3)  # hyperparams found using gridsearch
 
 # Make plots -----------------------------------------------------------------------------
 make_plots <- function(X, features=c('dayofyear', 'state'),

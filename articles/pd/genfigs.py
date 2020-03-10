@@ -111,6 +111,7 @@ def savefig(filename, pad=0):
     plt.close()
 
 
+'''
 def toy_weight_data(n):
     df = pd.DataFrame()
     nmen = n // 2
@@ -131,7 +132,7 @@ def toy_weight_data(n):
     df['pregnant'] = df['pregnant'].astype(bool)
     df['education'] = df['education'].astype(int)
     return df
-
+'''
 
 def rent():
     print(f"----------- {inspect.stack()[0][3]} -----------")
@@ -622,63 +623,38 @@ def unsup_rent():
     plt.close()
 
 
-def toy_weather_data():
-    def temp(x): return np.sin((x + 365 / 2) * (2 * np.pi) / 365)
-
-    def noise(state): return np.random.normal(-5, 5, sum(df['state'] == state))
-
-    df = pd.DataFrame()
-    df['dayofyear'] = range(1, 365 + 1)
-    df['state'] = np.random.choice(['CA', 'CO', 'AZ', 'WA'], len(df))
-    df['temperature'] = temp(df['dayofyear'])
-    df.loc[df['state'] == 'CA', 'temperature'] = \
-        70 + df.loc[df['state'] == 'CA', 'temperature'] * noise('CA')
-    df.loc[df['state'] == 'CO', 'temperature'] = \
-        40 + df.loc[df['state'] == 'CO', 'temperature'] * noise('CO')
-    df.loc[df['state'] == 'AZ', 'temperature'] = \
-        90 + df.loc[df['state'] == 'AZ', 'temperature'] * noise('AZ')
-    df.loc[df['state'] == 'WA', 'temperature'] = \
-        60 + df.loc[df['state'] == 'WA', 'temperature'] * noise('WA')
-    return df
-
-
 def weather():
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_yr1 = toy_weather_data()
-    df_yr1['year'] = 1980
-    df_yr2 = toy_weather_data()
-    df_yr2['year'] = 1981
-    df_yr3 = toy_weather_data()
-    df_yr3['year'] = 1982
-    df_raw = pd.concat([df_yr1, df_yr2, df_yr3], axis=0)
-    df = df_raw.copy()
-    catencoders = df_string_to_cat(df_raw.copy())
-    # states = catencoders['state']
-    # print(states)
-    #
-    # df_cat_to_catcode(df)
+    TUNE_RF = False
+    figsize = (2.5, 2.5)
 
-    names = {'CO': 5, 'CA': 10, 'AZ': 15, 'WA': 20}
-    df['state'] = df['state'].map(names)
+    df_raw = toy_weather_data()
+    df = df_raw.copy()
+
+    df_string_to_cat(df)
+    names = np.unique(df['state'])
     catnames = OrderedDict()
-    for k,v in names.items():
-        catnames[v] = k
+    for i,v in enumerate(names):
+        catnames[i+1] = v
+    df_cat_to_catcode(df)
 
     X = df.drop('temperature', axis=1)
     y = df['temperature']
     # cats = catencoders['state'].values
     # cats = np.insert(cats, 0, None) # prepend a None for catcode 0
 
-    figsize = (2.5, 2.5)
-    """
-    The scale diff between states, obscures the sinusoidal nature of the
-    dayofyear vs temp plot. With noise N(0,5) gotta zoom in -3,3 on mine too.
-    otherwise, smooth quasilinear plot with lots of bristles showing volatility.
-    Flip to N(-5,5) which is more realistic and we see sinusoid for both, even at
-    scale. yep, the N(0,5) was obscuring sine for both. 
-    """
+    if TUNE_RF:
+        rf, bestparams = tune_RF(X, y)
+        # RF best: {'max_features': 0.9, 'min_samples_leaf': 5, 'n_estimators': 150}
+        # validation R^2 0.9658949217156879
+    else:
+        rf = RandomForestRegressor(n_estimators=150, min_samples_leaf=5, max_features=0.9, oob_score=True)
+        rf.fit(X, y) # Use full data set for plotting
+        print("RF OOB R^2", rf.oob_score_)
+
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'dayofyear', 'temperature', ax=ax,
+                 show_x_counts=False,
                  yrange=(-10, 10),
                  pdp_marker_size=2, slope_line_alpha=.5, n_trials=1)
 
@@ -688,6 +664,7 @@ def weather():
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_catstratpd(X, y, 'state', 'temperature', catnames=catnames,
+                    show_x_counts=False,
                     min_samples_leaf=30,
                     # alpha=.3,
                     ax=ax,
@@ -696,12 +673,9 @@ def weather():
     ax.set_title("(b) StratPD")
     savefig(f"state_vs_temp_stratpd")
 
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
-    rf.fit(X, y)
-
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = predict_ice(rf, X, 'dayofyear', 'temperature')
-    plot_ice(ice, 'dayofyear', 'temperature', ax=ax, yrange=(-15, 15))
+    plot_ice(ice, 'dayofyear', 'temperature', ax=ax)
     ax.set_title("(c) PD/ICE")
     savefig(f"dayofyear_vs_temp_pdp")
 
@@ -709,7 +683,8 @@ def weather():
     ice = predict_catice(rf, X, 'state', 'temperature')
     plot_catice(ice, 'state', 'temperature', catnames=catnames, ax=ax,
                 pdp_marker_size=10,
-                yrange=(-2, 60))
+                # yrange=(-2, 60)
+                )
     ax.set_title("(c) PD/ICE")
     savefig(f"state_vs_temp_pdp")
 
@@ -724,7 +699,7 @@ def weather():
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ax.scatter(X['state'], y, alpha=.05, s=15)
-    ax.set_xticks([5,10,15,20])
+    ax.set_xticks(range(1,len(names)))
     ax.set_xticklabels(catnames.values())
     ax.set_xlabel("state")
     ax.set_ylabel("temperature")
@@ -739,10 +714,12 @@ def weather():
     co = avgtmp.query('state=="CO"')
     az = avgtmp.query('state=="AZ"')
     wa = avgtmp.query('state=="WA"')
+    nv = avgtmp.query('state=="NV"')
     ax.plot(ca['dayofyear'], ca['temperature'], lw=.5, c='#fdae61', label="CA")
     ax.plot(co['dayofyear'], co['temperature'], lw=.5, c='#225ea8', label="CO")
     ax.plot(az['dayofyear'], az['temperature'], lw=.5, c='#41b6c4', label="AZ")
     ax.plot(wa['dayofyear'], wa['temperature'], lw=.5, c='#a1dab4', label="WA")
+    ax.plot(nv['dayofyear'], nv['temperature'], lw=.5, c='#a1dab4', label="NV")
     ax.legend(loc='lower left', borderpad=0, labelspacing=0)
     ax.set_xlabel("dayofyear")
     ax.set_ylabel("temperature")
@@ -869,14 +846,14 @@ def weight():
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = predict_catice(rf, X, 'sex', 'weight')
-    plot_catice(ice, 'sex', 'weight', catnames=df_raw['sex'].unique(), ax=ax, yrange=(0, 30),
+    plot_catice(ice, 'sex', 'weight', catnames={0:'M',1:'F'}, ax=ax, yrange=(0, 30),
                 pdp_marker_size=15)
     ax.set_title("PD/ICE", fontsize=10)
     savefig(f"sex_vs_weight_pdp")
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = predict_catice(rf, X, 'pregnant', 'weight', cats=df_raw['pregnant'].unique())
-    plot_catice(ice, 'pregnant', 'weight', catnames=df_raw['pregnant'].unique(), ax=ax,
+    plot_catice(ice, 'pregnant', 'weight', catnames={0:'M',1:'F'}, ax=ax,
                 yrange=(-5, 35), pdp_marker_size=15)
     ax.set_title("PD/ICE", fontsize=10)
     savefig(f"pregnant_vs_weight_pdp")
@@ -1751,23 +1728,23 @@ def multi_joint_distr():
 
 if __name__ == '__main__':
     # FROM PAPER:
-    yearmade()
-    rent()
-    rent_ntrees()
-    unsup_rent()
-    unsup_boston()
-    weight()
-    shap_weight(feature_perturbation='tree_path_dependent', twin=True) # more biased but faster
-    shap_weight(feature_perturbation='interventional', twin=True) # takes 04:45 minutes
-    weight_ntrees()
-    unsup_weight()
-    meta_weight()
+    # yearmade()
+    # rent()
+    # rent_ntrees()
+    # unsup_rent()
+    # unsup_boston()
+    # weight()
+    # shap_weight(feature_perturbation='tree_path_dependent', twin=True) # more biased but faster
+    # shap_weight(feature_perturbation='interventional', twin=True) # takes 04:45 minutes
+    # weight_ntrees()
+    # unsup_weight()
+    # meta_weight()
     weather()
-    meta_weather()
-    additivity()
-    meta_additivity()
-    bigX()
-    multi_joint_distr()
+    # meta_weather()
+    # additivity()
+    # meta_additivity()
+    # bigX()
+    # multi_joint_distr()
 
     # EXTRA GOODIES
     # meta_boston()
