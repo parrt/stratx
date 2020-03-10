@@ -604,16 +604,27 @@ def unsup_rent():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     X, y = load_rent(n=10_000)
 
-    fig, axes = plt.subplots(3, 2, figsize=(4, 6))
+    fig, axes = plt.subplots(4, 2, figsize=(4, 8))
 
-    plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 0], yrange=(-500,4000), slope_line_alpha=.2, supervised=False)
-    plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 1], yrange=(-500,4000), slope_line_alpha=.2, supervised=True)
+    plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 0], yrange=(-500,4000),
+                 slope_line_alpha=.2, supervised=False)
+    plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 1], yrange=(-500,4000),
+                 slope_line_alpha=.2, supervised=True)
 
-    plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 0], yrange=(-500,4000), slope_line_alpha=.2, supervised=False)
-    plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 1], yrange=(-500,4000), slope_line_alpha=.2, supervised=True)
+    plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 0], yrange=(-500,4000),
+                 slope_line_alpha=.2, supervised=False)
+    plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 1], yrange=(-500,4000),
+                 slope_line_alpha=.2, supervised=True)
 
-    plot_stratpd(X, y, 'latitude', 'price', ax=axes[2, 0], yrange=(-500,4000), slope_line_alpha=.2, supervised=False)
-    plot_stratpd(X, y, 'latitude', 'price', ax=axes[2, 1], yrange=(-500,4000), slope_line_alpha=.2, supervised=True)
+    plot_stratpd(X, y, 'latitude', 'price', ax=axes[2, 0], yrange=(-500,2000),
+                 slope_line_alpha=.2, supervised=False, verbose=True)
+    plot_stratpd(X, y, 'latitude', 'price', ax=axes[2, 1], yrange=(-500,2000),
+                 slope_line_alpha=.2, supervised=True, verbose=True)
+
+    plot_stratpd(X, y, 'longitude', 'price', ax=axes[3, 0], yrange=(-500,500),
+                 slope_line_alpha=.2, supervised=False)
+    plot_stratpd(X, y, 'longitude', 'price', ax=axes[3, 1], yrange=(-500,500),
+                 slope_line_alpha=.2, supervised=True)
 
     axes[0, 0].set_title("Unsupervised")
     axes[0, 1].set_title("Supervised")
@@ -1030,9 +1041,33 @@ def yearmade():
     savefig(f"bulldozer_YearMade_pdp")
 
 
+def unsup_yearmade():
+    n = 10_000
+    X, y = load_bulldozer(n=n)
+
+    fig, ax = plt.subplots(1, 1, figsize=(3.8,3.2))
+    plot_stratpd(X, y, colname='YearMade', targetname='SalePrice',
+                 n_trials=1,
+                 bootstrap=True,
+                 show_slope_lines=False,
+                 show_x_counts=True,
+                 show_xlabel=False,
+                 show_impact=False,
+                 pdp_marker_size=4,
+                 pdp_marker_alpha=1,
+                 ax=ax,
+                 supervised=False
+                 )
+    ax.set_title("Unsupervised StratPD", fontsize=13)
+    ax.set_xlabel("YearMade", fontsize=11)
+    ax.set_xlim(1960,2010)
+    ax.set_ylim(-10000,30_000)
+    savefig(f"bulldozer_YearMade_stratpd_unsup")
+
+
 def unsup_weight():
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_raw = toy_weight_data(2000)
+    X, y, df_raw, eqn = toy_weight_data(2000)
     df = df_raw.copy()
     catencoders = df_string_to_cat(df)
     df_cat_to_catcode(df)
@@ -1042,16 +1077,20 @@ def unsup_weight():
 
     fig, axes = plt.subplots(2, 2, figsize=(4, 4))
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 0],
-                 yrange=(-12, 0), slope_line_alpha=.1, supervised=False)
+                 show_x_counts=False,
+                 yrange=(-13, 0), slope_line_alpha=.1, supervised=False)
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 1],
-                 yrange=(-12, 0), slope_line_alpha=.1, supervised=True)
+                 show_x_counts=False,
+                 yrange=(-13, 0), slope_line_alpha=.1, supervised=True)
 
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 0],
+                    show_x_counts=False,
                     catnames=df_raw['pregnant'].unique(),
-                    yrange=(-5, 35))
+                    yrange=(-5, 45))
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 1],
+                    show_x_counts=False,
                     catnames=df_raw['pregnant'].unique(),
-                    yrange=(-5, 35))
+                    yrange=(-5, 45))
 
     axes[0, 0].set_title("Unsupervised")
     axes[0, 1].set_title("Supervised")
@@ -1065,7 +1104,7 @@ def unsup_weight():
 
 def weight_ntrees():
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_raw = toy_weight_data(1000)
+    X, y, df_raw, eqn = toy_weight_data(1000)
     df = df_raw.copy()
     catencoders = df_string_to_cat(df)
     df_cat_to_catcode(df)
@@ -1123,7 +1162,7 @@ def weight_ntrees():
 
 def meta_weight():
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_raw = toy_weight_data(1000)
+    X, y, df_raw, eqn = toy_weight_data(1000)
     df = df_raw.copy()
     catencoders = df_string_to_cat(df)
     df_cat_to_catcode(df)
@@ -1845,8 +1884,9 @@ def interactions():
 if __name__ == '__main__':
     # FROM PAPER:
     # interactions()
+    unsup_yearmade()
     # yearmade()
-    rent()
+    # rent()
     # rent_ntrees()
     # unsup_rent()
     # unsup_boston()

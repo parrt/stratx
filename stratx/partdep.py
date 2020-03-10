@@ -164,10 +164,10 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
         if verbose: print("USING UNSUPERVISED MODE")
         X_synth, y_synth = conjure_twoclass(X)
         rf = RandomForestClassifier(n_estimators=n_trees,
-                                   min_samples_leaf=int(min_samples_leaf * 2),  # there are 2x as many samples (X,X') so must double leaf size
-                                   bootstrap=bootstrap,
-                                   max_features=max_features,
-                                   oob_score=False)
+                                    min_samples_leaf=min_samples_leaf,
+                                    bootstrap=bootstrap,
+                                    max_features=max_features,
+                                    oob_score=False)
         rf.fit(X_synth.drop(colname, axis=1), y_synth)
 
     if verbose:
@@ -338,6 +338,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                                supervised=supervised,
                                verbose=verbose)
         ignored += ignored_
+        # print("ignored", ignored_, "pdpy", pdpy)
         all_pdpx.append(pdpx)
         all_pdpy.append(pdpy)
 
@@ -367,6 +368,9 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         ax.plot(pdpx, pdpy, lw=pdp_line_width, c=pdp_line_color)
 
     domain = (np.min(X[colname]), np.max(X[colname]))  # ignores any max(x) points as no slope info after that
+
+    if len(pdpy)==0:
+        raise ValueError("No partial dependence y values, often due to value of min_samples_leaf that is too small")
 
     min_y = min(pdpy)
     max_y = max(pdpy)
@@ -986,8 +990,7 @@ def cat_partial_dependence(X, y,
         print("USING UNSUPERVISED MODE")
         X_synth, y_synth = conjure_twoclass(X)
         rf = RandomForestClassifier(n_estimators=n_trees,
-                                    min_samples_leaf=min_samples_leaf * 2,
-                                    # there are 2x as many samples (X,X') so must double leaf size
+                                    min_samples_leaf=min_samples_leaf,# * 2, # there are 2x as many samples (X,X') so must double leaf size
                                     bootstrap=bootstrap,
                                     max_features=max_features,
                                     oob_score=False)
@@ -1634,6 +1637,7 @@ def df_scramble(X : pd.DataFrame) -> pd.DataFrame:
     """
     X_rand = X.copy()
     for colname in X:
+        # X_rand[colname] = np.random.choice(X[colname], len(X), replace=True)
         X_rand[colname] = X_rand[colname].sample(frac=1.0)
     return X_rand
 
