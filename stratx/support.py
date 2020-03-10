@@ -219,8 +219,6 @@ def load_bulldozer(n):
            'MachineHours'] = np.nan
     fix_missing_num(df, 'MachineHours')
 
-    # df.loc[df.YearMade < 1950, 'YearMade'] = np.nan
-    # fix_missing_num(df, 'YearMade')
     df = df.loc[df.YearMade > 1950].copy()
     df_split_dates(df, 'saledate')
     df['age'] = df['saleyear'] - df['YearMade']

@@ -18,11 +18,11 @@ rf_predict <- function(X.model, newdata) {
 }
 
 # Fit RandomForest model to bulldozer data -------------------------------------------------
-rf_bd <- randomForest(X, y, ntree=100, nodesize=5, mtry=14) # hyperparams found using gridsearch
+rf_bd <- randomForest(X, y, ntree=150, nodesize=1, mtry=13) # hyperparams found using gridsearch
 
 # Make plots -----------------------------------------------------------------------------
 make_plots <- function(X, features=names(X), intervals=rep(100, length(features)),
-                       base_filename='bulldozer_', width=5, height=5) {
+                       base_filename='images/bulldozer_', width=5, height=5) {
   # Generate ALE plots for the specified variables and save each plot to PDF
   # Saves PDF to current working directory.
   #

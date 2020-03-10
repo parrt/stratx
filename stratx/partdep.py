@@ -234,7 +234,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  n_trials=1, # how many pd curves to show (subsampling by 2/3 to get diff X sets)
                  n_trees=1,
                  min_samples_leaf=10,
-                 bootstrap=False,
+                 bootstrap=False, # used for both RF and n_trials>1 sampling
                  subsample_size=.75,
                  max_features=1.0,
                  supervised=True,
@@ -357,7 +357,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         for i in range(n_trials):
             ax.plot(all_pdpx[sorted_by_imp[i]], all_pdpy[sorted_by_imp[i]],
                     '.', markersize=pdp_marker_size, alpha=pdp_marker_alpha)
-        avg_pdp_marker_size += 1
+        avg_pdp_marker_size += 2
 
     # Get avg curve, reset pdpx and pdpy to the average
     pdpx, pdpy = avg_pd_curve(all_pdpx, all_pdpy)

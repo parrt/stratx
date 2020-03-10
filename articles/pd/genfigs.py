@@ -51,7 +51,10 @@ from stratx.ice import *
 import inspect
 import statsmodels.api as sm
 
+import shap
 import xgboost as xgb
+
+np.random.seed(1)  # pick seed for reproducible article images
 
 # This genfigs.py code is just demonstration code to generate figures for the paper.
 # There are lots of programming sins committed here; to not take this to be
@@ -98,8 +101,9 @@ def fix_missing_num(df, colname):
 
 def savefig(filename, pad=0):
     plt.tight_layout(pad=pad, w_pad=0, h_pad=0)
-    # plt.savefig(f"images/{filename}.pdf")
-    plt.savefig(f"images/{filename}.png", dpi=150)
+    plt.savefig(f"images/{filename}.pdf",
+                bbox_inches="tight", pad_inches=0)
+    # plt.savefig(f"images/{filename}.png", dpi=150)
 
     plt.tight_layout()
     plt.show()
@@ -129,69 +133,6 @@ def toy_weight_data(n):
     return df
 
 
-'''
-def load_bulldozer():
-    """
-    Download Train.csv data from https://www.kaggle.com/c/bluebook-for-bulldozers/data
-    and save in data subdir
-    """
-    if os.path.exists("data/bulldozer-train-all.feather"):
-        print("Loading cached version...")
-        df = pd.read_feather("data/bulldozer-train-all.feather")
-    else:
-        dtypes = {col: str for col in
-                  ['fiModelSeries', 'Coupler_System', 'Grouser_Tracks', 'Hydraulics_Flow']}
-        df = pd.read_csv('data/Train.csv', dtype=dtypes, parse_dates=['saledate'])  # 35s load
-        df = df.sort_values('saledate')
-        df = df.reset_index(drop=True)
-        df.to_feather("data/bulldozer-train-all.feather")
-
-    df['MachineHours'] = df['MachineHoursCurrentMeter']  # shorten name
-    df.loc[df.eval("MachineHours==0"),
-           'MachineHours'] = np.nan
-    fix_missing_num(df, 'MachineHours')
-
-    # df.loc[df.YearMade < 1950, 'YearMade'] = np.nan
-    # fix_missing_num(df, 'YearMade')
-    df = df.loc[df.YearMade > 1950].copy()
-    df_split_dates(df, 'saledate')
-    df['age'] = df['saleyear'] - df['YearMade']
-    df['YearMade'] = df['YearMade'].astype(int)
-    sizes = {None: 0, 'Mini': 1, 'Compact': 1, 'Small': 2, 'Medium': 3,
-             'Large / Medium': 4, 'Large': 5}
-    df['ProductSize'] = df['ProductSize'].map(sizes).values
-
-    df['Enclosure'] = df['Enclosure'].replace('EROPS w AC', 'EROPS AC')
-    df['Enclosure'] = df['Enclosure'].replace('None or Unspecified', np.nan)
-    df['Enclosure'] = df['Enclosure'].replace('NO ROPS', np.nan)
-    df['AC'] = df['Enclosure'].fillna('').str.contains('AC')
-    df['AC'] = df['AC'].astype(int)
-    # print(df.columns)
-
-    # del df['SalesID']  # unique sales ID so not generalizer (OLS clearly overfits)
-    # delete MachineID as it has inconsistencies and errors per Kaggle
-
-    basefeatures = ['ModelID',
-                    'datasource', 'YearMade',
-                    # some missing values but use anyway:
-                    'auctioneerID',
-                    'MachineHours'
-                    ]
-    X = df[basefeatures+
-           [
-            'age',
-            'AC',
-            'ProductSize',
-            'MachineHours_na',
-            'saleyear', 'salemonth', 'saleday', 'saledayofweek', 'saledayofyear']
-           ]
-
-    X = X.fillna(0)  # flip missing numeric values to zeros
-    y = df['SalePrice']
-    return X, y
-'''
-
-
 def rent():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     X,y = load_rent(n=10_000)
@@ -210,20 +151,7 @@ def rent():
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
     if TUNE_RF:
-        tuned_parameters = {'n_estimators': [50, 100, 125, 150, 200],
-                            'min_samples_leaf': [1, 3, 5, 7],
-                            'max_features': [.1, .3, .5, .7, .9]}
-        grid = GridSearchCV(
-            RandomForestRegressor(), tuned_parameters, scoring='r2',
-            cv=5,
-            n_jobs=-1
-            # verbose=2
-        )
-        grid.fit(X, y)  # does CV on entire data set
-        rf = grid.best_estimator_
-        print("RF best:", grid.best_params_)
-        rf.fit(X_train, y_train)
-        print("validation R^2", rf.score(X_test, y_test))
+        rf, bestparams = tune_RF(X, y)
         # bedrooms
         # RF best: {'max_features': 0.3, 'min_samples_leaf': 1, 'n_estimators': 125}
         # validation R^2 0.7873724127323822
@@ -231,10 +159,10 @@ def rent():
         # RF best: {'max_features': 0.3, 'min_samples_leaf': 1, 'n_estimators': 150}
         # validation R^2 0.7797272189776407
     else:
-        rf = RandomForestRegressor(n_estimators=150, min_samples_leaf=1, max_features=.3)
-        rf.fit(X_train, y_train)
-        print("RF validation R^2", rf.score(X_test, y_test))
-        rf.fit(X, y) # Use full data set for drawing
+        rf = RandomForestRegressor(n_estimators=150, min_samples_leaf=1, max_features=.3,
+                                   oob_score=True)
+        rf.fit(X, y) # Use full data set for plotting
+        print("RF OOB R^2", rf.oob_score_)
 
     if TUNE_XGB:
         tuned_parameters = {'n_estimators': [50, 100, 150, 200, 250],
@@ -260,7 +188,7 @@ def rent():
         b = xgb.XGBRegressor(n_estimators=250, max_depth=9)
         b.fit(X_train, y_train)
         print("XGB validation R^2", b.score(X_test, y_test))
-        b.fit(X, y)  # Use full data set for drawing
+        b.fit(X, y)  # Use full data set for plotting
 
     '''
     if TUNE_SVM:
@@ -329,6 +257,27 @@ def rent():
     savefig(f"{colname}_vs_price")
 
 
+def tune_RF(X, y, verbose=2):
+    tuned_parameters = {'n_estimators': [50, 100, 125, 150, 200],
+                        'min_samples_leaf': [1, 3, 5, 7],
+                        'max_features': [.1, .3, .5, .7, .9]}
+    grid = GridSearchCV(
+        RandomForestRegressor(), tuned_parameters, scoring='r2',
+        cv=5,
+        n_jobs=-1,
+        verbose=verbose
+    )
+    grid.fit(X, y)  # does CV on entire data set
+    rf = grid.best_estimator_
+    print("RF best:", grid.best_params_)
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    rf.fit(X_train, y_train)
+    print("validation R^2", rf.score(X_test, y_test))
+    return rf, grid.best_params_
+
+
+'''
 def rent_grid():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     df_rent = load_rent()
@@ -395,7 +344,7 @@ def rent_alone():
 
     savefig(f"rent_all")
     plt.close()
-
+'''
 
 def plot_with_noise_col(df, colname):
     features = ['bedrooms', 'bathrooms', 'latitude', 'longitude']
@@ -548,39 +497,9 @@ def plot_with_dup_col(df, colname, min_samples_leaf):
     axes[0, 1].get_xaxis().set_visible(False)
 
 
-def rent_extra_cols():
-    print(f"----------- {inspect.stack()[0][3]} -----------")
-
-    df_rent = load_rent()
-    df_rent = df_rent[-10_000:]  # get a small subsample
-
-    colname = 'bedrooms'
-    print(f"Range of {colname}: {min(df_rent[colname]), max(df_rent[colname])}")
-    plot_with_dup_col(df_rent, colname, min_samples_leaf=10)
-    savefig(f"{colname}_vs_price_dup")
-
-    plot_with_noise_col(df_rent, colname)
-    savefig(f"{colname}_vs_price_noise")
-
-    colname = 'bathrooms'
-    print(f"Range of {colname}: {min(df_rent[colname]), max(df_rent[colname])}")
-    plot_with_dup_col(df_rent, colname, min_samples_leaf=10)
-    savefig(f"{colname}_vs_price_dup")
-
-    colname = 'bathrooms'
-    plot_with_noise_col(df_rent, colname)
-    savefig(f"{colname}_vs_price_noise")
-
-
 def rent_ntrees():
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_rent = load_rent()
-    df_rent = df_rent[-10_000:]  # get a small subsample
-    X = df_rent.drop('price', axis=1)
-    y = df_rent['price']
-
-    X = df_rent.drop('price', axis=1)
-    y = df_rent['price']
+    X, y = load_rent(n=10_000)
 
     trees = [1, 5, 10, 30]
 
@@ -680,11 +599,7 @@ def plot_meta_multivar(X, y, colnames, targetname, nbins, yranges=None):
 
 def unsup_rent():
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_rent = load_rent()
-    df_rent = df_rent[-10_000:]
-
-    X = df_rent.drop('price', axis=1)
-    y = df_rent['price']
+    X, y = load_rent(n=10_000)
 
     fig, axes = plt.subplots(3, 2, figsize=(4, 6))
 
@@ -888,6 +803,8 @@ def weight():
     y = df['weight']
     figsize = (2.5, 2.5)
 
+    TUNE_RF = False
+
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'education', 'weight', ax=ax,
                  show_x_counts=False,
@@ -926,8 +843,14 @@ def weight():
     ax.set_title("StratPD", fontsize=10)
     savefig(f"pregnant_vs_weight_stratpd")
 
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
-    rf.fit(X, y)
+    if TUNE_RF:
+        rf, bestparams = tune_RF(X, y)
+        # RF best: {'max_features': 0.9, 'min_samples_leaf': 1, 'n_estimators': 200}
+        # validation R^2 0.9996343699640691
+    else:
+        rf = RandomForestRegressor(n_estimators=200, min_samples_leaf=1, max_features=0.9, oob_score=True)
+        rf.fit(X, y) # Use full data set for plotting
+        print("RF OOB R^2", rf.oob_score_)
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = predict_ice(rf, X, 'education', 'weight')
@@ -957,6 +880,175 @@ def weight():
                 yrange=(-5, 35), pdp_marker_size=15)
     ax.set_title("PD/ICE", fontsize=10)
     savefig(f"pregnant_vs_weight_pdp")
+
+
+def shap_weight(feature_perturbation, twin=False):
+    n = 2000
+    shap_test_size = 2000
+    df_raw = toy_weight_data(n=n)
+    df = df_raw.copy()
+    df_string_to_cat(df)
+    df_cat_to_catcode(df)
+    df['pregnant'] = df['pregnant'].astype(int)
+    X = df.drop('weight', axis=1)
+    y = df['weight']
+    figsize = (2.5, 2.5)
+
+    # parameters from tune_RF() called in rent()
+    rf = RandomForestRegressor(n_estimators=200, min_samples_leaf=1,
+                               max_features=0.9,
+                               oob_score=True)
+    rf.fit(X, y)  # Use full data set for plotting
+    print("RF OOB R^2", rf.oob_score_)
+
+    if feature_perturbation=='interventional':
+        explainer = shap.TreeExplainer(rf, data=shap.sample(X, 500), feature_perturbation='interventional')
+        xlabel = "height\n(b)"
+    else:
+        explainer = shap.TreeExplainer(rf, feature_perturbation='tree_path_dependent')
+        xlabel = "height\n(a)"
+    shap_sample = X[:shap_test_size]
+    shap_values = explainer.shap_values(shap_sample, check_additivity=False)
+
+    GREY = '#444443'
+    fig, ax = plt.subplots(1, 1, figsize=(3.8,3.2))
+
+    shap.dependence_plot("height", shap_values, shap_sample,
+                         interaction_index=None, ax=ax, dot_size=5,
+                         show=False, alpha=1)
+
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
+    ax.spines['right'].set_linewidth(.5)
+    ax.spines['top'].set_linewidth(.5)
+
+    ax.set_ylabel("Height (SHAP values)", fontsize=12)
+    ax.set_xlabel(xlabel, fontsize=12)
+    ax.tick_params(axis='both', which='major', labelsize=10)
+
+    ax.plot([70,70], [-75,75], '--', lw=.6, color=GREY)
+    ax.text(69.8,60, "Max female height", horizontalalignment='right',
+            fontsize=9)
+
+    leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored = \
+        partial_dependence(X=X, y=y, colname='height')
+
+    ax.set_ylim(-77,75)
+    # ax.set_xlim(min(pdpx), max(pdpx))
+    ax.set_xticks([60,65,70,75])
+    ax.set_yticks([-75,-60,-40,-20,0,20,40,60,75])
+
+    ax.set_title(f"SHAP {feature_perturbation}", fontsize=12)
+    # ax.set_ylim(-40,70)
+
+    print(min(pdpx), max(pdpx))
+    print(min(pdpy), max(pdpy))
+    rise = max(pdpy) - min(pdpy)
+    run = max(pdpx) - min(pdpx)
+    slope = rise/run
+    print(slope)
+    # ax.plot([min(pdpx),max(pdpyX['height'])], [0,]
+
+    if twin:
+        ax2 = ax.twinx()
+        # ax2.set_xlim(min(pdpx), max(pdpx))
+        ax2.set_ylim(min(pdpy)-5, max(pdpy)+5)
+        ax2.set_xticks([60,65,70,75])
+        ax2.set_yticks([0,20,40,60,80,100,120,140,150])
+        ax2.set_ylabel("weight", fontsize=12)
+
+        ax2.plot(pdpx, pdpy, '.', markersize=1, c='k')
+        # ax2.text(65,25, f"StratPD slope = {slope:.1f}")
+        ax2.annotate(f"StratPD (slope={slope:.1f})", (64.65,39), xytext=(66,18),
+                     horizontalalignment='left',
+                     arrowprops=dict(facecolor='black', width=.5, headwidth=5, headlength=5),
+                     fontsize=9)
+
+    savefig(f"weight_{feature_perturbation}_shap")
+
+
+def yearmade():
+    n = 10_000
+    shap_test_size = 1000
+    TUNE_RF = False
+
+    X, y = load_bulldozer(n=n)
+
+    fig, ax = plt.subplots(1, 1, figsize=(3.8, 3.2))
+    ax.scatter(X['YearMade'], y, s=3, alpha=.1, c='#1E88E5')
+    ax.set_xlim(1960,2010)
+    ax.set_xlabel("YearMade\n(a)", fontsize=11)
+    ax.set_ylabel("SalePrice ($)", fontsize=11)
+    ax.set_title("Marginal plot", fontsize=13)
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
+    ax.spines['top'].set_color('none')
+    ax.spines['right'].set_color('none')
+    ax.spines['left'].set_smart_bounds(True)
+    ax.spines['bottom'].set_smart_bounds(True)
+    savefig(f"bulldozer_YearMade_marginal")
+
+    if TUNE_RF:
+        rf, _ = tune_RF(X, y)
+        # RF best: {'max_features': 0.9, 'min_samples_leaf': 1, 'n_estimators': 150}
+        # validation R^2 0.8001628465688546
+    else:
+        rf = RandomForestRegressor(n_estimators=150, n_jobs=-1,
+                                   max_features=0.9,
+                                   min_samples_leaf=1, oob_score=True)
+        rf.fit(X, y)
+        print("RF OOB R^2", rf.oob_score_)
+
+    explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100),
+                                   feature_perturbation='interventional')
+    shap_values = explainer.shap_values(X.sample(n=shap_test_size),
+                                        check_additivity=False)
+
+    fig, ax = plt.subplots(1, 1, figsize=(3.8, 3.2))
+    shap.dependence_plot("YearMade", shap_values, X.sample(n=shap_test_size),
+                         interaction_index=None, ax=ax, dot_size=5,
+                         show=False, alpha=.5)
+
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
+    ax.spines['top'].set_color('none')
+    ax.spines['right'].set_color('none')
+    ax.spines['left'].set_smart_bounds(True)
+    ax.spines['bottom'].set_smart_bounds(True)
+
+    ax.set_title("SHAP", fontsize=13)
+    ax.set_ylabel("Impact on SalePrice\n(YearMade SHAP)", fontsize=11)
+    ax.set_xlabel("YearMade\n(b)", fontsize=11)
+    ax.set_xlim(1960, 2010)
+    ax.tick_params(axis='both', which='major', labelsize=10)
+
+    savefig(f"bulldozer_YearMade_shap")
+
+    fig, ax = plt.subplots(1, 1, figsize=(3.8,3.2))
+    plot_stratpd(X, y, colname='YearMade', targetname='SalePrice',
+                 n_trials=10,
+                 bootstrap=True,
+                 show_slope_lines=False,
+                 show_x_counts=True,
+                 show_xlabel=False,
+                 show_impact=False,
+                 pdp_marker_size=4,
+                 pdp_marker_alpha=1,
+                 ax=ax
+                 )
+    ax.set_title("StratPD", fontsize=13)
+    ax.set_xlabel("YearMade\n(c)", fontsize=11)
+    ax.set_xlim(1960,2010)
+    ax.set_ylim(-10000,30_000)
+    savefig(f"bulldozer_YearMade_stratpd")
+
+    fig, ax = plt.subplots(1, 1, figsize=(3.8,3.2))
+    ice = predict_ice(rf, X, "YearMade", 'SalePrice', numx=30, nlines=100)
+    plot_ice(ice, "YearMade", 'SalePrice', alpha=.3, ax=ax, show_ylabel=True,
+             yrange=(-10000,30_000),
+             min_y_shifted_to_zero=True)
+    ax.set_xlim(1960, 2010)
+    savefig(f"bulldozer_YearMade_pdp")
 
 
 def unsup_weight():
@@ -1183,7 +1275,7 @@ def meta_additivity():
         axes[lastrow, col].set_xlabel("x2")
         col += 1
 
-    savefig(f"meta_additivity_noise", pad=.85)
+    savefig(f"meta_additivity_noise")
 
 
 def bigX_data(n):
@@ -1415,7 +1507,7 @@ def meta_cars():
 
     savefig("weight_meta")
 
-
+'''
 def bulldozer():  # warning: takes like 5 minutes to run
     print(f"----------- {inspect.stack()[0][3]} -----------")
 
@@ -1440,17 +1532,8 @@ def bulldozer():  # warning: takes like 5 minutes to run
         axes[row, 1].set_xlabel(colname)  # , fontsize=12)
         axes[row, 1].set_ylim(*yrange)
 
-    X, y = load_bulldozer()
-
-    # Most recent timeseries data is more relevant so get big recent chunk
-    # then we can sample from that to get n
-    X = X.iloc[-50_000:]
-    y = y.iloc[-50_000:]
-
     n = 10_000
-    idxs = resample(range(50_000), n_samples=n, replace=False, )
-    X, y = X.iloc[idxs], y.iloc[idxs]
-
+    X, y = load_bulldozer(n=n)
     print(f"Avg bulldozer price is {np.mean(y):.2f}$")
 
     fig, axes = plt.subplots(3, 3, figsize=(7, 6))
@@ -1516,7 +1599,7 @@ def bulldozer():  # warning: takes like 5 minutes to run
     savefig("bulldozer")
     # plt.tight_layout()
     # plt.show()
-
+'''
 
 def multi_joint_distr():
     print(f"----------- {inspect.stack()[0][3]} -----------")
@@ -1668,23 +1751,23 @@ def multi_joint_distr():
 
 if __name__ == '__main__':
     # FROM PAPER:
-    # bulldozer()
+    # yearmade()
     # rent()
-    # rent_grid()
     # rent_ntrees()
-    # rent_extra_cols()
-    # unsup_rent()
-    # unsup_boston()
+    unsup_rent()
+    unsup_boston()
     weight()
-    # weight_ntrees()
-    # unsup_weight()
-    # meta_weight()
-    # weather()
-    # meta_weather()
-    # additivity()
-    # meta_additivity()
-    # bigX()
-    # multi_joint_distr()
+    shap_weight(feature_perturbation='tree_path_dependent', twin=True) # more biased but faster
+    shap_weight(feature_perturbation='interventional', twin=True) # takes 04:45 minutes
+    weight_ntrees()
+    unsup_weight()
+    meta_weight()
+    weather()
+    meta_weather()
+    additivity()
+    meta_additivity()
+    bigX()
+    multi_joint_distr()
 
     # EXTRA GOODIES
     # meta_boston()
