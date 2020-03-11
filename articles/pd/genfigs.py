@@ -817,6 +817,7 @@ def weight():
                  yrange=(0, 160), show_ylabel=False)
     #    ax.get_yaxis().set_visible(False)
     ax.set_title("StratPD", fontsize=10)
+    ax.set_xticks([60,65,70,75])
     savefig(f"height_vs_weight_stratpd")
 
     fig, ax = plt.subplots(1, 1, figsize=(1.3,2))
@@ -854,12 +855,12 @@ def weight():
     ax.set_title("PD/ICE", fontsize=10)
     savefig(f"education_vs_weight_pdp")
 
-    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    fig, ax = plt.subplots(1, 1, figsize=(3.5, 3.2))
     ice = predict_ice(rf, X, 'height', 'weight')
     plot_ice(ice, 'height', 'weight', ax=ax, pdp_linewidth=2, yrange=(0, 160), min_y_shifted_to_zero=True)
     ax.set_xlabel("height\n(a)", fontsize=12)
     ax.set_title("PD/ICE", fontsize=10)
-    ax.set_title("PD/ICE", fontsize=10)
+    ax.set_xticks([60,65,70,75])
     savefig(f"height_vs_weight_pdp")
 
     fig, ax = plt.subplots(1, 1, figsize=(1.3,2))
@@ -1957,16 +1958,17 @@ def ale_height():
     df['f.values'] -= np.min(df['f.values'])
     print(df)
 
-    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    fig, ax = plt.subplots(1, 1, figsize=(3.5,3.2))
     ax.plot(df['x.values'],df['f.values'],'.',color='k',markersize=3)
     ax.set_ylim(-5,150)
     ax.set_yticks([0,20,40,60,80,100,120,140,150])
     ax.set_title("ALE", fontsize=13)
     ax.set_ylabel("Weight", fontsize=12)
     ax.set_xlabel("Height\n(d)", fontsize=12)
+    ax.set_xticks([60,65,70,75])
     ax.tick_params(axis='both', which='major', labelsize=10)
-    ax.spines['right'].set_visible(False)
-    ax.spines['top'].set_visible(False)
+    # ax.spines['right'].set_visible(False)
+    # ax.spines['top'].set_visible(False)
     savefig('height_300_ale')
 
 
@@ -2017,7 +2019,7 @@ if __name__ == '__main__':
     # rent_ntrees()
     # unsup_rent()
     # unsup_boston()
-    weight()
+    # weight()
     # shap_pregnant()
     # shap_weight(feature_perturbation='tree_path_dependent', twin=True) # more biased but faster
     # shap_weight(feature_perturbation='interventional', twin=True) # takes 04:45 minutes
@@ -2034,8 +2036,8 @@ if __name__ == '__main__':
     # gen_ale_plot_data_in_R()
 
     # ale_yearmade()
-    # ale_height()
-    ale_pregnant()
+    ale_height()
+    # ale_pregnant()
     # ale_state()
 
     # EXTRA GOODIES
