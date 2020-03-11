@@ -1382,17 +1382,17 @@ def plot_catstratpd(X, y,
                     yrange=None,
                     title=None,
                     show_x_counts=True,
-                    pdp_marker_lw=1,
                     pdp_marker_size=6,
                     pdp_marker_alpha=.6,
-                    pdp_color='black',
+                    pdp_color='#A5D9B5',
                     fontname='Arial',
                     title_fontsize=11,
                     label_fontsize=10,
                     barchart_size=0.20,
                     barchar_alpha=0.9,
                     ticklabel_fontsize=10,
-                    min_y_shifted_to_zero=True,
+                    min_y_shifted_to_zero=False,
+                    leftmost_shifted_to_zero=True, # either this or min_y_shifted_to_zero can be true
                     # easier to read if values are relative to 0 (usually); do this for high cardinality cat vars
                     show_xlabel=True,
                     show_xticks=True,
@@ -1460,11 +1460,15 @@ def plot_catstratpd(X, y,
                                    bootstrap=False,
                                    verbose=verbose)
         impacts.append(np.nanmean(np.abs(avg_per_cat)))
-        if min_y_shifted_to_zero:
-            avg_per_cat -= np.nanmin(avg_per_cat)
         ignored += ignored_
         merge_ignored += merge_ignored_
         all_avg_per_cat.append( avg_per_cat )
+
+    all_avg_per_cat = np.array(all_avg_per_cat)
+    if leftmost_shifted_to_zero:
+        all_avg_per_cat -= all_avg_per_cat[np.isfinite(all_avg_per_cat)][0]
+    if min_y_shifted_to_zero:
+        all_avg_per_cat -= np.nanmin(all_avg_per_cat)
 
     ignored /= n_trials # average number of x values ignored across trials
     merge_ignored /= n_trials # average number of x values ignored across trials
@@ -1493,6 +1497,7 @@ def plot_catstratpd(X, y,
         ax.plot(range(len(uniq_catcodes)), all_avg_per_cat[i][uniq_catcodes], '.', c=mpl.colors.rgb2hex(colors[impact_order[i]]),
                 markersize=pdp_marker_size, alpha=pdp_marker_alpha)
 
+    '''
     # Show avg line
     segments = []
     for cat, delta in zip(range(len(uniq_catcodes)), combined_avg_per_cat[uniq_catcodes]):
@@ -1503,6 +1508,15 @@ def plot_catstratpd(X, y,
         # ax.plot(range(len(uniq_catcodes)), avg_delta, '.', c='k', markersize=pdp_marker_size + 1)
     lines = LineCollection(segments, alpha=pdp_marker_alpha, color=pdp_color, linewidths=pdp_marker_lw)
     ax.add_collection(lines)
+    '''
+
+    barcontainer = ax.bar(x=range(len(uniq_catcodes)),
+                          height=combined_avg_per_cat[uniq_catcodes],
+                          color=pdp_color)
+    # Alter appearance of each bar
+    for rect in barcontainer.patches:
+        rect.set_linewidth(.1)
+        rect.set_edgecolor('#444443')
 
     leave_room_scaler = 1.3
 
@@ -1555,6 +1569,11 @@ def plot_catstratpd(X, y,
         ax.set_xticks([])
         ax.set_xticklabels([])
 
+    ax.spines['left'].set_smart_bounds(True)
+    ax.spines['bottom'].set_smart_bounds(True)
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+
     if show_xlabel:
         label = colname
         if show_impact:
@@ -1571,8 +1590,6 @@ def plot_catstratpd(X, y,
     if title is not None:
         ax.set_title(title, fontsize=title_fontsize, fontname=fontname)
 
-    ax.spines['top'].set_linewidth(.5)
-    ax.spines['right'].set_linewidth(.5)
     ax.spines['left'].set_linewidth(.5)
     ax.spines['bottom'].set_linewidth(.5)
 

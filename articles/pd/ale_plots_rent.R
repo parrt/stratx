@@ -40,9 +40,12 @@ make_plots <- function(X, features=names(X), intervals=rep(100, length(features)
     col_idx <- which(names(X) %in% features[i])
     K <- intervals[i]
     filename <- paste0(base_filename, features[i], '_', K, '_ale.pdf')
-    pdf(file=filename, width=width, height=height)
-    message(paste0('Saving ', filename))
-    ALEPlot(X, rf_rent, pred.fun=rf_predict, J=col_idx, K=K)
+    #pdf(file=filename, width=width, height=height)
+    #message(paste0('Saving ', filename))
+    ale <- ALEPlot(X, rf_rent, pred.fun=rf_predict, J=col_idx, K=K)
+    filename <- paste0(base_filename, features[i], '_', K, '_ale.csv')
+    write.csv(ale, filename, row.names=FALSE)
+    message(paste0('Saved ', filename))
     dev.off()
   }
 }

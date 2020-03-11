@@ -22,9 +22,9 @@ from rfpimp import *
 from scipy.integrate import cumtrapz
 from stratx.partdep import *
 from stratx.ice import *
+from stratx.support import *
 import inspect
 import statsmodels.api as sm
-
 
 def df_string_to_cat(df: pd.DataFrame) -> dict:
     catencoders = {}
@@ -35,64 +35,28 @@ def df_string_to_cat(df: pd.DataFrame) -> dict:
     return catencoders
 
 
-def toy_weather_data():
-    def temp(x): return np.sin((x + 365 / 2) * (2 * np.pi) / 365)
-
-    def noise(state): return np.random.normal(-5, 5, sum(df['state'] == state))
-
-    df = pd.DataFrame()
-    df['dayofyear'] = range(1, 365 + 1)
-    df['state'] = np.random.choice(['CA', 'CO', 'AZ', 'WA'], len(df))
-    df['temperature'] = temp(df['dayofyear'])
-    df.loc[df['state'] == 'CA', 'temperature'] = 70 + df.loc[
-        df['state'] == 'CA', 'temperature'] * noise('CA')
-    df.loc[df['state'] == 'CO', 'temperature'] = 40 + df.loc[
-        df['state'] == 'CO', 'temperature'] * noise('CO')
-    df.loc[df['state'] == 'AZ', 'temperature'] = 90 + df.loc[
-        df['state'] == 'AZ', 'temperature'] * noise('AZ')
-    df.loc[df['state'] == 'WA', 'temperature'] = 60 + df.loc[
-        df['state'] == 'WA', 'temperature'] * noise('WA')
-    return df
-
 def weather():
-    df_yr1 = toy_weather_data()
-    df_yr1['year'] = 1980
-    df_yr2 = toy_weather_data()
-    df_yr2['year'] = 1981
-    df_yr3 = toy_weather_data()
-    df_yr3['year'] = 1982
-    df_raw = pd.concat([df_yr1, df_yr2, df_yr3], axis=0)
+    df_raw = toy_weather_data()
     df = df_raw.copy()
-    catencoders = df_string_to_cat(df_raw.copy())
-    # states = catencoders['state']
-    # print(states)
-    #
-    # df_cat_to_catcode(df)
 
-    names = {'CO': 5, 'CA': 10, 'AZ': 15, 'WA': 20}
-    df['state'] = df['state'].map(names)
+    df_string_to_cat(df)
+    names = np.unique(df['state'])
     catnames = OrderedDict()
-    for k,v in names.items():
-        catnames[v] = k
+    for i,v in enumerate(names):
+        catnames[i+1] = v
+    df_cat_to_catcode(df)
 
     X = df.drop('temperature', axis=1)
     y = df['temperature']
 
-    # leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored_ = \
-    #     partial_dependence(X=X, y=y, colname='dayofyear',
-    #                        verbose=True)
-
-    # print(pdpx)
-    # print(pdpy)
-
-
     plot_catstratpd(X, y, 'state', 'temperature', catnames=catnames,
                     # min_samples_leaf=30,
                     n_trials=1,
-                    min_y_shifted_to_zero=False,
+                    min_y_shifted_to_zero=True,
+                    # leftmost_shifted_to_zero=True,
                     show_x_counts=False,
                     bootstrap=True,
-                    #yrange=(-60, 60),
+                    yrange=(-1, 55),
                     figsize=(2.1,2.5)
                     )
 

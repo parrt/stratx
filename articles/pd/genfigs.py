@@ -52,11 +52,16 @@ from stratx.ice import *
 import inspect
 import statsmodels.api as sm
 import matplotlib.patches as mpatches
+import os
 
 import shap
 import xgboost as xgb
 
 np.random.seed(1)  # pick seed for reproducible article images
+
+figsize = (2.5, 2)
+figsize2 = (3.8, 3.2)
+
 
 # This genfigs.py code is just demonstration code to generate figures for the paper.
 # There are lots of programming sins committed here; to not take this to be
@@ -638,9 +643,7 @@ def unsup_rent():
 
 def weather():
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    TUNE_RF = True
-    figsize = (2.5, 2.5)
-
+    TUNE_RF = False
     df_raw = toy_weather_data()
     df = df_raw.copy()
 
@@ -678,12 +681,14 @@ def weather():
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_catstratpd(X, y, 'state', 'temperature', catnames=catnames,
                     show_x_counts=False,
-                    min_samples_leaf=30,
+                    # min_samples_leaf=30,
+                    min_y_shifted_to_zero=True,
                     # alpha=.3,
                     ax=ax,
-                    yrange=(-2, 60))
+                    yrange=(-1, 55))
+    ax.set_yticks([0,10,20,30,40,50])
 
-    ax.set_title("(b) StratPD")
+    ax.set_title("(d) CatStratPD")
     savefig(f"state_vs_temp_stratpd")
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
@@ -698,7 +703,7 @@ def weather():
                 pdp_marker_size=10,
                 # yrange=(-2, 60)
                 )
-    ax.set_title("(c) PD/ICE")
+    ax.set_title("(b) PD/ICE")
     savefig(f"state_vs_temp_pdp")
 
     # fig, ax = plt.subplots(1, 1, figsize=figsize)
@@ -791,7 +796,6 @@ def weight():
     df['pregnant'] = df['pregnant'].astype(int)
     X = df.drop('weight', axis=1)
     y = df['weight']
-    figsize = (2.5, 2.5)
 
     TUNE_RF = False
 
@@ -815,22 +819,22 @@ def weight():
     ax.set_title("StratPD", fontsize=10)
     savefig(f"height_vs_weight_stratpd")
 
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    fig, ax = plt.subplots(1, 1, figsize=(1.3,2))
     plot_catstratpd(X, y, 'sex', 'weight', ax=ax,
                     show_x_counts=False,
                     catnames={0:'M',1:'F'},
                     yrange=(-1, 35),
                     )
-    ax.set_title("StratPD", fontsize=10)
+    ax.set_title("CatStratPD", fontsize=10)
     savefig(f"sex_vs_weight_stratpd")
 
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    fig, ax = plt.subplots(1, 1, figsize=(1.5,2))
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=ax,
                     show_x_counts=False,
                     catnames={0:False, 1:True},
-                    yrange=(-5, 35),
+                    yrange=(-1, 45),
                     )
-    ax.set_title("StratPD", fontsize=10)
+    ax.set_title("CatStratPD", fontsize=10)
     savefig(f"pregnant_vs_weight_stratpd")
 
     if TUNE_RF:
@@ -850,26 +854,70 @@ def weight():
     ax.set_title("PD/ICE", fontsize=10)
     savefig(f"education_vs_weight_pdp")
 
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
     ice = predict_ice(rf, X, 'height', 'weight')
-    plot_ice(ice, 'height', 'weight', ax=ax, yrange=(0, 160), min_y_shifted_to_zero=True)
+    plot_ice(ice, 'height', 'weight', ax=ax, pdp_linewidth=2, yrange=(0, 160), min_y_shifted_to_zero=True)
+    ax.set_xlabel("height\n(a)", fontsize=12)
     ax.set_title("PD/ICE", fontsize=10)
     ax.set_title("PD/ICE", fontsize=10)
     savefig(f"height_vs_weight_pdp")
 
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    fig, ax = plt.subplots(1, 1, figsize=(1.3,2))
     ice = predict_catice(rf, X, 'sex', 'weight')
     plot_catice(ice, 'sex', 'weight', catnames={0:'M',1:'F'}, ax=ax, yrange=(0, 35),
                 pdp_marker_size=15)
     ax.set_title("PD/ICE", fontsize=10)
     savefig(f"sex_vs_weight_pdp")
 
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    fig, ax = plt.subplots(1, 1, figsize=(1.3,2))
     ice = predict_catice(rf, X, 'pregnant', 'weight', cats=df_raw['pregnant'].unique())
     plot_catice(ice, 'pregnant', 'weight', catnames={0:'M',1:'F'}, ax=ax,
-                yrange=(-5, 35), pdp_marker_size=15)
+                yrange=(-5, 45), pdp_marker_size=15)
     ax.set_title("PD/ICE", fontsize=10)
     savefig(f"pregnant_vs_weight_pdp")
+
+
+def shap_pregnant():
+    n = 2000
+    shap_test_size = 300
+    X, y, df_raw, eqn = toy_weight_data(n=n)
+    df = df_raw.copy()
+    df_string_to_cat(df)
+    df_cat_to_catcode(df)
+    df['pregnant'] = df['pregnant'].astype(int)
+    X = df.drop('weight', axis=1)
+    y = df['weight']
+
+    # parameters from tune_RF() called in weight()
+    rf = RandomForestRegressor(n_estimators=200, min_samples_leaf=1,
+                               max_features=0.9,
+                               oob_score=True)
+    rf.fit(X, y)  # Use full data set for plotting
+    print("RF OOB R^2", rf.oob_score_)
+
+    explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100),
+                                   feature_perturbation='interventional')
+    shap_sample = X.sample(shap_test_size, replace=False)
+    shap_values = explainer.shap_values(shap_sample, check_additivity=False)
+
+    GREY = '#444443'
+    fig, ax = plt.subplots(1, 1, figsize=(1.3,2))
+
+    preg_shap_values = shap_values[:, 1]
+    avg_not_preg_weight = np.mean(preg_shap_values[np.where(shap_sample['pregnant']==0)])
+    avg_preg_weight = np.mean(preg_shap_values[np.where(shap_sample['pregnant']==1)])
+    ax.bar([0, 1], [avg_not_preg_weight-avg_not_preg_weight, avg_preg_weight-avg_not_preg_weight],
+           color='#1E88E5')
+    ax.set_title("SHAP", fontsize=13)
+    ax.set_xlabel("pregnant")
+    ax.set_xticks([0,1])
+    ax.set_xticklabels(['False','True'])
+    ax.set_ylabel("weight")
+    ax.set_ylim(-1,45)
+    ax.set_yticks([0,10,20,30,40])
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    savefig('pregnant_vs_weight_shap')
 
 
 def shap_weight(feature_perturbation, twin=False):
@@ -882,9 +930,8 @@ def shap_weight(feature_perturbation, twin=False):
     df['pregnant'] = df['pregnant'].astype(int)
     X = df.drop('weight', axis=1)
     y = df['weight']
-    figsize = (2.5, 2.5)
 
-    # parameters from tune_RF() called in rent()
+    # parameters from tune_RF() called in weight()
     rf = RandomForestRegressor(n_estimators=200, min_samples_leaf=1,
                                max_features=0.9,
                                oob_score=True)
@@ -893,15 +940,15 @@ def shap_weight(feature_perturbation, twin=False):
 
     if feature_perturbation=='interventional':
         explainer = shap.TreeExplainer(rf, data=shap.sample(X, 500), feature_perturbation='interventional')
-        xlabel = "height\n(b)"
+        xlabel = "height\n(c)"
     else:
         explainer = shap.TreeExplainer(rf, feature_perturbation='tree_path_dependent')
-        xlabel = "height\n(a)"
+        xlabel = "height\n(b)"
     shap_sample = X[:shap_test_size]
     shap_values = explainer.shap_values(shap_sample, check_additivity=False)
 
     GREY = '#444443'
-    fig, ax = plt.subplots(1, 1, figsize=(3.8,3.2))
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
 
     shap.dependence_plot("height", shap_values, shap_sample,
                          interaction_index=None, ax=ax, dot_size=5,
@@ -961,10 +1008,9 @@ def yearmade():
     n = 10_000
     shap_test_size = 1000
     TUNE_RF = False
-
     X, y = load_bulldozer(n=n)
 
-    fig, ax = plt.subplots(1, 1, figsize=(3.8, 3.2))
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
     ax.scatter(X['YearMade'], y, s=3, alpha=.1, c='#1E88E5')
     ax.set_xlim(1960,2010)
     ax.set_xlabel("YearMade\n(a)", fontsize=11)
@@ -994,7 +1040,7 @@ def yearmade():
     shap_values = explainer.shap_values(X.sample(n=shap_test_size),
                                         check_additivity=False)
 
-    fig, ax = plt.subplots(1, 1, figsize=(3.8, 3.2))
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
     shap.dependence_plot("YearMade", shap_values, X.sample(n=shap_test_size),
                          interaction_index=None, ax=ax, dot_size=5,
                          show=False, alpha=.5)
@@ -1014,7 +1060,7 @@ def yearmade():
 
     savefig(f"bulldozer_YearMade_shap")
 
-    fig, ax = plt.subplots(1, 1, figsize=(3.8,3.2))
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
     plot_stratpd(X, y, colname='YearMade', targetname='SalePrice',
                  n_trials=10,
                  bootstrap=True,
@@ -1032,7 +1078,7 @@ def yearmade():
     ax.set_ylim(-10000,30_000)
     savefig(f"bulldozer_YearMade_stratpd")
 
-    fig, ax = plt.subplots(1, 1, figsize=(3.8,3.2))
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
     ice = predict_ice(rf, X, "YearMade", 'SalePrice', numx=30, nlines=100)
     plot_ice(ice, "YearMade", 'SalePrice', alpha=.3, ax=ax, show_ylabel=True,
              yrange=(-10000,30_000),
@@ -1045,7 +1091,7 @@ def unsup_yearmade():
     n = 10_000
     X, y = load_bulldozer(n=n)
 
-    fig, ax = plt.subplots(1, 1, figsize=(3.8,3.2))
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
     plot_stratpd(X, y, colname='YearMade', targetname='SalePrice',
                  n_trials=1,
                  bootstrap=True,
@@ -1881,16 +1927,98 @@ def interactions():
     savefig("interactions")
 
 
+def gen_ale_plot_data_in_R():
+    "Exec R and generate images/*.csv files.  Then plot with Python"
+    os.system("R CMD BATCH ale_plots_bulldozer.R")
+    os.system("R CMD BATCH ale_plots_rent.R")
+    os.system("R CMD BATCH ale_plots_weather.R")
+    os.system("R CMD BATCH ale_plots_weight.R")
+
+
+def ale_yearmade():
+    df = pd.read_csv("images/YearMade_400_ale.csv")
+    df['f.values'] -= np.min(df['f.values'])
+    print(df)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    ax.plot(df['x.values'],df['f.values'],'.',color='k',markersize=4)
+    ax.set_title("ALE", fontsize=13)
+    ax.set_ylabel("SalePrice", fontsize=11)
+    ax.set_xlabel("YearMade\n(c)", fontsize=11)
+    ax.set_xlim(1960, 2010)
+    ax.tick_params(axis='both', which='major', labelsize=10)
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    savefig('YearMade_400_ale')
+
+
+def ale_height():
+    df = pd.read_csv("images/height_300_ale.csv")
+    df['f.values'] -= np.min(df['f.values'])
+    print(df)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    ax.plot(df['x.values'],df['f.values'],'.',color='k',markersize=3)
+    ax.set_ylim(-5,150)
+    ax.set_yticks([0,20,40,60,80,100,120,140,150])
+    ax.set_title("ALE", fontsize=13)
+    ax.set_ylabel("Weight", fontsize=12)
+    ax.set_xlabel("Height\n(d)", fontsize=12)
+    ax.tick_params(axis='both', which='major', labelsize=10)
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    savefig('height_300_ale')
+
+
+def ale_state():
+    df = pd.read_csv("images/state_5_ale.csv")
+    df = df.sort_values(by="x.values")
+    df['f.values'] -= np.min(df['f.values'])
+    print(df)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    ax.bar(df['x.values'],df['f.values'],color='#BEBEBE')
+    ax.set_title("ALE", fontsize=13)
+    ax.set_xlabel("state")
+    ax.set_ylabel("temperature")
+    ax.set_title("(c) ALE")
+    ax.set_ylim(0,55)
+    ax.set_yticks([0,10,20,30,40,50])
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    savefig('state_5_ale')
+
+
+def ale_pregnant():
+    df = pd.read_csv("images/pregnant_300_ale.csv")
+    df['x.values'] = df['x.values'].map({0:"False",1:"True"})
+    df['f.values'] -= np.min(df['f.values'])
+    print(df)
+
+    fig, ax = plt.subplots(1, 1, figsize=(1.3,2))
+    ax.bar(df['x.values'],df['f.values'],color='#BEBEBE')
+    ax.set_title("ALE", fontsize=13)
+    ax.set_xlabel("pregnant")
+    ax.set_ylabel("weight")
+    ax.set_title("ALE")
+    ax.set_ylim(-1,45)
+    ax.set_yticks([0,10,20,30,40])
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    savefig('pregnant_2_ale')
+
+
 if __name__ == '__main__':
     # FROM PAPER:
     # interactions()
-    unsup_yearmade()
+    # unsup_yearmade()
     # yearmade()
     # rent()
     # rent_ntrees()
     # unsup_rent()
     # unsup_boston()
-    # weight()
+    weight()
+    # shap_pregnant()
     # shap_weight(feature_perturbation='tree_path_dependent', twin=True) # more biased but faster
     # shap_weight(feature_perturbation='interventional', twin=True) # takes 04:45 minutes
     # weight_ntrees()
@@ -1902,6 +2030,13 @@ if __name__ == '__main__':
     # meta_noise()
     # bigX()
     # multi_joint_distr()
+
+    # gen_ale_plot_data_in_R()
+
+    # ale_yearmade()
+    # ale_height()
+    ale_pregnant()
+    # ale_state()
 
     # EXTRA GOODIES
     # meta_boston()
