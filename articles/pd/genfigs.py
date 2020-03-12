@@ -33,6 +33,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression, Lasso
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.preprocessing import StandardScaler
 from sklearn.datasets import load_boston, load_iris, load_wine, load_digits, \
     load_breast_cancer, load_diabetes, fetch_mldata
 from matplotlib.collections import LineCollection
@@ -198,31 +199,10 @@ def rent():
         print("XGB validation R^2", b.score(X_test, y_test))
         b.fit(X, y)  # Use full data set for plotting
 
-    '''
-    if TUNE_SVM:
-        tuned_parameters = {'kernel': ['poly', 'linear'],
-                            'gamma': np.linspace(0.0004, 1, num=5),
-                            'C': [1e2,1e3,1e4,1e5,1e6,1e7,1e8]}
-        grid = GridSearchCV(svm.SVR(), cv=5, param_grid=tuned_parameters,
-                            n_jobs=-1, verbose=2)
-        grid.fit(X, y)
-        svr = grid.best_estimator_
-        print("SVM best:",grid.best_params_)
-        svr.fit(X_train, y_train)
-        print("SVM validation R^2", svr.score(X_test, y_test))
-    else:
-        # svr = svm.SVR(C=1e6, gamma='scale', kernel='poly')
-        # svr = svm.SVR(C=1e5, gamma='scale', kernel='linear')
-        svr = svm.SVR(C=1, gamma='scale', kernel='poly')
-        svr.fit(X_train, y_train)
-        print("SVM validation R^2", svr.score(X_test, y_test))
-        svr.fit(X, y) # Use full data set for drawing
-    '''
-
-    fig, axes = plt.subplots(1, 4, figsize=figsize, sharey=True)
+    fig, axes = plt.subplots(1, 5, figsize=figsize, sharey=True)
 
     axes[0].set_title("(a) Marginal", fontsize=10)
-    axes[0].set_xlim(0,8);
+    axes[0].set_xlim(0,8)
     axes[0].set_xticks(xticks)
 
     axes[1].set_title("(b) RF PD/ICE", fontsize=10)
@@ -233,6 +213,9 @@ def rent():
 
     axes[3].set_title("(d) OLS PD/ICE", fontsize=10)
     axes[3].set_xlim(0,8); axes[3].set_xticks(xticks)
+
+    axes[4].set_title("(e) Keras PD/ICE", fontsize=10)
+    axes[4].set_xlim(0,8); axes[4].set_xticks(xticks)
 
     avg_per_baths = df_rent.groupby(colname).mean()['price']
     axes[0].scatter(df_rent[colname], df_rent['price'], alpha=0.07,
@@ -261,6 +244,15 @@ def rent():
     ice = predict_ice(lm, X, colname, 'price', numx=30, nlines=100)
     plot_ice(ice, colname, 'price', alpha=.3, ax=axes[3], show_ylabel=True)
     # axes[3].set_ylim(-1000, 5000)
+
+    model = rent_deep_learning_model(X, y)
+    scaler = StandardScaler()
+    X_test = scaler.fit_transform(X_test)
+    y_pred = model.predict(X_test)
+    print("Keras validation R^2", r2_score(y_test, y_pred))
+    X = pd.DataFrame(scaler.fit_transform(X), columns=X.columns)
+    ice = predict_ice(model, X, 'bathrooms', 'price', numx=30, nlines=100)
+    plot_ice(ice, 'bathrooms', 'price', ax=axes[4], alpha=.3, show_ylabel=True)
 
     savefig(f"{colname}_vs_price")
 
@@ -1577,99 +1569,6 @@ def meta_cars():
 
     savefig("weight_meta")
 
-'''
-def bulldozer():  # warning: takes like 5 minutes to run
-    print(f"----------- {inspect.stack()[0][3]} -----------")
-
-    # np.random.seed(42)
-
-    def onecol(X, y, colname, axes, row, xrange, yrange):
-        axes[row, 0].scatter(X[colname], y, alpha=0.07, s=1)
-        axes[row, 0].set_ylabel("SalePrice")  # , fontsize=12)
-        axes[row, 0].set_xlabel(colname)  # , fontsize=12)
-
-        plot_stratpd(X, y, colname, 'SalePrice', ax=axes[row, 1], xrange=xrange,
-                     yrange=yrange, show_ylabel=False,
-                     verbose=False, slope_line_alpha=.07)
-
-        rf = RandomForestRegressor(n_estimators=20, min_samples_leaf=1, n_jobs=-1,
-                                   oob_score=True)
-        rf.fit(X, y)
-        print(f"{colname} PD/ICE: RF OOB R^2 {rf.oob_score_:.3f}, training R^2 {rf.score(X,y)}")
-        ice = predict_ice(rf, X, colname, 'SalePrice', numx=130, nlines=500)
-        plot_ice(ice, colname, 'SalePrice', alpha=.05, ax=axes[row, 2], show_ylabel=False,
-                 xrange=xrange, yrange=yrange)
-        axes[row, 1].set_xlabel(colname)  # , fontsize=12)
-        axes[row, 1].set_ylim(*yrange)
-
-    n = 10_000
-    X, y = load_bulldozer(n=n)
-    print(f"Avg bulldozer price is {np.mean(y):.2f}$")
-
-    fig, axes = plt.subplots(3, 3, figsize=(7, 6))
-
-    onecol(X, y, 'YearMade', axes, 0, xrange=(1960, 2012), yrange=(-1000, 60000))
-    onecol(X, y, 'MachineHours', axes, 1, xrange=(0, 35_000),
-           yrange=(-40_000, 40_000))
-
-    # show marginal plot sorted by model's sale price
-    sort_indexes = y.argsort()
-
-    modelids = X['ModelID'].values
-    sorted_modelids = modelids[sort_indexes]
-    sorted_ys = y.values[sort_indexes]
-    cats = modelids[sort_indexes]
-    ncats = len(cats)
-
-    axes[2, 0].set_xticks(range(1, ncats + 1))
-    axes[2, 0].set_xticklabels([])
-    # axes[2, 0].get_xaxis().set_visible(False)
-
-    xlocs = np.arange(1, ncats + 1)
-    axes[2, 0].scatter(xlocs, sorted_ys, alpha=0.2, s=2)  # , label="observation")
-    axes[2, 0].set_ylabel("SalePrice")  # , fontsize=12)
-    axes[2, 0].set_xlabel('ModelID')  # , fontsize=12)
-    axes[2, 0].tick_params(axis='x', which='both', bottom=False)
-
-    plot_catstratpd(X, y, 'ModelID', 'SalePrice',
-                    min_samples_leaf=5,
-                    ax=axes[2, 1],
-                    yrange=(0, 130000),
-                    show_ylabel=False,
-                    alpha=0.1,
-                    # style='strip',
-                    marker_size=3,
-                    show_xticks=False,
-                    verbose=False)
-
-    # plt.tight_layout()
-    # plt.show()
-    # return
-
-    rf = RandomForestRegressor(n_estimators=20, min_samples_leaf=1, oob_score=True,
-                               n_jobs=-1)
-    rf.fit(X, y)
-    print(
-        f"ModelID PD/ICE: RF OOB R^2 {rf.oob_score_:.3f}, training R^2 {rf.score(X, y)}")
-
-    # too slow to do all so get 1000
-    ucats = np.unique(X['ModelID'])
-    ucats = np.random.choice(ucats, size=1000, replace=False)
-    ice = predict_catice(rf, X, 'ModelID', 'SalePrice', cats=ucats)
-    plot_catice(ice, 'ModelID', targetname='SalePrice', catnames=ucats,
-                alpha=.05, ax=axes[2, 2], yrange=(0, 130000), show_ylabel=False,
-                marker_size=3,
-                sort='ascending',
-                show_xticks=False)
-
-    axes[0, 0].set_title("Marginal")
-    axes[0, 1].set_title("StratPD")
-    axes[0, 2].set_title("PD/ICE")
-
-    savefig("bulldozer")
-    # plt.tight_layout()
-    # plt.show()
-'''
 
 def multi_joint_distr():
     print(f"----------- {inspect.stack()[0][3]} -----------")
@@ -2010,12 +1909,75 @@ def ale_pregnant():
     savefig('pregnant_2_ale')
 
 
+def rent_deep_learning_model(X_raw=None, y_raw=None):
+    from keras import models, layers, callbacks, optimizers
+
+    if X_raw is None or y_raw is None:
+        X_raw,y_raw = load_rent(n=10_000)
+
+    X, y = X_raw.copy(), y_raw.copy()
+
+    # Normalize data
+    scaler = StandardScaler()
+    X = scaler.fit_transform(X)
+    # for colname in X.columns:
+    #     m = np.mean(X[colname])
+    #     sd = np.std(X[colname])
+    #     X[colname] = (X[colname]-m)/sd
+
+    #y = (y - np.mean(y))/np.std(y)
+
+    model = models.Sequential()
+    layer1 = 256
+    layer2 = 256
+    layer3 = 64
+    layer4 = 256
+    layer5 = 256
+    batch_size = 200
+    model.add(layers.Dense(layer1, input_dim=X.shape[1], activation='relu'))
+    model.add(layers.Dense(layer2, activation='relu'))
+    model.add(layers.Dense(layer3, activation='relu'))
+    model.add(layers.Dense(layer4, activation='relu'))
+    model.add(layers.Dense(layer5, activation='relu'))
+    model.add(layers.Dense(1))
+
+    opt = optimizers.Adam()#lr=1e-3, decay=1e-3 / 200)
+    model.compile(loss='mean_squared_error', optimizer=opt, metrics=['mae'])
+    # model.compile(loss='mean_absolute_error', optimizer=opt, metrics=['mae'])
+    # model.compile(loss='mean_absolute_percentage_error', optimizer=opt, metrics=['mae'])
+
+    callback = callbacks.EarlyStopping(monitor='val_loss', patience=10)
+    history = model.fit(X, y,
+                        epochs=400,
+                        validation_split=0.2,
+                        batch_size=batch_size,
+                        callbacks=[callback]
+                        )
+
+    if False: # Show training results
+        y_pred = model.predict(X)
+        y_pred *= np.std(y_raw)     # undo normalization on y
+        y_pred += np.mean(y_raw)
+        r2 = r2_score(y_raw, y_pred)
+        print("Keras training R^2", r2)
+        plt.ylabel("MAE")
+        plt.xlabel("epochs")
+
+        plt.plot(history.history['val_mae'], label='val_mae')
+        plt.plot(history.history['mae'], label='train_mae')
+        plt.title(f"batch_size {batch_size}, Layer1 {layer1}, Layer2 {layer2}, R^2 {r2:.3f}")
+        plt.legend()
+        plt.show()
+
+    return model
+
+
 if __name__ == '__main__':
     # FROM PAPER:
     # interactions()
     # unsup_yearmade()
     # yearmade()
-    # rent()
+    rent()
     # rent_ntrees()
     # unsup_rent()
     # unsup_boston()
@@ -2036,7 +1998,7 @@ if __name__ == '__main__':
     # gen_ale_plot_data_in_R()
 
     # ale_yearmade()
-    ale_height()
+    # ale_height()
     # ale_pregnant()
     # ale_state()
 
@@ -2045,3 +2007,5 @@ if __name__ == '__main__':
     # rent_alone()
     # cars()
     # meta_cars()
+
+    # rent_deep_learning_model()

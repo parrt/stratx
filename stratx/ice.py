@@ -156,7 +156,7 @@ def predict_ice(model, X:pd.DataFrame, colname:str, targetname="target", cats=No
     for v in linex:
         X[colname] = v
         y_pred = model.predict(X)
-        lines[1:, i] = y_pred
+        lines[1:, i] = y_pred.flatten()
         i += 1
     X[colname] = save
     columns = [f"predicted {targetname}\n{colname}={str(v)}"
