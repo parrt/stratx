@@ -57,8 +57,8 @@
 \newcommand{\spd}{\fontfamily{cmr}\textsc{\small StratPD}}
 \newcommand{\cspd}{\fontfamily{cmr}\textsc{\small CatStratPD}}
 \newcommand{\xnc}{${\bf X}_{\overline{c}}$}
-\newcommand{\xnj}{${\bf X}_{\overline{j}}$}
-%\newcommand{\xnj}{${\bf X}_{\texttt{\char`\\}j}$}
+%\newcommand{\xnj}{${\bf X}_{\overline{j}}$}
+\newcommand{\xnj}{${\bf X}_{\texttt{\char`\\}j}$}
 \newcommand{\xnC}{$x_{\overline{C}}$}
 
 %\setlist[enumerate]{itemsep=-1mm}
@@ -85,34 +85,50 @@ A Stratification Approach to Partial Dependence for Codependent Variables}
 
 \section{Introduction}
 
-Partial dependence, the isolated effect of a specific variable or variables on the response variable, $y$, is important to researchers and practitioners in many disparate fields such as medicine, business, and the social sciences. For example, in precision medicine, physicians are interested in the relationship between an individual's demographic or clinical features and their susceptibility to illness. Business analysts at a car manufacturer might need to know how changes in their supply chain affect defect rates. Climate scientists are interested in how different atmospheric carbon levels affect temperature.
+Partial dependence, the isolated effect of a specific variable or variables on the response variable, $y$, is important to researchers and practitioners in many disparate fields such as medicine, business, and the social sciences. For example, in medicine, physicians are interested in the relationship between an individual's demographics or clinical features and their susceptibility to illness. Business analysts at a car manufacturer might need to know how changes in their supply chain are affecting defect rates. Climate scientists are interested in how different atmospheric carbon levels affect temperature.
 
 For an explanatory matrix, $\bf X$, with a single variable, $x_1$, a plot of the $y$ against $x_1$ visualizes the marginal effect of feature $x_1$ on $y$ exactly. Given two or more features, one can similarly plot the marginal effects of each feature separately, however, the analysis is complicated by the interactions of the variables.   Variable interactions, codependencies between features, result in marginal plots that do not isolate the specific contribution of a feature of interest to the target. For example, a marginal plot of sex (male/female) against body weight would likely show that, on average, men are heavier than women. While true, men are also taller than women on average, which likely accounts for most of the difference in average weight. It is unlikely that two ``identical'' people, differing only in sex, would be appreciably different in weight.  
 
-Rather than looking directly at the data, there are several partial dependence techniques that interrogate fitted models provided by the user: Friedman's original partial dependence (FPD) \citet{PDP}, Individual Conditional Expectations (ICE) \citet{ICE}, Accumulated Local Effects (ALE) \citet{ALE}, and most recently SHAP \citet{shap}.  Model-based techniques dominate partial dependence research because interpreting the output of a fitted model  has several advantages. Models have a tendency to smooth over noise. Models act like analysis preprocessing steps, potentially reducing the computational burden on model-based partial dependence techniques; e.g., ALE is $O(n)$ for the $n$ records of $\bf X$.  Partial dependence techniques that interrogate models also provide insight into models themselves; i.e., how variables affect model behavior.  It is also true that, in many cases, a predictive model is the primary goal so creating a suitable model is not an extra burden.
+Rather than looking directly at the data, there are several partial dependence techniques that interrogate fitted models provided by the user: Friedman's original partial dependence (which we will denote FPD) \citet{PDP}, Individual Conditional Expectations (ICE) \citet{ICE}, Accumulated Local Effects (ALE) \citet{ALE}, and most recently SHAP \citet{shap}.  Model-based techniques dominate the partial dependence research literature because interpreting the output of a fitted model  has several advantages. Models have a tendency to smooth over noise. Models act like analysis preprocessing steps, potentially reducing the computational burden on model-based partial dependence techniques; e.g., ALE is $O(n)$ for the $n$ records of $\bf X$. Model-based techniques are typically model-agnostic, though for efficiency, some provide model-specific optimizations, as SHAP does. Partial dependence techniques that interrogate models also provide insight into the models themselves; i.e., how variables affect model behavior.  It is also true that, in some cases, a predictive model is the primary goal so creating a suitable model is not an extra burden.
 
-peer through the lens of a fitted model. As far as we can tell this is the only way it has been solved.
+Model-based techniques do have some disadvantages, however.   As we demonstrate in \secref{sec:experiments} using synthetic and real data sets, model-based techniques vary in their ability to tease apart the effect of codependent features on the response.  Also, recall that there are vast armies of business analysts and scientists at work that need to analyze data, in a manner akin to exploratory data analysis (EDA), that have no intention of creating a predictive model.  Either they have no need, perhaps needing only partial dependence plots, or they do not have the expertise to choose, tune, and assess models (or write software at all). 
 
-, although the techniques very in their accuracy in the presence of codependent features
-
-there are however several disadvantages to using a model. Many analysts do not need a predictive model nor would they know how to choose, tune, and assess a model. Could also be the case that a technique is not available in the desired deployment environment.  
-
-\begin{figure}[htbp]
+\begin{figure}
 \begin{center}
-\includegraphics[scale=0.5]{images/bathrooms_vs_price.pdf}
+\includegraphics[scale=0.61]{images/bathrooms_vs_price.pdf}
 \caption{\small Plots of bathrooms versus rent price using New York City apartment rent data. (a) marginal plot, (b) PD/ICE plot derived from random forest, (c) PD/ICE plot derived from gradient boosted machine, and (d) PD/ICE plot derived from ordinary least squares regression; sample size is 10,000 observations of \textasciitilde50k. The PD/ICE plots are  different for the same data set, depending on the chosen user model. X['bathrooms'].unique() shows (array([0. , 1. , 1.5, 2. , 2.5, 3. , 3.5, 4. ]),
- array([  54, 8151,  140, 1539,   39,   67,    3,    7])). \spd{} has missing last value, not enough data.}
+ array([  54, 8151,  140, 1539,   39,   67,    3,    7])). \spd{} has missing last value, not enough data. what are $R^2$ values. how tuned}
 \label{fig:baths_price}
 \end{center}
 \end{figure}
 
-For the same data applying the same technique but using different models, we get different answers, which calls into question the validity of the curves.  If we include the cost of cross validating grid search, particularly for deep learning, partial dependence can be expensive.  can be used as an EDA tool to help with choosing a model: a nonparametric technique could also inform which machine learning model to use if a model is desired.
+Even in the case where a machine learning practitioner is available to create a fitted model for the analyst, hazards exist. First, if a fitted model is unable to capture the relationship between features and $y$ accurately, for whatever reason, then partial dependence does not provide any useful information to the user.  To make interpretation more challenging, there is no definition of ``accurate enough.'' Second, given an accurate fitted model, business analysts and scientists are still peering at the data through the lens of the model, which can distort partial dependence curves. Separating visual artifacts of the model from real effects present in the data requires expertise in model behavior (and usually the implementation of model fitting algorithms). 
+
+Consider the combined FPD/ICE plots shown in \figref{fig:baths_price} derived from several models (random forest, gradient boosting, linear regression, deep learning) fitted to the same New York City rent data set \citet{rent}.  The subplots in \figref{fig:baths_price}(b)-(e)  present starkly different partial dependence relationships and it is unclear which, if any, is correct.  The marginal plot, (a), drawn directly from the data shows a roughly linear growth in price for a rise in the number of bathrooms, but this relationship is biased because of the dependence of bathrooms on other variables, such as the number of bedrooms. (Five bathroom, one bedroom apartments are unlikely.)  For real data sets with codependent features, the true relationship is unknown so it is hard to evaluate the correctness of the plots. (Humans are unreliable estimators, which is why we need data analysis algorithms in the first place.) Nonetheless, having the same algorithm, operating on the same data, give meaningfully different partial dependences is undesirable and makes one question their validity.
+
+Experts are often able to quickly recognize model artifacts, such as the stairstep phenomenon inherent to the decision tree-based methods in \figref{fig:baths_price}(b) and (c).  In this case, though, the stairstep is more accurate than the linear relationship in (d) and (e) because the number of bathrooms is discrete (except for ``half baths'').  The point is that techniques for partial dependence that interrogate models can be misleading, even for experts.
+
+In this paper, we propose a strategy, called {\textsc{strat}ified \textsc{p}artial \textsc{d}ependence} (\spd{}), that computes partial dependences directly from training data $({\bf X}, {\bf y})$, rather than through the predictions of a fitted model. \figref{fig:baths_price}(f) shows the partial dependence plot computed by \spd. We first define the idealized partial dependence as the integration over the partial derivative of $y$ with respect to the variable of interest for the smooth function that generated $({\bf X}, {\bf y})$. As that function is unknown, we estimate the partial derivatives from the data non-parametrically.  Colloquially, the approach examines changes in $y$ across $x_j$ while holding \xnj{} constant (\xnj{} indicates all variables except $x_j$).
+
+To estimate partial derivatives, \spd{} stratifies \xnj{} feature space  into disjoint regions of observations where all \xnj{} variables are approximately matched across the observations in that region. Within each \xnj{} region, any fluctuations in the response variable are likely due to the variable of interest, $x_j$.  Estimates of the partial derivative within a region are computed discretely via the changes in $y$ values between unique $x_j$ positions. The overall partial derivative at $x_j=z$ is the average of all slopes, found in any region, whose $x_j$ range spans $z$.  Stratification occurs through the use of a decision tree but only for the purpose of partitioning feature space; \spd{} never uses predictions from any model.
+
+The technique seems to isolate variables well and has linear behavior for numeric variables and mildly quadratic behavior for categorical variables in practice. The theoretical complexity is $O(n^2)$ like FPD.
+
+Model selection is never obvious and a nonparametric technique that could provide insight into the relationship between variables and the response would be a welcome aid to choosing an appropriate model.  
+
+in the end, increasing the range of available techniques allows users to choose according to their specific needs, what could even mundane characteristics that include availability of libraries in a particular language or deployment environment.
+
+cold start, counting execution time and number of hyper parameters. particularly deep learning
+
+what are our disadvantages:
+* we can't do bivariate predictors
+* no interaction effects
+* we need diff techniques for regr and classifiers
 
 The techniques differ in algorithm simplicity, performance, and ability to isolate codependent variables. a nonparametric technique could also inform which machine learning model to use if a model is desired.
 
-key is "all else being equal", which implies you don't want curves affected by other variables. Interaction plots are also very useful, such as ICE, but here our goal is the pure partial dependence curve. In the future, we hope to consider extracting interaction between variables like SHAP.
+The goal of this work is to characterize partial dependence in a way that (a) does not rely on, nor make predictions from, a user's model, and (b) does not presume mutually-independent features.
 
-we introduce an ideal definition of partial dependence that does not rely on predictions from a fitted model based upon partial derivatives and then estimate partial derivatives nonparametrically to get partial dependence. The technique seems to isolate variables well and has linear behavior for numeric variables and mildly quadratic behavior for categorical variables in practice. The theoretical complexity is $O(n^2)$ like FPD.
 
 SHAP is mean centered FPD for independent variables, proof in supplemental material.
 
@@ -144,7 +160,7 @@ ALE
 
 SHAP
 
-\section{Experimental results}
+\section{Experimental results}\label{sec:experiments}
 
 \begin{figure}[htbp]
 \begin{center}

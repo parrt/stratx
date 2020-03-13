@@ -252,6 +252,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  show_impact=False,
                  show_impact_dots=True,
                  show_impact_line=True,
+                 hide_top_right_axes=True,
                  pdp_marker_size=2,
                  pdp_marker_alpha=.5,
                  pdp_line_width=.5,
@@ -437,8 +438,9 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         ax2.spines['left'].set_linewidth(.5)
         ax2.spines['bottom'].set_linewidth(.5)
     else:
-        ax.spines['right'].set_visible(False)
-        ax.spines['top'].set_visible(False)
+        if hide_top_right_axes:
+            ax.spines['right'].set_visible(False)
+            ax.spines['top'].set_visible(False)
 
     if n_trials==1 and show_slope_counts:
         ax2 = ax.twinx()

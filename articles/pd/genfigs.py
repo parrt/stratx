@@ -109,8 +109,7 @@ def fix_missing_num(df, colname):
 
 def savefig(filename, pad=0):
     plt.tight_layout(pad=pad, w_pad=0, h_pad=0)
-    plt.savefig(f"images/{filename}.pdf",
-                bbox_inches="tight", pad_inches=0)
+    plt.savefig(f"images/{filename}.pdf", bbox_inches="tight", pad_inches=0)
     # plt.savefig(f"images/{filename}.png", dpi=150)
 
     plt.tight_layout()
@@ -196,24 +195,29 @@ def rent():
         print("XGB validation R^2", b.score(X_test, y_test))
         b.fit(X, y)  # Use full data set for plotting
 
-    fig, axes = plt.subplots(1, 6, figsize=(11, 1.8))#, sharey=True)
+    fig, axes = plt.subplots(1, 6, figsize=(10, 1.8),
+                             gridspec_kw = {'wspace':0.15})
 
     for i in range(len(axes)):
-        if i!=4:
-            axes[i].set_xlim(0-.3,4+.3)
+        axes[i].set_xlim(0-.3,4+.3)
         axes[i].set_xticks([0,1,2,3,4])
         axes[i].set_ylim(1800, 9000)
         axes[i].set_yticks([2000,4000,6000,8000])
 
+    axes[1].get_yaxis().set_visible(False)
+    axes[2].get_yaxis().set_visible(False)
+    axes[3].get_yaxis().set_visible(False)
+    axes[4].get_yaxis().set_visible(False)
+
     axes[0].set_title("(a) Marginal", fontsize=10)
 
-    axes[1].set_title("(b) RF PD/ICE", fontsize=10)
+    axes[1].set_title("(b) RF", fontsize=10)
 
-    axes[2].set_title("(c) XGBoost PD/ICE", fontsize=10)
+    axes[2].set_title("(c) XGBoost", fontsize=10)
 
-    axes[3].set_title("(d) OLS PD/ICE", fontsize=10)
+    axes[3].set_title("(d) OLS", fontsize=10)
 
-    axes[4].set_title("(e) Keras PD/ICE", fontsize=10)
+    axes[4].set_title("(e) Keras", fontsize=10)
 
     axes[5].set_title("(f) StratPD", fontsize=10)
 
@@ -255,10 +259,14 @@ def rent():
         plot_stratpd(X, y, colname, 'price', ax=axes[5],
                      pdp_marker_size=6,
                      show_x_counts=False,
+                     hide_top_right_axes=False,
                      show_xlabel=True, show_ylabel=False)
     print(f"StratPD ignored {ignored} records")
+    axes[5].yaxis.tick_right()
+    axes[5].yaxis.set_label_position('right')
     axes[5].set_ylim(-250,2000)
     axes[5].set_yticks([0,1000,2000])
+    axes[5].set_ylabel("price")
 
     savefig(f"{colname}_vs_price")
 
