@@ -196,7 +196,7 @@ def rent():
         print("XGB validation R^2", b.score(X_test, y_test))
         b.fit(X, y)  # Use full data set for plotting
 
-    fig, axes = plt.subplots(1, 6, figsize=(11, 2.05))#, sharey=True)
+    fig, axes = plt.subplots(1, 6, figsize=(11, 1.8))#, sharey=True)
 
     for i in range(len(axes)):
         if i!=4:

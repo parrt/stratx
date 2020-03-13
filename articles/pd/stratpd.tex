@@ -10,6 +10,7 @@
 % to compile a preprint version, e.g., for submission to arXiv, add add the
 % [preprint] option:
 \usepackage[preprint]{neurips_2020}
+\bibliographystyle{unsrtnat}
 
 % to compile a camera-ready version, add the [final] option, e.g.:
 %     \usepackage[final]{neurips_2020}
@@ -56,6 +57,8 @@
 \newcommand{\spd}{\fontfamily{cmr}\textsc{\small StratPD}}
 \newcommand{\cspd}{\fontfamily{cmr}\textsc{\small CatStratPD}}
 \newcommand{\xnc}{${\bf X}_{\overline{c}}$}
+\newcommand{\xnj}{${\bf X}_{\overline{j}}$}
+%\newcommand{\xnj}{${\bf X}_{\texttt{\char`\\}j}$}
 \newcommand{\xnC}{$x_{\overline{C}}$}
 
 %\setlist[enumerate]{itemsep=-1mm}
@@ -82,22 +85,32 @@ A Stratification Approach to Partial Dependence for Codependent Variables}
 
 \section{Introduction}
 
+Partial dependence, the isolated effect of a specific variable or variables on the response variable, $y$, is important to researchers and practitioners in many disparate fields such as medicine, business, and the social sciences. For example, in precision medicine, physicians are interested in the relationship between an individual's demographic or clinical features and their susceptibility to illness. Business analysts at a car manufacturer might need to know how changes in their supply chain affect defect rates. Climate scientists are interested in how different atmospheric carbon levels affect temperature.
+
+For an explanatory matrix, $\bf X$, with a single variable, $x_1$, a plot of the $y$ against $x_1$ visualizes the marginal effect of feature $x_1$ on $y$ exactly. Given two or more features, one can similarly plot the marginal effects of each feature separately, however, the analysis is complicated by the interactions of the variables.   Variable interactions, codependencies between features, result in marginal plots that do not isolate the specific contribution of a feature of interest to the target. For example, a marginal plot of sex (male/female) against body weight would likely show that, on average, men are heavier than women. While true, men are also taller than women on average, which likely accounts for most of the difference in average weight. It is unlikely that two ``identical'' people, differing only in sex, would be appreciably different in weight.  
+
+Rather than looking directly at the data, there are several partial dependence techniques that interrogate fitted models provided by the user: Friedman's original partial dependence (FPD) \citet{PDP}, Individual Conditional Expectations (ICE) \citet{ICE}, Accumulated Local Effects (ALE) \citet{ALE}, and most recently SHAP \citet{shap}.  Model-based techniques dominate partial dependence research because interpreting the output of a fitted model  has several advantages. Models have a tendency to smooth over noise. Models act like analysis preprocessing steps, potentially reducing the computational burden on model-based partial dependence techniques; e.g., ALE is $O(n)$ for the $n$ records of $\bf X$.  Partial dependence techniques that interrogate models also provide insight into models themselves; i.e., how variables affect model behavior.  It is also true that, in many cases, a predictive model is the primary goal so creating a suitable model is not an extra burden.
+
+peer through the lens of a fitted model. As far as we can tell this is the only way it has been solved.
+
+, although the techniques very in their accuracy in the presence of codependent features
+
+there are however several disadvantages to using a model. Many analysts do not need a predictive model nor would they know how to choose, tune, and assess a model. Could also be the case that a technique is not available in the desired deployment environment.  
+
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.5]{images/bathrooms_vs_price.pdf}
-\caption{\footnotesize Plots of bathrooms versus rent price using New York City apartment rent data. (a) marginal plot, (b) PD/ICE plot derived from random forest, (c) PD/ICE plot derived from gradient boosted machine, and (d) PD/ICE plot derived from ordinary least squares regression; sample size is 10,000 observations of \textasciitilde50k. The PD/ICE plots are  different for the same data set, depending on the chosen user model. X['bathrooms'].unique() shows (array([0. , 1. , 1.5, 2. , 2.5, 3. , 3.5, 4. ]),
+\caption{\small Plots of bathrooms versus rent price using New York City apartment rent data. (a) marginal plot, (b) PD/ICE plot derived from random forest, (c) PD/ICE plot derived from gradient boosted machine, and (d) PD/ICE plot derived from ordinary least squares regression; sample size is 10,000 observations of \textasciitilde50k. The PD/ICE plots are  different for the same data set, depending on the chosen user model. X['bathrooms'].unique() shows (array([0. , 1. , 1.5, 2. , 2.5, 3. , 3.5, 4. ]),
  array([  54, 8151,  140, 1539,   39,   67,    3,    7])). \spd{} has missing last value, not enough data.}
 \label{fig:baths_price}
 \end{center}
 \end{figure}
 
-partial dependence is important because...
+For the same data applying the same technique but using different models, we get different answers, which calls into question the validity of the curves.  If we include the cost of cross validating grid search, particularly for deep learning, partial dependence can be expensive.  can be used as an EDA tool to help with choosing a model: a nonparametric technique could also inform which machine learning model to use if a model is desired.
 
-Existing techniques, such as FPD, ICE, ALE, SHAP peer through the lens of a model's predictions. For the same data applying the same technique but using different models, we get different answers, which calls into question the validity of the curves.
+The techniques differ in algorithm simplicity, performance, and ability to isolate codependent variables. a nonparametric technique could also inform which machine learning model to use if a model is desired.
 
 key is "all else being equal", which implies you don't want curves affected by other variables. Interaction plots are also very useful, such as ICE, but here our goal is the pure partial dependence curve. In the future, we hope to consider extracting interaction between variables like SHAP.
-
-Many analysts do not need a predictive model nor would they know how to choose, tune, and assess a model. Could also be the case that a technique is not available in the desired deployment environment.  The techniques differ in algorithm simplicity, performance, and ability to isolate codependent variables. a nonparametric technique could also inform which machine learning model to use if a model is desired.
 
 we introduce an ideal definition of partial dependence that does not rely on predictions from a fitted model based upon partial derivatives and then estimate partial derivatives nonparametrically to get partial dependence. The technique seems to isolate variables well and has linear behavior for numeric variables and mildly quadratic behavior for categorical variables in practice. The theoretical complexity is $O(n^2)$ like FPD.
 
@@ -107,7 +120,7 @@ state up front it only gets pure partial dependence, no interaction and has quad
 
 \section{Partial dependence without model predictions}
 
-\noindent {\bf Definition 1} The {\em ideal partial dependence} of $y$ on feature $x_j$ for smooth generator function $f:\mathbb{R}^{p} \rightarrow \mathbb{R}$ evaluated at $x_j = z$ is the cumulative sum up to $z$:
+\noindent {\bf Definition 1} The {\em idealized partial dependence} of $y$ on feature $x_j$ for smooth generator function $f:\mathbb{R}^{p} \rightarrow \mathbb{R}$ evaluated at $x_j = z$ is the cumulative sum up to $z$:
 
 \begin{equation}\label{eq:pd}
 \text{\it PD}_j(z) = \int_{min(x_j)}^z \frac{\partial y}{\partial x_j} dx_j
@@ -304,7 +317,7 @@ Let $Avg_x$ be vector with running sum mapping category to count\\
 \label{alg:CatStratPD}
 \end{algorithm}
 
-\section*{References}
-
+{\small
 \bibliography{stratpd}
+}
 \end{document}
