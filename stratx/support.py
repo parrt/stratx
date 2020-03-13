@@ -310,13 +310,6 @@ def load_rent(n:int=None, clean_prices=True):
     df["num_features"] = df["features"].apply(lambda x: len(x))
     df["num_photos"] = df["photos"].apply(lambda x: len(x))
 
-    # The numeric stratpd can't extract data too well when so many data points sit
-    # on same values; flip it to integers from flops like 1.5 baths; can consider
-    # categorical nominal or as ordinal but it stratpd ignores lots of data as ordinal
-    # so best to use catstratpd
-    uniq_b = np.unique(df['bathrooms'])
-    df['bathrooms'] = df['bathrooms'].map({v: i + 1 for i, v in enumerate(uniq_b)})
-
     hoods = {
         "hells": [40.7622, -73.9924],
         "astoria": [40.7796684, -73.9215888],

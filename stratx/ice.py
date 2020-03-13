@@ -225,8 +225,8 @@ def plot_ice(ice, colname, targetname="target", ax=None, linewidth=.5, linecolor
     miny, maxy = np.min(lines[:,:,1]), np.max(lines[:,:,1])
     if yrange is not None:
         ax.set_ylim(*yrange)
-    else:
-        ax.set_ylim(miny, maxy)
+    # else:
+    #     ax.set_ylim(miny, maxy)
     if show_xlabel:
         ax.set_xlabel(colname)
     if show_ylabel:
@@ -238,8 +238,8 @@ def plot_ice(ice, colname, targetname="target", ax=None, linewidth=.5, linecolor
 
     if xrange is not None:
         ax.set_xlim(*xrange)
-    else:
-        ax.set_xlim(minx, maxx)
+    # else:
+    #     ax.set_xlim(minx, maxx)
 
     uniq_x = ice.iloc[0, :]
     if min_y_shifted_to_zero:

@@ -85,7 +85,8 @@ A Stratification Approach to Partial Dependence for Codependent Variables}
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.5]{images/bathrooms_vs_price.pdf}
-\caption{\footnotesize Plots of bathrooms versus rent price using New York City apartment rent data. (a) marginal plot, (b) PD/ICE plot derived from random forest, (c) PD/ICE plot derived from gradient boosted machine, and (d) PD/ICE plot derived from ordinary least squares regression; sample size is 10,000 observations of \textasciitilde50k. The PD/ICE plots are  different for the same data set, depending on the chosen user model.}
+\caption{\footnotesize Plots of bathrooms versus rent price using New York City apartment rent data. (a) marginal plot, (b) PD/ICE plot derived from random forest, (c) PD/ICE plot derived from gradient boosted machine, and (d) PD/ICE plot derived from ordinary least squares regression; sample size is 10,000 observations of \textasciitilde50k. The PD/ICE plots are  different for the same data set, depending on the chosen user model. X['bathrooms'].unique() shows (array([0. , 1. , 1.5, 2. , 2.5, 3. , 3.5, 4. ]),
+ array([  54, 8151,  140, 1539,   39,   67,    3,    7])). \spd{} has missing last value, not enough data.}
 \label{fig:baths_price}
 \end{center}
 \end{figure}
@@ -197,7 +198,7 @@ SHAP
 \section{Algorithms}
 
 {\bf StratPD}\begin{alltt}\small
-For tree regressor to all but x_c with hyper parameter min_slopes_per_x
+Fit tree regressor to all but x_c with hyper parameter min_slopes_per_x
 For each leaf:
     y bar = Group leaf samples by x_c, computing average y per unique x_c
     dx = discrete difference between adjacent unique x_c
@@ -249,7 +250,7 @@ $\bf pdy$ := [0] + cumulative\_sum(${\bf dydx} * \bf pdx$)~~~\tcp*{\it integrate
 \pagebreak
 
 {\bf CatStratPD}\begin{alltt}\small
-For tree regressor to all but x_c with hyper parameter min_slopes_per_x
+Fit tree regressor to all but x_c with hyper parameter min_slopes_per_x
 For each leaf:
     y bar = Group leaf samples by categories of x_c, computing average y per unique category x_c
     Compute unique categories and counts per category
@@ -263,7 +264,7 @@ while more work and something changed and less than max iterations:
     for each leaf in leaves:
         if cat in delta[:,leaf] intersects with Avg:
             j = random category in intersection
-            adjust delta[:,leaf] to be relative to j and add Avg[j]
+            adjust delta[:,leaf] to be relative to j so delta[j,leaf]==0 then add Avg[j] so comparable
             merge into Avg
     work -= all j merged this iteration
 \end{alltt}

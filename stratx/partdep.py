@@ -395,8 +395,8 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
 
     if xrange is not None:
         ax.set_xlim(*xrange)
-    else:
-        ax.set_xlim(*domain)
+    # else:
+    #     ax.set_xlim(*domain)
     if yrange is not None:
         ax.set_ylim(*yrange)
     else:
@@ -436,6 +436,9 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         ax2.spines['right'].set_linewidth(.5)
         ax2.spines['left'].set_linewidth(.5)
         ax2.spines['bottom'].set_linewidth(.5)
+    else:
+        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False)
 
     if n_trials==1 and show_slope_counts:
         ax2 = ax.twinx()

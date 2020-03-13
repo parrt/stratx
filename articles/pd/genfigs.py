@@ -147,11 +147,8 @@ def rent():
     X,y = load_rent(n=10_000)
     df_rent = X.copy()
     df_rent['price'] = y
-    figsize = (8, 2)
     colname = 'bedrooms'
-    xticks = [0, 2, 4, 6, 8]
     colname = 'bathrooms'
-    xticks = list(range(0,9))
 
     TUNE_RF = False
     # TUNE_SVM = False
@@ -199,42 +196,42 @@ def rent():
         print("XGB validation R^2", b.score(X_test, y_test))
         b.fit(X, y)  # Use full data set for plotting
 
-    fig, axes = plt.subplots(1, 5, figsize=figsize, sharey=True)
+    fig, axes = plt.subplots(1, 6, figsize=(11, 2.05))#, sharey=True)
+
+    for i in range(len(axes)):
+        if i!=4:
+            axes[i].set_xlim(0-.3,4+.3)
+        axes[i].set_xticks([0,1,2,3,4])
+        axes[i].set_ylim(1800, 9000)
+        axes[i].set_yticks([2000,4000,6000,8000])
 
     axes[0].set_title("(a) Marginal", fontsize=10)
-    axes[0].set_xlim(0,8)
-    axes[0].set_xticks(xticks)
 
     axes[1].set_title("(b) RF PD/ICE", fontsize=10)
-    axes[1].set_xlim(0,8); axes[1].set_xticks(xticks)
 
     axes[2].set_title("(c) XGBoost PD/ICE", fontsize=10)
-    axes[2].set_xlim(0,8); axes[2].set_xticks(xticks)
 
     axes[3].set_title("(d) OLS PD/ICE", fontsize=10)
-    axes[3].set_xlim(0,8); axes[3].set_xticks(xticks)
 
     axes[4].set_title("(e) Keras PD/ICE", fontsize=10)
-    axes[4].set_xlim(0,8); axes[4].set_xticks(xticks)
+
+    axes[5].set_title("(f) StratPD", fontsize=10)
 
     avg_per_baths = df_rent.groupby(colname).mean()['price']
-    axes[0].scatter(df_rent[colname], df_rent['price'], alpha=0.07,
-                       s=5)  # , label="observation")
+    axes[0].scatter(df_rent[colname], df_rent['price'], alpha=0.07, s=5)
     axes[0].scatter(np.unique(df_rent[colname]), avg_per_baths, s=6, c='black',
                        label="average price/{colname}")
     axes[0].set_ylabel("price")  # , fontsize=12)
-    axes[0].set_ylim(0, 12_000)
-    axes[0].set_yticks(np.array(range(0,12))*1000)
-
+    axes[0].set_xlabel("bathrooms")
+    axes[0].spines['right'].set_visible(False)
+    axes[0].spines['top'].set_visible(False)
 
     ice = predict_ice(rf, X, colname, 'price', numx=30, nlines=100)
-    plot_ice(ice, colname, 'price', alpha=.3, ax=axes[1], show_xlabel=False,
+    plot_ice(ice, colname, 'price', alpha=.3, ax=axes[1], show_xlabel=True,
              show_ylabel=False)
-    # axes[1].set_ylim(-1000, 5000)
 
     ice = predict_ice(b, X, colname, 'price', numx=30, nlines=100)
-    plot_ice(ice, colname, 'price', alpha=.3, ax=axes[2], show_ylabel=True)
-    # axes[2].set_ylim(-1000, 5000)
+    plot_ice(ice, colname, 'price', alpha=.3, ax=axes[2], show_ylabel=False)
 
     lm = LinearRegression()
     lm.fit(X_train, y_train)
@@ -242,17 +239,26 @@ def rent():
     print("OLS validation R^2", lm.score(X_test, y_test))
     lm.fit(X, y)
     ice = predict_ice(lm, X, colname, 'price', numx=30, nlines=100)
-    plot_ice(ice, colname, 'price', alpha=.3, ax=axes[3], show_ylabel=True)
-    # axes[3].set_ylim(-1000, 5000)
+    plot_ice(ice, colname, 'price', alpha=.3, ax=axes[3], show_ylabel=False)
 
     model = rent_deep_learning_model(X, y)
     scaler = StandardScaler()
-    X_test = scaler.fit_transform(X_test)
-    y_pred = model.predict(X_test)
-    print("Keras validation R^2", r2_score(y_test, y_pred))
-    X = pd.DataFrame(scaler.fit_transform(X), columns=X.columns)
-    ice = predict_ice(model, X, 'bathrooms', 'price', numx=30, nlines=100)
-    plot_ice(ice, 'bathrooms', 'price', ax=axes[4], alpha=.3, show_ylabel=True)
+    X_ = pd.DataFrame(scaler.fit_transform(X), columns=X.columns)
+    y_pred = model.predict(X_)
+    print("Keras training R^2", r2_score(y, y_pred)) # y_test in y
+    ice = predict_ice(model, X_, colname, 'price', numx=30, nlines=100)
+    # replace normalized unique X with unnormalized
+    ice.iloc[0, :] = np.linspace(np.min(X[colname]), np.max(X[colname]), 30, endpoint=True)
+    plot_ice(ice, colname, 'price', alpha=.3, ax=axes[4], show_ylabel=True)
+
+    pdpx, pdpy, ignored = \
+        plot_stratpd(X, y, colname, 'price', ax=axes[5],
+                     pdp_marker_size=6,
+                     show_x_counts=False,
+                     show_xlabel=True, show_ylabel=False)
+    print(f"StratPD ignored {ignored} records")
+    axes[5].set_ylim(-250,2000)
+    axes[5].set_yticks([0,1000,2000])
 
     savefig(f"{colname}_vs_price")
 
@@ -1066,7 +1072,7 @@ def yearmade():
                  ax=ax
                  )
     ax.set_title("StratPD", fontsize=13)
-    ax.set_xlabel("YearMade\n(c)", fontsize=11)
+    ax.set_xlabel("YearMade\n(d)", fontsize=11)
     ax.set_xlim(1960,2010)
     ax.set_ylim(-10000,30_000)
     savefig(f"bulldozer_YearMade_stratpd")
@@ -1836,7 +1842,7 @@ def gen_ale_plot_data_in_R():
 
 
 def ale_yearmade():
-    df = pd.read_csv("images/YearMade_400_ale.csv")
+    df = pd.read_csv("images/YearMade_ale.csv")
     df['f.values'] -= np.min(df['f.values'])
     print(df)
 
@@ -1853,7 +1859,7 @@ def ale_yearmade():
 
 
 def ale_height():
-    df = pd.read_csv("images/height_300_ale.csv")
+    df = pd.read_csv("images/height_ale.csv")
     df['f.values'] -= np.min(df['f.values'])
     print(df)
 
@@ -1872,7 +1878,7 @@ def ale_height():
 
 
 def ale_state():
-    df = pd.read_csv("images/state_5_ale.csv")
+    df = pd.read_csv("images/state_ale.csv")
     df = df.sort_values(by="x.values")
     df['f.values'] -= np.min(df['f.values'])
     print(df)
@@ -1891,7 +1897,7 @@ def ale_state():
 
 
 def ale_pregnant():
-    df = pd.read_csv("images/pregnant_300_ale.csv")
+    df = pd.read_csv("images/pregnant_ale.csv")
     df['x.values'] = df['x.values'].map({0:"False",1:"True"})
     df['f.values'] -= np.min(df['f.values'])
     print(df)
