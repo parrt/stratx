@@ -97,41 +97,25 @@ Model-based techniques do have some significant disadvantages, however.   As we 
 \begin{center}
 \includegraphics[scale=0.61]{images/bathrooms_vs_price.pdf}
 \caption{\small Plots of bathrooms versus rent price using New York City apartment rent data. (a) marginal plot, (b) PD/ICE plot derived from random forest, (c) PD/ICE plot derived from gradient boosted machine, and (d) PD/ICE plot derived from ordinary least squares regression; sample size is 10,000 observations of \textasciitilde50k. The PD/ICE plots are  different for the same data set, depending on the chosen user model. X['bathrooms'].unique() shows (array([0. , 1. , 1.5, 2. , 2.5, 3. , 3.5, 4. ]),
- array([  54, 8151,  140, 1539,   39,   67,    3,    7])). \spd{} has missing last value, not enough data. what are $R^2$ values. how tuned}
+ array([  54, 8151,  140, 1539,   39,   67,    3,    7])). \spd{} has missing last value, not enough data. what are $R^2$ values. how tuned \vspace{-7mm}}
 \label{fig:baths_price}
 \end{center}
 \end{figure}
 
 Even in the case where a machine learning practitioner is available to create a fitted model for the analyst, hazards exist. First, if a fitted model is unable to accurately capture the relationship between features and $y$ accurately, for whatever reason, then partial dependence does not provide any useful information to the user.  To make interpretation more challenging, there is no definition of ``accurate enough.'' Second, given an accurate fitted model, business analysts and scientists are still peering at the data through the lens of the model, which can distort partial dependence curves. Separating visual artifacts of the model from real effects present in the data requires expertise in model behavior (and optimally in the implementation of model fitting algorithms). 
 
-Consider the combined FPD/ICE plots shown in \figref{fig:baths_price} derived from several models (random forest, gradient boosting, linear regression, deep learning) fitted to the same New York City rent data set \citet{rent}.  The subplots in \figref{fig:baths_price}(b)-(e)  present starkly different partial dependence relationships and it is unclear which, if any, is correct.  The marginal plot, (a), drawn directly from the data shows a roughly linear growth in price for a rise in the number of bathrooms, but this relationship is biased because of the dependence of bathrooms on other variables, such as the number of bedrooms. (Five bathroom, one bedroom apartments are unlikely.)  For real data sets with codependent features, the true relationship is unknown so it is hard to evaluate the correctness of the plots. (Humans are unreliable estimators, which is why we need data analysis algorithms in the first place.) Nonetheless, having the same algorithm, operating on the same data, give meaningfully different partial dependences is undesirable and makes one question their validity.
+Consider the combined FPD/ICE plots shown in \figref{fig:baths_price} derived from several models (random forest, gradient boosting, linear regression, deep learning) fitted to the same New York City rent data set \citet{rent}.  The subplots in \figref{fig:baths_price}(b)-(e)  present starkly different partial dependence relationships and it is unclear which, if any, is correct.  The marginal plot, (a), drawn directly from the data shows a roughly linear growth in price for a rise in the number of bathrooms, but this relationship is biased because of the dependence of bathrooms on other variables, such as the number of bedrooms. (e.g., five bathroom, one bedroom apartments are unlikely.)  For real data sets with codependent features, the true relationship is unknown so it is hard to evaluate the correctness of the plots. (Humans are unreliable estimators, which is why we need data analysis algorithms in the first place.) Nonetheless, having the same algorithm, operating on the same data, give meaningfully different partial dependences is undesirable and makes one question their validity.
 
-Experts are often able to quickly recognize model artifacts, such as the stairstep phenomenon inherent to the decision tree-based methods in \figref{fig:baths_price}(b) and (c).  In this case, though, the stairstep is more accurate than the linear relationship in (d) and (e) because the number of bathrooms is discrete (except for ``half baths'').  The point is that interpreting model-based partial dependence plots can be misleading, even for experts. An accurate mechanism to compute partial dependences that did not peer through fitted models would be most welcome.  Such partial dependence curves would then be accessible to users, like business analysts, who lack the expertise to create suitable models and would also reduce the chance of plot misinterpretation due to model artifacts.
+Experts are often able to quickly recognize model artifacts, such as the stairstep phenomenon inherent to the decision tree-based methods in \figref{fig:baths_price}(b) and (c).  In this case, though, the stairstep is more accurate than the linear relationship in (d) and (e) because the number of bathrooms is discrete (except for ``half baths'').  The point is that interpreting model-based partial dependence plots can be misleading, even for experts. 
 
-In this paper, we propose a strategy, called {\textsc{strat}ified \textsc{p}artial \textsc{d}ependence} (\spd{}), that computes partial dependences directly from training data $({\bf X}, {\bf y})$, rather than through the predictions of a fitted model.  As an example, \figref{fig:baths_price}(f) shows the partial dependence plot computed by \spd. The technique depends on the notion of an idealized partial dependence:  integration over the partial derivative of $y$ with respect to the variable of interest for the smooth function that generated $({\bf X}, {\bf y})$. As that function is unknown, we estimate the partial derivatives from the data non-parametrically.  Colloquially, the approach examines changes in $y$ across $x_j$ while holding \xnj{} constant (\xnj{} denotes all variables except $x_j$). A similar stratification approach works for categorical variables (\cspd). Both \spd{} and \cspd{} have $O(n^2)$ worst-case time complexity, but \spd{} behaves linearly on real data sets.  Our prototype is currently limited to regression, isolates only single-variable partial dependence, and cannot identify interaction effects (as ICE can).  The software is available via Python package {\tt stratx} with source code at {\tt github}, including the code to regenerate images in this paper.
+An accurate mechanism to compute partial dependences that did not peer through fitted models would be most welcome.  Such partial dependence curves would be accessible to users, like business analysts, who lack the expertise to create suitable models and would also reduce the chance of plot misinterpretation due to model artifacts. The curves could also help machine learning practitioners to choose appropriate models based upon relationships exposed in the data.
 
-We begin by describing and providing algorithms for the proposed stratification approach to isolating variable effects on $y$ in \secref{sec:stratpd} then compare \spd{} to related (model-based) work in \secref{sec:related}. In \secref{sec:experiments}, we present partial dependence curves generated by \spd{} and \cspd{} on real data sets, contrast the plots with those of existing methods, and use synthetic data to highlight biases in some model-based methods.
+In this paper, we propose a strategy, called {\textsc{strat}ified \textsc{p}artial \textsc{d}ependence} (\spd{}), that ({\it i}) computes partial dependences directly from training data $({\bf X}, {\bf y})$, rather than through the predictions of a fitted model, and ({\it ii}) does not presume mutually-independent features.  As an example, \figref{fig:baths_price}(f) shows the partial dependence plot computed by \spd. The technique depends on the notion of an idealized partial dependence:  integration over the partial derivative of $y$ with respect to the variable of interest for the smooth function that generated $({\bf X}, {\bf y})$. As that function is unknown, we estimate the partial derivatives from the data non-parametrically.  Colloquially, the approach examines changes in $y$ across $x_j$ while holding \xnj{} constant or very similar (\xnj{} denotes all variables except $x_j$). A similar stratification approach works for categorical variables (\cspd). Both \spd{} and \cspd{} have $O(n^2)$ worst-case time complexity (like FPD), but \spd{} behaves linearly on real data sets.  Our prototype is currently limited to regression, isolates only single-variable partial dependence, and cannot identify interaction effects (as ICE can).  The software is available via Python package {\tt stratx} with source code at {\tt github}, including the code to regenerate images in this paper.
 
-\section{foo}
-
-The technique seems to isolate variables well and has linear behavior for numeric variables and mildly quadratic behavior for categorical variables in practice. The theoretical complexity is $O(n^2)$ like FPD.
-
-Model selection is never obvious and a nonparametric technique that could provide insight into the relationship between variables and the response would be a welcome aid to choosing an appropriate model.  
-
-in the end, increasing the range of available techniques allows users to choose according to their specific needs, what could even mundane characteristics that include availability of libraries in a particular language or deployment environment.
-
-cold start, counting execution time and number of hyper parameters. particularly deep learning
-
-The techniques differ in algorithm simplicity, performance, and ability to isolate codependent variables. a nonparametric technique could also inform which machine learning model to use if a model is desired.
-
-The goal of this work is to characterize partial dependence in a way that (a) does not rely on, nor make predictions from, a user's model, and (b) does not presume mutually-independent features.
-
-
-SHAP is mean centered FPD for independent variables, proof in supplemental material.
-
-state up front it only gets pure partial dependence, no interaction and has quadratic theoretical complexity, but it has the advantage that it doesn't require a fitted model.  Sometimes there is an advantage to a model, smoothing etc. But, in many cases lack of model increases the accessibility of the tool to analysts and could prevent nonexpert machine learning practitioners from interpretation errors from poorly fit or tuned models.
+We begin by describing and providing algorithms for the proposed stratification approach in \secref{sec:stratpd} then compare \spd{} to related (model-based) work in \secref{sec:related}. In \secref{sec:experiments}, we present partial dependence curves generated by \spd{} and \cspd{} on real data sets, contrast the plots with those of existing methods, and use synthetic data to highlight biases in some model-based methods.
 
 \section{Partial dependence without model predictions}\label{sec:stratpd}
+
 
 To estimate partial derivatives, \spd{} stratifies \xnj{} feature space  into disjoint regions of observations where all \xnj{} variables are approximately matched across the observations in that region. Within each \xnj{} region, any fluctuations in the response variable are likely due to the variable of interest, $x_j$.  Estimates of the partial derivative within a region are computed discretely via the changes in $y$ values between unique $x_j$ positions. The overall partial derivative at $x_j=z$ is the average of all slopes, found in any region, whose $x_j$ range spans $z$.  Stratification occurs through the use of a decision tree but only for the purpose of partitioning feature space; \spd{} never uses predictions from any model.
 
@@ -151,6 +135,45 @@ The obvious disadvantage of this feature impact definition is that function $f$,
 
 \spd{} stratifies a data set into groups of observations that are similar, except in the variable of interest, $x_j$, through the use of a single decision tree. Any fluctuation of the response variable within a group (decision tree leaf) is likely due to $x_j$.  The $\beta_1$ coefficient of a simple local linear regression fit to the $(x_j, y)$ values within a group provides an estimate of $\frac{\partial y}{\partial x_j}$ in that group's $x_j$ range. Averaging the partial derivative estimates across all such groups yields the overall $\frac{\partial y}{\partial x_j}$ partial derivative approximation. The cumulative sum of the estimated partial derivative yields the partial dependence curve. 
 
+{\bf StratPD}\begin{alltt}\small
+Fit tree regressor to all but x_c with hyper parameter min_slopes_per_x
+For each leaf:
+    y bar = Group leaf samples by x_c, computing average y per unique x_c
+    dx = discrete difference between adjacent unique x_c
+    dy = discrete difference between adjacent average y bar
+    add (x[i], x[i+1], dy[i]/dx[i]) for each unique x_c to list D
+
+for each x in unique x_c from X:
+    slopes = [slope for (a, b, slope) in D if x >= a and x < b]
+    count[x] = |slopes|
+    dydx[x] = mean(slopes)
+
+Drop slope estimates computed using fewer than min_slopes_per_x values
+pdx = discrete difference between adjacent unique x_c
+pdy = cumulative sum of dydx * pdx
+return pdx, [0]+pdy  // insert 0 for pdx[0] since sum contributed from beyond left is 0
+\end{alltt}
+
+{\bf CatStratPD}\begin{alltt}\small
+Fit tree regressor to all but x_c with hyper parameter min_slopes_per_x
+For each leaf:
+    y bar = Group leaf samples by categories of x_c, computing average y per unique category x_c
+    Compute unique categories and counts per category
+    refcat is randomly chosen category from x_c
+    For each unique category x in leaf:
+        delta[cat,leaf] = Subtract y for refcat from all y bar (refcat delta will be 0)
+end
+Let Avg[cat] be vector with running sum mapping category to count
+work = set of leaf indexes
+while more work and something changed and less than max iterations:
+    for each leaf in leaves:
+        if cat in delta[:,leaf] intersects with Avg:
+            j = random category in intersection
+            adjust delta[:,leaf] to be relative to j so delta[j,leaf]==0 then add Avg[j] so comparable
+            merge into Avg
+    work -= all j merged this iteration
+\end{alltt}
+
 \section{Related work}\label{sec:related}
 
 FPD
@@ -161,7 +184,15 @@ ALE
 
 SHAP
 
+cold start, counting execution time and number of hyper parameters. particularly deep learning
+
+The techniques differ in algorithm simplicity, performance, and ability to isolate codependent variables. a nonparametric technique could also inform which machine learning model to use if a model is desired.
+
+SHAP is mean centered FPD for independent variables, proof in supplemental material.
+
 \section{Experimental results}\label{sec:experiments}
+
+what if X,y relationship is very weak? models would get low accuracy. what happens to us?  I think we would simply show low partial dependence curves.
 
 \begin{figure}[htbp]
 \begin{center}
@@ -223,28 +254,10 @@ SHAP
 \end{center}
 \end{figure}
 
+\section{Discussion and future work}
 
 \pagebreak
-\section{Algorithms}
-
-{\bf StratPD}\begin{alltt}\small
-Fit tree regressor to all but x_c with hyper parameter min_slopes_per_x
-For each leaf:
-    y bar = Group leaf samples by x_c, computing average y per unique x_c
-    dx = discrete difference between adjacent unique x_c
-    dy = discrete difference between adjacent average y bar
-    add (x[i], x[i+1], dy[i]/dx[i]) for each unique x_c to list D
-
-for each x in unique x_c from X:
-    slopes = [slope for (a, b, slope) in D if x >= a and x < b]
-    count[x] = |slopes|
-    dydx[x] = mean(slopes)
-
-Drop slope estimates computed using fewer than min_slopes_per_x values
-pdx = discrete difference between adjacent unique x_c
-pdy = cumulative sum of dydx * pdx
-return pdx, [0]+pdy  // insert 0 for pdx[0] since sum contributed from beyond left is 0
-\end{alltt}
+\section{Appendix}
 
 \setlength{\algomargin}{5pt}
 \begin{algorithm}[]
@@ -277,28 +290,6 @@ $\bf pdy$ := [0] + cumulative\_sum(${\bf dydx} * \bf pdx$)~~~\tcp*{\it integrate
 \label{alg:CatStratPD}
 \end{algorithm}
 
-\pagebreak
-
-{\bf CatStratPD}\begin{alltt}\small
-Fit tree regressor to all but x_c with hyper parameter min_slopes_per_x
-For each leaf:
-    y bar = Group leaf samples by categories of x_c, computing average y per unique category x_c
-    Compute unique categories and counts per category
-    refcat is randomly chosen category from x_c
-    For each unique category x in leaf:
-        delta[cat,leaf] = Subtract y for refcat from all y bar (refcat delta will be 0)
-end
-Let Avg[cat] be vector with running sum mapping category to count
-work = set of leaf indexes
-while more work and something changed and less than max iterations:
-    for each leaf in leaves:
-        if cat in delta[:,leaf] intersects with Avg:
-            j = random category in intersection
-            adjust delta[:,leaf] to be relative to j so delta[j,leaf]==0 then add Avg[j] so comparable
-            merge into Avg
-    work -= all j merged this iteration
-\end{alltt}
-
 \setlength{\algomargin}{5pt}
 \begin{algorithm}[]
 \DontPrintSemicolon
@@ -330,9 +321,9 @@ work := 1 .. $|uniq\_refcats|$\\
 Let $Avg_x$ be vector with running sum mapping category to count\\
 \While{len(work) > 0 and len(completed)>0 and iteration<=max\_iter}{
 }
-
 \label{alg:CatStratPD}
 \end{algorithm}
+
 
 {\small
 \bibliography{stratpd}
