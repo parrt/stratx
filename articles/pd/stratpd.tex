@@ -32,14 +32,14 @@
 \usepackage{alltt}
 \usepackage{listings}
 \usepackage{array}
-\usepackage[noline, procnumbered]{algorithm2e}
+\usepackage[noline, vlined]{algorithm2e}
 \usepackage{lmodern}
 \usepackage{caption}
 \usepackage{subcaption}
 \usepackage{xcolor}
+\SetKwComment{Comment}{$\triangleright$\ }{}
 \newcommand\mycommfont[1]{\footnotesize\ttfamily\textcolor{gray}{#1}}
 \SetCommentSty{mycommfont}
-
 
 \newcommand{\secref}[1]{Section~\ref{#1}}
 \newcommand{\tblref}[1]{Table~\ref{#1}}
@@ -60,6 +60,9 @@
 %\newcommand{\xnj}{${\bf X}_{\overline{j}}$}
 \newcommand{\xnj}{${\bf X}_{\texttt{\char`\\}j}$}
 \newcommand{\xnC}{$x_{\overline{C}}$}
+\renewcommand{\xi}{x^{(i)}}
+\newcommand{\yi}{y^{(i)}}
+
 
 %\setlist[enumerate]{itemsep=-1mm}
 
@@ -97,7 +100,7 @@ Model-based techniques do have some significant disadvantages, however.   As we 
 \begin{center}
 \includegraphics[scale=0.61]{images/bathrooms_vs_price.pdf}
 \caption{\small Plots of bathrooms versus rent price using New York City apartment rent data. (a) marginal plot, (b) PD/ICE plot derived from random forest, (c) PD/ICE plot derived from gradient boosted machine, and (d) PD/ICE plot derived from ordinary least squares regression; sample size is 10,000 observations of \textasciitilde50k. The PD/ICE plots are  different for the same data set, depending on the chosen user model. X['bathrooms'].unique() shows (array([0. , 1. , 1.5, 2. , 2.5, 3. , 3.5, 4. ]),
- array([  54, 8151,  140, 1539,   39,   67,    3,    7])). \spd{} has missing last value, not enough data. what are $R^2$ values. how tuned \vspace{-7mm}}
+ array([  54, 8151,  140, 1539,   39,   67,    3,    7])). \spd{} has missing last value, not enough data. what are $R^2$ values. how tuned all but last share y with left \vspace{-7mm}}
 \label{fig:baths_price}
 \end{center}
 \end{figure}
@@ -110,16 +113,13 @@ Experts are often able to quickly recognize model artifacts, such as the stairst
 
 An accurate mechanism to compute partial dependences that did not peer through fitted models would be most welcome.  Such partial dependence curves would be accessible to users, like business analysts, who lack the expertise to create suitable models and would also reduce the chance of plot misinterpretation due to model artifacts. The curves could also help machine learning practitioners to choose appropriate models based upon relationships exposed in the data.
 
-In this paper, we propose a strategy, called {\textsc{strat}ified \textsc{p}artial \textsc{d}ependence} (\spd{}), that ({\it i}) computes partial dependences directly from training data $({\bf X}, {\bf y})$, rather than through the predictions of a fitted model, and ({\it ii}) does not presume mutually-independent features.  As an example, \figref{fig:baths_price}(f) shows the partial dependence plot computed by \spd. The technique depends on the notion of an idealized partial dependence:  integration over the partial derivative of $y$ with respect to the variable of interest for the smooth function that generated $({\bf X}, {\bf y})$. As that function is unknown, we estimate the partial derivatives from the data non-parametrically.  Colloquially, the approach examines changes in $y$ across $x_j$ while holding \xnj{} constant or very similar (\xnj{} denotes all variables except $x_j$). A similar stratification approach works for categorical variables (\cspd). Both \spd{} and \cspd{} have $O(n^2)$ worst-case time complexity (like FPD), but \spd{} behaves linearly on real data sets.  Our prototype is currently limited to regression, isolates only single-variable partial dependence, and cannot identify interaction effects (as ICE can).  The software is available via Python package {\tt stratx} with source code at {\tt github}, including the code to regenerate images in this paper.
+In this paper, we propose a strategy, called {\textsc{strat}ified \textsc{p}artial \textsc{d}ependence} (\spd{}), that ({\it i}) computes partial dependences directly from training data $({\bf X}, {\bf y})$, rather than through the predictions of a fitted model, and ({\it ii}) does not presume mutually-independent features.  As an example, \figref{fig:baths_price}(f) shows the partial dependence plot computed by \spd. The technique depends on the notion of an idealized partial dependence:  integration over the partial derivative of $y$ with respect to the variable of interest for the smooth function that generated $({\bf X}, {\bf y})$. As that function is unknown, we estimate the partial derivatives from the data non-parametrically.  Colloquially, the approach examines changes in $y$ across $x_j$ while holding \xnj{} constant or nearly constant (\xnj{} denotes all variables except $x_j$). A similar stratification approach works for categorical variables (\cspd). Both \spd{} and \cspd{} have $O(n^2)$ worst-case time complexity (like FPD), but \spd{} behaves linearly on real data sets.  Our prototype is currently limited to regression, isolates only single-variable partial dependence, and cannot identify interaction effects (as ICE can).  The software is available via Python package {\tt stratx} with source code at {\tt github}, including the code to regenerate images in this paper.
 
 We begin by describing and providing algorithms for the proposed stratification approach in \secref{sec:stratpd} then compare \spd{} to related (model-based) work in \secref{sec:related}. In \secref{sec:experiments}, we present partial dependence curves generated by \spd{} and \cspd{} on real data sets, contrast the plots with those of existing methods, and use synthetic data to highlight biases in some model-based methods.
 
 \section{Partial dependence without model predictions}\label{sec:stratpd}
 
-
-To estimate partial derivatives, \spd{} stratifies \xnj{} feature space  into disjoint regions of observations where all \xnj{} variables are approximately matched across the observations in that region. Within each \xnj{} region, any fluctuations in the response variable are likely due to the variable of interest, $x_j$.  Estimates of the partial derivative within a region are computed discretely via the changes in $y$ values between unique $x_j$ positions. The overall partial derivative at $x_j=z$ is the average of all slopes, found in any region, whose $x_j$ range spans $z$.  Stratification occurs through the use of a decision tree but only for the purpose of partitioning feature space; \spd{} never uses predictions from any model.
-
-
+In special circumstances, we know the precise effect of each feature $x_j$ on $y$.  Assume we are given training data pair ($\bf X, y$) where ${\bf X} = [x^{(1)}, \ldots, x^{(n)}]$ is an $n \times p$ matrix whose $p$ columns represent observed features and ${\bf y}$ is the $n \times 1$ vector of responses. For any smooth function $f:\mathbb{R}^{p} \rightarrow \mathbb{R}$ that precisely maps each $\xi$ to $y^{(i)}$, ${y^{(i)}} = f(\xi)$, the partial derivative of $y$ with respect to $x_j$ gives the change in $y$ holding all other variables constant.  Integrating the partial derivative then gives the {\em partial dependence}  of $y$ on $x_j$, the isolated contribution of $x_j$ to $y$:
 
 \noindent {\bf Definition 1} The {\em idealized partial dependence} of $y$ on feature $x_j$ for smooth generator function $f:\mathbb{R}^{p} \rightarrow \mathbb{R}$ evaluated at $x_j = z$ is the cumulative sum up to $z$:
 
@@ -127,39 +127,77 @@ To estimate partial derivatives, \spd{} stratifies \xnj{} feature space  into di
 \text{\it PD}_j(z) = \int_{min(x_j)}^z \frac{\partial y}{\partial x_j} dx_j
 \end{equation}
 
-$\text{\it PD}_j(z)$ is the value contributed to $y$ by $x_j$ at $x_j = z$ and $\text{\it PD}_j(min(x_j))=0$. The advantages of this partial dependence definition are that it does not depend on predictions from a fitted model and is insensitive to collinear or otherwise codependent features, unlike the Friedman's original definition that he points out is less accurate for codependent data sets. We will denote Friedman's as $\text{\it FPD}_j$ to distinguish it from this ideal, $\text{\it PD}_j$.
+$\text{\it PD}_j(z)$ is the value contributed to $y$ by $x_j$ at $x_j = z$ and $\text{\it PD}_j(min(x_j))=0$. (We will denote Friedman's original definition as FPD to distinguish it from this idealized definition.) The advantages of this definition are that it does not depend on predictions from a fitted model and is insensitive to codependent features.  Although the underlining generator function is unknown, we can estimate its partial derivatives.
 
-For example, consider quadratic equation $y = x_1^2 + x_2 + 100$ as a generator of data in $[0,3]$. The partial derivatives are $\frac{\partial y}{\partial x_1} = 2 x_1$ and $\frac{\partial y}{\partial x_2} = 1$, giving $\text{\it PD}_1 = x_1^2$ and $\text{\it PD}_2 = x_2$. 
+The key idea is to stratify \xnj{} feature space into disjoint regions of observations where all \xnj{} variables are approximately matched across the observations in that region. Within each \xnj{} region, any fluctuations in the response variable are likely due to the variable of interest, $x_j$.  Estimates of the partial derivative within a region are estimated discretely as the changes in $y$ values between unique and ordered $x_j$ positions:  $(y^{(i+1)} - \yi)/(x_j^{(i+1)} - x_j^{(i)})$ for all $i$ in a region. The overall partial derivative at $x_j=z$ is the average of all slopes, found in any region, whose $x_j$ range spans $z$.  Stratification occurs through the use of a decision tree fit to (\xnj, $\bf y$), whose leaves aggregate observations with equal or similar \xnj{} features. \spd{} only uses the tree for the purpose of partitioning feature space and never uses predictions from any model. 
 
-The obvious disadvantage of this feature impact definition is that function $f$, from which $\text{\it PD}_j$ is derived, is unknown in practice, so symbolically computing the partial derivatives is not possible. But, if we could compute accurate partial dependence curves by some other method, then this definition would still represent a viable means to obtain feature impacts. 
+For this approach to work, decision tree leaves must satisfactorily stratify \xnj{}. If the \xnj{} observations in each region are not similar enough, the relationship between $x_j$ and $y$   is less accurate.  Regions can also become so small that even the $x_j$ values become equal, leaving a single unique $x_j$ observation in a leaf. Without a change in $x_j$, no partial derivative estimate is possible and these nonsupporting observations must be  ignored. A degenerate case occurs when identical or nearly identical $x_j$ and $x_j'$ variables exist. Flattening $x_j$ as part of \xnj{} would also flatten $x_j'$, leading to both exhibiting flat curves, as if the decision tree were trained on $(\bf X, y)$ not (\xnj, $\bf y$). Our experiments show that using the collection of leaves from a random forest, which restricts the number of variables available during node splitting, prevents partitioning from relying too heavily on either $x_j$ or $x_j'$. Some leaves have observations that vary in $x_j$ or $x_j'$ and partial derivatives can still be estimated. \todo{maybe talk about how PD/ICE on RF underestimates the curve.}
 
-\spd{} stratifies a data set into groups of observations that are similar, except in the variable of interest, $x_j$, through the use of a single decision tree. Any fluctuation of the response variable within a group (decision tree leaf) is likely due to $x_j$.  The $\beta_1$ coefficient of a simple local linear regression fit to the $(x_j, y)$ values within a group provides an estimate of $\frac{\partial y}{\partial x_j}$ in that group's $x_j$ range. Averaging the partial derivative estimates across all such groups yields the overall $\frac{\partial y}{\partial x_j}$ partial derivative approximation. The cumulative sum of the estimated partial derivative yields the partial dependence curve. 
+\spd{} uses hyper parameter {\tt\small min\_samples\_leaf} to control the minimum number of observations in each decision tree leaf.  Generally speaking, smaller values lead to more confidence that fluctuations in $y$ are due solely to $x_j$, but more observations per leaf allow \spd{} to capture more nonlinearities and make it less susceptible to noise.  As the leaf size grows, however, one risks introducing contributions from \xnj{} into the relationship between $x_j$ and $y$. At the extreme, the decision tree would consist of a single leaf node containing all observations, leading to a marginal not partial dependence curve.
 
-{\bf StratPD}\begin{alltt}\small
-Fit tree regressor to all but x_c with hyper parameter min_slopes_per_x
-For each leaf:
-    y bar = Group leaf samples by x_c, computing average y per unique x_c
-    dx = discrete difference between adjacent unique x_c
-    dy = discrete difference between adjacent average y bar
-    add (x[i], x[i+1], dy[i]/dx[i]) for each unique x_c to list D
+\spd{} uses another hyper parameter called {\tt\small min\_slopes\_per\_x} to ignore any partial derivatives estimated with too few observations.  Dropping uncertain partial derivatives greatly improves accuracy and stability. Partial dependences computed by integrating over local partial derivatives are highly sensitive to partial derivatives computed at the left edge of any $x_j$'s range because imprecision at the left edge affects the entire curve.  This presents a problem when there are few samples with $x_j$ values at the extreme left (see, for example, the $x_j$ histogram of \figref{fig:yearmade}(d)). The default hyper parameter values for \spd{} (10 observations and 5 slopes) were used to generate all plots in this paper.
 
-for each x in unique x_c from X:
-    slopes = [slope for (a, b, slope) in D if x >= a and x < b]
+\begin{alltt}
+{\fontfamily{cmss}\selectfont\small
+{\bf{}StratPD}
+\(T\) = Tree regressor fit to \xnj with hyper parameter {\tt{}min_samples_leaf}
+For each leaf in \(T\):
+    \(\bf\overline{y}\) = Group leaf samples by \(x\sb{j}\), computing average \(y\) per unique \(x\sb{j}\)
+    {\bf{}dx} = discrete difference between adjacent unique \(x\sb{j}\) values
+    {\bf{}dy} = discrete difference between adjacent average \(\bf\overline{y}\) values
+    add (x[i], x[i+1], dy[i]/dx[i]) for each unique \(x\sb{j}\) to list D
+For each \(x\) in unique \({\bf{}X}\sb{j}\):
+    slopes = [\(slope\) for (\(a, b, slope\)) in D if \(x \ge a\) and \(x < b\)]
     count[x] = |slopes|
     dydx[x] = mean(slopes)
-
-Drop slope estimates computed using fewer than min_slopes_per_x values
-pdx = discrete difference between adjacent unique x_c
+Drop slope estimates computed using fewer than {\tt{}min_slopes_per_x values}
+pdx = discrete difference between adjacent unique \(x\sb{j}\)
 pdy = cumulative sum of dydx * pdx
 return pdx, [0]+pdy  // insert 0 for pdx[0] since sum contributed from beyond left is 0
+}
 \end{alltt}
 
-{\bf CatStratPD}\begin{alltt}\small
-Fit tree regressor to all but x_c with hyper parameter min_slopes_per_x
+\SetAlgoNoEnd%
+\setlength{\algomargin}{5pt}
+\begin{algorithm}[H]
+\SetAlgoLined
+\DontPrintSemicolon
+\SetAlgorithmName{Algorithm}{List of Algorithms}
+\SetAlgoSkip{}
+\TitleOfAlgo{{\em StratPD}({\bf X}, {\bf y}, j, {\it min\_samples\_leaf}, {\it min\_slopes\_per\_x})}
+$T$ := Decision tree regressor fit to (\xnj{}, $\bf y$) with hyper-parameter: ${\it min\_samples\_leaf}$\;
+\For{each leaf $L \in T$}{
+        $({\bf x}_L, {\bf y}_L)$ := $\{(x_j^{(i)},  y^{(i)})\}_{i \in L}$\Comment*{\it Get leaf samples}
+	${\bf ux}, \bar{\bf y}$ := Group and sort $({\bf x}_L, {\bf y}_L)$ by $x_j$ value, computing $\bar{y}$ per unique $x_j$ value\\
+	${\bf dx}$ := ${\bf ux}^{(i+1)} - {\bf ux}^{(i)}_{i=1..|{\bf ux}|-1}$ for $i = 1..|{\bf ux}|-1$\Comment*{\it Discrete difference between adjacent}
+	${\bf dy}$ := $\bar{\bf y}^{(i+1)} - \bar{\bf y}^{(i)}$ for $i = 1..|{\bf ux}|-1$\\
+	Add tuples ${({\bf ux}^{(i)}, {\bf ux}^{(i+1)},~ {\bf dy}^{(i)}/{\bf dx}^{(i)})}_{i=1..|{\bf ux}|-1}$ to list ${\bf D}$\\
+}
+$\bf ux$ := $unique({\bf X}_j)$\\
+\For(\hfill$\triangleright$\ {\it\textcolor{gray}{\small Counts slopes, compute average slope per unique $x_j$ value}}){each $x \in {\bf ux}$}{
+	{\bf slopes} := [$slope$ for $(a,b,slope) \in \bf D$ if $x \ge a$ and $x <b$]\\
+	${\bf c}_x$ := $|{\bf slopes}|$\\
+	${\bf dydx}_x$ := $\overline{\bf slopes}$\\
+}
+${\bf dydx}$ := ${\bf dydx}[{\bf c} \ge min\_slopes\_per\_x]$\Comment*{\it Drop missing slopes, those computed with too few}
+${\bf ux}$ := ${\bf ux}[{\bf c} \ge min\_slopes\_per\_x]$\\
+$\bf pdx$ := ${\bf ux}^{(i+1)} - {\bf ux}^{(i)}$ for $i = 1..|{\bf ux}|-1$\\
+$\bf pdy$ := [0] + cumulative\_sum(${\bf dydx} * \bf pdx$)~~~\Comment*{\it integrate, inserting 0 for leftmost $x_j$}
+\Return{$\bf pdx, pdy$}
+\label{alg:CatStratPD}
+\end{algorithm}
+
+For categorical variables, \cspd{} uses the same stratification approach, but cannot apply  regression of $y$ on categorical $x_j$. Instead, a random reference category is chosen for each group and its $y$ value is subtracted from all leaf $y$ to get relative impacts between categories. The relative category impacts across groups are then averaged to get the impact of each $x_j$ on $y$.
+
+
+\begin{alltt}
+{\fontfamily{cmss}\selectfont\small
+{\bf{}CatStratPD}
+Fit tree regressor to all but \(x\sb{j}\) with hyper parameter min_slopes_per_x
 For each leaf:
-    y bar = Group leaf samples by categories of x_c, computing average y per unique category x_c
+    y bar = Group leaf samples by categories of \(x\sb{j}\), computing average y per unique category \(x\sb{j}\)
     Compute unique categories and counts per category
-    refcat is randomly chosen category from x_c
+    refcat is randomly chosen category from \(x\sb{j}\)
     For each unique category x in leaf:
         delta[cat,leaf] = Subtract y for refcat from all y bar (refcat delta will be 0)
 end
@@ -172,7 +210,9 @@ while more work and something changed and less than max iterations:
             adjust delta[:,leaf] to be relative to j so delta[j,leaf]==0 then add Avg[j] so comparable
             merge into Avg
     work -= all j merged this iteration
+}
 \end{alltt}
+
 
 \section{Related work}\label{sec:related}
 
@@ -201,7 +241,7 @@ what if X,y relationship is very weak? models would get low accuracy. what happe
 \includegraphics[scale=0.35]{images/YearMade_400_ale.pdf}~~
 \includegraphics[scale=0.35]{images/bulldozer_YearMade_stratpd.pdf}
 \caption{\small (a) Marginal plot of bulldozer {\tt YearMade} versus {\tt SalePrice} using subsample of 20k observations, (b) partial dependence drawn by SHAP interrogating an RF with 40 trees and explaining 1000 values with 100 observations as background data, (c) \spd{} partial dependence.}
-\label{fig:shap-stratpd-YearMade}
+\label{fig:yearmade}
 \end{center}
 \end{figure}
 
@@ -259,39 +299,10 @@ what if X,y relationship is very weak? models would get low accuracy. what happe
 \pagebreak
 \section{Appendix}
 
-\setlength{\algomargin}{5pt}
-\begin{algorithm}[]
-\DontPrintSemicolon
-\SetAlgorithmName{Algorithm}{List of Algorithms}
-\SetAlgoSkip{}
-\TitleOfAlgo{{\em StratPD}}
-\KwIn{{\bf X}, {\bf y}, c, {\it min\_samples\_leaf}, {\it min\_slopes\_per\_x}}
-\KwOut{$\bf pdx, pdy$: Unique $x_c$, partial dependence values across $x_c$}
-$T$ := Decision tree regressor fit to (\xnc{}, $\bf y$) with hyper-parameter: ${\it min\_samples\_leaf}$\;
-\For{each leaf $l \in T$}{
-        $({\bf x}_l, {\bf y}_l)$ = $\{(x_c^{(i)},  y^{(i)})\}_{i \in l}$\tcp*{\it Get leaf samples}
-        {\bf ux} := $unique({\bf x}_l)$\\
-	$\bar{\bf y}$ := Group leaf records $({\bf x}_l, {\bf y}_l)$ by value of ${\bf x}_l$, computing $\bar{y}$ per unique value\\
-	${\bf dx}$ := ${\bf ux}^{(i+1)} - {\bf ux}^{(i)}_{i=1..|{\bf ux}|-1}$\tcp*{\it Discrete difference}
-	${\bf dy}$ := $\bar{\bf y}^{(i+1)} - \bar{\bf y}^{(i)}_{i=1..|{\bf ux}|-1}$\\
-	Add tuples ${({\bf ux}^{(i)}, {\bf ux}^{(i+1)},~ {\bf dy}^{(i)}/{\bf dx}^{(i)})}_{i=1..|{\bf ux}|-1}$ to list ${\bf d}$\\
-}
-$\bf ux$ := $unique(\{x_c^{(i)}\}_{i=1..n})$\\
-\For{each $x \in {\bf ux}$\tcp*{\it Counts slopes, compute average slope per unique $x_c$ value}}{
-	$slopes$ := [$slope$ for $(a,b,slope) \in \bf d$ if $x \ge a$ and $x <b$]\\
-	${\bf c}_x$ := $|slopes|$\\
-	${\bf dydx}_x$ := $\overline{slopes}$\\
-}
-${\bf dydx}$ := ${\bf dydx}[{\bf c} \ge min\_slopes\_per\_x]$\tcp*{\it Drop slope estimates computed from too few}
-${\bf ux}$ := ${\bf ux}[{\bf c} \ge min\_slopes\_per\_x]$\\
-$\bf pdx$ := ${\bf ux}^{(i+1)} - {\bf ux}^{(i)}_{i=1..|{\bf ux}|-1}$\\
-$\bf pdy$ := [0] + cumulative\_sum(${\bf dydx} * \bf pdx$)~~~\tcp*{\it integrate, inserting 0 for leftmost $x_c$}
-\Return{$\bf pdx, pdy$}
-\label{alg:CatStratPD}
-\end{algorithm}
 
 \setlength{\algomargin}{5pt}
 \begin{algorithm}[]
+\SetAlgoLined
 \DontPrintSemicolon
 \SetAlgorithmName{Algorithm}{List of Algorithms}
 \SetAlgoSkip{}
@@ -307,8 +318,8 @@ $T$ := Decision tree regressor fit to (\xnc{}, $\bf y$) with hyper-parameter: ${
 Let $\Delta_{x,l}$ be dictionary mapping (category, leaf) to delta from ref category\\
 Let ${\it Count}_{x,l}$ be dictionary mapping (category, leaf) to count\\
 \For{each leaf $l \in T$}{
-        $({\bf x}_l, {\bf y}_l)$ = $\{(x_c^{(i)},  y^{(i)})\}_{i \in l}$\tcp*{\it Get leaf samples}
-        ${\bf ux}$, ${\bf cx}$ := $unique({\bf x}_l)$\tcp*{\it Get unique categories, counts from leaf samples}
+        $({\bf x}_l, {\bf y}_l)$ = $\{(x_j^{(i)},  y^{(i)})\}_{i \in l}$\Comment*{\it Get leaf samples}
+        ${\bf ux}$, ${\bf cx}$ := $unique({\bf x}_l)$\Comment*{\it Get unique categories, counts from leaf samples}
 	$\bar{\bf y}$ := Group leaf records $({\bf x}_l, {\bf y}_l)$ by categories of ${\bf x}_l$, computing $\bar{y}$ per unique category\\
 	${\it refcat}_l$ := random category from ${\bf y}$\\
 %	$y_{\it ref}$ := random choice from $\bar{\bf y}$\\
