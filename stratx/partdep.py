@@ -1339,7 +1339,7 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose=Fal
             # pick random category in intersection to use as common refcat
             ix = np.random.choice(intersection_idx, size=1)[0]
 
-            # Merge column j into catavg vector
+            # Merge column j inWowto catavg vector
             shifted_v = v - v[ix]                       # make ix the reference cat in common
             relative_to_value = catavg[ix]              # corresponding value in catavg
             adjusted_v = shifted_v + relative_to_value  # adjust so v is mergeable with catavg

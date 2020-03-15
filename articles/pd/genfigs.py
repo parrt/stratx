@@ -1942,18 +1942,31 @@ def rent_deep_learning_model(X_raw=None, y_raw=None):
     #y = (y - np.mean(y))/np.std(y)
 
     model = models.Sequential()
-    layer1 = 256
-    layer2 = 256
-    layer3 = 64
-    layer4 = 256
+    layer1 = 2000
+    layer2 = 2000
+    layer3 = 2000
+    # layer4 = 2000
     layer5 = 256
-    batch_size = 200
+    batch_size = 500
     model.add(layers.Dense(layer1, input_dim=X.shape[1], activation='relu'))
     model.add(layers.Dense(layer2, activation='relu'))
     model.add(layers.Dense(layer3, activation='relu'))
-    model.add(layers.Dense(layer4, activation='relu'))
-    model.add(layers.Dense(layer5, activation='relu'))
+    # model.add(layers.Dense(layer4, activation='relu'))
     model.add(layers.Dense(1))
+
+    # model = models.Sequential()
+    # layer1 = 256
+    # layer2 = 256
+    # layer3 = 64
+    # layer4 = 256
+    # layer5 = 256
+    # batch_size = 200
+    # model.add(layers.Dense(layer1, input_dim=X.shape[1], activation='relu'))
+    # model.add(layers.Dense(layer2, activation='relu'))
+    # model.add(layers.Dense(layer3, activation='relu'))
+    # model.add(layers.Dense(layer4, activation='relu'))
+    # model.add(layers.Dense(layer5, activation='relu'))
+    # model.add(layers.Dense(1))
 
     opt = optimizers.Adam()#lr=1e-3, decay=1e-3 / 200)
     model.compile(loss='mean_squared_error', optimizer=opt, metrics=['mae'])
@@ -1962,10 +1975,10 @@ def rent_deep_learning_model(X_raw=None, y_raw=None):
 
     callback = callbacks.EarlyStopping(monitor='val_loss', patience=10)
     history = model.fit(X, y,
-                        epochs=400,
+                        epochs=100,
                         validation_split=0.2,
                         batch_size=batch_size,
-                        callbacks=[callback]
+                        # callbacks=[callback]
                         )
 
     if False: # Show training results
