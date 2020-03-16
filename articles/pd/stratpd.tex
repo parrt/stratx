@@ -40,6 +40,7 @@
 \SetKwComment{Comment}{$\triangleright$\ }{}
 \newcommand\mycommfont[1]{\footnotesize\ttfamily\textcolor{gray}{#1}}
 \SetCommentSty{mycommfont}
+\SetKwBlock{Repeat}{Repeat}{end}
 
 \newcommand{\secref}[1]{Section~\ref{#1}}
 \newcommand{\tblref}[1]{Table~\ref{#1}}
@@ -137,10 +138,16 @@ For this approach to work, decision tree leaves must satisfactorily stratify \xn
 
 \spd{} uses another hyper parameter called {\tt\small min\_slopes\_per\_x} to ignore any partial derivatives estimated with too few observations.  Dropping uncertain partial derivatives greatly improves accuracy and stability. Partial dependences computed by integrating over local partial derivatives are highly sensitive to partial derivatives computed at the left edge of any $x_j$'s range because imprecision at the left edge affects the entire curve.  This presents a problem when there are few samples with $x_j$ values at the extreme left (see, for example, the $x_j$ histogram of \figref{fig:yearmade}(d)).  Fortunately, sensible defaults for \spd{} (10 observations and 5 slopes) work well in most cases and  were used to generate all plots in this paper.
 
-For categorical variables, \cspd{} uses the same stratification approach, but cannot apply  regression of $y$ on non-ordinal, categorical $x_j$. Instead, \cspd{} groups leaf observations by category and computes the average $\bar{y}$ per category. Then,  within each leaf, it chooses a random reference category and subtracts that category's $\bar{y}$ value from the leaf $\bar{\bf y}$ vector to get a vector of relative deltas between categories: $\Delta {\bf y}$ = $\bar{\bf y} - \bar{\bf y}_{\it refcat}$. The $\Delta  {\bf y}$ vectors from all leaves are then merged via averaging, weighted by the number of observations per category, to get the overall effect of each category on $y$.  The delta vectors between any two leaves, $\Delta {\bf y}$ and $\Delta {\bf y}'$, can only be merged if there is at least one category in common.  \cspd{} initializes a running average vector to the first leaf's $\Delta  {\bf y}$ and then makes  passes over the remaining vectors, merging any vectors with a category in common with the running average vector.  Observations associated with any remaining, unmerged leaves must be ignored.
+For categorical variables, \cspd{} uses the same stratification approach, but cannot apply  regression of $y$ to non-ordinal, categorical $x_j$. Instead, \cspd{} groups leaf observations by category and computes the average $\bar{y}$ per category. Then,  within each leaf, it chooses a random reference category and subtracts that category's $\bar{y}$ value from the leaf $\bar{\bf y}$ vector to get a vector of relative deltas between categories: $\Delta {\bf y}$ = $\bar{\bf y} - \bar{\bf y}_{\it refcat}$. The $\Delta  {\bf y}$ vectors from all leaves are then merged via averaging, weighted by the number of observations per category, to get the overall effect of each category on $y$.  The delta vectors for two leaves, $\Delta {\bf y}$ and $\Delta {\bf y}'$, can only be merged if there is at least one category in common.  \cspd{} initializes a running average vector to the first leaf's $\Delta  {\bf y}$ and then makes  passes over the remaining vectors, merging any vectors with a category in common with the running average vector.  Observations associated with any remaining, unmerged leaves must be ignored.
 
-Stratification of high-cardinality categorical variables tends to create small groups of various category subsets, which complicates the averaging process across groups. (Such $\Delta {\bf y}$ vectors are sparse and we use {\it NaN} to represent missing values.) If both groups have the same reference category, merging is a simple matter of averaging the two delta vectors, where {\it mean}({\it z,NaN}) = {\it z} and {\it mean}({\it NaN,NaN}) = {\it NaN}.  For delta vectors with different reference categories and at least one category in common, one vector is adjusted to use a randomly-selected reference category in common: $\Delta {\bf y}' = \Delta {\bf y}' - \Delta {\bf y}_{\it refcat}' + \Delta {\bf y}_{\it refcat}$. That equation adjusts $\Delta {\bf y}'$ so $\Delta {\bf y}_{\it refact}'=0$ then adds the corresponding value from $\Delta {\bf y}$ so $\Delta {\bf y}_{\it refact}' = \Delta {\bf y}_{\it refact}$, which renders the average of $\Delta {\bf y}_{\it refact}$ and $\Delta {\bf y}_{\it refact}'$ meaningful.  See \algref{alg:CatStratPD} for more details.
+Stratification of high-cardinality categorical variables tends to create small groups of category subsets, which complicates the averaging process across groups. (Such $\Delta {\bf y}$ vectors are sparse and {\it NaN} represents missing values.) If both groups have the same reference category, merging is a simple matter of averaging the two delta vectors, where {\it mean}({\it z,NaN}) = {\it z}.  For delta vectors with different reference categories and at least one category in common, one vector is adjusted to use a randomly-selected reference category, $c$ in common: $\Delta {\bf y}' = \Delta {\bf y}' - \Delta {\bf y}_c' + \Delta {\bf y}_c$. That equation adjusts $\Delta {\bf y}'$ so $\Delta {\bf y}_c'=0$ then adds the corresponding value from $\Delta {\bf y}$ so $\Delta {\bf y}_c' = \Delta {\bf y}_c$, which renders the average of $\Delta {\bf y}$ and $\Delta {\bf y}'$ meaningful.  \cspd{} uses a single hyper parameter {\tt\small min\_samples\_leaf} to control stratification. See \algref{alg:CatStratPD} for more details.
 
+number of leaves is $n / {\tt\small min\_samples\_leaf}$. computing $y$ deltas across all leaves is roughly the same as computing...  the size is approximately {\tt\small min\_samples\_leaf} and there are... in the worst case, for non-integer values, stratification leads to leaf sizes about {\tt\small min\_samples\_leaf}. (best case, everything in \xnj is exactly equal and we end up with a single leaf). worst-case every $x_j$ value in the leaf is unique, which leads to multiple operations of size {\tt\small min\_samples\_leaf}. the second loop iterates over all possible unique values in ${\bf X}_j$ and each iteration costs {\tt\small min\_samples\_leaf} to extract slopes covering unique x values. then more passes over the unique x sized data sets followed by a cumulative sum at the cost of another |ux|.
+
+The cost to compute $y$ deltas for all observations among the leaves is linear in $n$ and the cost to average slopes across leaves is on the order of $|unique({\bf X}_j)| \times n$ or $n^2$ when all ${\bf X}_j$ are unique in the worst case. \spd{} is, thus, $O(n^2)$ in the worst case.
+
+\cspd{} computes category deltas linearly in $n$ but must make multiple passes of size $|T|$ (number of leaves), averaging in leaf category delta vectors. Averaging delta vectors costs $n$ operations, so each pass requires $|T| \times n$. Since the number of leaves is roughly $|T| \approx n / {\tt\small min\_samples\_leaf}$, each pass requires $n / {\tt\small min\_samples\_leaf} \times n = n^2 / {\tt\small min\_samples\_leaf}$ or $O(n^2)$. The number of passes depends on the data set
+ 
  
 \section{Related work}\label{sec:related}
 
@@ -310,7 +317,7 @@ while more work and something changed and less than max iterations:
 \DontPrintSemicolon
 \SetAlgorithmName{Algorithm}{List of Algorithms}
 \SetAlgoSkip{}
-\TitleOfAlgo{{\em CatStratPD}(${\bf X}, {\bf y}, $j$, {\it min\_samples\_leaf}$)}
+\TitleOfAlgo{{\em CatStratPD}(${\bf X}, {\bf y}, j, {\it min\_samples\_leaf}$)}
 \small
 \cut{
 \KwOut{$\begin{array}[t]{l}
@@ -320,11 +327,10 @@ n^{(k)} = \text{number of supported observations per category $k$}\\
 }
 }
 $T$ := Decision tree regressor fit to (\xnj{}, $\bf y$) with hyper parameter: ${\it min\_samples\_leaf}$\;
-Let $\Delta Y$ be a matrix whose columns are leaf category delta vectors\\
-Let $C$ be a matrix whose columns are leaf category accounts\\
-\For{each leaf $L \in T$}{
+Let $\Delta Y$ be a matrix whose columns are vectors of leaf category deltas\\
+Let $C$ be a matrix whose columns are vectors for leaf category counts\\
+\For(\hfill$\triangleright$\ {\it\textcolor{gray}{\small Get average $y$ delta relative to random ref category for obs. in leaves}}){each leaf $L \in T$}{
         $({\bf x}_L, {\bf y}_L)$ := $\{(x_j^{(i)},  y^{(i)})\}_{i \in L}$\Comment*{\it Get leaf observations}
-\Comment{\it Get average $y$ delta relative to random ref category for each obs. in each leaf}
         ${\bf ucats}$, $C_L$ := $unique({\bf x}_L)$\Comment*{\it Get unique categories, counts from leaf observations}
 	$\bar{\bf y}$ := Group leaf records $({\bf x}_L, {\bf y}_L)$ by category, computing $\bar{y}$ per unique category\\
 	${\it refcat}$ := random category from ${\bf x}_L$\\
@@ -332,20 +338,21 @@ Let $C$ be a matrix whose columns are leaf category accounts\\
 	$\Delta {Y}_L$ = $\bar{\bf y} - \bar{\bf y}_{\it refcat}$\\
 }
 $\Delta {\bf y}$, {\bf c} := $\Delta {Y}_1$, $C_1$\Comment*{\it $\Delta {\bf y}$ is running average vector mapping category to average $y$ delta}
-$completed$ := $\{1\}$; $work$ := $\{2 .. |leaves|\}$; \Comment*{\it set of leaf indexes}
+%$completed$ := $\{1\}$; $work$ := $\{2 .. |leaves|\}$; \Comment*{\it set of leaves}
 %${\bf ucats}$ := $unique({\bf X}_j)$\\
-\While{$|work| > 0$ and $|completed|>0$}{
-    completed := $\emptyset$\\
-    \For{each leaf $L$ in work}{
+%\While{$|work| > 0$ and $|completed|>0$}{
+%    completed := $\emptyset$\\
+\Repeat(twice){
+\For(\hfill$\triangleright$\ {\it\textcolor{gray}{\small 2 passes is enough to merge all $\Delta {Y}_L$ into $\Delta {\bf y}$}}){each leaf $L$ in work}{
         \If{$\Delta {Y}_L$ has category in common with $\Delta {\bf y}$}{
-            ${\it completed}$ := ${\it completed} \cup L$\\
+            ${\it completed}$ := ${\it completed} \cup \{L\}$\\
             $c$ = random category in intersection\\
             $\Delta {\bf y}_L$ := $\Delta {Y}_L- \Delta {Y}_{L,{\it c}} + \Delta {\bf y}_{\it c}$\Comment*{\it Adjust so $\Delta {Y}_{L,{\it c}}=0$, add corresponding $\Delta {\bf y}_{\it c}$ value}
             $\Delta {\bf y}$ := $({\bf c} \times \Delta {\bf y} + C_L \times \Delta {\bf y}_L)/({\bf c} + C_L)$ where $z+NaN$={\it z}\Comment*{\it weighted average}
-            ${\bf c} := {\bf c} + C_L$\\
+            ${\bf c} := {\bf c} + C_L$\Comment*{\it update running weight}
         }
     }
-    $work := work \texttt{\char`\\} {\it completed}$\\
+%    $work := work \texttt{\char`\\} {\it completed}$\\
 }
 \Return{$\Delta {\bf y}$}\\
 \label{alg:CatStratPD}

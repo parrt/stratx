@@ -133,5 +133,13 @@ def bigX():
     axes[0, 1].set_title("PD/ICE", fontsize=10)
     plt.show()
 
-weather()
+def bulldozer():
+    n = 20_000
+    X, y = load_bulldozer(n=n)
+    # cat_partial_dependence(X, y, 'ModelID')
+    cat_partial_dependence(X, y, 'YearMade')
+
+
+bulldozer()
+# weather()
 #bigX()

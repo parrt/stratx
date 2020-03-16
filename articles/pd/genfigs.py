@@ -2004,11 +2004,11 @@ if __name__ == '__main__':
     # interactions()
     # unsup_yearmade()
     # yearmade()
-    rent()
+    # rent()
     # rent_ntrees()
     # unsup_rent()
     # unsup_boston()
-    # weight()
+    weight()
     # shap_pregnant()
     # shap_weight(feature_perturbation='tree_path_dependent', twin=True) # more biased but faster
     # shap_weight(feature_perturbation='interventional', twin=True) # takes 04:45 minutes
