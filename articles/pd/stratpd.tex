@@ -142,13 +142,8 @@ For categorical variables, \cspd{} uses the same stratification approach, but ca
 
 Stratification of high-cardinality categorical variables tends to create small groups of category subsets, which complicates the averaging process across groups. (Such $\Delta {\bf y}$ vectors are sparse and {\it NaN} represents missing values.) If both groups have the same reference category, merging is a simple matter of averaging the two delta vectors, where {\it mean}({\it z,NaN}) = {\it z}.  For delta vectors with different reference categories and at least one category in common, one vector is adjusted to use a randomly-selected reference category, $c$ in common: $\Delta {\bf y}' = \Delta {\bf y}' - \Delta {\bf y}_c' + \Delta {\bf y}_c$. That equation adjusts $\Delta {\bf y}'$ so $\Delta {\bf y}_c'=0$ then adds the corresponding value from $\Delta {\bf y}$ so $\Delta {\bf y}_c' = \Delta {\bf y}_c$, which renders the average of $\Delta {\bf y}$ and $\Delta {\bf y}'$ meaningful.  \cspd{} uses a single hyper parameter {\tt\small min\_samples\_leaf} to control stratification. See \algref{alg:CatStratPD} for more details.
 
-number of leaves is $n / {\tt\small min\_samples\_leaf}$. computing $y$ deltas across all leaves is roughly the same as computing...  the size is approximately {\tt\small min\_samples\_leaf} and there are... in the worst case, for non-integer values, stratification leads to leaf sizes about {\tt\small min\_samples\_leaf}. (best case, everything in \xnj is exactly equal and we end up with a single leaf). worst-case every $x_j$ value in the leaf is unique, which leads to multiple operations of size {\tt\small min\_samples\_leaf}. the second loop iterates over all possible unique values in ${\bf X}_j$ and each iteration costs {\tt\small min\_samples\_leaf} to extract slopes covering unique x values. then more passes over the unique x sized data sets followed by a cumulative sum at the cost of another |ux|.
+\spd{} and \cspd{} both have theoretical worst-case time complexity of $O(n^2)$ for $n$ observations. For \spd{}, the cost to compute $y$ deltas for all observations among the leaves is linear in $n$ and the cost to average slopes across unique $x_j$ ranges is on the order of $|unique({\bf X}_j)| \times n$ or $n^2$ when all ${\bf X}_j$ are unique in the worst case. \spd{} is, thus, $O(n^2)$ in the worst case.  \cspd{} computes category deltas linearly in $n$ but must make (at most two) passes of size $|T|$ (number of leaves) over the leaves to average all possible leaf category delta vectors. Averaging two vectors costs $n$ operations, so each pass requires $|T| \times n$. Since the number of leaves is roughly $|T| \approx n / {\tt\small min\_samples\_leaf}$, each pass requires $n / {\tt\small min\_samples\_leaf} \times n = n^2 / {\tt\small min\_samples\_leaf}$ or $O(n^2)$. The number of passes is either 1 or 2, depending on data set. \cut{At most 2 since if mergeable, vector has cat in common with a vector to left or right. If on right, 2nd pass catches it.}
 
-The cost to compute $y$ deltas for all observations among the leaves is linear in $n$ and the cost to average slopes across leaves is on the order of $|unique({\bf X}_j)| \times n$ or $n^2$ when all ${\bf X}_j$ are unique in the worst case. \spd{} is, thus, $O(n^2)$ in the worst case.
-
-\cspd{} computes category deltas linearly in $n$ but must make multiple passes of size $|T|$ (number of leaves), averaging in leaf category delta vectors. Averaging delta vectors costs $n$ operations, so each pass requires $|T| \times n$. Since the number of leaves is roughly $|T| \approx n / {\tt\small min\_samples\_leaf}$, each pass requires $n / {\tt\small min\_samples\_leaf} \times n = n^2 / {\tt\small min\_samples\_leaf}$ or $O(n^2)$. The number of passes depends on the data set
- 
- 
 \section{Related work}\label{sec:related}
 
 FPD
@@ -345,7 +340,7 @@ $\Delta {\bf y}$, {\bf c} := $\Delta {Y}_1$, $C_1$\Comment*{\it $\Delta {\bf y}$
 \Repeat(twice){
 \For(\hfill$\triangleright$\ {\it\textcolor{gray}{\small 2 passes is enough to merge all $\Delta {Y}_L$ into $\Delta {\bf y}$}}){each leaf $L$ in work}{
         \If{$\Delta {Y}_L$ has category in common with $\Delta {\bf y}$}{
-            ${\it completed}$ := ${\it completed} \cup \{L\}$\\
+%            ${\it completed}$ := ${\it completed} \cup \{L\}$\\
             $c$ = random category in intersection\\
             $\Delta {\bf y}_L$ := $\Delta {Y}_L- \Delta {Y}_{L,{\it c}} + \Delta {\bf y}_{\it c}$\Comment*{\it Adjust so $\Delta {Y}_{L,{\it c}}=0$, add corresponding $\Delta {\bf y}_{\it c}$ value}
             $\Delta {\bf y}$ := $({\bf c} \times \Delta {\bf y} + C_L \times \Delta {\bf y}_L)/({\bf c} + C_L)$ where $z+NaN$={\it z}\Comment*{\it weighted average}
