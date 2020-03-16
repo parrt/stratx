@@ -1,35 +1,5 @@
-import numpy as np
-import pandas as pd
-from typing import Mapping, List, Tuple
-from collections import defaultdict, OrderedDict
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-from openpyxl.styles.alignment import horizontal_alignments
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression, Lasso
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.preprocessing import StandardScaler
-from sklearn.datasets import load_boston, load_iris, load_wine, load_digits, \
-    load_breast_cancer, load_diabetes, fetch_mldata
-from matplotlib.collections import LineCollection
-import time
-from pandas.api.types import is_string_dtype, is_object_dtype, is_categorical_dtype, \
-    is_bool_dtype
-from sklearn.ensemble.partial_dependence import partial_dependence, \
-    plot_partial_dependence
-from sklearn import svm
-from sklearn.neighbors import KNeighborsRegressor
-from pdpbox import pdp
-from rfpimp import *
-from scipy.integrate import cumtrapz
-from stratx.support import *
-from stratx.partdep import *
 from stratx.ice import *
-import inspect
-import statsmodels.api as sm
-import matplotlib.patches as mpatches
-import os
+from stratx.support import *
 
 np.random.seed(1)  # pick seed for reproducible article images
 
@@ -124,7 +94,7 @@ model.compile(loss='mean_squared_error', optimizer=opt, metrics=['mae'])
 
 callback = callbacks.EarlyStopping(monitor='val_loss', patience=10)
 history = model.fit(X, y,
-                    epochs=2000,
+                    epochs=3000,
                     validation_split=0.2,
                     batch_size=batch_size,
                     # callbacks=[callback]

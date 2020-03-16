@@ -320,18 +320,18 @@ n^{(k)} = \text{number of supported observations per category $k$}\\
 }
 }
 $T$ := Decision tree regressor fit to (\xnj{}, $\bf y$) with hyper parameter: ${\it min\_samples\_leaf}$\;
-Let $\Delta_{x,L}$ be dictionary mapping (category, leaf) to delta from ref category\\
-Let ${\it Count}_{x,L}$ be dictionary mapping (category, leaf) to count\\
+Let $\Delta Y$ be a matrix whose columns are leaf category delta vectors\\
+Let $C$ be a matrix whose columns are leaf category accounts\\
 \For{each leaf $L \in T$}{
         $({\bf x}_L, {\bf y}_L)$ := $\{(x_j^{(i)},  y^{(i)})\}_{i \in L}$\Comment*{\it Get leaf observations}
 \Comment{\it Get average $y$ delta relative to random ref category for each obs. in each leaf}
-        ${\bf ucats}$, ${\bf cx}_L$ := $unique({\bf x}_L)$\Comment*{\it Get unique categories, counts from leaf observations}
+        ${\bf ucats}$, $C_L$ := $unique({\bf x}_L)$\Comment*{\it Get unique categories, counts from leaf observations}
 	$\bar{\bf y}$ := Group leaf records $({\bf x}_L, {\bf y}_L)$ by category, computing $\bar{y}$ per unique category\\
 	${\it refcat}$ := random category from ${\bf x}_L$\\
 %	$y_{\it ref}$ := random choice from $\bar{\bf y}$\\
 	$\Delta {Y}_L$ = $\bar{\bf y} - \bar{\bf y}_{\it refcat}$\\
 }
-$\Delta {\bf y}$ := $\Delta {Y}_1$\Comment*{\it $\Delta {\bf y}$ is running average vector mapping category to average $y$ delta}
+$\Delta {\bf y}$, {\bf c} := $\Delta {Y}_1$, $C_1$\Comment*{\it $\Delta {\bf y}$ is running average vector mapping category to average $y$ delta}
 $completed$ := $\{1\}$; $work$ := $\{2 .. |leaves|\}$; \Comment*{\it set of leaf indexes}
 %${\bf ucats}$ := $unique({\bf X}_j)$\\
 \While{$|work| > 0$ and $|completed|>0$}{
@@ -340,13 +340,13 @@ $completed$ := $\{1\}$; $work$ := $\{2 .. |leaves|\}$; \Comment*{\it set of leaf
         \If{$\Delta {Y}_L$ has category in common with $\Delta {\bf y}$}{
             ${\it completed}$ := ${\it completed} \cup L$\\
             $c$ = random category in intersection\\
-            $\Delta {\bf y}'$ := $\Delta {Y}_L- \Delta {Y}_{L,{\it c}} + \Delta {\bf y}_{\it c}$\Comment*{\it Adjust so $\Delta {Y}_{L,{\it c}}=0$, add corresponding $\Delta {\bf y}_{\it c}$ value}
-            $\Delta {\bf y}$ := mean($\Delta {\bf y}, \Delta {\bf y}'$) where {\it mean}({\it z,NaN})={\it z} and {\it mean}({\it NaN,NaN})={\it NaN}\\
+            $\Delta {\bf y}_L$ := $\Delta {Y}_L- \Delta {Y}_{L,{\it c}} + \Delta {\bf y}_{\it c}$\Comment*{\it Adjust so $\Delta {Y}_{L,{\it c}}=0$, add corresponding $\Delta {\bf y}_{\it c}$ value}
+            $\Delta {\bf y}$ := $({\bf c} \times \Delta {\bf y} + C_L \times \Delta {\bf y}_L)/({\bf c} + C_L)$ where $z+NaN$={\it z}\Comment*{\it weighted average}
+            ${\bf c} := {\bf c} + C_L$\\
         }
     }
-    work := work \texttt{\char`\\} {\it completed}\\
+    $work := work \texttt{\char`\\} {\it completed}$\\
 }
-weighted average???????????\\
 \Return{$\Delta {\bf y}$}\\
 \label{alg:CatStratPD}
 \end{algorithm}
