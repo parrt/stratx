@@ -107,16 +107,17 @@ def fitcurve(dataset,x,y,order=2):
     return s, eqn
 
 
-R_flight = flight(max_size=10000)
-R_rent = rent(max_size=10000)
-R_bulldozer = bulldozer(max_size=10000)
+max_size = 30000
+R_flight = flight(max_size=max_size)
+R_rent = rent(max_size=max_size)
+R_bulldozer = bulldozer(max_size=max_size)
 
 R_flight['size'] /= 1000
 R_rent['size'] /= 1000
 R_bulldozer['size'] /= 1000
 
 lw = .8
-fig, axes = plt.subplots(1, 2, figsize=(5.5,3))
+fig, axes = plt.subplots(1, 2, figsize=(6.5,3))
 
 for colname in R_flight.drop('size', axis=1).columns:
     ax = axes[1] if colname in {'AIRLINE',

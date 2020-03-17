@@ -234,7 +234,13 @@ bulldozer shape (362781, 14) records, 5 cats
 
 Plotting execution time against $n=1,000\, ..\, 30,000$ observations for three real data sets (rent $p=20$, bulldozer $p=14$, and flight $p=17$), shows that \spd{} takes 1.1s or less to process 30,000 records for any $x_j$, despite the potential presence of quadratic cost. \cspd{} typically processes categorical variables in less than 2s but takes 13s for the high-cardinality categorical {\tt\small ModelID} of bulldozer.  These elapsed times for our prototype make it practical and  competitive with FPD/ICE, SHAP, and ALE.   If the cost to train a model using (cross validated) grid search for hyper parameter tuning is counted, \spd{} and \cspd{} outperforms these existing techniques as training and tuning is often measured in minutes. 
 
-\includegraphics[scale=.5]{images/timing.pdf}
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=.4]{images/timing.pdf}
+\caption{\small timing blah.}
+\label{fig:timing}
+\end{center}
+\end{figure}
 
 
 \section{Discussion and future work}
