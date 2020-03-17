@@ -107,16 +107,16 @@ def fitcurve(dataset,x,y,order=2):
     return s, eqn
 
 
-R_flight = flight(max_size=30000)
-R_rent = rent(max_size=30000)
-R_bulldozer = bulldozer(max_size=30000)
+R_flight = flight(max_size=10000)
+R_rent = rent(max_size=10000)
+R_bulldozer = bulldozer(max_size=10000)
 
 R_flight['size'] /= 1000
 R_rent['size'] /= 1000
 R_bulldozer['size'] /= 1000
 
 lw = .8
-fig, axes = plt.subplots(1, 2, figsize=(8,4))
+fig, axes = plt.subplots(1, 2, figsize=(5.5,3))
 
 for colname in R_flight.drop('size', axis=1).columns:
     ax = axes[1] if colname in {'AIRLINE',
@@ -144,15 +144,20 @@ for colname in R_bulldozer.drop('size', axis=1).columns:
 # axes[2,0].legend(loc="upper left")
 # axes[2,1].legend(loc="upper left")
 
-axes[0].set_ylim(0,4)
-axes[0].set_title("Numerical vars, 3 datasets")
-axes[1].set_ylim(0,13)
-axes[1].set_title("Categorical vars, 3 datasets")
+axes[0].set_ylim(0,1.5)
+axes[0].set_title("Numerical vars, 3 datasets", fontsize=12)
+axes[1].set_ylim(0,14)
+axes[1].set_title("Categorical vars, 3 datasets", fontsize=12)
 
 # ax.set_ylim(0,5)
-axes[0].set_xlabel(f"Sample size $n$ ($10^3$ samples)")
-axes[1].set_xlabel(f"Sample size $n$ ($10^3$ samples)")
-axes[0].set_ylabel("Execution time (seconds)")
+axes[0].set_xlabel(f"Sample size $n$ ($10^3$ samples)", fontsize=12)
+axes[1].set_xlabel(f"Sample size $n$ ($10^3$ samples)", fontsize=12)
+axes[0].set_ylabel("Execution time (secs)", fontsize=12)
+# axes[1].set_ylabel("Execution time (secs)", fontsize=12)
+
+axes[0].tick_params(axis='both', which='major', labelsize=12)
+axes[1].tick_params(axis='both', which='major', labelsize=12)
+
 # axes[1].set_ylabel("Time (sec)")
 # axes[2,0].set_ylabel("Time (sec)")
 
