@@ -1327,7 +1327,7 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose=Fal
     # Two passes should be sufficient to merge all possible vectors, but
     # I'm being paranoid here and allowing it to run until completion or some maximum iterations
     while len(work)>0 and len(completed)>0 and iteration<=max_iter:
-        print(f"PASS {iteration} len(work)", len(work))
+        # print(f"PASS {iteration} len(work)", len(work))
         completed = set()
         for j in work:      # for each refcat, avg in the vectors
             cat = refcats[j]
@@ -1358,12 +1358,11 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose=Fal
                 print("     new avg    =", parray(catavg))
                 print()
             completed.add(j)
-        print("Completed:",completed)
         iteration += 1
         work = work - completed
 
     if len(work)>0:
-        print(f"Left {len(work)} leaves/unique cats in work list")
+        #print(f"Left {len(work)} leaves/unique cats in work list")
         # hmm..couldn't merge some vectors; total up the samples we ignored
         for j in work:
             merge_ignored += weight_for_refcats[j]
