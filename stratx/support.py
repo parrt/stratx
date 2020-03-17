@@ -135,6 +135,8 @@ def load_flights(n):
                 'SCHEDULED_TIME',
                 'ARRIVAL_DELAY']  # target
 
+    print(f"Flight has {len(df_flights)} records")
+
     df_flights = df_flights[features]
     df_flights = df_flights.dropna()  # ignore missing stuff for ease and reduce size
     df_flights = df_flights.sample(n)
@@ -281,6 +283,8 @@ def load_bulldozer(n):
     # then we can sample from that to get n
     X = X.iloc[-50_000:]
     y = y.iloc[-50_000:]
+
+    print(f"Bulldozer has {len(df)} records")
 
     idxs = resample(range(50_000), n_samples=n, replace=False, )
     X, y = X.iloc[idxs], y.iloc[idxs]
