@@ -674,6 +674,27 @@ def weather():
         rf.fit(X, y) # Use full data set for plotting
         print("RF OOB R^2", rf.oob_score_)
 
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    df = df_raw.copy()
+    avgtmp = df.groupby(['state', 'dayofyear'])[['temperature']].mean()
+    avgtmp = avgtmp.reset_index()
+    ca = avgtmp.query('state=="CA"')
+    co = avgtmp.query('state=="CO"')
+    az = avgtmp.query('state=="AZ"')
+    wa = avgtmp.query('state=="WA"')
+    nv = avgtmp.query('state=="NV"')
+    ax.plot(ca['dayofyear'], ca['temperature'], lw=.5, c='#fdae61', label="CA")
+    ax.plot(co['dayofyear'], co['temperature'], lw=.5, c='#225ea8', label="CO")
+    ax.plot(az['dayofyear'], az['temperature'], lw=.5, c='#41b6c4', label="AZ")
+    ax.plot(wa['dayofyear'], wa['temperature'], lw=.5, c='#a1dab4', label="WA")
+    ax.plot(nv['dayofyear'], nv['temperature'], lw=.5, c='#a1dab4', label="NV")
+    ax.legend(loc='upper left', borderpad=0, labelspacing=0)
+    ax.set_xlabel("dayofyear")
+    ax.set_ylabel("temperature")
+    ax.set_title("(a) State/day vs temp")
+    savefig(f"dayofyear_vs_temp")
+
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'dayofyear', 'temperature', ax=ax,
                  show_x_counts=False,
@@ -730,26 +751,6 @@ def weather():
     ax.set_title("(a) Marginal")
     savefig(f"state_vs_temp")
 
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
-    df = df_raw.copy()
-    avgtmp = df.groupby(['state', 'dayofyear'])[['temperature']].mean()
-    avgtmp = avgtmp.reset_index()
-    ca = avgtmp.query('state=="CA"')
-    co = avgtmp.query('state=="CO"')
-    az = avgtmp.query('state=="AZ"')
-    wa = avgtmp.query('state=="WA"')
-    nv = avgtmp.query('state=="NV"')
-    ax.plot(ca['dayofyear'], ca['temperature'], lw=.5, c='#fdae61', label="CA")
-    ax.plot(co['dayofyear'], co['temperature'], lw=.5, c='#225ea8', label="CO")
-    ax.plot(az['dayofyear'], az['temperature'], lw=.5, c='#41b6c4', label="AZ")
-    ax.plot(wa['dayofyear'], wa['temperature'], lw=.5, c='#a1dab4', label="WA")
-    ax.plot(nv['dayofyear'], nv['temperature'], lw=.5, c='#a1dab4', label="NV")
-    ax.legend(loc='lower left', borderpad=0, labelspacing=0)
-    ax.set_xlabel("dayofyear")
-    ax.set_ylabel("temperature")
-    ax.set_title("(a) State/day vs temp")
-
-    savefig(f"dayofyear_vs_temp")
     plt.close()
 
 
@@ -2008,7 +2009,7 @@ if __name__ == '__main__':
     # rent_ntrees()
     # unsup_rent()
     # unsup_boston()
-    weight()
+    # weight()
     # shap_pregnant()
     # shap_weight(feature_perturbation='tree_path_dependent', twin=True) # more biased but faster
     # shap_weight(feature_perturbation='interventional', twin=True) # takes 04:45 minutes
@@ -2027,7 +2028,7 @@ if __name__ == '__main__':
     # ale_yearmade()
     # ale_height()
     # ale_pregnant()
-    # ale_state()
+    ale_state()
 
     # EXTRA GOODIES
     # meta_boston()
