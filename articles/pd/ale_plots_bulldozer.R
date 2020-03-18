@@ -51,4 +51,4 @@ make_plots <- function(X, features=names(X), intervals=rep(100, length(features)
 }
 
 # Create ALE plot PDFs.  Here we can assign K to each feature.
-make_plots(X, c('YearMade', 'ProductSize'), intervals=rep(400, 2))
+make_plots(X, c('YearMade', 'ProductSize'), intervals=rep(300, 2))

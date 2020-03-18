@@ -1260,13 +1260,15 @@ def noise():
         X = df.drop('y', axis=1)
         y = df['y']
         plot_stratpd(X, y, 'x1', 'y',
+                     show_ylabel=False,
                      pdp_marker_size=1,
                      show_x_counts=False,
                      ax=axes[i], yrange=(-4, .5))
+    axes[0].set_ylabel("y", fontsize=12)
 
     for i,ax in enumerate(axes):
         ax.text(0, -1, f"$\sigma = {sds[i]}$", horizontalalignment='center')
-        ax.set_xlabel('$x_1$')
+        ax.set_xlabel('$x_1$', fontsize=12)
         ax.set_xticks([-2,-1,0,1,2])
 
     # rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
@@ -1771,7 +1773,7 @@ def interactions():
     shapimp = np.mean(np.abs(shap_values), axis=0)
     print("SHAP avg |x1|,|x2|,|x3| =", shapimp)
 
-    fig, axes = plt.subplots(1,3,figsize=(8.5,3))
+    fig, axes = plt.subplots(1,4,figsize=(11.33,2.8))
 
     x1_color = '#1E88E5'
     x2_color = 'orange'
@@ -1785,6 +1787,7 @@ def interactions():
     axes[0].set_xticks([0,2,4,6,8,10])
     axes[0].set_xlabel("$x_1, x_2, x_3$", fontsize=10)
     axes[0].set_ylabel("y")
+    axes[0].set_yticks([0, 25, 50, 75, 100, 125, 150])
     axes[0].set_ylim(-10,160)
     axes[0].set_title(f"Friedman FPD")
 
@@ -1795,49 +1798,81 @@ def interactions():
     axes[0].spines['top'].set_color('none')
     axes[0].spines['right'].set_color('none')
 
-    x1_patch = mpatches.Patch(color=x1_color, label='$FPD_1$')
-    x2_patch = mpatches.Patch(color=x2_color, label='$FPD_2$')
-    x3_patch = mpatches.Patch(color=x3_color, label='$FPD_3$')
+    x1_patch = mpatches.Patch(color=x1_color, label='$x_1$')
+    x2_patch = mpatches.Patch(color=x2_color, label='$x_2$')
+    x3_patch = mpatches.Patch(color=x3_color, label='$x_3$')
     axes[0].legend(handles=[x1_patch,x2_patch,x3_patch], fontsize=10)
 
     # axes[0].legend(fontsize=10)
 
     #axes[1].plot(shap_values)
     shap.dependence_plot("x1", shap_values, X,
-                         interaction_index=None, ax=axes[1], dot_size=5,
+                         interaction_index=None, ax=axes[1], dot_size=4,
                          show=False, alpha=.5, color=x1_color)
     shap.dependence_plot("x2", shap_values, X,
-                         interaction_index=None, ax=axes[1], dot_size=5,
+                         interaction_index=None, ax=axes[1], dot_size=4,
                          show=False, alpha=.5, color=x2_color)
     shap.dependence_plot("x3", shap_values, X,
-                         interaction_index=None, ax=axes[1], dot_size=5,
+                         interaction_index=None, ax=axes[1], dot_size=4,
                          show=False, alpha=.5, color=x3_color)
     axes[1].set_xticks([0,2,4,6,8,10])
-    axes[1].set_xlabel("$x_1, x_2, x_3$", fontsize=10)
+    axes[1].set_xlabel("$x_1, x_2, x_3$", fontsize=12)
     axes[1].set_ylim(-95,110)
     axes[1].set_title("SHAP")
-    axes[1].set_ylabel("SHAP values", fontsize=10)
+    axes[1].set_ylabel("SHAP values", fontsize=12)
+    x1_patch = mpatches.Patch(color=x1_color, label='$x_1$')
+    x2_patch = mpatches.Patch(color=x2_color, label='$x_2$')
+    x3_patch = mpatches.Patch(color=x3_color, label='$x_3$')
+    axes[1].legend(handles=[x1_patch,x2_patch,x3_patch], fontsize=12)
 
-    plot_stratpd(X, y, "x1", "y", ax=axes[2], pdp_marker_size=1,
-                 pdp_marker_color=x1_color,
-                 show_x_counts=False, n_trials=1, show_slope_lines=False)
-    plot_stratpd(X, y, "x2", "y", ax=axes[2], pdp_marker_size=1,
-                 pdp_marker_color=x2_color,
-                 show_x_counts=False, n_trials=1, show_slope_lines=False)
-    plot_stratpd(X, y, "x3", "y", ax=axes[2], pdp_marker_size=1,
-                 pdp_marker_color=x3_color,
-                 show_x_counts=False, n_trials=1, show_slope_lines=False)
+    df_x1 = pd.read_csv("images/x1_ale.csv")
+    df_x2 = pd.read_csv("images/x2_ale.csv")
+    df_x3 = pd.read_csv("images/x3_ale.csv")
+    axes[2].plot(df_x1['x.values'],df_x1['f.values'],'.',color=x1_color,markersize=2)
+    axes[2].plot(df_x2['x.values'],df_x2['f.values'],'.',color=x2_color,markersize=2)
+    axes[2].plot(df_x3['x.values'],df_x3['f.values'],'.',color=x3_color,markersize=2)
+    axes[2].set_title("ALE")
+    axes[2].set_ylabel("y", fontsize=12)
+    axes[2].set_xlabel("$x_1, x_2, x_3$", fontsize=12)
+    axes[2].set_ylim(-95,110)
+    # axes[2].tick_params(axis='both', which='major', labelsize=10)
     axes[2].set_xticks([0,2,4,6,8,10])
-    axes[2].set_ylim(-20,160)
-    axes[2].set_xlabel("$x_1, x_2, x_3$", fontsize=10)
-    axes[2].set_ylabel("y")
-    axes[2].set_title("StratPD")
     axes[2].spines['top'].set_linewidth(.5)
     axes[2].spines['right'].set_linewidth(.5)
     axes[2].spines['left'].set_linewidth(.5)
     axes[2].spines['bottom'].set_linewidth(.5)
     axes[2].spines['top'].set_color('none')
     axes[2].spines['right'].set_color('none')
+    x1_patch = mpatches.Patch(color=x1_color, label='$x_1$')
+    x2_patch = mpatches.Patch(color=x2_color, label='$x_2$')
+    x3_patch = mpatches.Patch(color=x3_color, label='$x_3$')
+    axes[2].legend(handles=[x1_patch,x2_patch,x3_patch], fontsize=12)
+
+    plot_stratpd(X, y, "x1", "y", ax=axes[3], pdp_marker_size=1,
+                 pdp_marker_color=x1_color,
+                 show_x_counts=False, n_trials=1, show_slope_lines=False)
+    plot_stratpd(X, y, "x2", "y", ax=axes[3], pdp_marker_size=1,
+                 pdp_marker_color=x2_color,
+                 show_x_counts=False, n_trials=1, show_slope_lines=False)
+    plot_stratpd(X, y, "x3", "y", ax=axes[3], pdp_marker_size=1,
+                 pdp_marker_color=x3_color,
+                 show_x_counts=False, n_trials=1, show_slope_lines=False)
+    axes[3].set_xticks([0,2,4,6,8,10])
+    axes[3].set_ylim(-20,160)
+    axes[3].set_yticks([0, 25, 50, 75, 100, 125, 150])
+    axes[3].set_xlabel("$x_1, x_2, x_3$", fontsize=12)
+    axes[3].set_ylabel("y", fontsize=12)
+    axes[3].set_title("StratPD")
+    axes[3].spines['top'].set_linewidth(.5)
+    axes[3].spines['right'].set_linewidth(.5)
+    axes[3].spines['left'].set_linewidth(.5)
+    axes[3].spines['bottom'].set_linewidth(.5)
+    axes[3].spines['top'].set_color('none')
+    axes[3].spines['right'].set_color('none')
+    x1_patch = mpatches.Patch(color=x1_color, label='$x_1$')
+    x2_patch = mpatches.Patch(color=x2_color, label='$x_2$')
+    x3_patch = mpatches.Patch(color=x3_color, label='$x_3$')
+    axes[3].legend(handles=[x1_patch,x2_patch,x3_patch], fontsize=12)
 
     savefig("interactions")
 
@@ -2018,7 +2053,7 @@ if __name__ == '__main__':
     # meta_weight()
     # weather()
     # meta_weather()
-    # noise()
+    noise()
     # meta_noise()
     # bigX()
     # multi_joint_distr()
@@ -2028,7 +2063,7 @@ if __name__ == '__main__':
     # ale_yearmade()
     # ale_height()
     # ale_pregnant()
-    ale_state()
+    # ale_state()
 
     # EXTRA GOODIES
     # meta_boston()

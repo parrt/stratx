@@ -183,19 +183,27 @@ test speed on real data set
 
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[scale=0.35]{images/interactions.pdf}
-\caption{\small $y = x_1^2 + x_1 x_2 + 5 x_1 sin(3 x_2) + 10$ where $x_1,x_2,x_3 \sim U(0,10)$ and $x_3$ does not affect $y$. No noise added.}
+\includegraphics[scale=0.45]{images/interactions.pdf}
+\caption{\small $y = x_1^2 + x_1 x_2 + 5 x_1 sin(3 x_2) + 10$ where $x_1,x_2,x_3 \sim U(0,10)$ and $x_3$ does not affect $y$. No noise added.  $R^2$  0.9973}
 \label{fig:interactions}
 \end{center}
 \end{figure}
 
-Consider the synthetic weather data shown in \figref{fig:state_vs_temp}(a) where temperature varies in sinusoidal fashion over the year and with different baseline temperatures per state:
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.45]{images/noise.pdf}
+\caption{\small $y = x_1^2 + x_1 + 10 + \epsilon$ where $x_1,x_2 \sim U(-2,2)$, $\epsilon \sim N(0,\sigma)$ with $\sigma \in [0,0.5,1,2]$.}
+\label{fig:noise}
+\end{center}
+\end{figure}
+
+Consider the synthetic weather data shown in \figref{fig:statetemp}(a) where temperature varies in sinusoidal fashion over the year and with different baseline temperatures per state:
 
 \begin{equation}\label{eq:weather}
-y = t[x_{\it state}] + sin(\frac{\pi}{365}(2x_{\it dayofyear}+365)) \times \epsilon, ~~~ \epsilon \sim N(\mu=0,\sigma=5)
+y = t[x_{\it state}] + 10 sin(\frac{2\pi}{365}x_{\it dayofyear}+\pi) + \epsilon, ~~~ \epsilon \sim N(0, 4)
 \end{equation}
 
-\noindent where the baseline $t$ per state is $\{{\it AZ}=90, {\it CA}=70, {\it CO}=40, {\it NV}=80, {\it WA}=60\}$. Each sinusoid in \figref{fig:state_vs_temp}(a) is the average of three years' temperature data.
+\noindent where the baseline $t$ per state is $\{{\it AZ}=90, {\it CA}=70, {\it CO}=40, {\it NV}=80, {\it WA}=60\}$. Each sinusoid in \figref{fig:statetemp}(a) is the average of three years' temperature data.
 
 \begin{figure}[htbp]
 \begin{center}
@@ -205,14 +213,6 @@ y = t[x_{\it state}] + sin(\frac{\pi}{365}(2x_{\it dayofyear}+365)) \times \epsi
 \includegraphics[scale=0.45]{images/state_vs_temp_stratpd.pdf}~~
 \caption{\small foo.}
 \label{fig:statetemp}
-\end{center}
-\end{figure}
-
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.4]{images/noise.pdf}
-\caption{\small $y = x_1^2 + x_1 + 10 + N(0,\sigma)$ where $x_1,x_2 \sim U(-2,2)$ and $\sigma \in [0,0.5,1,2]$.}
-\label{fig:noise}
 \end{center}
 \end{figure}
 
@@ -228,17 +228,6 @@ flight shape (5714008, 17), 6 cats
 rent shape (49352, 20), no cats
 bulldozer shape (362781, 14) records, 5 cats
 }
-
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.45]{images/pregnant_vs_weight_pdp.pdf}~~
-\includegraphics[scale=0.45]{images/pregnant_vs_weight_shap.pdf}~~
-\includegraphics[scale=0.45]{images/pregnant_2_ale.pdf}~~
-\includegraphics[scale=0.45]{images/pregnant_vs_weight_stratpd.pdf}~~
-\caption{\small foo.}
-\label{fig:pregnant}
-\end{center}
-\end{figure}
 
 we synthesized a body weight data set with 2000 observations drawn from the following equation with codependence between features.
 
@@ -270,6 +259,17 @@ y & = &120 + 10(x_{height} - min(x_{height})) + 30x_{pregnant} - 1.5x_{education
 \includegraphics[scale=0.34]{images/height_300_ale.pdf}~~
 \caption{\small SHAP partial dependence plots of response body weight on feature {\tt height} using 2000 synthetic observations from Equation \eqref{eq:weight}. SHAP interrogated an RF with 40 trees and explained all 2000 samples; the interventional case used 100 observations as background data.}
 \label{fig:heightweight}
+\end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.45]{images/pregnant_vs_weight_pdp.pdf}~~
+\includegraphics[scale=0.45]{images/pregnant_vs_weight_shap.pdf}~~
+\includegraphics[scale=0.45]{images/pregnant_2_ale.pdf}~~
+\includegraphics[scale=0.45]{images/pregnant_vs_weight_stratpd.pdf}~~
+\caption{\small foo.}
+\label{fig:pregnant}
 \end{center}
 \end{figure}
 
