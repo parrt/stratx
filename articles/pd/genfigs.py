@@ -401,7 +401,7 @@ def plot_with_noise_col(df, colname):
     uniq_x, pdp_curve = \
         plot_ice(ice, colname, 'price', alpha=.05, ax=axes[1, 0], show_xlabel=True)
     axes[1, 0].set_ylim(-1000, 5000)
-    axes[1, 0].set_title(f"PD/ICE")
+    axes[1, 0].set_title(f"FPD/ICE")
 
     for i in range(2):
         for j in range(2):
@@ -417,7 +417,7 @@ def plot_with_noise_col(df, colname):
         plot_ice(ice, colname, 'price', alpha=.05, ax=axes[1, 1], show_xlabel=True,
                  show_ylabel=False)
     axes[1, 1].set_ylim(-1000, 5000)
-    axes[1, 1].set_title(f"PD/ICE w/{type} col")
+    axes[1, 1].set_title(f"FPD/ICE w/{type} col")
     # print(f"max ICE curve {np.max(pdp_curve):.0f}, max curve with dup {np.max(pdp_curve_):.0f}")
 
     axes[0, 0].get_xaxis().set_visible(False)
@@ -483,7 +483,7 @@ def plot_with_dup_col(df, colname, min_samples_leaf):
     ice = predict_ice(rf, X, colname, 'price', nlines=1000)
     plot_ice(ice, colname, 'price', alpha=.05, ax=axes[1, 0], show_xlabel=True)
     axes[1, 0].set_ylim(-1000, 5000)
-    axes[1, 0].set_title(f"PD/ICE")
+    axes[1, 0].set_title(f"FPD/ICE")
 
     for i in range(2):
         for j in range(3):
@@ -498,10 +498,10 @@ def plot_with_dup_col(df, colname, min_samples_leaf):
     ice = predict_ice(rf, X, colname, 'price', nlines=1000)
     plot_ice(ice, colname, 'price', alpha=.05, ax=axes[1, 1], show_xlabel=True, show_ylabel=False)
     axes[1, 1].set_ylim(-1000, 5000)
-    axes[1, 1].set_title(f"PD/ICE w/{type} col")
+    axes[1, 1].set_title(f"FPD/ICE w/{type} col")
     # print(f"max ICE curve {np.max(pdp_curve):.0f}, max curve with dup {np.max(pdp_curve_):.0f}")
 
-    axes[1, 2].set_title(f"PD/ICE w/{type} col")
+    axes[1, 2].set_title(f"FPD/ICE w/{type} col")
     axes[1, 2].text(.2, 4000, "Cannot compensate")
     axes[1, 2].set_xlabel(colname)
 
@@ -674,7 +674,6 @@ def weather():
         rf.fit(X, y) # Use full data set for plotting
         print("RF OOB R^2", rf.oob_score_)
 
-
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     df = df_raw.copy()
     avgtmp = df.groupby(['state', 'dayofyear'])[['temperature']].mean()
@@ -721,26 +720,19 @@ def weather():
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = predict_ice(rf, X, 'dayofyear', 'temperature')
     plot_ice(ice, 'dayofyear', 'temperature', ax=ax)
-    ax.set_title("(c) PD/ICE")
+    ax.set_title("(c) FPD/ICE")
     savefig(f"dayofyear_vs_temp_pdp")
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = predict_catice(rf, X, 'state', 'temperature')
     plot_catice(ice, 'state', 'temperature', catnames=catnames, ax=ax,
-                pdp_marker_size=10,
-                # yrange=(-2, 60)
+                pdp_marker_size=15,
+                min_y_shifted_to_zero = True,
+                yrange=(-2, 50)
                 )
-    ax.set_title("(b) PD/ICE")
+    ax.set_yticks([0,10,20,30,40,50])
+    ax.set_title("(b) FPD/ICE")
     savefig(f"state_vs_temp_pdp")
-
-    # fig, ax = plt.subplots(1, 1, figsize=figsize)
-    # rtreeviz_univar(ax,
-    #                 X['state'], y,
-    #                 feature_name='state',
-    #                 target_name='y',
-    #                 fontsize=10, show={'splits'})
-    #
-    # plt.show()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ax.scatter(X['state'], y, alpha=.05, s=15)
@@ -859,14 +851,14 @@ def weight():
     plot_ice(ice, 'education', 'weight', ax=ax, yrange=(-12, 0), min_y_shifted_to_zero=True)
     ax.set_xlim(10,18)
     ax.set_xticks([10,12,14,16,18])
-    ax.set_title("PD/ICE", fontsize=10)
+    ax.set_title("FPD/ICE", fontsize=10)
     savefig(f"education_vs_weight_pdp")
 
     fig, ax = plt.subplots(1, 1, figsize=(3.5, 3.2))
     ice = predict_ice(rf, X, 'height', 'weight')
     plot_ice(ice, 'height', 'weight', ax=ax, pdp_linewidth=2, yrange=(0, 160), min_y_shifted_to_zero=True)
     ax.set_xlabel("height\n(a)", fontsize=12)
-    ax.set_title("PD/ICE", fontsize=10)
+    ax.set_title("FPD/ICE", fontsize=10)
     ax.set_xticks([60,65,70,75])
     savefig(f"height_vs_weight_pdp")
 
@@ -874,14 +866,14 @@ def weight():
     ice = predict_catice(rf, X, 'sex', 'weight')
     plot_catice(ice, 'sex', 'weight', catnames={0:'M',1:'F'}, ax=ax, yrange=(0, 35),
                 pdp_marker_size=15)
-    ax.set_title("PD/ICE", fontsize=10)
+    ax.set_title("FPD/ICE", fontsize=10)
     savefig(f"sex_vs_weight_pdp")
 
     fig, ax = plt.subplots(1, 1, figsize=(1.3,2))
     ice = predict_catice(rf, X, 'pregnant', 'weight', cats=df_raw['pregnant'].unique())
     plot_catice(ice, 'pregnant', 'weight', catnames={0:'M',1:'F'}, ax=ax,
                 yrange=(-5, 45), pdp_marker_size=15)
-    ax.set_title("PD/ICE", fontsize=10)
+    ax.set_title("FPD/ICE", fontsize=10)
     savefig(f"pregnant_vs_weight_pdp")
 
 
@@ -1273,6 +1265,17 @@ def yearmade():
     TUNE_RF = False
     X, y = load_bulldozer(n=n)
 
+    if TUNE_RF:
+        rf, _ = tune_RF(X, y)
+        # RF best: {'max_features': 0.9, 'min_samples_leaf': 1, 'n_estimators': 150}
+        # validation R^2 0.8001628465688546
+    else:
+        rf = RandomForestRegressor(n_estimators=150, n_jobs=-1,
+                                   max_features=0.9,
+                                   min_samples_leaf=1, oob_score=True)
+        rf.fit(X, y)
+        print("RF OOB R^2", rf.oob_score_)
+
     fig, ax = plt.subplots(1, 1, figsize=figsize2)
     ax.scatter(X['YearMade'], y, s=3, alpha=.1, c='#1E88E5')
     ax.set_xlim(1960,2010)
@@ -1287,17 +1290,6 @@ def yearmade():
     ax.spines['bottom'].set_smart_bounds(True)
     savefig(f"bulldozer_YearMade_marginal")
 
-    if TUNE_RF:
-        rf, _ = tune_RF(X, y)
-        # RF best: {'max_features': 0.9, 'min_samples_leaf': 1, 'n_estimators': 150}
-        # validation R^2 0.8001628465688546
-    else:
-        rf = RandomForestRegressor(n_estimators=150, n_jobs=-1,
-                                   max_features=0.9,
-                                   min_samples_leaf=1, oob_score=True)
-        rf.fit(X, y)
-        print("RF OOB R^2", rf.oob_score_)
-
     explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100),
                                    feature_perturbation='interventional')
     shap_values = explainer.shap_values(X.sample(n=shap_test_size),
@@ -1307,7 +1299,7 @@ def yearmade():
     shap.dependence_plot("YearMade", shap_values, X.sample(n=shap_test_size),
                          interaction_index=None, ax=ax, dot_size=5,
                          show=False, alpha=.5)
-
+    ax.yaxis.label.set_visible(False)
     ax.spines['left'].set_linewidth(.5)
     ax.spines['bottom'].set_linewidth(.5)
     ax.spines['top'].set_color('none')
@@ -1329,6 +1321,7 @@ def yearmade():
                  bootstrap=True,
                  show_slope_lines=False,
                  show_x_counts=True,
+                 show_ylabel=False,
                  show_xlabel=False,
                  show_impact=False,
                  pdp_marker_size=4,
@@ -1338,15 +1331,16 @@ def yearmade():
     ax.set_title("StratPD", fontsize=13)
     ax.set_xlabel("YearMade\n(d)", fontsize=11)
     ax.set_xlim(1960,2010)
-    ax.set_ylim(-10000,30_000)
+    ax.set_ylim(-5000,30_000)
     savefig(f"bulldozer_YearMade_stratpd")
 
     fig, ax = plt.subplots(1, 1, figsize=figsize2)
     ice = predict_ice(rf, X, "YearMade", 'SalePrice', numx=30, nlines=100)
     plot_ice(ice, "YearMade", 'SalePrice', alpha=.3, ax=ax, show_ylabel=True,
-             yrange=(-10000,30_000),
-             min_y_shifted_to_zero=True)
+             yrange=(20_000,55_000))
+    ax.set_xlabel("YearMade\n(a)", fontsize=11)
     ax.set_xlim(1960, 2010)
+    ax.set_title("FPD/ICE plot", fontsize=13)
     savefig(f"bulldozer_YearMade_pdp")
 
 
@@ -1355,20 +1349,6 @@ def MachineHours():
     shap_test_size = 1000
     TUNE_RF = False
     X, y = load_bulldozer(n=n)
-
-    fig, ax = plt.subplots(1, 1, figsize=figsize2)
-    ax.scatter(X['MachineHours'], y, s=3, alpha=.1, c='#1E88E5')
-    ax.set_xlim(0,40_000)
-    ax.set_xlabel("MachineHours\n(a)", fontsize=11)
-    ax.set_ylabel("SalePrice ($)", fontsize=11)
-    ax.set_title("Marginal plot", fontsize=13)
-    ax.spines['left'].set_linewidth(.5)
-    ax.spines['bottom'].set_linewidth(.5)
-    ax.spines['top'].set_color('none')
-    ax.spines['right'].set_color('none')
-    ax.spines['left'].set_smart_bounds(True)
-    ax.spines['bottom'].set_smart_bounds(True)
-    savefig(f"bulldozer_MachineHours_marginal")
 
     if TUNE_RF:
         rf, _ = tune_RF(X, y)
@@ -1381,58 +1361,79 @@ def MachineHours():
         rf.fit(X, y)
         print("RF OOB R^2", rf.oob_score_)
 
-    explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100),
-                                   feature_perturbation='interventional')
-    shap_values = explainer.shap_values(X.sample(n=shap_test_size),
-                                        check_additivity=False)
+    # fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    # ax.scatter(X['MachineHours'], y, s=3, alpha=.1, c='#1E88E5')
+    # ax.set_xlim(0,30_000)
+    # ax.set_xlabel("MachineHours\n(a)", fontsize=11)
+    # ax.set_ylabel("SalePrice ($)", fontsize=11)
+    # ax.set_title("Marginal plot", fontsize=13)
+    # ax.spines['left'].set_linewidth(.5)
+    # ax.spines['bottom'].set_linewidth(.5)
+    # ax.spines['top'].set_color('none')
+    # ax.spines['right'].set_color('none')
+    # ax.spines['left'].set_smart_bounds(True)
+    # ax.spines['bottom'].set_smart_bounds(True)
+    # savefig(f"bulldozer_MachineHours_marginal")
+    #
+    # explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100),
+    #                                feature_perturbation='interventional')
+    # shap_values = explainer.shap_values(X.sample(n=shap_test_size),
+    #                                     check_additivity=False)
+    #
+    # fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    # shap.dependence_plot("MachineHours", shap_values, X.sample(n=shap_test_size),
+    #                      interaction_index=None, ax=ax, dot_size=5,
+    #                      show=False, alpha=.5)
+    # ax.yaxis.label.set_visible(False)
+    # ax.spines['left'].set_linewidth(.5)
+    # ax.spines['bottom'].set_linewidth(.5)
+    # ax.spines['top'].set_color('none')
+    # ax.spines['right'].set_color('none')
+    # ax.spines['left'].set_smart_bounds(True)
+    # ax.spines['bottom'].set_smart_bounds(True)
+    #
+    # ax.set_title("SHAP", fontsize=13)
+    # ax.set_ylabel("SHAP MachineHours)", fontsize=11)
+    # ax.set_xlabel("MachineHours\n(b)", fontsize=11)
+    # ax.set_xlim(0,30_000)
+    # ax.tick_params(axis='both', which='major', labelsize=10)
+    #
+    # savefig(f"bulldozer_MachineHours_shap")
+    #
+    # fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    # plot_stratpd(X, y, colname='MachineHours', targetname='SalePrice',
+    #              n_trials=10,
+    #              bootstrap=True,
+    #              show_all_pdp=False,
+    #              show_slope_lines=False,
+    #              show_x_counts=True,
+    #              barchar_alpha=1.0,
+    #              show_ylabel=False,
+    #              show_xlabel=False,
+    #              show_impact=False,
+    #              pdp_marker_size=1,
+    #              pdp_marker_alpha=.3,
+    #              ax=ax
+    #              )
+    # ax.annotate("Imputed median value", xytext=(10000,-4800),
+    #             xy=(3138,-4700), fontsize=9,
+    #             arrowprops={'arrowstyle':"->"})
+    # ax.yaxis.label.set_visible(False)
+    # ax.set_title("StratPD", fontsize=13)
+    # ax.set_xlim(0,30_000)
+    # ax.set_xlabel("MachineHours\n(d)", fontsize=11)
+    # ax.set_ylim(-5000,3_000)
+    # savefig(f"bulldozer_MachineHours_stratpd")
 
     fig, ax = plt.subplots(1, 1, figsize=figsize2)
-    shap.dependence_plot("MachineHours", shap_values, X.sample(n=shap_test_size),
-                         interaction_index=None, ax=ax, dot_size=5,
-                         show=False, alpha=.5)
-
-    ax.spines['left'].set_linewidth(.5)
-    ax.spines['bottom'].set_linewidth(.5)
-    ax.spines['top'].set_color('none')
-    ax.spines['right'].set_color('none')
-    ax.spines['left'].set_smart_bounds(True)
-    ax.spines['bottom'].set_smart_bounds(True)
-
-    ax.set_title("SHAP", fontsize=13)
-    ax.set_ylabel("SHAP MachineHours)", fontsize=11)
-    ax.set_xlabel("MachineHours\n(b)", fontsize=11)
-    ax.set_xlim(0,40_000)
-    ax.tick_params(axis='both', which='major', labelsize=10)
-
-    savefig(f"bulldozer_MachineHours_shap")
-
-    fig, ax = plt.subplots(1, 1, figsize=figsize2)
-    plot_stratpd(X, y, colname='MachineHours', targetname='SalePrice',
-                 n_trials=10,
-                 bootstrap=True,
-                 show_all_pdp=False,
-                 show_slope_lines=False,
-                 show_x_counts=True,
-                 show_xlabel=False,
-                 show_impact=False,
-                 pdp_marker_size=2,
-                 pdp_marker_alpha=1,
-                 ax=ax
-                 )
-    ax.set_title("StratPD", fontsize=13)
-    ax.set_xlim(0,40_000)
-    ax.set_xlabel("MachineHours\n(d)", fontsize=11)
-    # ax.set_ylim(-10000,30_000)
-    savefig(f"bulldozer_MachineHours_stratpd")
-
-    fig, ax = plt.subplots(1, 1, figsize=figsize2)
-
-    ice = predict_ice(rf, X, "MachineHours", 'SalePrice', numx=1500, nlines=800)
+    ice = predict_ice(rf, X, "MachineHours", 'SalePrice', numx=1000, nlines=300)
     plot_ice(ice, "MachineHours", 'SalePrice', alpha=.5, ax=ax,
              show_ylabel=True,
-             yrange=(32_000,42_000)
+             yrange=(35_000,40_000)
              )
-    ax.set_xlim(0,40_000)
+    ax.set_xlabel("MachineHours\n(a)", fontsize=11)
+    ax.set_title("FPD/ICE plot", fontsize=13)
+    ax.set_xlim(0,30_000)
     savefig(f"bulldozer_MachineHours_pdp")
 
 
@@ -1746,7 +1747,7 @@ def bigX():
     axes[1, 1].get_yaxis().set_visible(False)
 
     axes[0, 0].set_title("StratPD", fontsize=10)
-    axes[0, 1].set_title("PD/ICE", fontsize=10)
+    axes[0, 1].set_title("FPD/ICE", fontsize=10)
 
     savefig(f"bigx")
     plt.close()
@@ -1773,7 +1774,7 @@ def unsup_boston():
     axes[0].set_title("Marginal")
     axes[1].set_title("Unsupervised StratPD")
     axes[2].set_title("Supervised StratPD")
-    axes[3].set_title("PD/ICE")
+    axes[3].set_title("FPD/ICE")
 
     plot_stratpd(X, y, 'AGE', 'MEDV', ax=axes[1], yrange=(-20, 20),
                  n_trees=20,
@@ -2022,13 +2023,13 @@ def multi_joint_distr():
         regr.fit(X, y)
         rname = regr.__class__.__name__
         if rname == 'SVR':
-            rname = "SVM PD/ICE"
+            rname = "SVM FPD/ICE"
         if rname == 'RandomForestRegressor':
-            rname = "RF PD/ICE"
+            rname = "RF FPD/ICE"
         if rname == 'LinearRegression':
-            rname = 'Linear PD/ICE'
+            rname = 'Linear FPD/ICE'
         if rname == 'KNeighborsRegressor':
-            rname = 'kNN PD/ICE'
+            rname = 'kNN FPD/ICE'
 
         show_xlabel = True if row == 5 else False
 
@@ -2143,7 +2144,7 @@ def interactions():
     axes[1].set_xlabel("$x_1, x_2, x_3$", fontsize=12)
     axes[1].set_ylim(-95,110)
     axes[1].set_title("SHAP")
-    axes[1].set_ylabel("SHAP values", fontsize=12)
+    axes[1].set_ylabel("SHAP values", fontsize=11)
     x1_patch = mpatches.Patch(color=x1_color, label='$x_1$')
     x2_patch = mpatches.Patch(color=x2_color, label='$x_2$')
     x3_patch = mpatches.Patch(color=x3_color, label='$x_3$')
@@ -2156,7 +2157,7 @@ def interactions():
     axes[2].plot(df_x2['x.values'],df_x2['f.values'],'.',color=x2_color,markersize=2)
     axes[2].plot(df_x3['x.values'],df_x3['f.values'],'.',color=x3_color,markersize=2)
     axes[2].set_title("ALE")
-    axes[2].set_ylabel("y", fontsize=12)
+    # axes[2].set_ylabel("y", fontsize=12)
     axes[2].set_xlabel("$x_1, x_2, x_3$", fontsize=12)
     axes[2].set_ylim(-95,110)
     # axes[2].tick_params(axis='both', which='major', labelsize=10)
@@ -2185,7 +2186,7 @@ def interactions():
     axes[3].set_ylim(-20,160)
     axes[3].set_yticks([0, 25, 50, 75, 100, 125, 150])
     axes[3].set_xlabel("$x_1, x_2, x_3$", fontsize=12)
-    axes[3].set_ylabel("y", fontsize=12)
+    # axes[3].set_ylabel("y", fontsize=12)
     axes[3].set_title("StratPD")
     axes[3].spines['top'].set_linewidth(.5)
     axes[3].spines['right'].set_linewidth(.5)
@@ -2211,15 +2212,15 @@ def gen_ale_plot_data_in_R():
 
 def ale_yearmade():
     df = pd.read_csv("images/YearMade_ale.csv")
-    df['f.values'] -= np.min(df['f.values'])
+    # df['f.values'] -= np.min(df['f.values'])
     print(df)
 
     fig, ax = plt.subplots(1, 1, figsize=figsize2)
     ax.plot(df['x.values'],df['f.values'],'.',color='k',markersize=4)
     ax.set_title("ALE", fontsize=13)
-    ax.set_ylabel("SalePrice", fontsize=11)
     ax.set_xlabel("YearMade\n(c)", fontsize=11)
     ax.set_xlim(1960, 2010)
+    ax.set_ylim(-25000,30000)
     ax.tick_params(axis='both', which='major', labelsize=10)
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
@@ -2228,15 +2229,16 @@ def ale_yearmade():
 
 def ale_MachineHours():
     df = pd.read_csv("images/MachineHours_ale.csv")
-    df['f.values'] -= np.min(df['f.values'])
+    # df['f.values'] -= np.min(df['f.values'])
     print(df)
 
     fig, ax = plt.subplots(1, 1, figsize=figsize2)
     ax.plot(df['x.values'],df['f.values'],'.',color='k',markersize=4)
     ax.set_title("ALE", fontsize=13)
-    ax.set_ylabel("SalePrice", fontsize=11)
+    # ax.set_ylabel("SalePrice", fontsize=11)
     ax.set_xlabel("MachineHours\n(c)", fontsize=11)
-    ax.set_xlim(0, 40_000)
+    ax.set_xlim(0, 30_000)
+    ax.set_ylim(-2000,3000)
     ax.tick_params(axis='both', which='major', labelsize=10)
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
@@ -2245,13 +2247,14 @@ def ale_MachineHours():
 
 def ale_height():
     df = pd.read_csv("images/height_ale.csv")
-    df['f.values'] -= np.min(df['f.values'])
+    # df['f.values'] -= np.min(df['f.values'])
     print(df)
 
     fig, ax = plt.subplots(1, 1, figsize=(3.5,3.2))
     ax.plot(df['x.values'],df['f.values'],'.',color='k',markersize=3)
-    ax.set_ylim(-5,150)
-    ax.set_yticks([0,20,40,60,80,100,120,140,150])
+    # ax.set_ylim(-5,150)
+    ax.set_ylim(-65,90)
+    # ax.set_yticks([0,20,40,60,80,100,120,140,150])
     ax.set_title("ALE", fontsize=13)
     ax.set_ylabel("Weight", fontsize=12)
     ax.set_xlabel("Height\n(d)", fontsize=12)
@@ -2380,7 +2383,7 @@ if __name__ == '__main__':
     # FROM PAPER:
     # interactions()
     # unsup_yearmade()
-    MachineHours()
+    # MachineHours()
     # yearmade()
     # rent()
     # rent_ntrees()
@@ -2393,7 +2396,7 @@ if __name__ == '__main__':
     # weight_ntrees()
     # unsup_weight()
     # meta_weight()
-    # weather()
+    weather()
     # meta_weather()
     # noise()
     # meta_noise()

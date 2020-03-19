@@ -165,8 +165,49 @@ SHAP is mean centered FPD for independent variables, proof in supplemental mater
 % ------------------------------------------------------------------------------------------------------------------------------------
 \section{Experimental results}\label{sec:experiments} 
 
-In this section, we demonstrate experimentally that \spd{} and \cspd{} compute accurate partial dependence curves for synthetic data and plausible results for real data sets.
+In this section, we demonstrate experimentally that \spd{} and \cspd{} compute accurate partial dependence curves for synthetic data and plausible results for real data sets. Experiments also provide evidence that model-based techniques can provide meaningfully-biased curves. We begin by comparing the partial dependence curves from popular techniques on synthetic data with complex interactions.
 
+\figref{fig:interactions} illustrates that FPD, SHAP, ALE, and \spd{} all suitably isolate the effect of independent individual variables on the response for noiseless data generated via: $y = x_1^2 + x_1 x_2 + 5 x_1 sin(3 x_2) + 10$ for $x_1,x_2,x_3 \sim U(0,10)$ where $x_3$ does not affect $y$. The shapes of the curves for all techniques look similar except that \spd{} starts all curves at $y=0$ (as could the others). SHAP's curves have the advantage that they indicate the presence of variable interactions. To our eye, \spd's curves are smoothest despite not having access to model predictions.
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.45]{images/interactions.pdf}
+\caption{\small $y = x_1^2 + x_1 x_2 + 5 x_1 sin(3 x_2) + 10$ where $x_1,x_2,x_3 \sim U(0,10)$ and $x_3$ does not affect $y$. No noise added. Random forest with 10 trees. $R^2$  0.9973}
+\label{fig:interactions}
+\end{center}
+\end{figure}
+
+Models have a tendency to smooth out noise and a legitimate concern is that, without the benefit of a model, \spd{} could be adversely affected. \figref{fig:noise} demonstrates \spd{} curves for noisy quadratics generated from $y = x_1^2 + x_1 + 10 + \epsilon$ where $\epsilon \sim N(0,\sigma)$ $\epsilon$ and, at $\sigma=2$, 95\% of the noise falls within [0,4] (since $2\sigma = 4$), meaning that the signal-to-noise ratio is only 1-to-1 for $x_1^2$ in $[-2,2]$. For zero-centered Gaussian noise, accuracy appears to be stable.  Unused noise variable $x_3$ in \figref{fig:interactions} also did not confuse \spd.
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.45]{images/noise.pdf}
+\caption{\small $y = x_1^2 + x_1 + 10 + \epsilon$ where $x_1,x_2 \sim U(-2,2)$, $\epsilon \sim N(0,\sigma)$ with $\sigma \in [0,0.5,1,2]$.}
+\label{fig:noise}
+\end{center}
+\end{figure}
+
+Turning to categorical variables, \figref{fig:statetemp} presents partial dependence curves for FPD, ALE, and \cspd{} derived from a noisy synthetic weather data set, where temperature varies in sinusoidal fashion over the year and with different baseline temperatures per state.
+
+\cut{
+\begin{equation}\label{eq:weather}
+y = t[x_{\it state}] + 10 sin(\frac{2\pi}{365}x_{\it dayofyear}+\pi) + \epsilon, ~~~ \epsilon \sim N(0, 4)
+\end{equation}
+}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.45]{images/dayofyear_vs_temp.pdf}~~
+\includegraphics[scale=0.45]{images/state_vs_temp_pdp.pdf}~~
+\includegraphics[scale=0.45]{images/state_ale.pdf}~~
+\includegraphics[scale=0.45]{images/state_vs_temp_stratpd.pdf}~~
+\caption{\small $y = base[x_{\it state}] + 10 sin(\frac{2\pi}{365}x_{\it dayofyear}+\pi) + \epsilon$ where $\epsilon \sim N(0, 4)$. The baseline temperature per state is $\{{\it AZ}=90, {\it CA}=70, {\it CO}=40, {\it NV}=80, {\it WA}=60\}$. Sinusoids in (a) are the average of three years' temperature data.}
+\label{fig:statetemp}
+\end{center}
+\end{figure}
+
+
+% -------------------------
 using synthetic data sets:
 
 	complex relationships with interactions
@@ -182,41 +223,7 @@ switching to real data sets now,
 	show YearMade on real data set and how SHAP doesn't  agree
 
 test speed on real data set
-
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.45]{images/interactions.pdf}
-\caption{\small $y = x_1^2 + x_1 x_2 + 5 x_1 sin(3 x_2) + 10$ where $x_1,x_2,x_3 \sim U(0,10)$ and $x_3$ does not affect $y$. No noise added.  $R^2$  0.9973}
-\label{fig:interactions}
-\end{center}
-\end{figure}
-
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.45]{images/noise.pdf}
-\caption{\small $y = x_1^2 + x_1 + 10 + \epsilon$ where $x_1,x_2 \sim U(-2,2)$, $\epsilon \sim N(0,\sigma)$ with $\sigma \in [0,0.5,1,2]$.}
-\label{fig:noise}
-\end{center}
-\end{figure}
-
-Consider the synthetic weather data shown in \figref{fig:statetemp}(a) where temperature varies in sinusoidal fashion over the year and with different baseline temperatures per state:
-
-\begin{equation}\label{eq:weather}
-y = t[x_{\it state}] + 10 sin(\frac{2\pi}{365}x_{\it dayofyear}+\pi) + \epsilon, ~~~ \epsilon \sim N(0, 4)
-\end{equation}
-
-\noindent where the baseline $t$ per state is $\{{\it AZ}=90, {\it CA}=70, {\it CO}=40, {\it NV}=80, {\it WA}=60\}$. Each sinusoid in \figref{fig:statetemp}(a) is the average of three years' temperature data.
-
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.45]{images/dayofyear_vs_temp.pdf}~~
-\includegraphics[scale=0.45]{images/state_vs_temp_pdp.pdf}~~
-\includegraphics[scale=0.45]{images/state_ale.pdf}~~
-\includegraphics[scale=0.45]{images/state_vs_temp_stratpd.pdf}~~
-\caption{\small foo.}
-\label{fig:statetemp}
-\end{center}
-\end{figure}
+% -------------------------
 
 
 what if X,y relationship is very weak? models would get low accuracy. what happens to us?  I think we would simply show low partial dependence curves.
@@ -234,6 +241,7 @@ bulldozer shape (362781, 14) records, 5 cats
 we synthesized a body weight data set with 2000 observations drawn from the following equation with codependence between features.
 
 \begin{equation}\label{eq:weight}
+{\small
 \begin{array}{rll}
 y & = &120 + 10(x_{height} - min(x_{height})) + 30x_{pregnant} - 1.5x_{education}\\
 \vspace{-10pt}\\
@@ -251,6 +259,7 @@ y & = &120 + 10(x_{height} - min(x_{height})) + 30x_{pregnant} - 1.5x_{education
                                                10 + \epsilon & \text{ if } x_{sex}=M,~ \epsilon \sim U(0,8)\\
                                                \end{cases}
 \end{array}
+}
 \end{equation}
 
 \begin{figure}[htbp]
@@ -279,11 +288,12 @@ y & = &120 + 10(x_{height} - min(x_{height})) + 30x_{pregnant} - 1.5x_{education
 
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[scale=0.35]{images/bulldozer_YearMade_marginal.pdf}~~
+%\includegraphics[scale=0.35]{images/bulldozer_YearMade_marginal.pdf}~~
+\includegraphics[scale=0.35]{images/bulldozer_YearMade_pdp.pdf}~~
 \includegraphics[scale=0.35]{images/bulldozer_YearMade_shap.pdf}~~
 \includegraphics[scale=0.35]{images/YearMade_ale.pdf}~~
 \includegraphics[scale=0.35]{images/bulldozer_YearMade_stratpd.pdf}
-\caption{\small (a) Marginal plot of bulldozer {\tt YearMade} versus {\tt SalePrice} using subsample of 10k observations, (b) partial dependence drawn by SHAP interrogating an RF with 40 trees and explaining 1000 values with 100 observations as background data, (c) \spd{} partial dependence.}
+\caption{\small (a) Marginal plot of bulldozer {\tt YearMade} versus {\tt SalePrice} using subsample of 20k observations, (b) partial dependence drawn by SHAP interrogating an RF with 40 trees and explaining 1000 values with 100 observations as background data, (c) \spd{} partial dependence.}
 \label{fig:yearmade}
 \end{center}
 \end{figure}
@@ -294,7 +304,7 @@ y & = &120 + 10(x_{height} - min(x_{height})) + 30x_{pregnant} - 1.5x_{education
 \includegraphics[scale=0.35]{images/bulldozer_MachineHours_shap.pdf}~~
 \includegraphics[scale=0.35]{images/MachineHours_ale.pdf}~~
 \includegraphics[scale=0.35]{images/bulldozer_MachineHours_stratpd.pdf}
-\caption{\small (a) Marginal plot of bulldozer {\tt YearMade} versus {\tt MachineHours} using subsample of 10k observations, (b) partial dependence drawn by SHAP interrogating an RF with 40 trees and explaining 1000 values with 100 observations as background data, (c) \spd{} partial dependence.}
+\caption{\small (a) Marginal plot of bulldozer {\tt MachineHours} versus {\tt YearMade}.  bulldozers with MachineHours = 35,628 and without = 31,320. with and without YearMade: 2000.8 and 1998.6 so there is definitely a difference, on average, for those with and without machine hours listed. 4945 out of 10000 records have missing machine hours.  The dip at 3138 hours is the median. \todo{get link to academic paper saying this is the right approach}}
 \label{fig:yearmade}
 \end{center}
 \end{figure}

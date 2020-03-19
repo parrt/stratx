@@ -258,14 +258,14 @@ def plot_ice(ice, colname, targetname="target", ax=None, linewidth=.5, linecolor
 def plot_catice(ice, colname, targetname,
                 catnames,  # cat names indexed by cat code
                 ax=None,
+                min_y_shifted_to_zero=False,
                 color='#9CD1E3',
                 alpha=.1, title=None, yrange=None, pdp=True,
                 pdp_marker_size=.5, pdp_alpha=1,
                 pdp_color='black',
                 marker_size=10,
                 show_xlabel=True, show_ylabel=True,
-                show_xticks=True,
-                sort:('ascending','descending',None)=None):
+                show_xticks=True):
     start = time.time()
     if ax is None:
         fig, ax = plt.subplots(1,1)
@@ -279,17 +279,11 @@ def plot_catice(ice, colname, targetname,
     nobs = lines.shape[0]
 
     catcodes, _, catcode2name = getcats(None, colname, catnames)
-    sorted_indexes = np.array(range(len(catcodes)))
-    sorted_catcodes = catcodes
-    if sort == 'ascending':
-        sorted_indexes = avg_y.argsort()
-        sorted_catcodes = catcodes[sorted_indexes]
-    elif sort == 'descending':
-        sorted_indexes = avg_y.argsort()[::-1] # reversed
-        sorted_catcodes = catcodes[sorted_indexes]
 
-    # find leftmost value (lowest value if sorted ascending) and shift by this
-    min_pdp_y = avg_y[sorted_indexes[0]]
+    avg_y = np.mean(ice[1:], axis=0)
+    min_pdp_y = np.min(avg_y)
+    # min_pdp_y = 0
+
     lines[:,:,1] = lines[:,:,1] - min_pdp_y
     pdp_curve = avg_y - min_pdp_y
 
@@ -300,12 +294,16 @@ def plot_catice(ice, colname, targetname,
         xlocs = np.arange(1,ncats+1)
     # print(f"shape {lines.shape}, ncats {ncats}, nx {nx}, len(pdp) {len(pdp_curve)}")
     for i in range(nobs): # for each observation
-        ax.scatter(xlocs, lines[i,sorted_indexes,1], # lines[i] is ith observation
+        ax.scatter(xlocs, lines[i,:,1], # lines[i] is ith observation
                    alpha=alpha, marker='o', s=marker_size,
                    c=color)
 
+    pdpy = pdp_curve
+    if min_y_shifted_to_zero:
+        avg_y = avg_y - min_pdp_y
+
     if pdp:
-        ax.scatter(xlocs, pdp_curve[sorted_indexes], c=pdp_color, s=pdp_marker_size, alpha=pdp_alpha)
+        ax.scatter(xlocs, avg_y, c=pdp_color, s=pdp_marker_size, alpha=pdp_alpha)
 
     if yrange is not None:
         ax.set_ylim(*yrange)
@@ -319,7 +317,7 @@ def plot_catice(ice, colname, targetname,
     ax.set_xticks(xlocs)
 
     if show_xticks: # sometimes too many
-        ax.set_xticklabels(catcode2name[sorted_catcodes])
+        ax.set_xticklabels(catcode2name[catcodes])
     else:
         ax.set_xticklabels([])
         ax.tick_params(axis='x', which='both', bottom=False)
