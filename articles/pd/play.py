@@ -134,12 +134,17 @@ def bigX():
     plt.show()
 
 def bulldozer():
-    n = 20_000
+    n = 10_000
     X, y = load_bulldozer(n=n)
     # cat_partial_dependence(X, y, 'ModelID')
-    cat_partial_dependence(X, y, 'YearMade')
+    # plot_catstratpd(X, y, 'saledayofweek', 'SalePrice', show_x_counts=False)
+    # ux, cx = np.unique(X['MachineHours'], return_counts=True)
+    # print(np.argmax(cx))
+    # print(ux[np.argmax(cx)])
+    plot_stratpd(X, y, 'MachineHours', 'SalePrice', n_trials=10, show_all_pdp=False)
+    plt.show()
 
 
-bulldozer()
-# weather()
+# bulldozer()
+weather()
 #bigX()

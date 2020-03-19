@@ -1012,8 +1012,263 @@ def shap_weight(feature_perturbation, twin=False):
     savefig(f"weight_{feature_perturbation}_shap")
 
 
-def yearmade():
+def saledayofweek():
     n = 10_000
+    shap_test_size = 1000
+    TUNE_RF = False
+    X, y = load_bulldozer(n=n)
+
+    avgprice = pd.concat([X,y], axis=1).groupby('saledayofweek')[['SalePrice']].mean()
+    avgprice = avgprice.reset_index()['SalePrice']
+    print(avgprice)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    ax.scatter(range(0,7), avgprice, s=20, c='k')
+    ax.scatter(X['saledayofweek'], y, s=3, alpha=.1, c='#1E88E5')
+    # ax.set_xlim(1960,2010)
+    ax.set_xlabel("saledayofweek\n(a)", fontsize=11)
+    ax.set_ylabel("SalePrice ($)", fontsize=11)
+    ax.set_title("Marginal plot", fontsize=13)
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
+    ax.spines['top'].set_color('none')
+    ax.spines['right'].set_color('none')
+    ax.spines['left'].set_smart_bounds(True)
+    ax.spines['bottom'].set_smart_bounds(True)
+    savefig(f"bulldozer_saledayofweek_marginal")
+
+    if TUNE_RF:
+        rf, _ = tune_RF(X, y)
+        # RF best: {'max_features': 0.9, 'min_samples_leaf': 1, 'n_estimators': 150}
+        # validation R^2 0.8001628465688546
+    else:
+        rf = RandomForestRegressor(n_estimators=150, n_jobs=-1,
+                                   max_features=0.9,
+                                   min_samples_leaf=1, oob_score=True)
+        rf.fit(X, y)
+        print("RF OOB R^2", rf.oob_score_)
+
+    explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100),
+                                   feature_perturbation='interventional')
+    shap_values = explainer.shap_values(X.sample(n=shap_test_size),
+                                        check_additivity=False)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    shap.dependence_plot("saledayofweek", shap_values, X.sample(n=shap_test_size),
+                         interaction_index=None, ax=ax, dot_size=5,
+                         show=False, alpha=.5)
+
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
+    ax.spines['top'].set_color('none')
+    ax.spines['right'].set_color('none')
+    ax.spines['left'].set_smart_bounds(True)
+    ax.spines['bottom'].set_smart_bounds(True)
+
+    ax.set_title("SHAP", fontsize=13)
+    ax.set_ylabel("Impact on SalePrice\n(saledayofweek SHAP)", fontsize=11)
+    ax.set_xlabel("saledayofweek\n(b)", fontsize=11)
+    # ax.set_xlim(1960, 2010)
+    ax.tick_params(axis='both', which='major', labelsize=10)
+
+    savefig(f"bulldozer_saledayofweek_shap")
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    plot_catstratpd(X, y, colname='saledayofweek', targetname='SalePrice',
+                    catnames={0:'M',1:'T',2:'W',3:'R',4:'F',5:'S',6:'S'},
+                 n_trials=1,
+                 bootstrap=True,
+                 show_x_counts=True,
+                 show_xlabel=False,
+                 show_impact=False,
+                 pdp_marker_size=4,
+                 pdp_marker_alpha=1,
+                 ax=ax
+                 )
+    ax.set_title("StratPD", fontsize=13)
+    ax.set_xlabel("saledayofweek\n(d)", fontsize=11)
+    # ax.set_xlim(1960,2010)
+    # ax.set_ylim(-10000,30_000)
+    savefig(f"bulldozer_saledayofweek_stratpd")
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    ice = predict_ice(rf, X, "saledayofweek", 'SalePrice', numx=30, nlines=100)
+    plot_ice(ice, "saledayofweek", 'SalePrice', alpha=.3, ax=ax, show_ylabel=True,
+#             yrange=(-10000,30_000),
+             min_y_shifted_to_zero=True)
+    # ax.set_xlim(1960, 2010)
+    savefig(f"bulldozer_saledayofweek_pdp")
+
+
+def productsize():
+    n = 10_000
+    shap_test_size = 1000
+    TUNE_RF = False
+    X, y = load_bulldozer(n=n)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    ax.scatter(X['ProductSize'], y, s=3, alpha=.1, c='#1E88E5')
+    # ax.set_xlim(1960,2010)
+    ax.set_xlabel("ProductSize\n(a)", fontsize=11)
+    ax.set_ylabel("SalePrice ($)", fontsize=11)
+    ax.set_title("Marginal plot", fontsize=13)
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
+    ax.spines['top'].set_color('none')
+    ax.spines['right'].set_color('none')
+    ax.spines['left'].set_smart_bounds(True)
+    ax.spines['bottom'].set_smart_bounds(True)
+    savefig(f"bulldozer_ProductSize_marginal")
+
+    if TUNE_RF:
+        rf, _ = tune_RF(X, y)
+        # RF best: {'max_features': 0.9, 'min_samples_leaf': 1, 'n_estimators': 150}
+        # validation R^2 0.8001628465688546
+    else:
+        rf = RandomForestRegressor(n_estimators=150, n_jobs=-1,
+                                   max_features=0.9,
+                                   min_samples_leaf=1, oob_score=True)
+        rf.fit(X, y)
+        print("RF OOB R^2", rf.oob_score_)
+
+    explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100),
+                                   feature_perturbation='interventional')
+    shap_values = explainer.shap_values(X.sample(n=shap_test_size),
+                                        check_additivity=False)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    shap.dependence_plot("ProductSize", shap_values, X.sample(n=shap_test_size),
+                         interaction_index=None, ax=ax, dot_size=5,
+                         show=False, alpha=.5)
+
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
+    ax.spines['top'].set_color('none')
+    ax.spines['right'].set_color('none')
+    ax.spines['left'].set_smart_bounds(True)
+    ax.spines['bottom'].set_smart_bounds(True)
+
+    ax.set_title("SHAP", fontsize=13)
+    ax.set_ylabel("Impact on SalePrice\n(ProductSize SHAP)", fontsize=11)
+    ax.set_xlabel("ProductSize\n(b)", fontsize=11)
+    # ax.set_xlim(1960, 2010)
+    ax.tick_params(axis='both', which='major', labelsize=10)
+
+    savefig(f"bulldozer_ProductSize_shap")
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    plot_stratpd(X, y, colname='ProductSize', targetname='SalePrice',
+                 n_trials=10,
+                 bootstrap=True,
+                 show_slope_lines=False,
+                 show_x_counts=True,
+                 show_xlabel=False,
+                 show_impact=False,
+                 pdp_marker_size=4,
+                 pdp_marker_alpha=1,
+                 ax=ax
+                 )
+    ax.set_title("StratPD", fontsize=13)
+    ax.set_xlabel("ProductSize\n(d)", fontsize=11)
+    # ax.set_xlim(1960,2010)
+    # ax.set_ylim(-10000,30_000)
+    savefig(f"bulldozer_ProductSize_stratpd")
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    ice = predict_ice(rf, X, "ProductSize", 'SalePrice', numx=30, nlines=100)
+    plot_ice(ice, "ProductSize", 'SalePrice', alpha=.3, ax=ax, show_ylabel=True,
+#             yrange=(-10000,30_000),
+             min_y_shifted_to_zero=True)
+    # ax.set_xlim(1960, 2010)
+    savefig(f"bulldozer_ProductSize_pdp")
+
+
+def saledayofyear():
+    n = 10_000
+    shap_test_size = 1000
+    TUNE_RF = False
+    X, y = load_bulldozer(n=n)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    ax.scatter(X['saledayofyear'], y, s=3, alpha=.1, c='#1E88E5')
+    # ax.set_xlim(1960,2010)
+    ax.set_xlabel("saledayofyear\n(a)", fontsize=11)
+    ax.set_ylabel("SalePrice ($)", fontsize=11)
+    ax.set_title("Marginal plot", fontsize=13)
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
+    ax.spines['top'].set_color('none')
+    ax.spines['right'].set_color('none')
+    ax.spines['left'].set_smart_bounds(True)
+    ax.spines['bottom'].set_smart_bounds(True)
+    savefig(f"bulldozer_saledayofyear_marginal")
+
+    if TUNE_RF:
+        rf, _ = tune_RF(X, y)
+        # RF best: {'max_features': 0.9, 'min_samples_leaf': 1, 'n_estimators': 150}
+        # validation R^2 0.8001628465688546
+    else:
+        rf = RandomForestRegressor(n_estimators=150, n_jobs=-1,
+                                   max_features=0.9,
+                                   min_samples_leaf=1, oob_score=True)
+        rf.fit(X, y)
+        print("RF OOB R^2", rf.oob_score_)
+
+    explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100),
+                                   feature_perturbation='interventional')
+    shap_values = explainer.shap_values(X.sample(n=shap_test_size),
+                                        check_additivity=False)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    shap.dependence_plot("saledayofyear", shap_values, X.sample(n=shap_test_size),
+                         interaction_index=None, ax=ax, dot_size=5,
+                         show=False, alpha=.5)
+
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
+    ax.spines['top'].set_color('none')
+    ax.spines['right'].set_color('none')
+    ax.spines['left'].set_smart_bounds(True)
+    ax.spines['bottom'].set_smart_bounds(True)
+
+    ax.set_title("SHAP", fontsize=13)
+    ax.set_ylabel("Impact on SalePrice\n(saledayofyear SHAP)", fontsize=11)
+    ax.set_xlabel("saledayofyear\n(b)", fontsize=11)
+    # ax.set_xlim(1960, 2010)
+    ax.tick_params(axis='both', which='major', labelsize=10)
+
+    savefig(f"bulldozer_saledayofyear_shap")
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    plot_stratpd(X, y, colname='saledayofyear', targetname='SalePrice',
+                 n_trials=10,
+                 bootstrap=True,
+                 show_all_pdp=False,
+                 show_slope_lines=False,
+                 show_x_counts=True,
+                 show_xlabel=False,
+                 show_impact=False,
+                 pdp_marker_size=4,
+                 pdp_marker_alpha=1,
+                 ax=ax
+                 )
+    ax.set_title("StratPD", fontsize=13)
+    ax.set_xlabel("saledayofyear\n(d)", fontsize=11)
+    # ax.set_xlim(1960,2010)
+    # ax.set_ylim(-10000,30_000)
+    savefig(f"bulldozer_saledayofyear_stratpd")
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    ice = predict_ice(rf, X, "saledayofyear", 'SalePrice', numx=30, nlines=100)
+    plot_ice(ice, "saledayofyear", 'SalePrice', alpha=.3, ax=ax, show_ylabel=True,
+#             yrange=(-10000,30_000),
+             min_y_shifted_to_zero=True)
+    # ax.set_xlim(1960, 2010)
+    savefig(f"bulldozer_saledayofyear_pdp")
+
+
+def yearmade():
+    n = 20_000
     shap_test_size = 1000
     TUNE_RF = False
     X, y = load_bulldozer(n=n)
@@ -1093,6 +1348,92 @@ def yearmade():
              min_y_shifted_to_zero=True)
     ax.set_xlim(1960, 2010)
     savefig(f"bulldozer_YearMade_pdp")
+
+
+def MachineHours():
+    n = 20_000
+    shap_test_size = 1000
+    TUNE_RF = False
+    X, y = load_bulldozer(n=n)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    ax.scatter(X['MachineHours'], y, s=3, alpha=.1, c='#1E88E5')
+    ax.set_xlim(0,40_000)
+    ax.set_xlabel("MachineHours\n(a)", fontsize=11)
+    ax.set_ylabel("SalePrice ($)", fontsize=11)
+    ax.set_title("Marginal plot", fontsize=13)
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
+    ax.spines['top'].set_color('none')
+    ax.spines['right'].set_color('none')
+    ax.spines['left'].set_smart_bounds(True)
+    ax.spines['bottom'].set_smart_bounds(True)
+    savefig(f"bulldozer_MachineHours_marginal")
+
+    if TUNE_RF:
+        rf, _ = tune_RF(X, y)
+        # RF best: {'max_features': 0.9, 'min_samples_leaf': 1, 'n_estimators': 150}
+        # validation R^2 0.8001628465688546
+    else:
+        rf = RandomForestRegressor(n_estimators=150, n_jobs=-1,
+                                   max_features=0.9,
+                                   min_samples_leaf=1, oob_score=True)
+        rf.fit(X, y)
+        print("RF OOB R^2", rf.oob_score_)
+
+    explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100),
+                                   feature_perturbation='interventional')
+    shap_values = explainer.shap_values(X.sample(n=shap_test_size),
+                                        check_additivity=False)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    shap.dependence_plot("MachineHours", shap_values, X.sample(n=shap_test_size),
+                         interaction_index=None, ax=ax, dot_size=5,
+                         show=False, alpha=.5)
+
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
+    ax.spines['top'].set_color('none')
+    ax.spines['right'].set_color('none')
+    ax.spines['left'].set_smart_bounds(True)
+    ax.spines['bottom'].set_smart_bounds(True)
+
+    ax.set_title("SHAP", fontsize=13)
+    ax.set_ylabel("SHAP MachineHours)", fontsize=11)
+    ax.set_xlabel("MachineHours\n(b)", fontsize=11)
+    ax.set_xlim(0,40_000)
+    ax.tick_params(axis='both', which='major', labelsize=10)
+
+    savefig(f"bulldozer_MachineHours_shap")
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    plot_stratpd(X, y, colname='MachineHours', targetname='SalePrice',
+                 n_trials=10,
+                 bootstrap=True,
+                 show_all_pdp=False,
+                 show_slope_lines=False,
+                 show_x_counts=True,
+                 show_xlabel=False,
+                 show_impact=False,
+                 pdp_marker_size=2,
+                 pdp_marker_alpha=1,
+                 ax=ax
+                 )
+    ax.set_title("StratPD", fontsize=13)
+    ax.set_xlim(0,40_000)
+    ax.set_xlabel("MachineHours\n(d)", fontsize=11)
+    # ax.set_ylim(-10000,30_000)
+    savefig(f"bulldozer_MachineHours_stratpd")
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+
+    ice = predict_ice(rf, X, "MachineHours", 'SalePrice', numx=1500, nlines=800)
+    plot_ice(ice, "MachineHours", 'SalePrice', alpha=.5, ax=ax,
+             show_ylabel=True,
+             yrange=(32_000,42_000)
+             )
+    ax.set_xlim(0,40_000)
+    savefig(f"bulldozer_MachineHours_pdp")
 
 
 def unsup_yearmade():
@@ -1270,23 +1611,6 @@ def noise():
         ax.text(0, -1, f"$\sigma = {sds[i]}$", horizontalalignment='center')
         ax.set_xlabel('$x_1$', fontsize=12)
         ax.set_xticks([-2,-1,0,1,2])
-
-    # rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
-    # rf.fit(X, y)
-    # print(f"RF OOB {rf.oob_score_}")
-    #
-    # ice = predict_ice(rf, X, 'x1', 'y', numx=20, nlines=700)
-    # plot_ice(ice, 'x1', 'y', ax=axes[0, 1],
-    #          yrange=(-3, 3), show_ylabel=False,
-    #          min_y_shifted_to_zero=True)
-    #
-    # ice = predict_ice(rf, X, 'x2', 'y', numx=20, nlines=700)
-    # plot_ice(ice, 'x2', 'y', ax=axes[1, 1],
-    #          yrange=(-3, 3), show_ylabel=False,
-    #          min_y_shifted_to_zero=True)
-    #
-    # axes[0, 0].set_title("StratPD", fontsize=10)
-    # axes[0, 1].set_title("PD/ICE", fontsize=10)
 
     savefig(f"noise")
 
@@ -1899,7 +2223,24 @@ def ale_yearmade():
     ax.tick_params(axis='both', which='major', labelsize=10)
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
-    savefig('YearMade_400_ale')
+    savefig('YearMade_ale')
+
+
+def ale_MachineHours():
+    df = pd.read_csv("images/MachineHours_ale.csv")
+    df['f.values'] -= np.min(df['f.values'])
+    print(df)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    ax.plot(df['x.values'],df['f.values'],'.',color='k',markersize=4)
+    ax.set_title("ALE", fontsize=13)
+    ax.set_ylabel("SalePrice", fontsize=11)
+    ax.set_xlabel("MachineHours\n(c)", fontsize=11)
+    ax.set_xlim(0, 40_000)
+    ax.tick_params(axis='both', which='major', labelsize=10)
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    savefig('MachineHours_ale')
 
 
 def ale_height():
@@ -1918,7 +2259,7 @@ def ale_height():
     ax.tick_params(axis='both', which='major', labelsize=10)
     # ax.spines['right'].set_visible(False)
     # ax.spines['top'].set_visible(False)
-    savefig('height_300_ale')
+    savefig('height_ale')
 
 
 def ale_state():
@@ -1937,7 +2278,7 @@ def ale_state():
     ax.set_yticks([0,10,20,30,40,50])
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
-    savefig('state_5_ale')
+    savefig('state_ale')
 
 
 def ale_pregnant():
@@ -2039,6 +2380,7 @@ if __name__ == '__main__':
     # FROM PAPER:
     # interactions()
     # unsup_yearmade()
+    MachineHours()
     # yearmade()
     # rent()
     # rent_ntrees()
@@ -2053,19 +2395,23 @@ if __name__ == '__main__':
     # meta_weight()
     # weather()
     # meta_weather()
-    noise()
+    # noise()
     # meta_noise()
     # bigX()
     # multi_joint_distr()
 
     # gen_ale_plot_data_in_R()
 
+    # ale_MachineHours()
     # ale_yearmade()
     # ale_height()
     # ale_pregnant()
     # ale_state()
 
     # EXTRA GOODIES
+    # saledayofyear()
+    # saledayofweek()
+    # productsize()
     # meta_boston()
     # rent_alone()
     # cars()

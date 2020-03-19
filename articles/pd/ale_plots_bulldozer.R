@@ -40,8 +40,8 @@ make_plots <- function(X, features=names(X), intervals=rep(100, length(features)
     col_idx <- which(names(X) == features[i])
     K <- intervals[i]
     filename <- paste0(base_filename, features[i], '_ale.pdf')
-    #pdf(file=filename, width=width, height=height)
-    #message(paste0('Saving ', filename))
+    pdf(file=filename, width=width, height=height)
+    message(paste0('Saving ', filename))
     ale <- ALEPlot(X, rf_bd, pred.fun=rf_predict, J=col_idx, K=K)
     filename <- paste0(base_filename, features[i], '_ale.csv')
     write.csv(ale, filename, row.names=FALSE)
@@ -51,4 +51,4 @@ make_plots <- function(X, features=names(X), intervals=rep(100, length(features)
 }
 
 # Create ALE plot PDFs.  Here we can assign K to each feature.
-make_plots(X, c('YearMade', 'ProductSize'), intervals=rep(300, 2))
+make_plots(X, c('YearMade', 'MachineHours', 'ProductSize', 'saledayofweek'), intervals=c(300, 300, 300, 300))

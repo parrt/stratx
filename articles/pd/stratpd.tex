@@ -165,6 +165,8 @@ SHAP is mean centered FPD for independent variables, proof in supplemental mater
 % ------------------------------------------------------------------------------------------------------------------------------------
 \section{Experimental results}\label{sec:experiments} 
 
+In this section, we demonstrate experimentally that \spd{} and \cspd{} compute accurate partial dependence curves for synthetic data and plausible results for real data sets.
+
 using synthetic data sets:
 
 	complex relationships with interactions
@@ -209,7 +211,7 @@ y = t[x_{\it state}] + 10 sin(\frac{2\pi}{365}x_{\it dayofyear}+\pi) + \epsilon,
 \begin{center}
 \includegraphics[scale=0.45]{images/dayofyear_vs_temp.pdf}~~
 \includegraphics[scale=0.45]{images/state_vs_temp_pdp.pdf}~~
-\includegraphics[scale=0.45]{images/state_5_ale.pdf}~~
+\includegraphics[scale=0.45]{images/state_ale.pdf}~~
 \includegraphics[scale=0.45]{images/state_vs_temp_stratpd.pdf}~~
 \caption{\small foo.}
 \label{fig:statetemp}
@@ -256,7 +258,7 @@ y & = &120 + 10(x_{height} - min(x_{height})) + 30x_{pregnant} - 1.5x_{education
 \includegraphics[scale=0.35]{images/height_vs_weight_pdp.pdf}~~
 \includegraphics[scale=0.35]{images/weight_tree_path_dependent_shap.pdf}~~
 \includegraphics[scale=0.35]{images/weight_interventional_shap.pdf}~~
-\includegraphics[scale=0.34]{images/height_300_ale.pdf}~~
+\includegraphics[scale=0.34]{images/height_ale.pdf}~~
 \caption{\small SHAP partial dependence plots of response body weight on feature {\tt height} using 2000 synthetic observations from Equation \eqref{eq:weight}. SHAP interrogated an RF with 40 trees and explained all 2000 samples; the interventional case used 100 observations as background data.}
 \label{fig:heightweight}
 \end{center}
@@ -279,9 +281,20 @@ y & = &120 + 10(x_{height} - min(x_{height})) + 30x_{pregnant} - 1.5x_{education
 \begin{center}
 \includegraphics[scale=0.35]{images/bulldozer_YearMade_marginal.pdf}~~
 \includegraphics[scale=0.35]{images/bulldozer_YearMade_shap.pdf}~~
-\includegraphics[scale=0.35]{images/YearMade_400_ale.pdf}~~
+\includegraphics[scale=0.35]{images/YearMade_ale.pdf}~~
 \includegraphics[scale=0.35]{images/bulldozer_YearMade_stratpd.pdf}
-\caption{\small (a) Marginal plot of bulldozer {\tt YearMade} versus {\tt SalePrice} using subsample of 20k observations, (b) partial dependence drawn by SHAP interrogating an RF with 40 trees and explaining 1000 values with 100 observations as background data, (c) \spd{} partial dependence.}
+\caption{\small (a) Marginal plot of bulldozer {\tt YearMade} versus {\tt SalePrice} using subsample of 10k observations, (b) partial dependence drawn by SHAP interrogating an RF with 40 trees and explaining 1000 values with 100 observations as background data, (c) \spd{} partial dependence.}
+\label{fig:yearmade}
+\end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=0.35]{images/bulldozer_MachineHours_pdp.pdf}~~
+\includegraphics[scale=0.35]{images/bulldozer_MachineHours_shap.pdf}~~
+\includegraphics[scale=0.35]{images/MachineHours_ale.pdf}~~
+\includegraphics[scale=0.35]{images/bulldozer_MachineHours_stratpd.pdf}
+\caption{\small (a) Marginal plot of bulldozer {\tt YearMade} versus {\tt MachineHours} using subsample of 10k observations, (b) partial dependence drawn by SHAP interrogating an RF with 40 trees and explaining 1000 values with 100 observations as background data, (c) \spd{} partial dependence.}
 \label{fig:yearmade}
 \end{center}
 \end{figure}
