@@ -789,25 +789,19 @@ def meta_weather():
 def weight():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     X, y, df_raw, eqn = toy_weight_data(2000)
-    df = df_raw.copy()
-    df_string_to_cat(df)
-    df_cat_to_catcode(df)
-    df['pregnant'] = df['pregnant'].astype(int)
-    X = df.drop('weight', axis=1)
-    y = df['weight']
 
     TUNE_RF = False
 
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
-    plot_stratpd(X, y, 'education', 'weight', ax=ax,
-                 show_x_counts=False,
-                 pdp_marker_size=5,
-                 yrange=(-12, 0.05), slope_line_alpha=.1, show_ylabel=True)
-    #    ax.get_yaxis().set_visible(False)
-    ax.set_title("StratPD", fontsize=10)
-    ax.set_xlim(10,18)
-    ax.set_xticks([10,12,14,16,18])
-    savefig(f"education_vs_weight_stratpd")
+    # fig, ax = plt.subplots(1, 1, figsize=figsize)
+    # plot_stratpd(X, y, 'education', 'weight', ax=ax,
+    #              show_x_counts=False,
+    #              pdp_marker_size=5,
+    #              yrange=(-12, 0.05), slope_line_alpha=.1, show_ylabel=True)
+    # #    ax.get_yaxis().set_visible(False)
+    # ax.set_title("StratPD", fontsize=10)
+    # ax.set_xlim(10,18)
+    # ax.set_xticks([10,12,14,16,18])
+    # savefig(f"education_vs_weight_stratpd")
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     plot_stratpd(X, y, 'height', 'weight', ax=ax,
@@ -846,6 +840,14 @@ def weight():
         rf.fit(X, y) # Use full data set for plotting
         print("RF OOB R^2", rf.oob_score_)
 
+    # show pregnant female at max range drops going taller
+    X_test = np.array([[1, 1, 70, 10]])
+    y_pred = rf.predict(X_test)
+    print("pregnant female at max range", X_test, "predicts", y_pred)
+    X_test = np.array([[1, 1, 72, 10]]) # make them taller
+    y_pred = rf.predict(X_test)
+    print("pregnant female in male height range", X_test, "predicts", y_pred)
+
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ice = predict_ice(rf, X, 'education', 'weight')
     plot_ice(ice, 'education', 'weight', ax=ax, yrange=(-12, 0), min_y_shifted_to_zero=True)
@@ -856,7 +858,8 @@ def weight():
 
     fig, ax = plt.subplots(1, 1, figsize=(3.5, 3.2))
     ice = predict_ice(rf, X, 'height', 'weight')
-    plot_ice(ice, 'height', 'weight', ax=ax, pdp_linewidth=2, yrange=(0, 160), min_y_shifted_to_zero=True)
+    plot_ice(ice, 'height', 'weight', ax=ax, pdp_linewidth=2, yrange=(100, 250),
+             min_y_shifted_to_zero=False)
     ax.set_xlabel("height\n(a)", fontsize=12)
     ax.set_title("FPD/ICE", fontsize=10)
     ax.set_xticks([60,65,70,75])
@@ -872,7 +875,8 @@ def weight():
     fig, ax = plt.subplots(1, 1, figsize=(1.3,2))
     ice = predict_catice(rf, X, 'pregnant', 'weight', cats=df_raw['pregnant'].unique())
     plot_catice(ice, 'pregnant', 'weight', catnames={0:'M',1:'F'}, ax=ax,
-                yrange=(-5, 45), pdp_marker_size=15)
+                min_y_shifted_to_zero=True,
+                yrange=(-5, 45), pdp_marker_size=20)
     ax.set_title("FPD/ICE", fontsize=10)
     savefig(f"pregnant_vs_weight_pdp")
 
@@ -939,7 +943,7 @@ def shap_weight(feature_perturbation, twin=False):
     print("RF OOB R^2", rf.oob_score_)
 
     if feature_perturbation=='interventional':
-        explainer = shap.TreeExplainer(rf, data=shap.sample(X, 500), feature_perturbation='interventional')
+        explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100), feature_perturbation='interventional')
         xlabel = "height\n(c)"
     else:
         explainer = shap.TreeExplainer(rf, feature_perturbation='tree_path_dependent')
@@ -947,12 +951,20 @@ def shap_weight(feature_perturbation, twin=False):
     shap_sample = X[:shap_test_size]
     shap_values = explainer.shap_values(shap_sample, check_additivity=False)
 
+    df_shap = pd.DataFrame()
+    df_shap['weight'] = shap_values[:, 2]
+    df_shap['height'] = shap_sample.iloc[:, 2]
+
+    pdpy = df_shap.groupby('height').mean().reset_index()
+    print("len pdpy", len(pdpy))
+
     GREY = '#444443'
     fig, ax = plt.subplots(1, 1, figsize=figsize2)
 
     shap.dependence_plot("height", shap_values, shap_sample,
                          interaction_index=None, ax=ax, dot_size=5,
                          show=False, alpha=1)
+    # ax.plot(pdpy['height'], pdpy['weight'], '.', c='k', markersize=.5, alpha=.5)
 
     ax.spines['left'].set_linewidth(.5)
     ax.spines['bottom'].set_linewidth(.5)
@@ -1361,69 +1373,69 @@ def MachineHours():
         rf.fit(X, y)
         print("RF OOB R^2", rf.oob_score_)
 
-    # fig, ax = plt.subplots(1, 1, figsize=figsize2)
-    # ax.scatter(X['MachineHours'], y, s=3, alpha=.1, c='#1E88E5')
-    # ax.set_xlim(0,30_000)
-    # ax.set_xlabel("MachineHours\n(a)", fontsize=11)
-    # ax.set_ylabel("SalePrice ($)", fontsize=11)
-    # ax.set_title("Marginal plot", fontsize=13)
-    # ax.spines['left'].set_linewidth(.5)
-    # ax.spines['bottom'].set_linewidth(.5)
-    # ax.spines['top'].set_color('none')
-    # ax.spines['right'].set_color('none')
-    # ax.spines['left'].set_smart_bounds(True)
-    # ax.spines['bottom'].set_smart_bounds(True)
-    # savefig(f"bulldozer_MachineHours_marginal")
-    #
-    # explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100),
-    #                                feature_perturbation='interventional')
-    # shap_values = explainer.shap_values(X.sample(n=shap_test_size),
-    #                                     check_additivity=False)
-    #
-    # fig, ax = plt.subplots(1, 1, figsize=figsize2)
-    # shap.dependence_plot("MachineHours", shap_values, X.sample(n=shap_test_size),
-    #                      interaction_index=None, ax=ax, dot_size=5,
-    #                      show=False, alpha=.5)
-    # ax.yaxis.label.set_visible(False)
-    # ax.spines['left'].set_linewidth(.5)
-    # ax.spines['bottom'].set_linewidth(.5)
-    # ax.spines['top'].set_color('none')
-    # ax.spines['right'].set_color('none')
-    # ax.spines['left'].set_smart_bounds(True)
-    # ax.spines['bottom'].set_smart_bounds(True)
-    #
-    # ax.set_title("SHAP", fontsize=13)
-    # ax.set_ylabel("SHAP MachineHours)", fontsize=11)
-    # ax.set_xlabel("MachineHours\n(b)", fontsize=11)
-    # ax.set_xlim(0,30_000)
-    # ax.tick_params(axis='both', which='major', labelsize=10)
-    #
-    # savefig(f"bulldozer_MachineHours_shap")
-    #
-    # fig, ax = plt.subplots(1, 1, figsize=figsize2)
-    # plot_stratpd(X, y, colname='MachineHours', targetname='SalePrice',
-    #              n_trials=10,
-    #              bootstrap=True,
-    #              show_all_pdp=False,
-    #              show_slope_lines=False,
-    #              show_x_counts=True,
-    #              barchar_alpha=1.0,
-    #              show_ylabel=False,
-    #              show_xlabel=False,
-    #              show_impact=False,
-    #              pdp_marker_size=1,
-    #              pdp_marker_alpha=.3,
-    #              ax=ax
-    #              )
-    # ax.annotate("Imputed median value", xytext=(10000,-4800),
-    #             xy=(3138,-4700), fontsize=9,
-    #             arrowprops={'arrowstyle':"->"})
-    # ax.yaxis.label.set_visible(False)
-    # ax.set_title("StratPD", fontsize=13)
-    # ax.set_xlim(0,30_000)
-    # ax.set_xlabel("MachineHours\n(d)", fontsize=11)
-    # ax.set_ylim(-5000,3_000)
-    # savefig(f"bulldozer_MachineHours_stratpd")
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    ax.scatter(X['MachineHours'], y, s=3, alpha=.1, c='#1E88E5')
+    ax.set_xlim(0,30_000)
+    ax.set_xlabel("MachineHours\n(a)", fontsize=11)
+    ax.set_ylabel("SalePrice ($)", fontsize=11)
+    ax.set_title("Marginal plot", fontsize=13)
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
+    ax.spines['top'].set_color('none')
+    ax.spines['right'].set_color('none')
+    ax.spines['left'].set_smart_bounds(True)
+    ax.spines['bottom'].set_smart_bounds(True)
+    savefig(f"bulldozer_MachineHours_marginal")
+
+    explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100),
+                                   feature_perturbation='interventional')
+    shap_values = explainer.shap_values(X.sample(n=shap_test_size),
+                                        check_additivity=False)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    shap.dependence_plot("MachineHours", shap_values, X.sample(n=shap_test_size),
+                         interaction_index=None, ax=ax, dot_size=5,
+                         show=False, alpha=.5)
+    ax.yaxis.label.set_visible(False)
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
+    ax.spines['top'].set_color('none')
+    ax.spines['right'].set_color('none')
+    ax.spines['left'].set_smart_bounds(True)
+    ax.spines['bottom'].set_smart_bounds(True)
+
+    ax.set_title("SHAP", fontsize=13)
+    ax.set_ylabel("SHAP MachineHours)", fontsize=11)
+    ax.set_xlabel("MachineHours\n(b)", fontsize=11)
+    ax.set_xlim(0,30_000)
+    ax.tick_params(axis='both', which='major', labelsize=10)
+
+    savefig(f"bulldozer_MachineHours_shap")
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    plot_stratpd(X, y, colname='MachineHours', targetname='SalePrice',
+                 n_trials=10,
+                 bootstrap=True,
+                 show_all_pdp=False,
+                 show_slope_lines=False,
+                 show_x_counts=True,
+                 barchar_alpha=1.0,
+                 show_ylabel=False,
+                 show_xlabel=False,
+                 show_impact=False,
+                 pdp_marker_size=1,
+                 pdp_marker_alpha=.3,
+                 ax=ax
+                 )
+    ax.annotate("Imputed median value", xytext=(10000,-4800),
+                xy=(3138,-4700), fontsize=9,
+                arrowprops={'arrowstyle':"->"})
+    ax.yaxis.label.set_visible(False)
+    ax.set_title("StratPD", fontsize=13)
+    ax.set_xlim(0,30_000)
+    ax.set_xlabel("MachineHours\n(d)", fontsize=11)
+    ax.set_ylim(-5000,3_000)
+    savefig(f"bulldozer_MachineHours_stratpd")
 
     fig, ax = plt.subplots(1, 1, figsize=figsize2)
     ice = predict_ice(rf, X, "MachineHours", 'SalePrice', numx=1000, nlines=300)
@@ -2391,12 +2403,12 @@ if __name__ == '__main__':
     # unsup_boston()
     # weight()
     # shap_pregnant()
-    # shap_weight(feature_perturbation='tree_path_dependent', twin=True) # more biased but faster
-    # shap_weight(feature_perturbation='interventional', twin=True) # takes 04:45 minutes
+    shap_weight(feature_perturbation='tree_path_dependent', twin=True) # more biased but faster
+    shap_weight(feature_perturbation='interventional', twin=True) # takes 04:45 minutes
     # weight_ntrees()
     # unsup_weight()
     # meta_weight()
-    weather()
+    # weather()
     # meta_weather()
     # noise()
     # meta_noise()

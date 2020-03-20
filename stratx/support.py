@@ -182,7 +182,9 @@ def toy_weather_data_1yr():
     # def temp(x): return 10*np.sin((2*x + 365) * (np.pi) / 365)
     def temp(x): return 10*np.sin(((2/365)*np.pi*x + np.pi))
 
-    def noise(state): return np.random.normal(0, 4, sum(df['state'] == state))
+    def noise(state):
+        # noise_per_state = {'CA':2, 'CO':4, 'AZ':7, 'WA':2, 'NV':5}
+        return np.random.normal(0, 4, sum(df['state'] == state))
 
     df = pd.DataFrame()
     df['dayofyear'] = range(1, 365 + 1)

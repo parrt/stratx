@@ -144,7 +144,58 @@ def bulldozer():
     plot_stratpd(X, y, 'MachineHours', 'SalePrice', n_trials=10, show_all_pdp=False)
     plt.show()
 
+def weight():
+    X, y, df_raw, eqn = toy_weight_data(2000)
+    # df = df_raw.copy()
+    # df_string_to_cat(df)
+    # df_cat_to_catcode(df)
+    # df['pregnant'] = df['pregnant'].astype(int)
 
+    print()
+    rf = RandomForestRegressor(n_estimators=200, min_samples_leaf=1, max_features=0.9, oob_score=True)
+    rf.fit(X, y) # Use full data set for plotting
+    print("RF OOB R^2", rf.oob_score_)
+
+    print(X.head(5))
+
+    # show pregnant female at max range drops going taller
+    X_test = [[1, 1, 70, 10]]
+    X_test = np.array(X_test)
+    y_pred = rf.predict(X_test)
+    print("pregnant female at max range", y_pred)
+
+    X_test = [[1, 1, 72, 10]] # make them taller
+    y_pred = rf.predict(X_test)
+    print("pregnant female in male height range", y_pred)
+
+    X_test = [[1, 0, 72, 10]]
+    y_pred = rf.predict(X_test)
+    print("nonpregnant female in male height range", y_pred)
+
+    X_test = [[0, 0, 72, 10]]
+    y_pred = rf.predict(X_test)
+    print("male in male height range", y_pred)
+
+    fig, axes = plt.subplots(1, 2, figsize=(7, 3.2))
+
+    ice = predict_ice(rf, X[X['sex']==0], 'height', 'weight')
+    plot_ice(ice, 'height', 'weight', ax=axes[0], pdp_linewidth=2, yrange=(100, 250),
+             min_y_shifted_to_zero=False)
+    axes[0].set_xlabel("height\n(a)", fontsize=12)
+    axes[0].set_title("Male FPD/ICE", fontsize=10)
+    axes[0].set_xticks([60,65,70,75])
+
+    ice = predict_ice(rf, X[X['sex']==1], 'height', 'weight')
+    plot_ice(ice, 'height', 'weight', ax=axes[1], pdp_linewidth=2, yrange=(100, 250),
+             min_y_shifted_to_zero=False)
+    axes[1].set_xlabel("height\n(a)", fontsize=12)
+    axes[1].set_title("Female FPD/ICE", fontsize=10)
+    axes[1].set_xticks([60,65,70,75])
+
+    plt.show()
+
+
+weight()
 # bulldozer()
-weather()
+# weather()
 #bigX()
