@@ -25,6 +25,7 @@ from stratx.ice import *
 from stratx.support import *
 import inspect
 import statsmodels.api as sm
+from dtreeviz.trees import *
 
 def df_string_to_cat(df: pd.DataFrame) -> dict:
     catencoders = {}
@@ -194,8 +195,71 @@ def weight():
 
     plt.show()
 
+def sample_x1_equals_x2_pic():
+    np.random.seed(1)
+    n = 30
+    x = np.random.uniform(0, 1, size=n)
+    x1 = x + np.random.normal(0, 0.05, n)
+    x2 = x + np.random.normal(0, 0.05, n)
+    X = np.vstack([x1, x2]).T
 
-weight()
+    y = X[:, 0] + X[:, 1] ** 2
+
+    regr = tree.DecisionTreeRegressor(min_samples_leaf=5)  # limit depth of tree
+    regr.fit(X, y)
+
+    shadow_tree = ShadowDecTree(regr, X, y, feature_names=['x1', 'x2'])
+    splits = []
+    for node in shadow_tree.internal:
+        splits.append(node.split())
+    splits = sorted(splits)
+    print(splits)
+
+    fig, ax = plt.subplots(1, 1, figsize=(3,2.5))
+    ax.scatter(X[:,0], X[:,1], c='k', alpha=.7, s=10)
+    ax.set_xlabel("$x_1$", fontsize=12)
+    ax.set_ylabel("$x_2$", fontsize=12)
+    a = -.08
+    b = 1.05
+    ax.set_xlim(a, b)
+    ax.set_ylim(a, b)
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
+    ax.spines['top'].set_color('none')
+    ax.spines['right'].set_color('none')
+    ax.spines['left'].set_smart_bounds(True)
+    ax.spines['bottom'].set_smart_bounds(True)
+    for s in splits:
+        ax.plot([a,b], [s,s], ':', c='grey', lw=1.5)
+
+    plt.tight_layout()
+    plt.savefig
+    # t = rtreeviz_bivar_heatmap(ax,
+    #                            X, y, # partition just x2
+    #                            min_samples_leaf=20,
+    #                            feature_names=['$x_1$','$x_2$'],
+    #                            fontsize=14)
+
+    t = rtreeviz_univar(ax,
+                               X[:,1], y, # partition just x2
+                               min_samples_leaf=20,
+                               fontsize=14,
+                        show={})
+
+    plt.show()
+    plt.close()
+
+    viz = dtreeviz(regr,
+             X,
+             y,
+             target_name='y',
+             feature_names=['x1', 'x2'])
+    #viz.view()
+    # plt.show()
+
+
+sample_x1_equals_x2_pic()
+# weight()
 # bulldozer()
 # weather()
 #bigX()

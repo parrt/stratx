@@ -2391,8 +2391,63 @@ def rent_deep_learning_model(X_raw=None, y_raw=None):
     return model
 
 
+def partitioning():
+    np.random.seed(1)
+    n = 35
+    x = np.random.uniform(0, 1, size=n)
+    x1 = x + np.random.normal(0, 0.1, n)
+    x2 = x + np.random.normal(0, 0.1, n)
+    X = np.vstack([x1, x2]).T
+
+    y = X[:, 0] + X[:, 1] ** 2
+
+    regr = tree.DecisionTreeRegressor(min_samples_leaf=4)  # limit depth of tree
+    regr.fit(X, y)
+
+    shadow_tree = ShadowDecTree(regr, X, y, feature_names=['x1', 'x2'])
+    splits = []
+    for node in shadow_tree.internal:
+        splits.append(node.split())
+    splits = sorted(splits)
+    print("splits", splits)
+
+    fig, ax = plt.subplots(1, 1, figsize=(3,2.5))
+
+    color_map_min = '#c7e9b4'
+    color_map_max = '#081d58'
+
+    y_lim = np.min(y), np.max(y)
+    y_range = y_lim[1] - y_lim[0]
+    n_colors_in_map = 100
+    markersize = 35
+    scatter_edge=GREY
+    color_map = [rgb2hex(c.rgb, force_long=True)
+                 for c in Color(color_map_min).range_to(Color(color_map_max), n_colors_in_map)]
+    color_map = [color_map[int(((y_-y_lim[0])/y_range)*(n_colors_in_map-1))] for y_ in y]
+    # ax.scatter(x, y, marker='o', c=color_map, edgecolor=scatter_edge, lw=.3, s=markersize)
+
+    ax.scatter(X[:,0], X[:,1], marker='o', c=color_map, alpha=.7, edgecolor=scatter_edge, lw=.3, s=markersize)
+    ax.set_xlabel("$x_1$", fontsize=12)
+    ax.set_ylabel("$x_2$", fontsize=12)
+    a = -.08
+    b = 1.05
+    ax.set_xlim(a, b)
+    ax.set_ylim(a, b+0.02)
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
+    ax.spines['top'].set_color('none')
+    ax.spines['right'].set_color('none')
+    ax.spines['left'].set_smart_bounds(True)
+    ax.spines['bottom'].set_smart_bounds(True)
+    for s in splits:
+        ax.plot([a,b], [s,s], ':', c='grey', lw=1.5)
+
+    savefig("partitioning_background")
+
+
 if __name__ == '__main__':
     # FROM PAPER:
+    partitioning()
     # interactions()
     # unsup_yearmade()
     # MachineHours()
@@ -2403,8 +2458,8 @@ if __name__ == '__main__':
     # unsup_boston()
     # weight()
     # shap_pregnant()
-    shap_weight(feature_perturbation='tree_path_dependent', twin=True) # more biased but faster
-    shap_weight(feature_perturbation='interventional', twin=True) # takes 04:45 minutes
+    # shap_weight(feature_perturbation='tree_path_dependent', twin=True) # more biased but faster
+    # shap_weight(feature_perturbation='interventional', twin=True) # takes 04:45 minutes
     # weight_ntrees()
     # unsup_weight()
     # meta_weight()
