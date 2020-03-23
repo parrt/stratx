@@ -2392,11 +2392,11 @@ def rent_deep_learning_model(X_raw=None, y_raw=None):
 
 
 def partitioning():
-    np.random.seed(1)
-    n = 35
+    # np.random.seed(2)
+    n = 200
     x = np.random.uniform(0, 1, size=n)
     x1 = x + np.random.normal(0, 0.1, n)
-    x2 = x + np.random.normal(0, 0.1, n)
+    x2 = x + np.random.normal(0, 0.03, n)
     X = np.vstack([x1, x2]).T
 
     y = X[:, 0] + X[:, 1] ** 2
@@ -2419,7 +2419,7 @@ def partitioning():
     y_lim = np.min(y), np.max(y)
     y_range = y_lim[1] - y_lim[0]
     n_colors_in_map = 100
-    markersize = 35
+    markersize = 5
     scatter_edge=GREY
     color_map = [rgb2hex(c.rgb, force_long=True)
                  for c in Color(color_map_min).range_to(Color(color_map_max), n_colors_in_map)]
@@ -2440,9 +2440,12 @@ def partitioning():
     ax.spines['left'].set_smart_bounds(True)
     ax.spines['bottom'].set_smart_bounds(True)
     for s in splits:
-        ax.plot([a,b], [s,s], ':', c='grey', lw=1.5)
+        ax.plot([a,b], [s,s], '-', c='grey', lw=.5)
 
-    savefig("partitioning_background")
+    # savefig("partitioning_background")
+    plt.tight_layout(pad=0, w_pad=0, h_pad=0)
+    plt.savefig(f"images/partitioning_background.svg", bbox_inches="tight", pad_inches=0)
+    plt.show()
 
 
 if __name__ == '__main__':
