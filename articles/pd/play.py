@@ -197,20 +197,24 @@ def weight():
 
 def sample_x1_equals_x2_pic():
     np.random.seed(1)
-    n = 30
+    n = 100
     x = np.random.uniform(0, 1, size=n)
     x1 = x + np.random.normal(0, 0.05, n)
-    x2 = x + np.random.normal(0, 0.05, n)
+    # x2 = x + np.random.normal(0, 0.05, n)
+    x2 = (x*4).astype(int) + np.random.randint(0, 5, n)
     X = np.vstack([x1, x2]).T
 
     y = X[:, 0] + X[:, 1] ** 2
 
     regr = tree.DecisionTreeRegressor(min_samples_leaf=5)  # limit depth of tree
-    regr.fit(X, y)
+    regr.fit(X[:,1].reshape(-1,1), y)
 
-    shadow_tree = ShadowDecTree(regr, X, y, feature_names=['x1', 'x2'])
+    print(np.unique(X[:,1]))
+
+    shadow_tree = ShadowDecTree(regr, X[:,1].reshape(-1,1), y, feature_names=['x1', 'x2'])
     splits = []
     for node in shadow_tree.internal:
+        print(node)
         splits.append(node.split())
     splits = sorted(splits)
     print(splits)
@@ -219,10 +223,11 @@ def sample_x1_equals_x2_pic():
     ax.scatter(X[:,0], X[:,1], c='k', alpha=.7, s=10)
     ax.set_xlabel("$x_1$", fontsize=12)
     ax.set_ylabel("$x_2$", fontsize=12)
+    ax.set_yticks(np.unique(X[:,1]))
     a = -.08
     b = 1.05
     ax.set_xlim(a, b)
-    ax.set_ylim(a, b)
+    ax.set_ylim(-.5,8)
     ax.spines['left'].set_linewidth(.5)
     ax.spines['bottom'].set_linewidth(.5)
     ax.spines['top'].set_color('none')
@@ -249,12 +254,12 @@ def sample_x1_equals_x2_pic():
     plt.show()
     plt.close()
 
-    viz = dtreeviz(regr,
-             X,
-             y,
-             target_name='y',
-             feature_names=['x1', 'x2'])
-    #viz.view()
+    # viz = dtreeviz(regr,
+    #          X[:,1].reshape(-1,1),
+    #          y,
+    #          target_name='y',
+    #          feature_names=['x2'])
+    # viz.view()
     # plt.show()
 
 

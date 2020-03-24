@@ -166,7 +166,16 @@ extrapolation outside the data envelope should be avoided as much as possible wh
 
 ALE guys says ``the difference is that ALE plots hold \xnj exactly constant as it varies $x_j$ across categories, which it can do because it uses the fitted model $f(x_j, x_{ not j})$, whereas your approach keeps \xnj approximately the same as it varies $x_j$ across categories, which it must do because it does not use any fitted model.''
 
-\includegraphics[scale=.35]{images/partitioning.pdf}
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[scale=.4]{images/partitioning.pdf}
+\caption{\small $x_2$ continuous and partitioned by decision tree fit to (\xnj, ${\bf y}$), $x_1$ continuous (a), (b) and categorical (c), (d). Small wedges on $x_1$ axis indicate PD curve points}
+\label{fig:partitioning}
+\end{center}
+\end{figure}
+
+if $x_2$ is also cat then assuming same value means shifting $x_2$ to new cat as well for us, right? dec trees tend to test existing values for splits so will likely keep integers in their own leaves. In the case of x2 being cat with k levels, we can use {\tt\small max\_leaf\_nodes=8, min\_samples\_leaf=1} but in general we can still shift x2 cats during strat. verified by experiment.
+
 
 ALE partitions $x_j$ into bins then fixes \xnj to compute average finite difference of $y$ at $x_j=z$ in $x_j$ neighborhood (all \xnj in that $x_j$ bin) whereas we partition \xnj then compute average finite diff of $y$ at $x_j=z$ across those $p-1$ dim regions hoping they are repetitions of the same $p-1$ dimensional vector (all same).
 
