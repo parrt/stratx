@@ -58,8 +58,6 @@ import os
 import shap
 import xgboost as xgb
 
-np.random.seed(1)  # pick seed for reproducible article images
-
 figsize = (2.5, 2)
 figsize2 = (3.8, 3.2)
 
@@ -143,6 +141,7 @@ def toy_weight_data(n):
 
 def rent():
     print(f"----------- {inspect.stack()[0][3]} -----------")
+    np.random.seed(1)  # pick seed for reproducible article images
     X,y = load_rent(n=10_000)
     df_rent = X.copy()
     df_rent['price'] = y
@@ -264,7 +263,7 @@ def rent():
     print(f"StratPD ignored {ignored} records")
     axes[5].yaxis.tick_right()
     axes[5].yaxis.set_label_position('right')
-    axes[5].set_ylim(-250,2000)
+    axes[5].set_ylim(-250,2250)
     axes[5].set_yticks([0,1000,2000])
     axes[5].set_ylabel("price")
 
@@ -290,75 +289,6 @@ def tune_RF(X, y, verbose=2):
     print("validation R^2", rf.score(X_test, y_test))
     return rf, grid.best_params_
 
-
-'''
-def rent_grid():
-    print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_rent = load_rent()
-    df_rent = df_rent[-10_000:]  # get a small subsample
-    X = df_rent.drop('price', axis=1)
-    y = df_rent['price']
-
-    plot_stratpd_gridsearch(X, y, 'latitude', 'price',
-                            min_samples_leaf_values=[5,10,30,50],
-                            yrange=(-500,3500),
-                            show_slope_lines=True,
-                            marginal_alpha=0.05
-                            )
-
-    savefig("latitude_meta")
-
-    plot_stratpd_gridsearch(X, y, 'longitude', 'price',
-                            min_samples_leaf_values=[5,10,30,50],
-                            yrange=(1000,-4000),
-                            show_slope_lines=True,
-                            marginal_alpha=0.05
-                            )
-
-    savefig("longitude_meta")
-
-    plot_stratpd_gridsearch(X, y, 'bathrooms', 'price',
-                            min_samples_leaf_values=[5,10,30,50],
-                            yrange=(-500,4000),
-                            show_slope_lines=True,
-                            slope_line_alpha=.15)
-
-    savefig("bathrooms_meta")
-
-
-def rent_alone():
-    print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_rent = load_rent()
-    df_rent = df_rent[-10_000:]  # get a small subsample
-    X = df_rent.drop('price', axis=1)
-    y = df_rent['price']
-
-    def onevar(colname, row, col, yrange=None, slope_line_alpha=.2):
-        plot_stratpd(X, y, colname, 'price', ax=axes[row, col],
-                     min_samples_leaf=20,
-                     yrange=yrange,
-                     slope_line_alpha=slope_line_alpha,
-                     pdp_marker_size=2 if row >= 2 else 8)
-        plot_stratpd(X, y, colname, 'price', ax=axes[row, col + 1],
-                     min_samples_leaf=20,
-                     yrange=yrange,
-                     slope_line_alpha=slope_line_alpha,
-                     pdp_marker_size=2 if row >= 2 else 8)
-
-    fig, axes = plt.subplots(4, 2, figsize=(5, 8))#, sharey=True)
-    # for i in range(1, 4):
-    #     axes[0, i].get_yaxis().set_visible(False)
-    #     axes[1, i].get_yaxis().set_visible(False)
-    #     axes[2, i].get_yaxis().set_visible(False)
-
-    onevar('bedrooms', row=0, col=0, yrange=(0, 3000))
-    onevar('bathrooms', row=1, col=0, yrange=(-500, 3000))
-    onevar('latitude', row=2, col=0, yrange=(-500, 3000))
-    onevar('longitude', row=3, col=0, slope_line_alpha=.08, yrange=(-3000, 1000))
-
-    savefig(f"rent_all")
-    plt.close()
-'''
 
 def plot_with_noise_col(df, colname):
     features = ['bedrooms', 'bathrooms', 'latitude', 'longitude']
@@ -512,6 +442,7 @@ def plot_with_dup_col(df, colname, min_samples_leaf):
 
 
 def rent_ntrees():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
     X, y = load_rent(n=10_000)
 
@@ -551,6 +482,7 @@ def rent_ntrees():
 
 
 def meta_boston():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
     boston = load_boston()
     print(len(boston.data))
@@ -576,6 +508,7 @@ def meta_boston():
 
 
 def plot_meta_multivar(X, y, colnames, targetname, nbins, yranges=None):
+    np.random.seed(1)  # pick seed for reproducible article images
     min_samples_leaf_values = [2, 5, 10, 30, 50, 100, 200]
 
     nrows = len(colnames)
@@ -612,6 +545,7 @@ def plot_meta_multivar(X, y, colnames, targetname, nbins, yranges=None):
 
 
 def unsup_rent():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
     X, y = load_rent(n=10_000)
 
@@ -648,6 +582,7 @@ def unsup_rent():
 
 
 def weather():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
     TUNE_RF = False
     df_raw = toy_weather_data()
@@ -747,6 +682,7 @@ def weather():
 
 
 def meta_weather():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
     # np.random.seed(66)
 
@@ -787,6 +723,7 @@ def meta_weather():
 
 
 def weight():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
     X, y, df_raw, eqn = toy_weight_data(2000)
 
@@ -882,6 +819,7 @@ def weight():
 
 
 def shap_pregnant():
+    np.random.seed(1)  # pick seed for reproducible article images
     n = 2000
     shap_test_size = 300
     X, y, df_raw, eqn = toy_weight_data(n=n)
@@ -925,6 +863,7 @@ def shap_pregnant():
 
 
 def shap_weight(feature_perturbation, twin=False):
+    np.random.seed(1)  # pick seed for reproducible article images
     n = 2000
     shap_test_size = 2000
     X, y, df_raw, eqn = toy_weight_data(n=n)
@@ -948,7 +887,7 @@ def shap_weight(feature_perturbation, twin=False):
     else:
         explainer = shap.TreeExplainer(rf, feature_perturbation='tree_path_dependent')
         xlabel = "height\n(b)"
-    shap_sample = X[:shap_test_size]
+    shap_sample = X.sample(shap_test_size, replace=False)
     shap_values = explainer.shap_values(shap_sample, check_additivity=False)
 
     df_shap = pd.DataFrame()
@@ -1017,6 +956,7 @@ def shap_weight(feature_perturbation, twin=False):
 
 
 def saledayofweek():
+    np.random.seed(1)  # pick seed for reproducible article images
     n = 10_000
     shap_test_size = 1000
     TUNE_RF = False
@@ -1054,11 +994,11 @@ def saledayofweek():
 
     explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100),
                                    feature_perturbation='interventional')
-    shap_values = explainer.shap_values(X.sample(n=shap_test_size),
-                                        check_additivity=False)
+    shap_sample = X.sample(shap_test_size, replace=False)
+    shap_values = explainer.shap_values(shap_sample, check_additivity=False)
 
     fig, ax = plt.subplots(1, 1, figsize=figsize2)
-    shap.dependence_plot("saledayofweek", shap_values, X.sample(n=shap_test_size),
+    shap.dependence_plot("saledayofweek", shap_values, shap_sample,
                          interaction_index=None, ax=ax, dot_size=5,
                          show=False, alpha=.5)
 
@@ -1105,6 +1045,7 @@ def saledayofweek():
 
 
 def productsize():
+    np.random.seed(1)  # pick seed for reproducible article images
     n = 10_000
     shap_test_size = 1000
     TUNE_RF = False
@@ -1137,11 +1078,11 @@ def productsize():
 
     explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100),
                                    feature_perturbation='interventional')
-    shap_values = explainer.shap_values(X.sample(n=shap_test_size),
-                                        check_additivity=False)
+    shap_sample = X.sample(shap_test_size, replace=False)
+    shap_values = explainer.shap_values(shap_sample, check_additivity=False)
 
     fig, ax = plt.subplots(1, 1, figsize=figsize2)
-    shap.dependence_plot("ProductSize", shap_values, X.sample(n=shap_test_size),
+    shap.dependence_plot("ProductSize", shap_values, shap_sample,
                          interaction_index=None, ax=ax, dot_size=5,
                          show=False, alpha=.5)
 
@@ -1188,6 +1129,7 @@ def productsize():
 
 
 def saledayofyear():
+    np.random.seed(1)  # pick seed for reproducible article images
     n = 10_000
     shap_test_size = 1000
     TUNE_RF = False
@@ -1220,11 +1162,11 @@ def saledayofyear():
 
     explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100),
                                    feature_perturbation='interventional')
-    shap_values = explainer.shap_values(X.sample(n=shap_test_size),
-                                        check_additivity=False)
+    shap_sample = X.sample(shap_test_size, replace=False)
+    shap_values = explainer.shap_values(shap_sample, check_additivity=False)
 
     fig, ax = plt.subplots(1, 1, figsize=figsize2)
-    shap.dependence_plot("saledayofyear", shap_values, X.sample(n=shap_test_size),
+    shap.dependence_plot("saledayofyear", shap_values, shap_sample,
                          interaction_index=None, ax=ax, dot_size=5,
                          show=False, alpha=.5)
 
@@ -1272,6 +1214,7 @@ def saledayofyear():
 
 
 def yearmade():
+    np.random.seed(1)  # pick seed for reproducible article images
     n = 20_000
     shap_test_size = 1000
     TUNE_RF = False
@@ -1304,11 +1247,11 @@ def yearmade():
 
     explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100),
                                    feature_perturbation='interventional')
-    shap_values = explainer.shap_values(X.sample(n=shap_test_size),
-                                        check_additivity=False)
+    shap_sample = X.sample(shap_test_size, replace=False)
+    shap_values = explainer.shap_values(shap_sample, check_additivity=False)
 
     fig, ax = plt.subplots(1, 1, figsize=figsize2)
-    shap.dependence_plot("YearMade", shap_values, X.sample(n=shap_test_size),
+    shap.dependence_plot("YearMade", shap_values, shap_sample,
                          interaction_index=None, ax=ax, dot_size=5,
                          show=False, alpha=.5)
     ax.yaxis.label.set_visible(False)
@@ -1357,6 +1300,7 @@ def yearmade():
 
 
 def MachineHours():
+    np.random.seed(1)  # pick seed for reproducible article images
     n = 20_000
     shap_test_size = 1000
     TUNE_RF = False
@@ -1389,11 +1333,11 @@ def MachineHours():
 
     explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100),
                                    feature_perturbation='interventional')
-    shap_values = explainer.shap_values(X.sample(n=shap_test_size),
-                                        check_additivity=False)
+    shap_sample = X.sample(shap_test_size, replace=False)
+    shap_values = explainer.shap_values(shap_sample, check_additivity=False)
 
     fig, ax = plt.subplots(1, 1, figsize=figsize2)
-    shap.dependence_plot("MachineHours", shap_values, X.sample(n=shap_test_size),
+    shap.dependence_plot("MachineHours", shap_values, shap_sample,
                          interaction_index=None, ax=ax, dot_size=5,
                          show=False, alpha=.5)
     ax.yaxis.label.set_visible(False)
@@ -1434,14 +1378,14 @@ def MachineHours():
     ax.set_title("StratPD", fontsize=13)
     ax.set_xlim(0,30_000)
     ax.set_xlabel("MachineHours\n(d)", fontsize=11)
-    ax.set_ylim(-5000,3_000)
+    ax.set_ylim(-6500,2_000)
     savefig(f"bulldozer_MachineHours_stratpd")
 
     fig, ax = plt.subplots(1, 1, figsize=figsize2)
-    ice = predict_ice(rf, X, "MachineHours", 'SalePrice', numx=1000, nlines=300)
+    ice = predict_ice(rf, X, "MachineHours", 'SalePrice', numx=300, nlines=200)
     plot_ice(ice, "MachineHours", 'SalePrice', alpha=.5, ax=ax,
              show_ylabel=True,
-             yrange=(35_000,40_000)
+             yrange=(33_000,38_000)
              )
     ax.set_xlabel("MachineHours\n(a)", fontsize=11)
     ax.set_title("FPD/ICE plot", fontsize=13)
@@ -1450,6 +1394,7 @@ def MachineHours():
 
 
 def unsup_yearmade():
+    np.random.seed(1)  # pick seed for reproducible article images
     n = 10_000
     X, y = load_bulldozer(n=n)
 
@@ -1474,6 +1419,7 @@ def unsup_yearmade():
 
 
 def unsup_weight():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
     X, y, df_raw, eqn = toy_weight_data(2000)
     df = df_raw.copy()
@@ -1511,6 +1457,7 @@ def unsup_weight():
 
 
 def weight_ntrees():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
     X, y, df_raw, eqn = toy_weight_data(1000)
     df = df_raw.copy()
@@ -1569,6 +1516,7 @@ def weight_ntrees():
 
 
 def meta_weight():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
     X, y, df_raw, eqn = toy_weight_data(1000)
     df = df_raw.copy()
@@ -1602,6 +1550,7 @@ def noisy_poly_data(n, sd=1.0):
 
 
 def noise():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
     n = 1000
 
@@ -1629,6 +1578,7 @@ def noise():
 
 
 def meta_noise():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
     n = 1000
     noises = [0, .5, .8, 1.0]
@@ -1710,6 +1660,7 @@ def bigX_data(n):
 
 
 def bigX():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
     n = 1000
     df = bigX_data(n=n)
@@ -1766,6 +1717,7 @@ def bigX():
 
 
 def unsup_boston():
+    np.random.seed(1)  # pick seed for reproducible article images
     # np.random.seed(42)
 
     print(f"----------- {inspect.stack()[0][3]} -----------")
@@ -1848,6 +1800,7 @@ def lm_plot(X, y, colname, targetname, ax=None):
 
 
 def cars():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
     df_cars = pd.read_csv("../notebooks/data/auto-mpg.csv")
     df_cars = df_cars[df_cars['horsepower'] != '?']  # drop the few missing values
@@ -1899,6 +1852,7 @@ def cars():
 
 
 def meta_cars():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
     df_cars = pd.read_csv("../notebooks/data/auto-mpg.csv")
     df_cars = df_cars[df_cars['horsepower'] != '?']  # drop the few missing values
@@ -1925,6 +1879,7 @@ def meta_cars():
 
 
 def multi_joint_distr():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
     # np.random.seed(42)
     n = 1000
@@ -2073,6 +2028,7 @@ def multi_joint_distr():
 
 
 def interactions():
+    np.random.seed(1)  # pick seed for reproducible article images
     n = 2000
     df = synthetic_interaction_data(n)
 
@@ -2316,6 +2272,7 @@ def ale_pregnant():
 
 
 def rent_deep_learning_model(X_raw=None, y_raw=None):
+    np.random.seed(1)  # pick seed for reproducible article images
     from keras import models, layers, callbacks, optimizers
 
     if X_raw is None or y_raw is None:
@@ -2392,6 +2349,7 @@ def rent_deep_learning_model(X_raw=None, y_raw=None):
 
 
 def partitioning():
+    np.random.seed(1)  # pick seed for reproducible article images
     # np.random.seed(2)
     n = 200
     x = np.random.uniform(0, 1, size=n)
@@ -2453,12 +2411,12 @@ def partitioning():
 
 if __name__ == '__main__':
     # FROM PAPER:
-    partitioning()
+    # partitioning()
     # interactions()
     # unsup_yearmade()
     # MachineHours()
     # yearmade()
-    # rent()
+    rent()
     # rent_ntrees()
     # unsup_rent()
     # unsup_boston()

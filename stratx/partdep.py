@@ -272,7 +272,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  ticklabel_fontsize=10,
                  barchart_size=0.20,
                  # if show_slope_counts, what ratio of vertical space should barchart use at bottom?
-                 barchar_alpha=0.7,
+                 barchar_alpha=1.0,
                  verbose=False,
                  figsize=None
                  ):

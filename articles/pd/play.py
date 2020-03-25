@@ -145,6 +145,63 @@ def bulldozer():
     plot_stratpd(X, y, 'MachineHours', 'SalePrice', n_trials=10, show_all_pdp=False)
     plt.show()
 
+
+def toy_weight_data_no_edu(n):
+    df = pd.DataFrame()
+    nmen = n // 2 # 50/50 men/women
+    nwomen = n // 2
+    df['sex'] = ['M'] * nmen + ['F'] * nwomen
+    df.loc[df['sex'] == 'F', 'pregnant'] = np.random.randint(0, 2, size=(nwomen,))
+    df.loc[df['sex'] == 'M', 'pregnant'] = 0
+    df.loc[df['sex'] == 'M', 'height'] = 5 * 12 + 8 + np.random.uniform(-7, +8,
+                                                                        size=(nmen,))
+    df.loc[df['sex'] == 'F', 'height'] = 5 * 12 + 5 + np.random.uniform(-4.5, +5,
+                                                                        size=(nwomen,))
+    df['weight'] = 120 \
+                   + (df['height'] - df['height'].min()) * 10 \
+                   + df['pregnant'] * 40
+    df['pregnant'] = df['pregnant'].astype(bool)
+    eqn = "y = 120 + 10(x_{height} - min(x_{height})) + 30x_{pregnant}"
+
+    df['pregnant'] = df['pregnant'].astype(int)
+    df['sex'] = df['sex'].map({'M': 0, 'F': 1}).astype(int)
+    X = df.drop('weight', axis=1)
+    y = df['weight']
+
+    return X, y, df, eqn
+
+
+def weight_partitioning():
+    X, y, df_raw, eqn = toy_weight_data_no_edu(1000)
+    print(df_raw.head(3))
+
+    regr = tree.DecisionTreeRegressor(min_samples_leaf=10)  # limit depth of tree
+    X_no_height = X.drop('height', axis=1)
+    regr.fit(X_no_height, y)
+
+    feature_names = ['sex', 'pregnant']
+    shadow_tree = ShadowDecTree(regr, X_no_height, y, feature_names=feature_names)
+    splits = []
+    for node in shadow_tree.internal:
+        print(node)
+        splits.append(node.split())
+    splits = sorted(splits)
+    print(splits)
+    t = dtreeviz(regr, X_no_height, y, feature_names=feature_names, target_name='weight')
+    # t.view()
+
+    rtreeviz_bivar_heatmap(None,
+                           X_no_height, y,  # partition just x2
+                           min_samples_leaf=10,
+                           feature_names=feature_names,
+                           n_colors_in_map=3,
+                           fontsize=14)
+    plt.savefig("/tmp/foo.pdf")
+
+    plot_stratpd(X, y, 'height', 'weight', min_slopes_per_x=2, n_trials=1, show_all_pdp=False)
+    plt.show()
+
+
 def weight():
     X, y, df_raw, eqn = toy_weight_data(2000)
     # df = df_raw.copy()
@@ -263,7 +320,26 @@ def sample_x1_equals_x2_pic():
     # plt.show()
 
 
-sample_x1_equals_x2_pic()
+def rent():
+    # X,y = load_rent(n=10_000)
+    # df_rent = X.copy()
+    # df_rent['price'] = y
+
+    df = pd.read_csv("rent10k.csv")
+    X = df.drop('price', axis=1)
+    y = df['price']
+
+    # plot_stratpd(X, y, 'longitude', 'price', n_trials=10, show_all_pdp=True)
+    plot_stratpd(X, y, 'latitude', 'price', n_trials=10,
+                 min_slopes_per_x=20,
+                 show_all_pdp=True,
+                 yrange=(-300,300))
+    plt.show()
+
+
+rent()
+# sample_x1_equals_x2_pic()
+# weight_partitioning()
 # weight()
 # bulldozer()
 # weather()
