@@ -25,10 +25,10 @@ print("Bulldozer RF OOB R^2", rf.oob_score_)
 
 explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100),
                                feature_perturbation='interventional')
-shap_values = explainer.shap_values(X.sample(n=shap_test_size),
-                                    check_additivity=False)
+X_test = X.sample(n=shap_test_size)
+shap_values = explainer.shap_values(X_test, check_additivity=False)
 
-shap.dependence_plot("YearMade", shap_values, X.sample(n=shap_test_size),
+shap.dependence_plot("YearMade", shap_values, X_test,
                      interaction_index=None, ax=axes[1], dot_size=5,
                      show=False, alpha=.5)
 axes[1].set_xlim(1960,2010)
