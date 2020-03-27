@@ -60,11 +60,13 @@
 \newcommand{\cspd}{\fontfamily{cmr}\textsc{\small CatStratPD}}
 \newcommand{\xnc}{${\bf X}_{\overline{c}}$}
 %\newcommand{\xnj}{${\bf X}_{\overline{j}}$}
-\newcommand{\Xnj}{${\bf X}_{\texttt{\char`\\}j}$}
-\newcommand{\xnj}{$x_{\texttt{\char`\\}j}$}
+\newcommand{\Xnj}{${\bf X}_{\texttt{\char`\\} j}$}
+\newcommand{\xnj}{$x_{\texttt{\char`\\} j}$}
 \newcommand{\xnC}{$x_{\overline{C}}$}
 \renewcommand{\xi}{x^{(i)}}
 \newcommand{\yi}{y^{(i)}}
+\renewcommand{\slash}{\texttt{\char`\\}}
+
 \DeclareMathOperator{\Ex}{\mathbb{E}}
 
 
@@ -135,9 +137,14 @@ In special circumstances, we know the precise effect of each feature $x_j$ on $y
 
 $\text{\it PD}_j(z)$ is the value contributed to $f$ by $x_j$ at $x_j = z$ and $\text{\it PD}_j(min(x_j))=0$. The advantages of this definition are that it does not depend on predictions from a fitted model and is insensitive to codependent features.  Although the underlining generator function is unknown, we can estimate its partial derivatives from the raw training data. ALE also derives partial dependence by estimating and integrating across partial derivatives (e.g., see Equation 7 in \cite{ALE}) but does so using local changes in fitted model predictions.
 
-The key idea is to stratify \xnj{} feature space into disjoint regions of observations where all \xnj{} variables are approximately matched across the observations in that region. Within each \xnj{} region, any fluctuations in the response variable are likely due to the variable of interest, $x_j$.  Estimates of the partial derivative within a region are estimated discretely as the changes in $y$ values between unique and ordered $x_j$ positions:  $(y^{(i+1)} - \yi)/(x_j^{(i+1)} - x_j^{(i)})$ for all $i$ in a region.  This amounts to performing piecewise linear regression through the leaf observations, one model per unique pair of $x_j$ values, and collecting the model $\beta_1$ coefficients to estimate partial derivatives. The overall partial derivative at $x_j=z$ is the average of all slopes, found in any region, whose range $[x_j^{(i)},x_j^{(i+1)})$ spans $z$.  Stratification occurs through the use of a decision tree fit to (\Xnj, $\bf y$), whose leaves aggregate observations with equal or similar \xnj{} features. The \xnj{} features can be numerical variables or label-encoded categorical variables (assigned a unique integer). \spd{} only uses the tree for the purpose of partitioning feature space and never uses predictions from any model. See \algref{alg:StratPD} for more details.
 
-For this approach to work, decision tree leaves must satisfactorily stratify \xnj{}. If the \xnj{} observations in each region are not similar enough, the relationship between $x_j$ and $y$   is less accurate.  Regions can also become so small that even the $x_j$ values become equal, leaving a single unique $x_j$ observation in a leaf. Without a change in $x_j$, no partial derivative estimate is possible and these nonsupporting observations must be  ignored. A degenerate case occurs when identical or nearly identical $x_j$ and $x_j'$ variables exist. Flattening $x_j$ as part of \xnj{} would also flatten $x_j'$, leading to both exhibiting flat curves, as if the decision tree were trained on $(\bf X, y)$ not (\Xnj, $\bf y$). Our experiments show that using the collection of leaves from a random forest, which restricts the number of variables available during node splitting, prevents partitioning from relying too heavily on either $x_j$ or $x_j'$. Some leaves have observations that vary in $x_j$ or $x_j'$ and partial derivatives can still be estimated. \todo{maybe talk about how PD/ICE on RF underestimates the curve.}
+The key idea is to stratify \xnj{} feature space into disjoint regions of observations where all \xnj{} variables are approximately matched across the observations in that region. Within each \xnj{} region, any fluctuations in the response variable are likely due to the variable of interest, $x_j$.  Estimates of the partial derivative within a region are estimated discretely as the changes in $y$ values between unique and ordered $x_j$ positions:  $(y^{(i+1)} - \yi)/(x_j^{(i+1)} - x_j^{(i)})$ for all $i$ in a region.  This amounts to performing piecewise linear regression through the leaf observations, one model per unique pair of $x_j$ values, and collecting the model $\beta_1$ coefficients to estimate partial derivatives. The overall partial derivative at $x_j=z$ is the average of all slopes, found in any region, whose range $[x_j^{(i)},x_j^{(i+1)})$ spans $z$.  
+
+Stratification occurs through the use of a decision tree fit to (\Xnj, $\bf y$), whose leaves aggregate observations with equal o I don't click on random links buddyr similar \xnj{} features. The \xnj{} features can be numerical variables or label-encoded categorical variables (assigned a unique integer). \spd{} only uses the tree for the purpose of partitioning feature space and never uses predictions from any model. See \algref{alg:StratPD} for more details.
+
+Using decision trees for the purpose of partitioning feature space was previously used by \cite{rfimp} to improve permutation importance by  permuting $x_j$ only within the observations of a leaf. Earlier, \cite{RFunsup} defined a similarity measure between two observations according to how often they appear in the same leaf in a random forest.  Rather than partitioning  \xnj{} space like \spd, those techniques partitioned all of $x$ space.
+
+For the stratification approach to work, decision tree leaves must satisfactorily stratify \xnj{}. If the \xnj{} observations in each region are not similar enough, the relationship between $x_j$ and $y$   is less accurate.  Regions can also become so small that even the $x_j$ values become equal, leaving a single unique $x_j$ observation in a leaf. Without a change in $x_j$, no partial derivative estimate is possible and these nonsupporting observations must be  ignored. A degenerate case occurs when identical or nearly identical $x_j$ and $x_j'$ variables exist. Flattening $x_j$ as part of \xnj{} would also flatten $x_j'$, leading to both exhibiting flat curves, as if the decision tree were trained on $(\bf X, y)$ not (\Xnj, $\bf y$). Our experiments show that using the collection of leaves from a random forest, which restricts the number of variables available during node splitting, prevents partitioning from relying too heavily on either $x_j$ or $x_j'$. Some leaves have observations that vary in $x_j$ or $x_j'$ and partial derivatives can still be estimated.
 
 \spd{} uses hyper parameter {\tt\small min\_samples\_leaf} to control the minimum number of observations in each decision tree leaf.  Generally speaking, smaller values lead to more confidence that fluctuations in $y$ are due solely to $x_j$, but more observations per leaf allow \spd{} to capture more nonlinearities and make it less susceptible to noise.  As the leaf size grows, however, one risks introducing contributions from \xnj{} into the relationship between $x_j$ and $y$. At the extreme, the decision tree would consist of a single leaf node containing all observations, leading to a marginal not partial dependence curve.
 
@@ -152,15 +159,15 @@ Stratification of high-cardinality categorical variables tends to create small g
 % ------------------------------------------------------------------------------------------------------------------------------------
 \section{Related work}\label{sec:related}
 
-\citet{PDP} defines the partial dependence of $\hat{f}$ on feature subsets, $S$, as an expectation conditioned on the remaining variables:
+\citet{PDP} defines the partial dependence of $\hat{f}$ on feature subsets, $S \subset F = \{1, 2, .., p\}$, as an expectation conditioned on the remaining variables:
 
 \[
-{\it FPD}_S(x_S) = \Ex[\hat{f}(x_S,{\bf X}_{\texttt{\char`\\}S})] = \frac{1}{n} \sum_{i=1}^n \hat{f}(x_S, x_{\texttt{\char`\\}S}^{(i)})
+{\it FPD}_S(x_S) = \Ex[\hat{f}(x_S,{\bf X}_{\slash S})] = \frac{1}{n} \sum_{i=1}^n \hat{f}(x_S, x_{\slash S}^{(i)})
 \]
 
 \cut{
 \[
-{\it FPD}_j(x_j=z) = \Ex[\hat{f}(x_{j}=z,{\bf X}_{\texttt{\char`\\}j})] = \frac{1}{n} \sum_{i=1}^n \hat{f}(x_j=z, x_{\texttt{\char`\\}j}^{(i)})
+{\it FPD}_j(x_j=z) = \Ex[\hat{f}(x_{j}=z,{\bf X}_{\slash j})] = \frac{1}{n} \sum_{i=1}^n \hat{f}(x_j=z, x_{\slash j}^{(i)})
 \]
 }
 
@@ -170,32 +177,36 @@ Stratification of high-cardinality categorical variables tends to create small g
 
 % ICE 
 
-The individual conditional expectation (ICE) plot from \cite{ICE} is a local method that estimates the partial dependence of the prediction $\hat{f}$ on $x_S$, or single variable $x_j$, across individual observations. Suppose that $(x_j^{(i)}, x_{\texttt{\char`\\}j}^{(i)})$ are the values of the $i$th row of $\mathbf{X}$. For each $i$, the ICE plot produces a curve from the fitted model over all values of $x_j$ while holding \xnj{} fixed: $\hat{f}^{(i)}_j = \widehat{f}((\{x_j^{(k)}\}_{k = 1}^n, x_{\texttt{\char`\\}j}^{(i)}))$. By construction, the FPD curve for a variable $x_j$ is the average over all ICE curves for that variable. The motivation for ICE is to identify variable dependencies not shown by the FPD curve (because they average out). Typically both ICE and FPD are used to examine the partial dependence of $y$ on $x_j$. Both techniques operate by observing $\hat{f}$ output as \xnj{} (FPD) or $x_j$ (ICE) values are shifted through all $n$ observations.
+The Individual Conditional Expectation (ICE) plot \cite{ICE} estimates the partial dependence of the prediction $\hat{f}$ on $x_S$, or single variable $x_j$, across individual observations. ICE produces a curve from the fitted model over all values of $x_j$ while holding \xnj{} fixed: $\hat{f}^{(i)}_j = \widehat{f}(\{x_j^{(k)}\}_{k = 1}^n, x_{\slash j}^{(i)})$;  the FPD curve for  $x_j$ is the average over all ICE curves for $x_j$. The motivation for ICE is to identify variable interactions that average out in the FPD curve. 
 
 % SHAP
 
-Rather than shift feature values, SHAP from \cite{shap}, with roots in {\em Shapley regression values} \citep{shapley-regression}, calculates the average marginal effect of adding $x_j$ to models trained on all possible  subsets of features, $F$:
+SHAP \cite{shap} has roots in {\em Shapley regression values} \citep{shapley-regression} and calculates the average marginal effect of adding $x_j$ to models trained on all possible  subsets of features:
 
-\[
-\phi_j(\hat{f},{\bf x}) = \sum_{S \subseteq F \texttt{\char`\\} \{j\}}\
+\begin{equation}\label{eq:shap}
+\phi_j(\hat{f},{\bf x}) = \sum_{S \subseteq F \slash \{j\}}\
 \frac{|S|!(|F|-|S|-1)!}{|F|!}\
  [ \hat{f}_{S \cup \{j\}}(x_{S \cup \{j\}}) - \hat{f}_S(x_S) ]
+\end{equation}
+
+To avoid training a combinatorial explosion of models with the various feature subsets, $\hat{f}_S(x_S)$, SHAP reuses a single model fitted to $(\bf X, y)$ by running simplified feature vectors into the model. As \cite{manyshap} points out, there are many possible implementations for simplified vectors. One is to replace ``missing''  features with their expected value or some other baseline vector (BShap in \cite{manyshap}). SHAP uses a more general approach (``interventional'' mode) that approximates $\hat{f}_S(x_S)$ with $\Ex[\hat{f}(x_{S},{\bf X}'_{\slash S}) | {\bf X'}_S = x_S]$ where ${\bf X}'$ is called the {\em background set} and users can pass in, for example, a single vector with ${\bf X}_{\slash S}$ column averages or even the entire training set, $\bf X$, which is what we will assume (and is called CES($\hat{D}$) in \cite{manyshap} where $\hat{D}={\bf X}$). To further reduce computation costs, SHAP users typically explain a very small subsample of the data set, but with potentially a commensurate reduction in the explanatory resolution of the underlying population. SHAP has model-type-dependent optimizations for linear regression, deep learning, and decision-tree based models.
+
+For efficiency, again, SHAP approximates $\Ex[\hat{f}(x_{S},{\bf X}_{\slash S}) | {\bf X}_S = x_S]$ with $\Ex[\hat{f}(x_{S},{\bf X}_{\slash S})]$, which assumes feature independence. \cite{janzing2019feature} argues that ``{\em unconditional} [as implemented] rather than {\em conditional} [as defined] expectations provide the right notion of dropping features.''  But, using the unconditional expectation makes the inner difference of \eqref{eq:shap} a function of codependency-sensitive FPDs:
+
+\[
+\begin{split}
+\hat{f}_{S \cup \{j\}}(x_{S \cup \{j\}}) - \hat{f}_S(x_S) & = \Ex[\hat{f}(x_{S \cup \{j\}},{\bf X}_{\slash (S \cup \{j\})})] - \Ex[\hat{f}(x_{S},{\bf X}_{\slash S})]\\
+ & = \text{\it FPD}_{S \cup \{j\}}({\bf x}) - \text{\it FPD}_{S}({\bf x})
+\end{split}
 \]
 
-To avoid training a combinatorial explosion of models with the various feature subsets, $\hat{f}_S(x_S)$, SHAP reuses a single model fitted to $(\bf X, y)$ by running simplified feature vectors into the model. One possible implementation for simplified vectors is to replace ``missing'' $x_j$ features with the expected value of $x_j$. SHAP uses a more general approach that approximates $\hat{f}_S(x_S)$ with $\Ex[\hat{f}(x_{S},{\bf X}_{\texttt{\char`\\} S}) | {\bf X}_S = x_S]$ where ${\bf X}$ is called the {\em background set} and users can pass in, for example, a single vector with $x_j$ averages or even the entire training set.  For efficiency reasons, SHAP's implementation (in ``interventional'' mode) approximates $\Ex[\hat{f}(x_{S},{\bf X}_{\texttt{\char`\\}S}) | {\bf X}_S = x_S]$ with $\Ex[\hat{f}(x_{S},{\bf X}_{\texttt{\char`\\} S})]$.  To further reduce computation costs, SHAP users typically explain a very small subsample of the data set, but with potentially a commensurate reduction in the explanatory resolution of the underlying population. SHAP has model-type-dependent optimizations for linear regression, deep learning, and decision-tree based models.
-
-while the formal SHAP definition does not assume feature independence, the SHAP implementation does so for the specific purpose of simulating models trained on feature subsets. The SHAP definition approximates $\hat{f}_S(x_S)$ with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}}) | {\bf X}_S = x_S]$, but SHAP's implementation approximates $\hat{f}_S(x_S)$ with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$, which requires feature independence for accuracy. \cite{janzing2019feature} argues that ``{\em unconditional} [as implemented] rather than {\em conditional} [as defined] expectations provide the right notion of dropping features.'' In practice, however, we have observed several instances of questionable SHAP partial dependence curves for features important to the model.
-
-From a mathematical perspective, the bias is clear because $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$ is equivalent to $FPD_S(x)$ that is known to be biased by codependent features. (Equation 53 in \citealt{PDP} gives a summation equivalent to $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$)
+If the individual contributions are potentially biased, averaging the contributions of many such feature permutations might not lead to an accurate partial dependence.  Even if the conditional expectation is used, \cite{manyshap} points out that SHAP is sensitive to the sparsity of $\bf X$ because condition ${\bf X}_S = x_S$ will find few or no training records with the exact $x_S$ values of some input vector.
 
 % ALE
 
-ALE has same goal as us. we are model-free version. both estimate partial derivatives then cumsum.  We do it point to point, they do in regions from min to max of support.  both use finite differences; ALE using finite differences on $\hat{f}$ and us on $\bf y$.  They do binning with intervals and we jump between unique $x_j$.  that means they can ask for predictions for previously unseen  $x_j$ even if within the support range.  By the way what if the support range is not a simple Gaussian density function? are we then picking values in low-density areas such as in between humps? anyway, we only consider existing values.
+The goal of ALE (\cite{ALE}) is to overcome the bias in previous model-based techniques arising from extrapolations of $\hat{f}$ far outside the support of the training data in the presence of codependent variables.   ALE  partitions range $[\text{min}({\bf X}_j) \,..\, \text{max}({\bf X}_j)]$ for variable $x_j$ into $K$ bins and estimates the ``uncentered main effect'' (Equation 15) at $x_j = z$ as the cumulative sum of the partial derivatives for all bins up to the bin containing $z$. ALE estimates the partial derivative of $\hat{f}$ at $x_j=z$ as $\Ex[\hat{f}(b_k, {\bf X}_{\slash j}) - \hat{f}(b_{k-1}, {\bf X}_{\slash j}) \, | \, x_j \in (b_{k-1},b_k]]$ for bin $b_k$ that contains $z$. They also extend ALE to two variables by partitioning feature space into $K^2$ rectangular bins and computing the  second-order finite difference of $\hat{f}$ with respect to the two variables for each bin. 
 
-ALE cats appendix E: ``The main consideration for a ?reasonable? ordering is that function
-extrapolation outside the data envelope should be avoided as much as possible when neighboring of values of xj are plugged into f(xj , x not j).'' ``we order the levels of Xj based on how dissimilar the sample values {xi, not j : i = 1, 2, . . . , n} are across the levels of Xj.'' ordering Boolean then has no effect since any order has the same difference between y values of true/false. $K$ set to the number of nonempty category levels. from his email: ``The way ALE plots treats categorical predictors still requires some extrapolation. With binary categorical variables, the extrapolation would be exactly the same as for PD plots. But with many categories, the extrapolation would be substantially less.''
-
-ALE guys says ``the difference is that ALE plots hold \xnj exactly constant as it varies $x_j$ across categories, which it can do because it uses the fitted model $f(x_j, x_{ not j})$, whereas your approach keeps \xnj approximately the same as it varies $x_j$ across categories, which it must do because it does not use any fitted model.''
+Another related technique that integrates over partial derivatives to measure $x_j$ effects is called Integrated Gradients (IG) from \cite{intgrad}. Given a single input vector, $\bf x$, to a deep learning network, IG integrates over the loss function gradient at points along the path from a baseline vector, $\bf x'$, to $\bf x$. IG can be seen as computing the partial dependence of the loss function, rather than model output, $\hat{f}$, on the $x_j$ values in ${\bf x}$.
 
 \begin{figure}[htbp]
 \begin{center}
@@ -205,51 +216,36 @@ ALE guys says ``the difference is that ALE plots hold \xnj exactly constant as i
 \end{center}
 \end{figure}
 
-if $x_2$ is also cat then assuming same value means shifting $x_2$ to new cat as well for us, right? dec trees tend to test existing values for splits so will likely keep integers in their own leaves. In the case of x2 being cat with k levels, we can use {\tt\small max\_leaf\_nodes=8, min\_samples\_leaf=1} but in general we can still shift x2 cats during strat. verified by experiment.
-
-
-ALE partitions $x_j$ into bins then fixes \xnj to compute average finite difference of $y$ at $x_j=z$ in $x_j$ neighborhood (all \xnj in that $x_j$ bin) whereas we partition \xnj then compute average finite diff of $y$ at $x_j=z$ across those $p-1$ dim regions hoping they are repetitions of the same $p-1$ dimensional vector (all same).
+\spd{} is like a ``model-free'' version of ALE in that \spd{} also defines partial dependence as the cumulative sum of partial derivatives, but we estimate derivatives using $\bf y$ values rather than $\hat{f}$ predictions. 
+ALE partitions $x_j$ into bins then fixes \xnj{} as it shifts $x_j$ to bin edges to compute finite differences, as depicted in \figref{fig:partitioning}(b) for $p=2$. The wedges on the $x_1$ axis indicate the $x_1$ points of the computed partial dependence curve.  \spd{} partitions \xnj{} into regions of (hopefully) similar observations and computes finite differences between the average $y$ values at unique $x_j$ values in each region, as depicted in \figref{fig:partitioning}(a).  The leftmost two observations are ignored as there is no change in $x_1$ in that leaf. The shaded area illustrates that the partial derivative at any $x_j=z$ is the average of all derivatives spanning $z$ across \xnj{} regions.  \spd{} assumes all points within a region are identical in \xnj{}, effectively projecting points in \xnj{} space onto a hyperplane if they are not. \todo{sound right James?}  ALE shifts $x_j$ values in a small neighborhood and \spd{} depends on a suitable {\tt\small min\_samples\_leaf}  hyper parameter to prevent \xnj{} points in a regions from becoming too dissimilar.  \spd{} automatically generates more curve points in areas of high $x_j$ density, but ALE is more efficient.
 
 \cut{
-Third, it's reasonable to ask why we use unique $x_c$ values within each $L$ as the bin edges, rather than splitting $x_c$ into fixed-width bins.  This was our original approach because of its simplicity, but it required another hyper parameter, such as $nbins$, and led to high proportions of non-supporting observations in some data sets. When all or most of the $x_c$ values are discrete integers, some choices of $nbins$ would lead to virtually all bins in all leaves having a single $x_c$ value. Also, binning integers leads to awkward bins, such as 1.8 to 3.2 bedrooms or dayofweek 1.3 to 2.1.  Using the unique $x_c$ values themselves avoids a second hyper parameter and guarantees that bins do not have non-supporting observations unless the entire leaf has a single unique $x_c$.
+\begin{equation}
+g_{j,ALE}(z) = \int_{\text{min}({\bf X}_j)}^{z} \Ex[ f^j(x_j,{\bf X}_{\slash j}) \,|\, x_j = z ] dx_j
+\end{equation}
 }
-
-\todo{in case of discrete...}
-
-
 
 % COMPARE
 
-The inner difference $\hat{f}_{S \cup \{j\}}(x_{S \cup \{j\}}) - \hat{f}_S(x_S)$ = $\Ex[\hat{f}(x_{S \cup \{j\}},{\bf X}_{\texttt{\char`\\} (S \cup \{j\})})] - \Ex[\hat{f}(x_{S},{\bf X}_{\texttt{\char`\\} S})]$ = $\text{\it FPD}_{S \cup \{j\}}({\bf x}) - \text{\it FPD}_{S}({\bf x})$
+The model-based techniques under discussion treat label-encoded categorical variables (encoded as unique integers) as numerical variables, even though there is no defined order. ALE does, however, take advantage of the lack of order to choose an $x_j$ order that reduces ``extrapolation outside the data envelope'' by measuring the similarity of \Xnj{} sample values across $x_j$ categories.  Adjacent category integers, though, could still represent the most semantically different categories, so shifting an observation's category to extrapolate is risky. Even the smallest possible extrapolation can conjure up nonsensical observations, such as pregnant males, as we demonstrate in \figref{fig:pregnant} below where FPD, SHAP, and ALE underestimate pregnancy's effect on body weight. (For boolean $x_j$, ALE behaves like FPD.)  In contrast, \cspd{} uses a different algorithm for categoricals and differences the average $y$ for all categories within the leaf to a random reference category, which are then merged across leaves. One could argue that \spd{} also extrapolates because \xnj{} could include categorical variables, but the decision tree would, by definition, likely partition \xnj{} space into regions that can be treated similarly.
 
-so in practice this keeps the same model but shifts feature values like FPD/ICE. SHAP also observes changes in model output for shifted feature values, but using models trained on all possible subsets, $S$, of features:
-
-
+\cut{
 {\bf Comparison}
 
-${\it FPD}_j(z) = \Ex[\hat{f}(x_{j}=z,{\bf X}_{\texttt{\char`\\}j})])$
+${\it FPD}_j(z) = \Ex[\hat{f}(x_{j}=z,{\bf X}_{\slash j})])$
 
-SHAP for one $S$ is $\phi_j(\hat{f},{\bf x}) = \Ex[\hat{f}(x_{S \cup \{j\}},{\bf X}_{\texttt{\char`\\} (S \cup \{j\})})  | {\bf X}_{S \cup \{j\}} = x_{S \cup \{j\}}] - \Ex[\hat{f}(x_{S},{\bf X}_{\texttt{\char`\\} S})  | {\bf X}_S = x_S ]$ for all subsets $S \subset F$ for $F = \{1, 2, .., p\}$. When $S = F \texttt{\char`\\} \{j\}$, like ALE, it becomes $\Ex[\hat{f}(x_F)] - \Ex[\hat{f}(x_{F \texttt{\char`\\} \{j\}},{\bf X}_j)]$ or $\hat{f}({\bf x}) - \text{\it FPD}_{F \texttt{\char`\\} \{j\}}(x)$ if assume independence.
+SHAP for one $S$ is $\phi_j(\hat{f},{\bf x}) = \Ex[\hat{f}(x_{S \cup \{j\}},{\bf X}_{\slash (S \cup \{j\})})  | {\bf X}_{S \cup \{j\}} = x_{S \cup \{j\}}] - \Ex[\hat{f}(x_{S},{\bf X}_{\slash S})  | {\bf X}_S = x_S ]$ for all subsets $S \subset F$ for $F = \{1, 2, .., p\}$. When $S = F \slash \{j\}$, like ALE, it becomes $\Ex[\hat{f}(x_F)] - \Ex[\hat{f}(x_{F \slash \{j\}},{\bf X}_j)]$ or $\hat{f}({\bf x}) - \text{\it FPD}_{F \slash \{j\}}(x)$ if assume independence.
 
-ALE at $x_j=z$, it is cumsum of $\Ex[\hat{f}(b_k, {\bf X}_{\texttt{\char`\\}j}) - \hat{f}(b_{k-1}, {\bf X}_{\texttt{\char`\\}j}) \, | \, x_j \in (b_{k-1},b_k]]$ for bin $b_k$ partitioning min..max for var $j$ into $K$ intervals.
+ALE at $x_j=z$, it is cumsum of $\Ex[\hat{f}(b_k, {\bf X}_{\slash j}) - \hat{f}(b_{k-1}, {\bf X}_{\slash j}) \, | \, x_j \in (b_{k-1},b_k]]$ for bin $b_k$ partitioning min..max for var $j$ into $K$ intervals.
 
 StratPD at $x_j=z$ is $\Ex[ (y^{(i_L+1)} - y^{i_L})/(x_j^{(i_L+1)} - x_j^{(i_L)}) \, | \, z \in [x_j^{(i_L+1)} - x_j^{(i_L)}) \text{ and } L \in T]$
 
-
-
-
-
 $\Ex[ \phi_j(\hat{f},x) | {\bf X}_j = z] = FPD_j(x) - \bar{y}$ if features independent. SHAP's implementation approximates $\hat{f}$ trained on just $S$ features, $\hat{f}_S(x_S)$, with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$ by assuming independent features.
-
-Strobl thing \cite{rfimp}: ``conditional permutation scheme, where X j is permuted only within groups of observations with Z = z, to preserve the correlation structure between X j and the other predictor variables.''  ``Our suggestion is to define the grid within which the values of X j are permuted for each tree by means of the partition of the feature space induced by that tree. The main advantages of this approach are that this partition was already learned from the data during model fitting, contains splits in categorical, ordered and continuous predictor variables and can thus serve as an internally available means for discretizing the feature space.'' 
-
-Reviewer: ``Their motivation is to handle the same extrapolation problems caused by having to plug in nonsensical combinations of correlated predictors, which is common to PD plots and permutation based importance measures.''
+}
 
 cold start, counting execution time and number of hyper parameters. particularly deep learning
 
 The techniques differ in algorithm simplicity, performance, and ability to isolate codependent variables. a nonparametric technique could also inform which machine learning model to use if a model is desired.
-
-SHAP is mean centered FPD for independent variables, proof in supplemental material.
 
 % ------------------------------------------------------------------------------------------------------------------------------------
 \section{Experimental results}\label{sec:experiments} 
@@ -349,7 +345,7 @@ SHAP also defines $x_j$ feature importance as the average magnitude of the $x_j$
 
 It is conceivable that a more sophisticated model (in terms of extrapolation) could sharpen the FPD and SHAP curves for $x_{height}$. There is a difference, however, between extrapolating to a meaningful but unsupported vector and making predictions for nonsensical vectors arising from variable codependencies.  Techniques that rely on such predictions make the implicit assumption of variable independence, introducing the potential for bias. Consider \figref{fig:pregnant} that presents the partial dependence results for categorical variable $x_{pregnant}$ (same data set). The weight gain from pregnancy is 40 pounds per \eqref{eq:weight}, but only \cspd{} identifies that exact relationship; FPD, SHAP, and ALE show a gain of 30 pounds. 
 
-\cspd{} stratifies persons with the same or similar sex, education, and height into groups and then examines the relationship between $x_{pregnant}$ and $y$. If a group contains both pregnant and nonpregnant females, the difference in weight will be 40 pounds in this noiseless data set (assuming identical \xnj).  FPD and ALE rely on computations that require fitted models to conjure up predictions for nonsensical records, such as pregnant males (e.g., $\hat{f}(x_j = pregnant, {\bf X}_{\texttt{\char`\\}j})$). Not even a human knows how to estimate the weight of a pregnant male. SHAP, per its definition, does not require such predictions, but in practice for efficiency reasons, SHAP approximates $\Ex[\hat{f}(x_{j} = pregnant,{\bf X}_{\texttt{\char`\\}j}) | {\bf X}_j = x_j]$ with $\Ex[\hat{f}(x_{j} = pregnant,{\bf X}_{\texttt{\char`\\}j})]$, which does not restrict pregnancy to females. As discussed above, there are advantages to all of these model-based techniques, but this example demonstrates there is potential for partial dependence bias.
+\cspd{} stratifies persons with the same or similar sex, education, and height into groups and then examines the relationship between $x_{pregnant}$ and $y$. If a group contains both pregnant and nonpregnant females, the difference in weight will be 40 pounds in this noiseless data set (if we assume identical \xnj).  FPD and ALE rely on computations that require fitted models to conjure up predictions for nonsensical records, such as pregnant males (e.g., $\hat{f}(x_j = pregnant, {\bf X}_{\slash j})$). Not even a human knows how to estimate the weight of a pregnant male. SHAP, per its definition, does not require such predictions, but in practice for efficiency reasons, SHAP approximates $\Ex[\hat{f}(x_{j} = pregnant,{\bf X}_{\slash j}) | {\bf X}_j = x_j]$ with $\Ex[\hat{f}(x_{j} = pregnant,{\bf X}_{\slash j})]$, which does not restrict pregnancy to females. As discussed above, there are advantages to all of these model-based techniques, but this example demonstrates there is potential for partial dependence bias.
 
 \cut{
 pregnant female at max range [233.33467678]
@@ -378,7 +374,7 @@ $1/n*\sum_{i=1}^n f(x_j = pregnant, x_{i, \bar{j}}) - f(x_j = not pregnant, x_{i
 \end{figure}
 
 
-The stratification approach also gives plausible results for real data sets, such as the bulldozer auction data from \cite{bulldozer}. \figref{fig:yearmade} shows the partial dependence curves for the same set of techniques as before on feature {\tt\small YearMade}, chosen because it is very predictive of sale price. The shape and magnitude of the FPD, ALE, and \spd{} curves are similar, indicating that older bulldozers are worth less at auction, which is plausible. The \spd{} curve shows 10 bootstrapped trials where the heavy black dots represent the partial dependence curve and the other curves describe the variability.  The SHAP curve looks unexpectedly random, but the underlying mathematics are sound; perhaps this identifies an issue arising from performance compromises. (We have submitted an issue to their repo).
+The stratification approach also gives plausible results for real data sets, such as the bulldozer auction data from \cite{bulldozer}. \figref{fig:yearmade} shows the partial dependence curves for the same set of techniques as before on feature {\tt\small YearMade}, chosen because it is very predictive of sale price. The shape and magnitude of the FPD, SHAP, ALE, and \spd{} curves are similar, indicating that older bulldozers are worth less at auction, which is plausible. The \spd{} curve shows 10 bootstrapped trials where the heavy black dots represent the partial dependence curve and the other colored curves describe the variability. 
 
 \cut{ % I'm just not sure this example is necessary and might be beating a dead horse
 As a second example, consider the curves for feature {\tt\small MachineHours} in \figref{fig:machinehours}. As with bulldozer age, one would expect bulldozers with more use to cost less, but only the \spd{} curve shows that general trend.  Each plot shows some kind of visual phenomenon at 3138 hours, which coincides with a spike in the $x$ histogram of \figref{fig:machinehours}(d).  It would be easy to misinterpret this as an interesting feature of the data, but experts will recognize this as an artifact of data preparation.  A very common and effective technique is to replace missing values with the median (and add a ``is missing'' variable), as recommended by \cite{missingdata}.  Roughly 50\% of the {\tt\small MachineHours} values are missing and the dip at the median is because bulldozers with missing {\tt\small MachineHours} are, on average, worth less according to the training data (by about 4k\$).  The true relationship is unknown but the \spd{} plot seems the most plausible.
@@ -420,14 +416,14 @@ All simulations in this section were run on a 4.0 Ghz 32G RAM machine running OS
 % ------------------------------------------------------------------------------------------------------------------------------------
 \section{Discussion and future work}
 
+we need more data, more susceptible to noise
+ 
 can parallelize code or do in C++.
 
 similar to ALE but much simpler for categorical variables.
 
 we can handle partial derivatives for $x_{j,l}$ using 2D finite difference to get gradients then using double integral instead of single cumulative sum. I believe that gets us an estimate for plot value at point ($x_j, x_l$).  actually looks like the ALE guy is calling it a second order effect and is subtracting the two one-dimensional finite differences. Hmm... he's just holding $x_j, x_l$ constant and integrating over the other variables to find the value at $(x_j, x_l)$.
  
-it couldn't handle it when I got rid of education in  body weight data set. got 0 pdpy. perhaps investigate
-
 A word on hyper parameters. All techniques have hyper parameters that can affect results, particularly if one includes hyper parameters in the model itself for model-based techniques.  For example, a SHAP plot like \figref{fig:yearmade}(c) with fewer explained vectors looks much more like a line but then does not alert the user about variable interactions.  It is sound practice to try a variety of hyper parameters with any partial dependence technique, including ours.
 
 Our goal here is not to say these other techniques are not useful. Rather, we are pointing out potential issues and hoping to open a new line of inquiry that experiments have shown to be accurate in cases where previous techniques are not.
@@ -439,7 +435,7 @@ Our goal here is not to say these other techniques are not useful. Rather, we ar
 \begin{alltt}
 {\fontfamily{cmss}\selectfont\small
 {\bf{}StratPD}
-\(T\) = Tree regressor fit to \xnj with hyper parameter {\tt{}min_samples_leaf}
+\(T\) = Tree regressor fit to \Xnj with hyper parameter {\tt{}min_samples_leaf}
 For each leaf in \(T\):
     \(\bf\overline{y}\) = Group leaf samples by \(x\sb{j}\), computing average \(y\) per unique \(x\sb{j}\)
     {\bf{}dx} = discrete difference between adjacent unique \(x\sb{j}\) values
@@ -466,7 +462,7 @@ return pdx, [0]+pdy  // insert 0 for pdx[0] since sum contributed from beyond le
 \SetAlgoSkip{}
 \TitleOfAlgo{{\em StratPD}({\bf X}, {\bf y}, $j$, {\it min\_samples\_leaf}, {\it min\_slopes\_per\_x})}
 \small
-$T$ := Decision tree regressor fit to (\xnj{}, $\bf y$) with hyper parameter: ${\it min\_samples\_leaf}$\;
+$T$ := Decision tree regressor fit to (\Xnj{}, $\bf y$) with hyper parameter: ${\it min\_samples\_leaf}$\;
 \For{each leaf $L \in T$}{
         $({\bf x}_L, {\bf y}_L)$ := $\{(x_j^{(i)},  y^{(i)})\}_{i \in L}$\Comment*{\it Get leaf observations}
 	${\bf ux}, \bar{\bf y}$ := Group and sort $({\bf x}_L, {\bf y}_L)$ by $x_j$ value, computing $\bar{y}$ per unique $x_j$ value\\
@@ -528,7 +524,7 @@ n^{(k)} = \text{number of supported observations per category $k$}\\
 \end{array}$
 }
 }
-$T$ := Decision tree regressor fit to (\xnj{}, $\bf y$) with hyper parameter: ${\it min\_samples\_leaf}$\;
+$T$ := Decision tree regressor fit to (\Xnj{}, $\bf y$) with hyper parameter: ${\it min\_samples\_leaf}$\;
 Let $\Delta Y$ be a matrix whose columns are vectors of leaf category deltas\\
 Let $C$ be a matrix whose columns are vectors for leaf category counts\\
 \For(\hfill$\triangleright$\ {\it\textcolor{gray}{\small Get average $y$ delta relative to random ref category for obs. in leaves}}){each leaf $L \in T$}{
@@ -553,7 +549,7 @@ $completed$ := $\{1\}$; $work$ := $\{2 .. |leaves|\}$; \Comment*{\it set of leaf
             ${\bf c} := {\bf c} + C_L$\Comment*{\it update running weight}
         }
     }
-    $work := work \texttt{\char`\\} {\it completed}$\\
+    $work := work \slash {\it completed}$\\
 }
 \Return{$\Delta {\bf y}$}\\
 \label{alg:CatStratPD}
