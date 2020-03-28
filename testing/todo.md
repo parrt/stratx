@@ -21,3 +21,4 @@ invalid value encountered in less_equal
 * set default rank to Importance or Impact?
 * try X_train=X for computing features again?
 * set all hyper param defaults per examples
+* reuse rent10k.csv for our YearMade paper example
