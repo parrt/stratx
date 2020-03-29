@@ -92,7 +92,7 @@ Nonparametric Partial Dependence}
 \begin{abstract}
 Partial dependence curves introduced by \cite{PDP} (FPD), are an important model interpretation tool, but are not accessible to business analysts and scientists without the skills to choose, tune, and assess machine learning models.  It is also common for the same partial dependence algorithm on the same data to give meaningfully different curves for different models, which calls into question their validity.  Expertise is required to distinguish between model artifacts and true relationships in the data.
 
-In this paper, we contribute methods for computing partial dependence curves, for both numeric (\spd) and categorical variables (\cspd), that work directly from training data rather than predictions of a model. We provide evidence of biased results with FPD, ALE (\cite{ALE}), and SHAP (\cite{shap}), plus demonstrate that our approach works correctly on synthetic and real data sets.  Our goal is not to argue that model-based techniques are not useful. Rather, we hope to open a new line of inquiry into nonparametric partial dependence.
+In this paper, we contribute methods for computing partial dependence curves, for both numerical (\spd) and categorical variables (\cspd), that work directly from training data rather than predictions of a model. We provide evidence of biased results with FPD, ALE (\cite{ALE}), and SHAP (\cite{shap}), plus demonstrate that our approach works correctly on synthetic and real data sets.  Our goal is not to argue that model-based techniques are not useful. Rather, we hope to open a new line of inquiry into nonparametric partial dependence.
 \end{abstract}
 
 \section{Introduction}
@@ -108,9 +108,9 @@ The first relates to their ability to tease apart the effect of codependent feat
 
 \begin{figure}
 \begin{center}
-\includegraphics[scale=0.61]{images/bathrooms_vs_price.pdf}
-\caption{\small Plots of bathrooms versus rent price using New York City apartment rent data. (a) marginal plot, (b) PD/ICE plot derived from random forest, (c) PD/ICE plot derived from gradient boosted machine, and (d) PD/ICE plot derived from ordinary least squares regression; sample size is 10,000 observations of \textasciitilde50k. The PD/ICE plots are  different for the same data set, depending on the chosen user model. X['bathrooms'].unique() shows (array([0. , 1. , 1.5, 2. , 2.5, 3. , 3.5, 4. ]),
- array([  54, 8151,  140, 1539,   39,   67,    3,    7])). \spd{} has missing last value, not enough data. what are $R^2$ values. how tuned all but last share y with left \vspace{-7mm}}
+\includegraphics[scale=0.61]{images/bathrooms_vs_price.pdf}\vspace{-1mm}
+\caption{\small Meaningfully different results from a single partial dependence technique, FPD/ICE, applied to the same data but different models. Plots of number of bathrooms versus rent price using New York City apartment rent data \cite{rent} with $n=10,000$ of \textasciitilde50k. (a) marginal plot, (b) plot derived from random forest, (c)  plot derived from gradient boosted machine, and (d) plot derived from ordinary least squares regression. Hyper parameters were tuned using 5-fold cross validation grid search over several hyper parameters. Keras 
+\spd{} gives a plausible roughly linear result. \vspace{-7mm}}
 \label{fig:baths_price}
 \end{center}
 \end{figure}
@@ -132,16 +132,16 @@ We begin by describing the proposed stratification approach in \secref{sec:strat
 
 In special circumstances, we know the precise effect of each feature $x_j$ on $y$.  Assume we are given training data pair ($\bf X, y$) where ${\bf X} = [x^{(1)}, \ldots, x^{(n)}]$ is an $n \times p$ matrix whose $p$ columns represent observed features and ${\bf y}$ is the $n \times 1$ vector of responses. For any smooth function $f:\mathbb{R}^{p} \rightarrow \mathbb{R}$ that precisely maps each $\xi$ vector to response $y^{(i)}$, ${y^{(i)}} = f(\xi)$, the partial derivative of $y$ with respect to $x_j$ gives the change in $y$ holding all other variables constant.  Integrating the partial derivative then gives the {\em idealized partial dependence}  of $y$ on $x_j$, the isolated contribution of $x_j$ to $y$:
 
-\noindent {\bf Definition 1} The {\em idealized partial dependence} of $y$ on feature $x_j$ for smooth generator function $f:\mathbb{R}^{p} \rightarrow \mathbb{R}$ evaluated at $x_j = z$ is the cumulative sum up to $z$ \todo{do we need to say that the partial derivative is continuous also?}:
+\noindent {\bf Definition 1} The {\em idealized partial dependence} of $y$ on feature $x_j$ for smooth generator function $f:\mathbb{R}^{p} \rightarrow \mathbb{R}$ evaluated at $x_j = z$ is the cumulative sum up to $z$ \todo{do we need to say that the partial derivative is continuous also?}:\vspace{-4mm}
 
 \begin{equation}\label{eq:pd}
 \text{\it PD}_j(z) = \int_{min(x_j)}^z \frac{\partial f}{\partial x_j} dx_j
-\end{equation}
+\end{equation}\vspace{-3mm}
 
 $\text{\it PD}_j(z)$ is the value contributed to $f$ by $x_j$ at $x_j = z$ and $\text{\it PD}_j(min(x_j))=0$. The advantages of this definition are that it does not depend on predictions from a fitted model and is insensitive to codependent features.  Although the underlining generator function is unknown, we can estimate its partial derivatives from the raw training data. ALE also derives partial dependence by estimating and integrating across partial derivatives (e.g., see Equation 7 in \cite{ALE}) but does so using local changes in fitted model predictions.
 
 
-The key idea is to stratify \xnj{} feature space into disjoint regions of observations where all \xnj{} variables are approximately matched across the observations in that region. Within each \xnj{} region, any fluctuations in the response variable are likely due to the variable of interest, $x_j$.  Estimates of the partial derivative within a region are estimated discretely as the changes in $y$ values between unique and ordered $x_j$ positions:  $(y^{(i+1)} - \yi)/(x_j^{(i+1)} - x_j^{(i)})$ for all $i$ in a region.  This amounts to performing piecewise linear regression through the leaf observations, one model per unique pair of $x_j$ values, and collecting the model $\beta_1$ coefficients to estimate partial derivatives. The overall partial derivative at $x_j=z$ is the average of all slopes, found in any region, whose range $[x_j^{(i)},x_j^{(i+1)})$ spans $z$.  
+The key idea is to stratify \xnj{} feature space into disjoint regions of observations where all \xnj{} variables are approximately matched across the observations in that region. Within each \xnj{} region, any fluctuations in the response variable are likely due to the variable of interest, $x_j$.  Estimates of the partial derivative within a region are estimated discretely as the changes in $y$ values between unique and ordered $x_j$ positions:  $(y^{(i+1)} - \yi)/(x_j^{(i+1)} - x_j^{(i)})$ for all $i$ in a region.  This amounts to performing piecewise linear regression through the leaf observations, one model per unique pair of $x_j$ values, and collecting the model $\beta_1$ coefficients to estimate partial derivatives. The overall partial derivative at $x_j=z$ is the average of all slopes, found in any region, whose range $[x_j^{(i)},x_j^{(i+1)})$ spans $z$. The partial dependence curve points are, therefore, often the result of two averaging operations, which tends to smooth the curve; e.g., see \figref{fig:interactions}(d) below.
 
 Stratification occurs through the use of a decision tree fit to (\Xnj, $\bf y$), whose leaves aggregate observations with equal or similar \xnj{} features. The \xnj{} features can be numerical variables or label-encoded categorical variables (assigned a unique integer). \spd{} only uses the tree for the purpose of partitioning feature space and never uses predictions from any model. See \algref{alg:StratPD} for more details.
 
@@ -160,11 +160,11 @@ Stratification of high-cardinality categorical variables tends to create small g
 % ------------------------------------------------------------------------------------------------------------------------------------
 \section{Related work}\label{sec:related}
 
-\citet{PDP} defines the partial dependence of $\hat{f}$ on feature subsets, $S \subset F = \{1, 2, .., p\}$, as an expectation conditioned on the remaining variables:
+\citet{PDP} defines the partial dependence of $\hat{f}$ on feature subsets, $S \subset F = \{1, 2, .., p\}$, as an expectation conditioned on the remaining variables:\vspace{-4mm}
 
 \begin{equation}
 {\it FPD}_S(x_S) = \Ex[\hat{f}(x_S,{\bf X}_{\slash S})] = \frac{1}{n} \sum_{i=1}^n \hat{f}(x_S, x_{\slash S}^{(i)})
-\end{equation}
+\end{equation}\vspace{-4mm}
 
 \cut{
 \[
@@ -184,22 +184,22 @@ The Individual Conditional Expectation (ICE) plot \cite{ICE} estimates the parti
 
 SHAP \cite{shap} has roots in {\em Shapley regression values} \citep{shapley-regression} and calculates the average marginal effect of adding $x_j$ to models trained on all possible  subsets of features:
 
-\begin{equation}\label{eq:shap}
+\vspace{-4mm}\begin{equation}\label{eq:shap}
 \phi_j(\hat{f},{\bf x}) = \sum_{S \subseteq F \slash \{j\}}\
 \frac{|S|!(|F|-|S|-1)!}{|F|!}\
  [ \hat{f}_{S \cup \{j\}}(x_{S \cup \{j\}}) - \hat{f}_S(x_S) ]
-\end{equation}
+\end{equation}\vspace{-4mm}
 
 To avoid training a combinatorial explosion of models with the various feature subsets, $\hat{f}_S(x_S)$, SHAP reuses a single model fitted to $(\bf X, y)$ by running simplified feature vectors into the model. As \cite{manyshap} points out, there are many possible implementations for simplified vectors. One is to replace ``missing''  features with their expected value or some other baseline vector (BShap in \cite{manyshap}). SHAP uses a more general approach (``interventional'' mode) that approximates $\hat{f}_S(x_S)$ with $\Ex[\hat{f}(x_{S},{\bf X}'_{\slash S}) | {\bf X'}_S = x_S]$ where ${\bf X}'$ is called the {\em background set} and users can pass in, for example, a single vector with ${\bf X}_{\slash S}$ column averages or even the entire training set, $\bf X$, which is what we will assume (and is called CES($\hat{D}$) in \cite{manyshap} where $\hat{D}={\bf X}$). To further reduce computation costs, SHAP users typically explain a very small subsample of the data set, but with potentially a commensurate reduction in the explanatory resolution of the underlying population. SHAP has model-type-dependent optimizations for linear regression, deep learning, and decision-tree based models.
 
 For efficiency, SHAP approximates $\Ex[\hat{f}(x_{S},{\bf X}_{\slash S}) | {\bf X}_S = x_S]$ with $\Ex[\hat{f}(x_{S},{\bf X}_{\slash S})]$, which assumes feature independence. \cite{janzing2019feature} argues that ``{\em unconditional} [as implemented] rather than {\em conditional} [as defined] expectations provide the right notion of dropping features.''  But, using the unconditional expectation makes the inner difference of \eqref{eq:shap} a function of codependency-sensitive FPDs:
 
-\[
+\vspace{-6mm}\begin{equation}
 \begin{split}
 \hat{f}_{S \cup \{j\}}(x_{S \cup \{j\}}) - \hat{f}_S(x_S) & = \Ex[\hat{f}(x_{S \cup \{j\}},{\bf X}_{\slash (S \cup \{j\})})] - \Ex[\hat{f}(x_{S},{\bf X}_{\slash S})]\\
  & = \text{\it FPD}_{S \cup \{j\}}({\bf x}) - \text{\it FPD}_{S}({\bf x})
 \end{split}
-\]
+\end{equation}\vspace{-4mm}
 
 If the individual contributions are potentially biased, averaging the contributions of many such feature permutations might not lead to an accurate partial dependence.  Even if the conditional expectation is used, \cite{manyshap} points out that SHAP is sensitive to the sparsity of $\bf X$ because condition ${\bf X}_S = x_S$ will find few or no training records with the exact $x_S$ values of some input vector.
 
@@ -209,10 +209,10 @@ The goal of ALE (\cite{ALE}) is to overcome the bias in previous model-based tec
 
 Another related technique that integrates over partial derivatives to measure $x_j$ effects is called Integrated Gradients (IG) from \cite{intgrad}. Given a single input vector, $\bf x$, to a deep learning network, IG integrates over the loss function gradient at points along the path from a baseline vector, $\bf x'$, to $\bf x$. IG can be seen as computing the partial dependence of the loss function, rather than model output, $\hat{f}$, on the $x_j$ values in ${\bf x}$.
 
-\begin{figure}[htbp]
+\begin{figure}[!htbp]
 \begin{center}
-\includegraphics[scale=.4]{images/partitioning.pdf}
-\caption{\small $x_2$ continuous and partitioned by decision tree fit to (\xnj, ${\bf y}$), $x_1$ continuous (a), (b) and categorical (c), (d). Small wedges on $x_1$ axis indicate PD curve points}
+\includegraphics[scale=.4]{images/partitioning.pdf}\vspace{-3mm}
+\caption{\small Comparison of \spd, \cspd{} and ALE for $p=2$ with continuous $x_2$ and continuous $x_1$ in (a), (b) and  categorical $x_1$ in (c), (d).  Vertical dashed lines are ALE bin edges and horizontal dashed lines are regions partitioned by a decision tree fit to (\Xnj, ${\bf y}$). Whereas ALE shifts $x_1$ observations to bin edges holding $x_2$ exactly constant (and asks for predictions at those points), \spd{} assumes $x_2$ values are the same and using known $y$ values. The small wedges on $x_1$ axis indicate partial dependence curve points.  The shades of green and blue indicate $y$ values. The leftmost two observations in (a) and the lowermost observation in (c) are ignored as minor differences cannot be computed.}
 \label{fig:partitioning}
 \end{center}
 \end{figure}
@@ -222,15 +222,11 @@ ALE partitions $x_j$ into bins then fixes \xnj{} as it shifts $x_j$ to bin edges
 
 Using decision trees for the purpose of partitioning feature space as \spd{} does was previously used by \cite{rfimp} to improve permutation importance for random forests by permuting $x_j$ only within the observations of a leaf. Earlier, \cite{RFunsup} defined a similarity measure between two observations according to how often they appear in the same leaf in a random forest.  Rather than partitioning  \xnj{} space like \spd, those techniques partitioned all of $x$ space.
 
-\cut{
-\begin{equation}
-g_{j,ALE}(z) = \int_{\text{min}({\bf X}_j)}^{z} \Ex[ f^j(x_j,{\bf X}_{\slash j}) \,|\, x_j = z ] dx_j
-\end{equation}
-}
-
 % COMPARE
 
-The model-based techniques under discussion treat boolean and label-encoded categorical variables (encoded as unique integers) as numerical variables, even though there is no defined order. ALE does, however, take advantage of the lack of order to choose an $x_j$ order that reduces ``extrapolation outside the data envelope'' by measuring the similarity of \Xnj{} sample values across $x_j$ categories.  Adjacent category integers, though, could still represent the most semantically different categories, so any shift of an observation's category to extrapolate is risky. Even the smallest possible extrapolation can conjure up nonsensical observations, such as pregnant males, as we demonstrate in \figref{fig:pregnant} below where FPD, SHAP, and ALE underestimate pregnancy's effect on body weight. (For boolean $x_j$, ALE behaves like FPD.)  In contrast, \cspd{} uses a different algorithm for categoricals and differences the average $y$ for all categories within the leaf to a random reference category, which are then merged across leaves. \todo{ref \figref{fig:partitioning}} One could argue that \spd{} also extrapolates because \xnj{} could include categorical variables and not all \xnj{} records would be identical. But, our approach only assumes \xnj{} values are similar and uses known training $y$ values for finite differences, rather than asking a model to make prediction for nonsensical records, which could be wildly inaccurate. Also, the decision tree would, by definition, likely partition \xnj{} space into regions that can be treated similarly, thus, grouping semantically similar categorical levels together.
+The model-based techniques under discussion treat boolean and label-encoded categorical variables (encoded as unique integers) as numerical variables, even though there is no defined order, as depicted in \figref{fig:partitioning}(d). ALE does, however, take advantage of the lack of order to choose an $x_j$ order that reduces ``extrapolation outside the data envelope'' by measuring the similarity of \Xnj{} sample values across $x_j$ categories.  Adjacent category integers, though, could still represent the most semantically different categories, so any shift of an observation's category to extrapolate is risky. Even the smallest possible extrapolation can conjure up nonsensical observations, such as pregnant males, as we demonstrate in \figref{fig:pregnant} below where FPD, SHAP, and ALE underestimate pregnancy's effect on body weight. (For boolean $x_j$, ALE behaves like FPD.)  
+
+In contrast, \cspd{} uses a different algorithm for categoricals and computes differences between the average $y$ for all categories within the leaf to a random reference category; see \figref{fig:partitioning}(c). These leaf delta vectors are then merged across leaves to arrive at an overall delta vector relating the relative effect of each category on $y$.  One could argue that \spd{} also extrapolates because \xnj{} could include categorical variables and not all \xnj{} records would be identical. But, our approach only assumes \xnj{} values are similar and uses known training $y$ values for finite differences, rather than asking a model to make prediction for nonsensical records, which could be wildly inaccurate. Also, the decision tree would, by definition, likely partition \xnj{} space into regions that can be treated similarly, thus, grouping semantically similar categorical levels together.
 
 \cut{
 {\bf Comparison}
@@ -249,48 +245,42 @@ $\Ex[ \phi_j(\hat{f},x) | {\bf X}_j = z] = FPD_j(x) - \bar{y}$ if features indep
 % ------------------------------------------------------------------------------------------------------------------------------------
 \section{Experimental results}\label{sec:experiments} 
 
-In this section, we demonstrate experimentally that \spd{} and \cspd{} compute accurate partial dependence curves for synthetic data and plausible results for a real data set. Experiments also provide evidence that existing model-based techniques can provide meaningfully-biased curves. We begin by comparing the partial dependence curves from popular techniques on synthetic data with complex interactions.
+In this section, we demonstrate experimentally that \spd{} and \cspd{} compute accurate partial dependence curves for synthetic data and plausible results for a real data set. Experiments also provide evidence that existing model-based techniques can provide meaningfully-biased curves. We begin by comparing the partial dependence curves from popular techniques on synthetic data with complex interactions.\footnote{All simulations in this section were run on a 4.0 Ghz 32G RAM machine running OS X 10.13.6 with SHAP 0.34, scikit-learn 0.21.3, XGBoost 0.90, and Python 3.7.4; ALEPlot 1.1 and R 3.6.3.}
+
+\begin{figure}[!htbp]
+\begin{center}
+\includegraphics[scale=0.45]{images/interactions.pdf}\vspace{-2mm}
+\caption{\small  Partial dependence plots of $n=2000$ data generated from noiseless $y = x_1^2 + x_1 x_2 + 5 x_1 sin(3 x_2) + 10$ where $x_1,x_2,x_3 \sim U(0,10)$ and $x_3$ does not affect $y$. The model is a random forest with 10 trees getting training $R^2=0.997$. SHAP used all $\bf X$ as background data and ALE used $K=300$. The curves were generated from same 2000 data points that the model was trained on.}
+\label{fig:interactions}
+\end{center}
+\end{figure}
 
 \figref{fig:interactions} illustrates that FPD, SHAP, ALE, and \spd{} all suitably isolate the effect of independent individual variables on the response for noiseless data generated via: $y = x_1^2 + x_1 x_2 + 5 x_1 sin(3 x_2) + 10$ for $x_1,x_2,x_3 \sim U(0,10)$ where $x_3$ does not affect $y$. The shapes of the curves for all techniques look similar except that \spd{} starts all curves at $y=0$ (as could the others). SHAP's curves have the advantage that they indicate the presence of variable interactions. To our eye, \spd's curves are smoothest despite not having access to model predictions.
 
-\begin{figure}[htbp]
+\begin{figure}[!htbp]
 \begin{center}
-\includegraphics[scale=0.45]{images/interactions.pdf}
-\caption{\small $y = x_1^2 + x_1 x_2 + 5 x_1 sin(3 x_2) + 10$ where $x_1,x_2,x_3 \sim U(0,10)$ and $x_3$ does not affect $y$. No noise added. Random forest with 10 trees. $R^2$  0.9973 \todo{why is SHAP showing a pinched blue spread in the middle for $x_1$?}}
-\label{fig:interactions}
+\includegraphics[scale=0.45]{images/noise.pdf}\vspace{-2mm}\caption{\small The effective noise on \spd{} for $y = x_1^2 + x_1 + 10 + \epsilon$ where $x_1,x_2 \sim U(-2,2)$, $\epsilon \sim N(0,\sigma)$ with $\sigma \in \{0,0.5,1,2\}$. The 95\% interval for amplitude of the noise in (d) for $\sigma=2$ is the same as the signal.}
+\label{fig:noise}
 \end{center}
 \end{figure}
 
 Models have a tendency to smooth out noise and a legitimate concern is that, without the benefit of a model, \spd{} could be adversely affected. \figref{fig:noise} demonstrates \spd{} curves for noisy quadratics generated from $y = x_1^2 + x_2 + 10 + \epsilon$ where $\epsilon \sim N(0,\sigma)$ $\epsilon$ and, at $\sigma=2$, 95\% of the noise falls within [0,4] (since $2\sigma = 4$), meaning that the signal-to-noise ratio is at best 1-to-1 for $x_1^2$ in $[-2,2]$. For zero-centered Gaussian noise and this data set, \spd{} accuracy is stable.  The superfluous noise variable $x_3$ in \figref{fig:interactions} also did not confuse \spd.
 
-\begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.45]{images/noise.pdf}
-\caption{\small $y = x_1^2 + x_1 + 10 + \epsilon$ where $x_1,x_2 \sim U(-2,2)$, $\epsilon \sim N(0,\sigma)$ with $\sigma \in [0,0.5,1,2]$.}
-\label{fig:noise}
-\end{center}
-\end{figure}
 
 Turning to categorical variables, \figref{fig:statetemp} presents partial dependence curves for FPD, ALE, and \cspd{} derived from a noisy synthetic weather data set, where temperature varies in sinusoidal fashion over the year and with different baseline temperatures per state. (The vertical ``smear'' in the FPD plot shows the complete sine waves but from the side, edge on.)  Variable {\tt\small state} is independent and all plots identify the baseline temperature per state correctly.
 
-\cut{
-\begin{equation}\label{eq:weather}
-y = t[x_{\it state}] + 10 sin(\frac{2\pi}{365}x_{\it dayofyear}+\pi) + \epsilon, ~~~ \epsilon \sim N(0, 4)
-\end{equation}
-}
-
-\begin{figure}[htbp]
+\begin{figure}[!htbp]
 \begin{center}
 \includegraphics[scale=0.45]{images/dayofyear_vs_temp.pdf}~~
 \includegraphics[scale=0.45]{images/state_vs_temp_pdp.pdf}~~
 \includegraphics[scale=0.45]{images/state_ale.pdf}~~
-\includegraphics[scale=0.45]{images/state_vs_temp_stratpd.pdf}~~
-\caption{\small $y = base[x_{\it state}] + 10 sin(\frac{2\pi}{365}x_{\it dayofyear}+\pi) + \epsilon$ where $\epsilon \sim N(0, 4)$. The baseline temperature per state is $\{{\it AZ}=90, {\it CA}=70, {\it CO}=40, {\it NV}=80, {\it WA}=60\}$. Sinusoids in (a) are the average of three years' temperature data.}
+\includegraphics[scale=0.45]{images/state_vs_temp_stratpd.pdf}\vspace{-1mm}
+\caption{\small $y = base[x_{\it state}] + 10 sin(\frac{2\pi}{365}x_{\it dayofyear}+\pi) + \epsilon$ where $\epsilon \sim N(\mu=0, \sigma=4)$. The {\em base} temperature per state is $\{{\it AZ}=90, {\it CA}=70, {\it CO}=40, {\it NV}=80, {\it WA}=60\}$. Sinusoids in (a) are the average of three years' temperature data.}
 \label{fig:statetemp}
 \end{center}
 \end{figure}
 
-The primary goal of the stratification approach proposed in this paper is to obtain accurate partial dependence curves in the presence of codependent variables. To test \spd{}/\cspd{} and discover potential bias in existing techniques, we synthesized a body weight data set generated by the following equation with nontrivial codependencies between variables:
+The primary goal of the stratification approach proposed in this paper is to obtain accurate partial dependence curves in the presence of codependent variables. To test \spd{}/\cspd{} and discover potential bias in existing techniques, we synthesized a body weight data set generated by the following equation with nontrivial codependencies between variables: \vspace{-5mm}
 
 \begin{equation}\label{eq:weight}
 {\small
@@ -312,28 +302,28 @@ y & = &120 + 10(x_{height} - min(x_{height})) + 40x_{pregnant} - 1.5x_{education
                                                \end{cases}
 \end{array}
 }
-\end{equation}
+\end{equation}\vspace{-4mm}
 
 \noindent The partial derivative of $y$ with respect to $x_{height}$ is 10 (holding all other variables constant), so the optimal partial dependence curve is a line with slope 10. \figref{fig:heightweight} illustrates the curves for the techniques under consideration, with ALE and \spd{} giving the sharpest representation of the linear relationship. (\spd's curve is drawn on top of the SHAP plots using the righthand scale.) The FPD and both SHAP plots also suggest a linear relationship, albeit with a little less precision. The ICE curves in \figref{fig:heightweight}(a) and ``fuzzy'' SHAP curves have the advantage that they alert users to variable  dependencies or interaction terms.  On the other hand, the kink in the partial dependence curve and other visual phenomena could confuse less experienced machine learning practitioners and certainly analysts and researchers in other fields (our primary target communities).
 
-\begin{figure}[htbp]
+\begin{figure}[!htbp]
 \begin{center}
 \includegraphics[scale=0.35]{images/height_vs_weight_pdp.pdf}~~
 \includegraphics[scale=0.35]{images/weight_tree_path_dependent_shap.pdf}~~
 \includegraphics[scale=0.35]{images/weight_interventional_shap.pdf}~~
-\includegraphics[scale=0.34]{images/height_ale.pdf}~~
-\caption{\small SHAP partial dependence plots of response body weight on feature {\tt height} using 2000 synthetic observations from \eqref{eq:weight}. 50/50 male/female, half of the women are pregnant, and pregnancy contributes 40 pounds. SHAP interrogated an RF with 40 trees and explained 2000 samples; the interventional case used 100 observations as background data. RF OOB $R^2$ 0.999}
+\includegraphics[scale=0.34]{images/height_ale.pdf}\vspace{-2mm}
+\caption{\small Partial dependence plots of response body weight on feature $x_{height}$ using $n$=2000 synthetic observations from \eqref{eq:weight}. FPD and SHAP have ``kinks'' at the maximum female height. SHAP defines feature importance as the average SHAP value magnitude, which overemphasizes importance for heights below 70 inches here. The male/female ratio is 50/50, half of the women are pregnant, and pregnancy contributes 40 pounds. SHAP interrogated an RF tuned via 5-fold cross validation grid search (OOB $R^2$ 0.999) and explained all 2000 samples; the interventional case used 100 observations as background data.}
 \label{fig:heightweight}
 \end{center}
 \end{figure}
 
-\begin{figure}[htbp]
+\begin{figure}[!htbp]
 \begin{center}
 \includegraphics[scale=0.45]{images/pregnant_vs_weight_pdp.pdf}~~
 \includegraphics[scale=0.45]{images/pregnant_vs_weight_shap.pdf}~~
 \includegraphics[scale=0.45]{images/pregnant_2_ale.pdf}~~
-\includegraphics[scale=0.45]{images/pregnant_vs_weight_stratpd.pdf}~~
-\caption{\small foo.}
+\includegraphics[scale=0.45]{images/pregnant_vs_weight_stratpd.pdf}\vspace{-2mm}
+\caption{\small  Partial dependence bar charts for boolean $x_{pregnant}$ with the same model from \figref{fig:heightweight}. Only \cspd{} gets the correct 40 pound contribution per \eqref{eq:weight}.}
 \label{fig:pregnant}
 \end{center}
 \end{figure}
@@ -360,14 +350,13 @@ $1/n*\sum_{i=1}^n f(x_j = pregnant, x_{i, \bar{j}}) - f(x_j = not pregnant, x_{i
 \noindent where ${x_{i, \bar{j}}: i=1,2,?,n}$ are the n training observations of $x_{\bar{j}}$
 }
 
-\begin{figure}[htbp]
+\begin{figure}[!htbp]
 \begin{center}
-%\includegraphics[scale=0.35]{images/bulldozer_YearMade_marginal.pdf}~~
 \includegraphics[scale=0.35]{images/bulldozer_YearMade_pdp.pdf}~~
 \includegraphics[scale=0.35]{images/bulldozer_YearMade_shap.pdf}~~
 \includegraphics[scale=0.35]{images/YearMade_ale.pdf}~~
-\includegraphics[scale=0.35]{images/bulldozer_YearMade_stratpd.pdf}
-\caption{\small (a) Marginal plot of bulldozer {\tt YearMade} versus {\tt SalePrice} using subsample of 20k observations, (b) partial dependence drawn by SHAP interrogating an RF with 40 trees and explaining 1000 values with 100 observations as background data, (c) \spd{} partial dependence. \todo{reuse rent10k.csv for our YearMade paper example}}
+\includegraphics[scale=0.35]{images/bulldozer_YearMade_stratpd.pdf}\vspace{-2mm}
+\caption{\small Partial dependence curves of bulldozer {\tt YearMade} versus {\tt SalePrice} for FPD/ SHAP, ALE, and \spd. $n$=10,000 observations drawn from \textasciitilde{}362k. SHAP interrogated a random forest (OOB $R^2=0.808$) to explain 1000 training observations with 100 observations as background data. Hyper parameters were tuned using 5-fold cross validation grid search over several hyper parameters.}
 \label{fig:yearmade}
 \end{center}
 \end{figure}
@@ -378,7 +367,7 @@ The stratification approach also gives plausible results for real data sets, suc
 \cut{ % I'm just not sure this example is necessary and might be beating a dead horse
 As a second example, consider the curves for feature {\tt\small MachineHours} in \figref{fig:machinehours}. As with bulldozer age, one would expect bulldozers with more use to cost less, but only the \spd{} curve shows that general trend.  Each plot shows some kind of visual phenomenon at 3138 hours, which coincides with a spike in the $x$ histogram of \figref{fig:machinehours}(d).  It would be easy to misinterpret this as an interesting feature of the data, but experts will recognize this as an artifact of data preparation.  A very common and effective technique is to replace missing values with the median (and add a ``is missing'' variable), as recommended by \cite{missingdata}.  Roughly 50\% of the {\tt\small MachineHours} values are missing and the dip at the median is because bulldozers with missing {\tt\small MachineHours} are, on average, worth less according to the training data (by about 4k\$).  The true relationship is unknown but the \spd{} plot seems the most plausible.
 
-\begin{figure}[htbp]
+\begin{figure}[!htbp]
 \begin{center}
 \includegraphics[scale=0.35]{images/bulldozer_MachineHours_pdp.pdf}~~
 \includegraphics[scale=0.35]{images/bulldozer_MachineHours_shap.pdf}~~
@@ -390,15 +379,16 @@ As a second example, consider the curves for feature {\tt\small MachineHours} in
 \end{figure}
 }
 
-And, finally, an important consideration for any tool is performance, so we plotted execution time versus data size (up to 30,000 observations) for three real Kaggle data sets: rent, bulldozer, and flight arrival delays \cite{flights}. \figref{fig:timing} shows growth curves for 40 numerical variables and 11 categorical variables grouped by type of variable.  For these data sets, \spd{} takes 1.1s or less to process 30,000 records for any $x_j$, despite the potential for quadratic cost. \cspd{} typically processes categorical variables in less than 2s but takes 13s for the high-cardinality categorical {\tt\small ModelID} of bulldozer (which looks mildly quadratic).  These elapsed times for our prototype show it to be practical and competitive with FPD/ICE, SHAP, and ALE.  If the cost to train a model using (cross validated) grid search for hyper parameter tuning is included, \spd{} and \cspd{} outperforms these existing techniques (as training and tuning is often measured in minutes).
-
-\begin{figure}[htbp]
+\begin{figure}[!htbp]
 \begin{center}
-\includegraphics[scale=.4]{images/timing.pdf}
-\caption{\small timing blah. $p=20$, bulldozer $p=14$, and flight $p=17$. Numba JIT warmup Numba just-in-time compiler ({\tt\small numba.pydata.org})}
+\includegraphics[scale=.4]{images/timing.pdf}\vspace{-3mm}
+\caption{\small Time to compute partial dependence curve for up to 30,000 observations for 40 numerical and 11 categorical variables timing blah. $p=20$, bulldozer $p=14$, and flight $p=17$. The Numba just-in-time compiler is used to improve performance, but timing does not include compilation; users do experience this ``warm-up'' time.}
 \label{fig:timing}
 \end{center}
 \end{figure}
+
+And, finally, an important consideration for any tool is performance, so we plotted execution time versus data size (up to 30,000 observations) for three real Kaggle data sets: rent, bulldozer, and flight arrival delays \cite{flights}. \figref{fig:timing} shows growth curves for 40 numerical variables and 11 categorical variables grouped by type of variable.  For these data sets, \spd{} takes 1.2s or less to process 30,000 records for any  numerical $x_j$, despite the potential for quadratic cost. \cspd{} typically processes categorical variables in less than 2s but takes 13s for the high-cardinality categorical {\tt\small ModelID} of bulldozer (which looks mildly quadratic).  These elapsed times for our prototype show it to be practical and competitive with FPD/ICE, SHAP, and ALE.  If the cost to train a model using (cross validated) grid search for hyper parameter tuning is included, \spd{} and \cspd{} outperforms these existing techniques (as training and tuning is often measured in minutes).
+
 
 \cut{
 flight shape (5714008, 17), 6 cats
@@ -406,13 +396,12 @@ rent shape (49352, 20), no cats
 bulldozer shape (362781, 14) records, 5 cats
 }
 
-All simulations in this section were run on a 4.0 Ghz 32G RAM machine running OS X 10.13.6 with SHAP 0.34, scikit-learn 0.21.3, XGBoost 0.90, and Python 3.7.4; ALEPlot 1.1 and R 3.6.3.
-
 % ------------------------------------------------------------------------------------------------------------------------------------
 \section{Conclusion and future work}
 
-In this paper, we contribute a method for computing partial dependence curves, for both numeric and categorical variables, that does not use  predictions from a provided fitted model.   Working directly from the data  makes partial dependences accessible to business analysts and scientists not qualified to choose, tune, and assess machine learning models.  For experts, it can  provide hints about the relationships in the data to help guide the choice of model. Our experiments show that \spd{} and \cspd{} are fast enough for practical use and correctly identify partial dependences for synthetic data and give plausible curves on real data sets. \spd{} relies on two important hyper parameters (with broadly applicable defaults) but model-based techniques should include the hyper parameters of the required fitted model for a fair comparison.  Our goal here is not to  argue  that model-based techniques are not useful. Rather, we are pointing out potential issues and hoping to open a new line of nonparametric inquiry that experiments have shown to be applicable in situations and accurate in cases where model-based techniques are not. The obvious next goal for this approach is a version for classifiers and to extend the technique to two variables, paralleling ALE's second order derivative approach.
+In this paper, we contribute a method for computing partial dependence curves, for both numerical and categorical variables, that does not use  predictions from a provided fitted model.   Working directly from the data  makes partial dependences accessible to business analysts and scientists not qualified to choose, tune, and assess machine learning models.  For experts, it can  provide hints about the relationships in the data to help guide their choice of model. Our experiments show that \spd{} and \cspd{} are fast enough for practical use and correctly identify partial dependences for synthetic data and give plausible curves on real data sets. \spd{} relies on two important hyper parameters (with broadly applicable defaults) but model-based techniques should include the hyper parameters of the required fitted model for a fair comparison.  Our goal here is not to  argue  that model-based techniques are not useful. Rather, we are pointing out potential issues and hoping to open a new line of nonparametric inquiry that experiments have shown to be applicable in situations and accurate in cases where model-based techniques are not. The obvious next goal for this approach is a version for classifiers and to extend the technique to two variables, paralleling ALE's second order derivative approach.
 
+\vfill
 % ------------------------------------------------------------------------------------------------------------------------------------
 \section{Appendix}
 
