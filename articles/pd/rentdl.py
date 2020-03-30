@@ -1,13 +1,17 @@
+# On linux box: source activate tensorflow2_p36
 import numpy as np
 import pandas as pd
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+import tensorflow as tf
+
+from keras import models, layers, callbacks, optimizers, regularizers
 
 np.random.seed(1)  # pick seed for reproducible article images
 
-from keras import models, layers, callbacks, optimizers
 
 def load_rent(n:int=None, clean_prices=True):
     """
@@ -32,35 +36,56 @@ scaler = StandardScaler()
 X = scaler.fit_transform(X)
 # y = (y - np.mean(y))/np.std(y)
 
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.2)
+
 model = models.Sequential()
-layer1 = 3000
-layer2 = 3000
-layer3 = 3000
-layer4 = 3000
-layer5 = 1000
-batch_size = 200
-model.add(layers.Dense(layer1, input_dim=X.shape[1], activation='relu'))
-model.add(layers.Dense(layer2, activation='relu'))
-model.add(layers.Dense(layer3, activation='relu'))
-model.add(layers.Dense(layer4, activation='relu'))
-model.add(layers.Dense(layer5, activation='relu'))
+layer1 = 1400
+layer2 = 1400
+layer3 = 1400
+batch_size = 2000
+dropout = 0.4
+l1_penalty = 0.0
+l2_penalty = 0.000001
+model.add(layers.Dense(layer1, input_dim=X.shape[1], activation='relu', activity_regularizer=regularizers.l1_l2(l2_penalty,l1_penalty)))
+model.add(layers.BatchNormalization())
+model.add(layers.Dropout(dropout))
+
+model.add(layers.Dense(layer2, activation='relu', activity_regularizer=regularizers.l1_l2(l2_penalty,l1_penalty)))
+model.add(layers.BatchNormalization())
+model.add(layers.Dropout(dropout))
+
+model.add(layers.Dense(layer3, activation='relu', activity_regularizer=regularizers.l1_l2(l2_penalty,l1_penalty)))
+model.add(layers.BatchNormalization())
+model.add(layers.Dropout(dropout))
+
 model.add(layers.Dense(1))
 
-opt = optimizers.Adam()  # lr=1e-3, decay=1e-3 / 200)
+#learning_rate=1e-2 #DEFAULT
+# SGB gets NaNs?
+#opt = optimizers.SGD(lr=0.01)
+opt = optimizers.Adam(lr=0.1)
+
 model.compile(loss='mean_squared_error', optimizer=opt, metrics=['mae'])
 # model.compile(loss='mean_absolute_error', optimizer=opt, metrics=['mae'])
 # model.compile(loss='mean_absolute_percentage_error', optimizer=opt, metrics=['mae'])
 
-callback = callbacks.EarlyStopping(monitor='val_loss', patience=10)
-history = model.fit(X, y,
-                    epochs=1000,
-                    validation_split=0.2,
+callback = callbacks.EarlyStopping(monitor='val_loss', patience=40)
+history = model.fit(X_train, y_train,
+                    #epochs=1000,
+                    epochs=300,
+#                    validation_split=0.2,
+                    validation_data=(X_test, y_test),
                     batch_size=batch_size,
-                    # callbacks=[callback]
+                    #callbacks=[callback],
+                    verbose=1
                     )
 
-y_pred = model.predict(X)
+y_pred = model.predict(X_train)
 # y_pred *= np.std(y_raw)  # undo normalization on y
 # y_pred += np.mean(y_raw)
-r2 = r2_score(y_raw, y_pred)
+r2 = r2_score(y_train, y_pred)
 print("Keras training R^2", r2)
+
+y_pred = model.predict(X_test)
+r2 = r2_score(y_test, y_pred)
+print("Keras validation R^2", r2)
