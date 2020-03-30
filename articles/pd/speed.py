@@ -107,16 +107,17 @@ def fitcurve(dataset,x,y,order=2):
     return s, eqn
 
 
-R_flight = flight(max_size=10000)
-R_rent = rent(max_size=10000)
-R_bulldozer = bulldozer(max_size=10000)
+max_size = 30000
+R_flight = flight(max_size=max_size)
+R_rent = rent(max_size=max_size)
+R_bulldozer = bulldozer(max_size=max_size)
 
 R_flight['size'] /= 1000
 R_rent['size'] /= 1000
 R_bulldozer['size'] /= 1000
 
 lw = .8
-fig, axes = plt.subplots(1, 2, figsize=(5.5,3))
+fig, axes = plt.subplots(1, 2, figsize=(6.5,3))
 
 for colname in R_flight.drop('size', axis=1).columns:
     ax = axes[1] if colname in {'AIRLINE',
@@ -164,44 +165,3 @@ axes[1].tick_params(axis='both', which='major', labelsize=12)
 plt.tight_layout()
 plt.savefig(f"images/timing.pdf", pad_inches=0)
 plt.show()
-
-exit() #######################
-
-
-# Fit to quadratic for FLIGHT delay data; mildly quadratic
-x = R_flight['size'].values.reshape(-1, 1)
-y = R_flight['time']
-fl_s, fl_eqn = fitcurve("flight", x, y, order=2)
-
-x = R_bulldozer['size'].values.reshape(-1, 1)
-y = R_bulldozer['time']
-bu_s, bu_eqn = fitcurve("flight", x, y, order=2)
-
-x = R_rent['size'].values.reshape(-1, 1)
-y = R_rent['time']
-re_s, re_eqn = fitcurve("flight", x, y, order=2)
-
-print(r"\begin{tabular}{r r r r r r r r r}")
-print(r"{\bf dataset} & $p$ & catvars & {\small $n$=1,000} & {\small 10,000} & {\small 20,000} & {\small 30,000} & time versus $n$~~ & $R^2$\\")
-print(r"\hline")
-print(r"{\tt\small flight} & 17 & 5", end=' & ')
-print(f"{R_flight[R_flight['size']==1.0]['time'].values[0]:.1f}s", end=' & ')
-print(f"{R_flight[R_flight['size']==10.0]['time'].values[0]:.1f}s", end=' & ')
-print(f"{R_flight[R_flight['size']==20.0]['time'].values[0]:.1f}s", end=' & ')
-print(f"{R_flight[R_flight['size']==30.0]['time'].values[0]:.1f}s", end=' & ')
-print(f"{{\\small {fl_eqn}}} & {{\\small {fl_s:.4f}}}\\\\")
-print(r"{\tt\small bulldozer} & 14 & 2", end=' & ')
-print(f"{R_bulldozer[R_bulldozer['size']==1.0]['time'].values[0]:.1f}s", end=' & ')
-print(f"{R_bulldozer[R_bulldozer['size']==10.0]['time'].values[0]:.1f}s", end=' & ')
-print(f"{R_bulldozer[R_bulldozer['size']==20.0]['time'].values[0]:.1f}s", end=' & ')
-print(f"{R_bulldozer[R_bulldozer['size']==30.0]['time'].values[0]:.1f}s", end=' & ')
-print(f"{{\\small {bu_eqn}}} & {{\\small {bu_s:.4f}}}\\\\")
-print(r"{\tt\small rent} & 20 & 0", end=' & ')
-print(f"{R_rent[R_rent['size']==1.0]['time'].values[0]:.1f}s", end=' & ')
-print(f"{R_rent[R_rent['size']==10.0]['time'].values[0]:.1f}s", end=' & ')
-print(f"{R_rent[R_rent['size']==20.0]['time'].values[0]:.1f}s", end=' & ')
-print(f"{R_rent[R_rent['size']==30.0]['time'].values[0]:.1f}s", end=' & ')
-print(f"{{\\small {re_eqn}}} & {{\\small {re_s:.4f}}}\\\\")
-print(r"\end{tabular}")
-
-

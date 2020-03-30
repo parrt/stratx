@@ -57,4 +57,4 @@ make_plots <- function(X, features=c('dayofyear', 'state'),
 # e.g. c('dayofyear', 'state') with intervals c(100, 5)
 # uses K = 100 for 'dayofyear', 5 for 'state'
 # Note that K for categorical variables is currently ignored by ALEPlot.
-make_plots(X, c('dayofyear', 'state'), intervals = c(100, 5))
+make_plots(X, c('dayofyear', 'state'), intervals = c(300, 5))

@@ -198,6 +198,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
     # Last slope is nan since no data after last x value so that will get dropped too
     # Also cut out any pdp x for which we don't have enough support (num slopes avg'd together)
     # Make sure to drop slope_counts_at_x, uniq_x values too :)
+    # print("slope counts", np.unique(slope_counts_at_x, return_counts=True))
     if min_slopes_per_x <= 0:
         min_slopes_per_x = 1 # must have at least one slope value
     notnan_idx = ~np.isnan(slope_at_x)
@@ -271,7 +272,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  ticklabel_fontsize=10,
                  barchart_size=0.20,
                  # if show_slope_counts, what ratio of vertical space should barchart use at bottom?
-                 barchar_alpha=0.7,
+                 barchar_alpha=1.0,
                  verbose=False,
                  figsize=None
                  ):
@@ -371,7 +372,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
     domain = (np.min(X[colname]), np.max(X[colname]))  # ignores any max(x) points as no slope info after that
 
     if len(pdpy)==0:
-        raise ValueError("No partial dependence y values, often due to value of min_samples_leaf that is too small")
+        raise ValueError("No partial dependence y values, often due to value of min_samples_leaf that is too small or min_slopes_per_x that is too large")
 
     min_y = min(pdpy)
     max_y = max(pdpy)

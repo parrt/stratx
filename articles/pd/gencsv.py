@@ -15,3 +15,7 @@ df.sort_values('state').to_csv("weather.csv", index=False)
 
 X, y, df, eqn = toy_weight_data(2000)
 df.to_csv("weight.csv", index=False)
+
+df = synthetic_interaction_data(n=2000)
+df.to_csv("interaction.csv", index=False)
+

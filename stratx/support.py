@@ -179,24 +179,27 @@ def toy_weight_data(n):
 
 
 def toy_weather_data_1yr():
-    def temp(x): return np.sin((x + 365 / 2) * (2 * np.pi) / 365)
+    # def temp(x): return 10*np.sin((2*x + 365) * (np.pi) / 365)
+    def temp(x): return 10*np.sin(((2/365)*np.pi*x + np.pi))
 
-    def noise(state): return np.random.normal(-5, 5, sum(df['state'] == state))
+    def noise(state):
+        # noise_per_state = {'CA':2, 'CO':4, 'AZ':7, 'WA':2, 'NV':5}
+        return np.random.normal(0, 4, sum(df['state'] == state))
 
     df = pd.DataFrame()
     df['dayofyear'] = range(1, 365 + 1)
     df['state'] = np.random.choice(['CA', 'CO', 'AZ', 'WA', 'NV'], len(df))
     df['temperature'] = temp(df['dayofyear'])
     df.loc[df['state'] == 'CA', 'temperature'] = \
-        70 + df.loc[df['state'] == 'CA', 'temperature'] * noise('CA')
+        70 + df.loc[df['state'] == 'CA', 'temperature'] + noise('CA')
     df.loc[df['state'] == 'CO', 'temperature'] = \
-        40 + df.loc[df['state'] == 'CO', 'temperature'] * noise('CO')
+        40 + df.loc[df['state'] == 'CO', 'temperature'] + noise('CO')
     df.loc[df['state'] == 'AZ', 'temperature'] = \
-        90 + df.loc[df['state'] == 'AZ', 'temperature'] * noise('AZ')
+        90 + df.loc[df['state'] == 'AZ', 'temperature'] + noise('AZ')
     df.loc[df['state'] == 'WA', 'temperature'] = \
-        60 + df.loc[df['state'] == 'WA', 'temperature'] * noise('WA')
+        60 + df.loc[df['state'] == 'WA', 'temperature'] + noise('WA')
     df.loc[df['state'] == 'NV', 'temperature'] = \
-        80 + df.loc[df['state'] == 'NV', 'temperature'] * noise('NV')
+        80 + df.loc[df['state'] == 'NV', 'temperature'] + noise('NV')
 
     return df
 
