@@ -44,17 +44,15 @@ layer2 = 1400
 layer3 = 1400
 batch_size = 2000
 dropout = 0.4
-l1_penalty = 0.0
-l2_penalty = 0.000001
-model.add(layers.Dense(layer1, input_dim=X.shape[1], activation='relu', activity_regularizer=regularizers.l1_l2(l2_penalty,l1_penalty)))
+model.add(layers.Dense(layer1, input_dim=X.shape[1], activation='relu')
 model.add(layers.BatchNormalization())
 model.add(layers.Dropout(dropout))
 
-model.add(layers.Dense(layer2, activation='relu', activity_regularizer=regularizers.l1_l2(l2_penalty,l1_penalty)))
+model.add(layers.Dense(layer2, activation='relu', activity_regularizer)
 model.add(layers.BatchNormalization())
 model.add(layers.Dropout(dropout))
 
-model.add(layers.Dense(layer3, activation='relu', activity_regularizer=regularizers.l1_l2(l2_penalty,l1_penalty)))
+model.add(layers.Dense(layer3, activation='relu', activity_regularizer)
 model.add(layers.BatchNormalization())
 model.add(layers.Dropout(dropout))
 
