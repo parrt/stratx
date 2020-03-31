@@ -747,34 +747,34 @@ def weight():
     # ax.set_xlim(10,18)
     # ax.set_xticks([10,12,14,16,18])
     # savefig(f"education_vs_weight_stratpd")
-
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
-    plot_stratpd(X, y, 'height', 'weight', ax=ax,
-                 pdp_marker_size=.2,
-                 show_x_counts=False,
-                 yrange=(0, 160), show_ylabel=False)
-    #    ax.get_yaxis().set_visible(False)
-    ax.set_title("StratPD", fontsize=10)
-    ax.set_xticks([60,65,70,75])
-    savefig(f"height_vs_weight_stratpd")
-
-    fig, ax = plt.subplots(1, 1, figsize=(1.3,2))
-    plot_catstratpd(X, y, 'sex', 'weight', ax=ax,
-                    show_x_counts=False,
-                    catnames={0:'M',1:'F'},
-                    yrange=(-1, 35),
-                    )
-    ax.set_title("CatStratPD", fontsize=10)
-    savefig(f"sex_vs_weight_stratpd")
-
-    fig, ax = plt.subplots(1, 1, figsize=(1.5,1.8))
-    plot_catstratpd(X, y, 'pregnant', 'weight', ax=ax,
-                    show_x_counts=False,
-                    catnames={0:False, 1:True},
-                    yrange=(-1, 45),
-                    )
-    ax.set_title("CatStratPD", fontsize=10)
-    savefig(f"pregnant_vs_weight_stratpd")
+    #
+    # fig, ax = plt.subplots(1, 1, figsize=figsize)
+    # plot_stratpd(X, y, 'height', 'weight', ax=ax,
+    #              pdp_marker_size=.2,
+    #              show_x_counts=False,
+    #              yrange=(0, 160), show_ylabel=False)
+    # #    ax.get_yaxis().set_visible(False)
+    # ax.set_title("StratPD", fontsize=10)
+    # ax.set_xticks([60,65,70,75])
+    # savefig(f"height_vs_weight_stratpd")
+    #
+    # fig, ax = plt.subplots(1, 1, figsize=(1.3,2))
+    # plot_catstratpd(X, y, 'sex', 'weight', ax=ax,
+    #                 show_x_counts=False,
+    #                 catnames={0:'M',1:'F'},
+    #                 yrange=(-1, 35),
+    #                 )
+    # ax.set_title("CatStratPD", fontsize=10)
+    # savefig(f"sex_vs_weight_stratpd")
+    #
+    # fig, ax = plt.subplots(1, 1, figsize=(1.5,1.8))
+    # plot_catstratpd(X, y, 'pregnant', 'weight', ax=ax,
+    #                 show_x_counts=False,
+    #                 catnames={0:False, 1:True},
+    #                 yrange=(-1, 45),
+    #                 )
+    # ax.set_title("CatStratPD", fontsize=10)
+    # savefig(f"pregnant_vs_weight_stratpd")
 
     if TUNE_RF:
         rf, bestparams = tune_RF(X, y)
@@ -785,30 +785,33 @@ def weight():
         rf.fit(X, y) # Use full data set for plotting
         print("RF OOB R^2", rf.oob_score_)
 
-    # show pregnant female at max range drops going taller
-    X_test = np.array([[1, 1, 70, 10]])
-    y_pred = rf.predict(X_test)
-    print("pregnant female at max range", X_test, "predicts", y_pred)
-    X_test = np.array([[1, 1, 72, 10]]) # make them taller
-    y_pred = rf.predict(X_test)
-    print("pregnant female in male height range", X_test, "predicts", y_pred)
+    # # show pregnant female at max range drops going taller
+    # X_test = np.array([[1, 1, 70, 10]])
+    # y_pred = rf.predict(X_test)
+    # print("pregnant female at max range", X_test, "predicts", y_pred)
+    # X_test = np.array([[1, 1, 72, 10]]) # make them taller
+    # y_pred = rf.predict(X_test)
+    # print("pregnant female in male height range", X_test, "predicts", y_pred)
+    #
+    # fig, ax = plt.subplots(1, 1, figsize=figsize)
+    # ice = predict_ice(rf, X, 'education', 'weight')
+    # plot_ice(ice, 'education', 'weight', ax=ax, yrange=(-12, 0), min_y_shifted_to_zero=True)
+    # ax.set_xlim(10,18)
+    # ax.set_xticks([10,12,14,16,18])
+    # ax.set_title("FPD/ICE", fontsize=10)
+    # savefig(f"education_vs_weight_pdp")
 
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
-    ice = predict_ice(rf, X, 'education', 'weight')
-    plot_ice(ice, 'education', 'weight', ax=ax, yrange=(-12, 0), min_y_shifted_to_zero=True)
-    ax.set_xlim(10,18)
-    ax.set_xticks([10,12,14,16,18])
-    ax.set_title("FPD/ICE", fontsize=10)
-    savefig(f"education_vs_weight_pdp")
-
-    fig, ax = plt.subplots(1, 1, figsize=(3.5, 3.2))
+    fig, ax = plt.subplots(1, 1, figsize=(2.4, 2.2))
     ice = predict_ice(rf, X, 'height', 'weight')
     plot_ice(ice, 'height', 'weight', ax=ax, pdp_linewidth=2, yrange=(100, 250),
              min_y_shifted_to_zero=False)
-    ax.set_xlabel("height\n(a)", fontsize=12)
+    ax.set_xlabel("height\n(a)", fontsize=10)
+    ax.set_ylabel("weight", fontsize=10)
     ax.set_title("FPD/ICE", fontsize=10)
     ax.set_xticks([60,65,70,75])
     savefig(f"height_vs_weight_pdp")
+
+    return
 
     fig, ax = plt.subplots(1, 1, figsize=(1.3,2))
     ice = predict_catice(rf, X, 'sex', 'weight')
@@ -892,9 +895,15 @@ def shap_weight(feature_perturbation, twin=False):
     if feature_perturbation=='interventional':
         explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100), feature_perturbation='interventional')
         xlabel = "height\n(c)"
+        ylabel = None
+        yticks = []
+        figsize = (2.2, 2.2)
     else:
         explainer = shap.TreeExplainer(rf, feature_perturbation='tree_path_dependent')
         xlabel = "height\n(b)"
+        ylabel = "SHAP height"
+        yticks = [-75, -60, -40, -20, 0, 20, 40, 60, 75]
+        figsize = (2.6, 2.2)
     shap_sample = X.sample(shap_test_size, replace=False)
     shap_values = explainer.shap_values(shap_sample, check_additivity=False)
 
@@ -906,7 +915,7 @@ def shap_weight(feature_perturbation, twin=False):
     print("len pdpy", len(pdpy))
 
     GREY = '#444443'
-    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
 
     shap.dependence_plot("height", shap_values, shap_sample,
                          interaction_index=None, ax=ax, dot_size=5,
@@ -918,12 +927,12 @@ def shap_weight(feature_perturbation, twin=False):
     ax.spines['right'].set_linewidth(.5)
     ax.spines['top'].set_linewidth(.5)
 
-    ax.set_ylabel("Height (SHAP values)", fontsize=12)
-    ax.set_xlabel(xlabel, fontsize=12)
+    ax.set_ylabel(ylabel, fontsize=10, labelpad=0)
+    ax.set_xlabel(xlabel, fontsize=10)
     ax.tick_params(axis='both', which='major', labelsize=10)
 
     ax.plot([70,70], [-75,75], '--', lw=.6, color=GREY)
-    ax.text(69.8,60, "Max female height", horizontalalignment='right',
+    ax.text(69.8,60, "Max female", horizontalalignment='right',
             fontsize=9)
 
     leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored = \
@@ -932,9 +941,9 @@ def shap_weight(feature_perturbation, twin=False):
     ax.set_ylim(-77,75)
     # ax.set_xlim(min(pdpx), max(pdpx))
     ax.set_xticks([60,65,70,75])
-    ax.set_yticks([-75,-60,-40,-20,0,20,40,60,75])
+    ax.set_yticks(yticks)
 
-    ax.set_title(f"SHAP {feature_perturbation}", fontsize=12)
+    ax.set_title(f"SHAP {feature_perturbation}", fontsize=10)
     # ax.set_ylim(-40,70)
 
     print(min(pdpx), max(pdpx))
@@ -951,11 +960,11 @@ def shap_weight(feature_perturbation, twin=False):
         ax2.set_ylim(min(pdpy)-5, max(pdpy)+5)
         ax2.set_xticks([60,65,70,75])
         ax2.set_yticks([0,20,40,60,80,100,120,140,150])
-        ax2.set_ylabel("weight", fontsize=12)
+        # ax2.set_ylabel("weight", fontsize=12)
 
         ax2.plot(pdpx, pdpy, '.', markersize=1, c='k')
         # ax2.text(65,25, f"StratPD slope = {slope:.1f}")
-        ax2.annotate(f"StratPD (slope={slope:.1f})", (64.65,39), xytext=(66,18),
+        ax2.annotate(f"StratPD", (64.65,39), xytext=(66,18),
                      horizontalalignment='left',
                      arrowprops=dict(facecolor='black', width=.5, headwidth=5, headlength=5),
                      fontsize=9)
@@ -2234,15 +2243,17 @@ def ale_height():
     # df['f.values'] -= np.min(df['f.values'])
     print(df)
 
-    fig, ax = plt.subplots(1, 1, figsize=(3.5,3.2))
-    ax.plot(df['x.values'],df['f.values'],'.',color='k',markersize=3)
+    fig, ax = plt.subplots(1, 1, figsize=(2.4, 2.2))
+    ax.plot(df['x.values'],df['f.values'],'.',color='k',markersize=1)
     # ax.set_ylim(-5,150)
     ax.set_ylim(-65,90)
     # ax.set_yticks([0,20,40,60,80,100,120,140,150])
-    ax.set_title("ALE", fontsize=13)
-    ax.set_ylabel("Weight", fontsize=12)
-    ax.set_xlabel("Height\n(d)", fontsize=12)
+    ax.set_title("ALE", fontsize=10)
+    ax.set_ylabel("Weight", fontsize=10, labelpad=0)
+    ax.set_xlabel("Height\n(d)", fontsize=10)
     ax.set_xticks([60,65,70,75])
+    ax.set_yticks([-75, -60, -40, -20, 0, 20, 40, 60, 75])
+
     ax.tick_params(axis='both', which='major', labelsize=10)
     # ax.spines['right'].set_visible(False)
     # ax.spines['top'].set_visible(False)
@@ -2431,15 +2442,15 @@ if __name__ == '__main__':
     # interactions()
     # unsup_yearmade()
     # MachineHours()
-    yearmade()
+    # yearmade()
     # rent()
     # rent_ntrees()
     # unsup_rent()
     # unsup_boston()
     # weight()
     # shap_pregnant()
-    # shap_weight(feature_perturbation='tree_path_dependent', twin=True) # more biased but faster
-    # shap_weight(feature_perturbation='interventional', twin=True) # takes 04:45 minutes
+    shap_weight(feature_perturbation='tree_path_dependent', twin=True) # more biased but faster
+    shap_weight(feature_perturbation='interventional', twin=True) # takes 04:45 minutes
     # weight_ntrees()
     # unsup_weight()
     # meta_weight()

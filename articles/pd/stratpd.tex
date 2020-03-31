@@ -95,8 +95,8 @@ The first relates to their ability to tease apart the effect of codependent feat
 \begin{figure}
 \begin{center}
 \includegraphics[scale=0.51]{images/bathrooms_vs_price.pdf}\vspace{-3mm}
-\caption{\small Meaningfully different results from a single partial dependence technique, FPD/ICE, applied to the same data but different models. Plots of number of bathrooms versus rent price using New York City apartment rent data \cite{rent} with $n=10,000$ of \textasciitilde50k. (a) marginal plot, (b) plot derived from random forest, (c)  plot derived from gradient boosted machine, and (d) plot derived from ordinary least squares regression. Hyper parameters were tuned using 5-fold cross validation grid search over several hyper parameters. Keras 
-\spd{} gives a plausible roughly linear result. \vspace{-7mm}}
+\caption{\small Meaningfully different results from a single partial dependence technique, FPD/ICE, applied to the same data but different models. Plots of number of bathrooms versus rent price using New York City apartment rent data \cite{rent} with $n=10,000$ of \textasciitilde50k. (a) marginal plot, (b) plot derived from random forest, (c)  plot derived from gradient boosted machine, and (d) plot derived from ordinary least squares regression. Hyper parameters were tuned using 5-fold cross validation grid search over several hyper parameters. \todo{Keras}.
+\spd{} gives a plausible roughly linear result. $R^2$ were computed on 20\% validation sets.\vspace{-7mm}}
 \label{fig:baths_price}
 \end{center}
 \end{figure}
@@ -199,7 +199,7 @@ Another related technique that integrates over partial derivatives to measure $x
 \begin{figure}[!htbp]
 \begin{center}
 \includegraphics[scale=.4]{images/partitioning.pdf}\vspace{-3mm}
-\caption{\small Comparison of \spd, \cspd{} and ALE for $p=2$ with continuous $x_2$ and continuous $x_1$ in (a), (b) and  categorical $x_1$ in (c), (d).  Vertical dashed lines are ALE bin edges and horizontal dashed lines are regions partitioned by a decision tree fit to (\Xnj, ${\bf y}$). Whereas ALE shifts $x_1$ observations to bin edges holding $x_2$ exactly constant (and asks for predictions at those points), \spd{} assumes $x_2$ values are the same and using known $y$ values. The small wedges on $x_1$ axis indicate partial dependence curve points.  The shades of green and blue indicate $y$ values. The leftmost two observations in (a) and the lowermost observation in (c) are ignored as minor differences cannot be computed.}
+\caption{\small Comparison of \spd, \cspd{} and ALE for $p=2$ with continuous $x_2$ and continuous $x_1$ in (a), (b) and  categorical $x_1$ in (c), (d).  Vertical dashed lines are ALE bin edges and horizontal dashed lines are regions partitioned by a decision tree fit to (\Xnj, ${\bf y}$). Whereas ALE shifts $x_1$ observations to bin edges holding $x_2$ exactly constant (and asks for predictions at those points), \spd{} assumes $x_2$ values are the same and uses known $y$ values. The small wedges on $x_1$ axis indicate partial dependence curve points.  The shades of green and blue indicate $y$ values. The leftmost two observations in (a) and the lowermost observation in (c) are ignored as finite differences are not defined.}
 \label{fig:partitioning}
 \end{center}
 \end{figure}
@@ -297,14 +297,15 @@ y & = &120 + 10(x_{height} - min(x_{height})) + 40x_{pregnant} - 1.5x_{education
 
 \begin{figure}[!htbp]
 \begin{center}
-\includegraphics[scale=0.35]{images/height_vs_weight_pdp.pdf}~~~~~~~~
-\includegraphics[scale=0.35]{images/weight_tree_path_dependent_shap.pdf}\\
-\includegraphics[scale=0.35]{images/weight_interventional_shap.pdf}~~
-\includegraphics[scale=0.34]{images/height_ale.pdf}\vspace{-2mm}
+\includegraphics[scale=0.46]{images/height_vs_weight_pdp.pdf}~\includegraphics[scale=0.46]{images/weight_tree_path_dependent_shap.pdf}
+\includegraphics[scale=0.46]{images/weight_interventional_shap.pdf}~
+\includegraphics[scale=0.46]{images/height_ale.pdf}\vspace{-2mm}
 \caption{\small Partial dependence plots of response body weight on feature $x_{height}$ using $n$=2000 synthetic observations from \eqref{eq:weight}. FPD and SHAP have ``kinks'' at the maximum female height. SHAP defines feature importance as the average SHAP value magnitude, which overemphasizes importance for heights below 70 inches here. The male/female ratio is 50/50, half of the women are pregnant, and pregnancy contributes 40 pounds. SHAP interrogated an RF tuned via 5-fold cross validation grid search (OOB $R^2$ 0.999) and explained all 2000 samples; the interventional case used 100 observations as background data.}
 \label{fig:heightweight}
 \end{center}
 \end{figure}
+
+Even for experts, explaining this behavior requires some thought, and one must distinguish between model artifacts and interesting phenomena. The discontinuity at the maximum female height location arises partially from the model having trouble extrapolating for extremely tall pregnant women. Consider one of the upper ICE lines in \figref{fig:heightweight}(a) for a pregnant woman. As the ICE line slides $x_{height}$ above the maximum height for a woman, the model leaves the support of the training data and predicts a {\em lower} weight as height increases. ALE's curve is straight because it focuses on local effects, demonstrating that the lack of sharp slope-10 lines for FPD and SHAP cannot be attributed simply to a poor choice of model.  
 
 \begin{figure}[!htbp]
 \begin{center}
@@ -317,7 +318,6 @@ y & = &120 + 10(x_{height} - min(x_{height})) + 40x_{pregnant} - 1.5x_{education
 \end{center}
 \end{figure}
 
-Even for experts, explaining this behavior requires some thought, and one must distinguish between model artifacts and interesting phenomena. The discontinuity at the maximum female height location arises partially from the model having trouble extrapolating for extremely tall pregnant women. Consider one of the upper ICE lines in \figref{fig:heightweight}(a) for a pregnant woman. As the ICE line slides $x_{height}$ above the maximum height for a woman, the model leaves the support of the training data and predicts a {\em lower} weight as height increases. ALE's curve is straight because it focuses on local effects, demonstrating that the lack of sharp slope-10 lines for FPD and SHAP cannot be attributed simply to a poor choice of model.  
 
 SHAP also defines $x_j$ feature importance as the average magnitude of the $x_j$ SHAP values, which introduces a paradox.  The spread of the SHAP values alerts users to variable interactions, but allows contributions from other variables to leak in, thus, potentially leading to less precise estimates of $x_{height}$'s importance.
 
