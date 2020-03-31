@@ -9,7 +9,9 @@ import matplotlib as mpl
 import tensorflow as tf
 import datetime
 
-from keras import models, layers, callbacks, optimizers, regularizers
+#import keras
+import tensorflow as tf
+from tensorflow.keras import models, layers, callbacks, optimizers, regularizers
 
 np.random.seed(1)  # pick seed for reproducible article images
 
@@ -27,6 +29,8 @@ def load_rent(n:int=None, clean_prices=True):
     y = df['price']
     return X, y
 
+print("Tensorflow version: "+tf.__version__)
+#print("Keras version: "+keras.__version__)
 
 X_raw, y_raw = load_rent(n=10_000)
 
@@ -64,7 +68,7 @@ model.add(layers.Dense(1))
 #opt = optimizers.SGD(lr=0.01)
 opt = optimizers.Adam(lr=0.1)
 
-model.compile(loss='mean_squared_error', optimizer=opt, metrics=['mae'])
+model.compile(loss='mean_squared_error', optimizer=opt, metrics=['mae']) # TODO: try optimizer='rmsprop'
 # model.compile(loss='mean_absolute_error', optimizer=opt, metrics=['mae'])
 # model.compile(loss='mean_absolute_percentage_error', optimizer=opt, metrics=['mae'])
 
