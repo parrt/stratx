@@ -45,9 +45,9 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.2)
 
 model = models.Sequential()
 layer1 = 500
-layer2 = 500
-layer3 = 500
-batch_size = 200
+layer2 = 300
+layer3 = 300
+batch_size = 1000
 dropout = 0.5
 model.add(layers.Dense(layer1, input_dim=X.shape[1], activation='relu'))
 model.add(layers.BatchNormalization())
@@ -61,7 +61,7 @@ model.add(layers.Dense(layer3, activation='relu'))
 model.add(layers.BatchNormalization())
 model.add(layers.Dropout(dropout))
 
-model.add(layers.Dense(1))
+model.add(layers.Dense(1, activation='linear'))
 
 #learning_rate=1e-2 #DEFAULT
 # SGB gets NaNs?
@@ -82,7 +82,7 @@ tensorboard_callback = callbacks.TensorBoard(log_dir=log_dir,
 
 history = model.fit(X_train, y_train,
                     #epochs=1000,
-                    epochs=600,
+                    epochs=500,
 #                    validation_split=0.2,
                     validation_data=(X_test, y_test),
                     batch_size=batch_size,
