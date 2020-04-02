@@ -325,15 +325,47 @@ def rent():
     # df_rent = X.copy()
     # df_rent['price'] = y
 
+    np.random.seed(1)
+
     df = pd.read_csv("rent10k.csv")
     X = df.drop('price', axis=1)
     y = df['price']
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.2)
 
-    # plot_stratpd(X, y, 'longitude', 'price', n_trials=10, show_all_pdp=True)
-    plot_stratpd(X, y, 'latitude', 'price', n_trials=10,
-                 min_slopes_per_x=20,
-                 show_all_pdp=True,
-                 yrange=(-300,300))
+    # tuned_parameters = {'n_estimators': [400, 450, 500, 600, 1000],
+    #                     'learning_rate': [0.008, 0.01, 0.02, 0.05, 0.08, 0.1, 0.11],
+    #                     'max_depth': [3, 4, 5, 6, 7, 8, 9]}
+    # grid = GridSearchCV(
+    #     xgb.XGBRegressor(), tuned_parameters, scoring='r2',
+    #     cv=5,
+    #     n_jobs=-1,
+    #     verbose=2
+    # )
+    # grid.fit(X, y)  # does CV on entire data set to tune
+    # b = grid.best_estimator_
+    # print("XGB best:", grid.best_params_)
+
+    # XGB best: {'learning_rate': 0.11, 'max_depth': 6, 'n_estimators': 1000}
+    # XGB train R^2 0.9834399795800324
+    # XGB validation R^2 0.8244958014380593
+
+    b = xgb.XGBRegressor(n_estimators=1000,
+                         max_depth=6,
+                         learning_rate=.11,
+                         verbose=2,
+                         n_jobs=8)
+
+    b.fit(X_train, y_train)
+    xgb_score = b.score(X_train, y_train)
+    print("XGB train R^2", xgb_score)
+    xgb_score = b.score(X_test, y_test)
+    print("XGB validation R^2", xgb_score)
+
+    # # plot_stratpd(X, y, 'longitude', 'price', n_trials=10, show_all_pdp=True)
+    # plot_stratpd(X, y, 'latitude', 'price', n_trials=10,
+    #              min_slopes_per_x=20,
+    #              show_all_pdp=True,
+    #              yrange=(-300,300))
     plt.show()
 
 

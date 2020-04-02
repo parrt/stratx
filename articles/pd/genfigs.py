@@ -149,59 +149,64 @@ def rent():
     colname = 'bathrooms'
 
     TUNE_RF = False
-    # TUNE_SVM = False
     TUNE_XGB = False
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
     if TUNE_RF:
-        rf, bestparams = tune_RF(X, y)
+        rf, bestparams = tune_RF(X, y)   # does CV on entire data set to tune
         # bedrooms
         # RF best: {'max_features': 0.3, 'min_samples_leaf': 1, 'n_estimators': 125}
         # validation R^2 0.7873724127323822
         # bathrooms
-        # RF best: {'max_features': 0.3, 'min_samples_leaf': 1, 'n_estimators': 150}
-        # validation R^2 0.7797272189776407
+        # RF best: {'max_features': 0.3, 'min_samples_leaf': 1, 'n_estimators': 200}
+        # validation R^2 0.8066593395345907
     else:
-        rf = RandomForestRegressor(n_estimators=150, min_samples_leaf=1, max_features=.3,
-                                   oob_score=True)
-        rf.fit(X, y) # Use full data set for plotting
-        print("RF OOB R^2", rf.oob_score_)
+        rf = RandomForestRegressor(n_estimators=200, min_samples_leaf=1, max_features=.3,
+                                   oob_score=True, n_jobs=-1)
+    rf.fit(X_train, y_train) # Use training set for plotting
+    print("RF OOB R^2", rf.oob_score_)
+    rf_score = rf.score(X_test, y_test)
+    print("RF validation R^2", rf_score)
 
     if TUNE_XGB:
-        tuned_parameters = {'n_estimators': [50, 100, 150, 200, 250],
-                            'max_depth': [3, 5, 7, 9]}
+        tuned_parameters = {'n_estimators': [400, 450, 500, 600, 1000],
+                            'learning_rate': [0.008, 0.01, 0.02, 0.05, 0.08, 0.1, 0.11],
+                            'max_depth': [3, 4, 5, 6, 7, 8, 9]}
         grid = GridSearchCV(
             xgb.XGBRegressor(), tuned_parameters, scoring='r2',
             cv=5,
-            n_jobs=-1
-            # verbose=2
+            n_jobs=-1,
+            verbose=2
         )
-        grid.fit(X, y)  # does CV on entire data set
-        b = grid.best_estimator_
+        grid.fit(X, y)  # does CV on entire data set to tune
         print("XGB best:", grid.best_params_)
-        b.fit(X_train, y_train)
-        xgb_score = b.score(X_test, y_test)
-        print("XGB validation R^2", xgb_score)
+        b = grid.best_estimator_
         # bedrooms
         # XGB best: {'max_depth': 7, 'n_estimators': 250}
         # XGB validation R^2 0.7945797751555217
         # bathrooms
-        # XGB best: {'max_depth': 9, 'n_estimators': 250}
-        # XGB validation R^2 0.7907897088836073
+        # XGB best: {'learning_rate': 0.11, 'max_depth': 6, 'n_estimators': 1000}
+        # XGB train R^2 0.9834399795800324
+        # XGB validation R^2 0.8244958014380593
     else:
-        b = xgb.XGBRegressor(n_estimators=250, max_depth=9)
-        b.fit(X_train, y_train)
-        xgb_score = b.score(X_test, y_test)
-        print("XGB validation R^2", xgb_score)
-        b.fit(X, y)  # Use full data set for plotting
+        b = xgb.XGBRegressor(n_estimators=1000,
+                             max_depth=6,
+                             learning_rate=.11,
+                             verbose=2,
+                             n_jobs=8)
+
+    b.fit(X_train, y_train)
+    xgb_score = b.score(X_test, y_test)
+    print("XGB validation R^2", xgb_score)
 
     lm = LinearRegression()
     lm.fit(X_train, y_train)
-    # OLS validation R^2 0.6529604563013247
     lm_score = lm.score(X_test, y_test)
     print("OLS validation R^2", lm_score)
     lm.fit(X, y)
+
+    model, r2_keras = rent_deep_learning_model(X_train, y_train, X_test, y_test)
 
     fig, axes = plt.subplots(1, 6, figsize=(10, 1.8),
                              gridspec_kw = {'wspace':0.15})
@@ -220,7 +225,7 @@ def rent():
     axes[0].set_title("(a) Marginal", fontsize=10)
 
     axes[1].set_title("(b) RF", fontsize=10)
-    axes[1].text(2,8000, f"OOB $R^2=${rf.oob_score_:.3f}", horizontalalignment='center', fontsize=9)
+    axes[1].text(2,8000, f"$R^2=${rf_score:.3f}", horizontalalignment='center', fontsize=9)
 
     axes[2].set_title("(c) XGBoost", fontsize=10)
     axes[2].text(2,8000, f"$R^2=${xgb_score:.3f}", horizontalalignment='center', fontsize=9)
@@ -229,7 +234,7 @@ def rent():
     axes[3].text(2,8000, f"$R^2=${lm_score:.3f}", horizontalalignment='center', fontsize=9)
 
     axes[4].set_title("(e) Keras", fontsize=10)
-    axes[4].text(2,8000, f"$R^2=${xgb_score:.3f}", horizontalalignment='center', fontsize=9)
+    axes[4].text(2,8000, f"$R^2=${r2_keras:.3f}", horizontalalignment='center', fontsize=9)
 
     axes[5].set_title("(f) StratPD", fontsize=10)
 
@@ -252,15 +257,14 @@ def rent():
     ice = predict_ice(lm, X, colname, 'price', numx=30, nlines=100)
     plot_ice(ice, colname, 'price', alpha=.3, ax=axes[3], show_ylabel=False)
 
-    # model = rent_deep_learning_model(X, y)
-    # scaler = StandardScaler()
-    # X_ = pd.DataFrame(scaler.fit_transform(X), columns=X.columns)
+    scaler = StandardScaler()
+    X_train_ = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns)
     # y_pred = model.predict(X_)
     # print("Keras training R^2", r2_score(y, y_pred)) # y_test in y
-    # ice = predict_ice(model, X_, colname, 'price', numx=30, nlines=100)
-    # # replace normalized unique X with unnormalized
-    # ice.iloc[0, :] = np.linspace(np.min(X[colname]), np.max(X[colname]), 30, endpoint=True)
-    # plot_ice(ice, colname, 'price', alpha=.3, ax=axes[4], show_ylabel=True)
+    ice = predict_ice(model, X_train_, colname, 'price', numx=30, nlines=100)
+    # replace normalized unique X with unnormalized
+    ice.iloc[0, :] = np.linspace(np.min(X_train[colname]), np.max(X_train[colname]), 30, endpoint=True)
+    plot_ice(ice, colname, 'price', alpha=.3, ax=axes[4], show_ylabel=True)
 
     pdpx, pdpy, ignored = \
         plot_stratpd(X, y, colname, 'price', ax=axes[5],
@@ -291,10 +295,10 @@ def tune_RF(X, y, verbose=2):
     grid.fit(X, y)  # does CV on entire data set
     rf = grid.best_estimator_
     print("RF best:", grid.best_params_)
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-    rf.fit(X_train, y_train)
-    print("validation R^2", rf.score(X_test, y_test))
+    #
+    # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    # rf.fit(X_train, y_train)
+    # print("validation R^2", rf.score(X_test, y_test))
     return rf, grid.best_params_
 
 
@@ -2298,18 +2302,14 @@ def ale_pregnant():
     savefig('pregnant_2_ale')
 
 
-def rent_deep_learning_model(X_raw=None, y_raw=None):
+def rent_deep_learning_model(X_train, y_train, X_test, y_test):
     np.random.seed(1)  # pick seed for reproducible article images
-    from keras import models, layers, callbacks, optimizers
-
-    if X_raw is None or y_raw is None:
-        X_raw,y_raw = load_rent(n=10_000)
-
-    X, y = X_raw.copy(), y_raw.copy()
+    from tensorflow.keras import models, layers, callbacks, optimizers
 
     # Normalize data
     scaler = StandardScaler()
-    X = scaler.fit_transform(X)
+    X_train = scaler.fit_transform(X_train)
+    X_test = scaler.fit_transform(X_test)
     # for colname in X.columns:
     #     m = np.mean(X[colname])
     #     sd = np.std(X[colname])
@@ -2318,44 +2318,41 @@ def rent_deep_learning_model(X_raw=None, y_raw=None):
     #y = (y - np.mean(y))/np.std(y)
 
     model = models.Sequential()
-    layer1 = 2000
-    layer2 = 2000
-    layer3 = 2000
-    # layer4 = 2000
-    layer5 = 256
-    batch_size = 500
-    model.add(layers.Dense(layer1, input_dim=X.shape[1], activation='relu'))
-    model.add(layers.Dense(layer2, activation='relu'))
-    model.add(layers.Dense(layer3, activation='relu'))
-    # model.add(layers.Dense(layer4, activation='relu'))
-    model.add(layers.Dense(1))
+    layer1 = 100
+    batch_size = 1000
+    dropout = 0.3
+    model.add(layers.Dense(layer1, input_dim=X_train.shape[1], activation='relu'))
+    model.add(layers.BatchNormalization())
+    model.add(layers.Dropout(dropout))
+    model.add(layers.Dense(1, activation='linear'))
 
-    # model = models.Sequential()
-    # layer1 = 256
-    # layer2 = 256
-    # layer3 = 64
-    # layer4 = 256
-    # layer5 = 256
-    # batch_size = 200
-    # model.add(layers.Dense(layer1, input_dim=X.shape[1], activation='relu'))
-    # model.add(layers.Dense(layer2, activation='relu'))
-    # model.add(layers.Dense(layer3, activation='relu'))
-    # model.add(layers.Dense(layer4, activation='relu'))
-    # model.add(layers.Dense(layer5, activation='relu'))
-    # model.add(layers.Dense(1))
+    # learning_rate=1e-2 #DEFAULT
+    opt = optimizers.SGD()  # SGB gets NaNs?
+    # opt = optimizers.RMSprop(lr=0.1)
+    opt = optimizers.Adam(lr=0.3)
 
-    opt = optimizers.Adam()#lr=1e-3, decay=1e-3 / 200)
     model.compile(loss='mean_squared_error', optimizer=opt, metrics=['mae'])
-    # model.compile(loss='mean_absolute_error', optimizer=opt, metrics=['mae'])
-    # model.compile(loss='mean_absolute_percentage_error', optimizer=opt, metrics=['mae'])
 
     callback = callbacks.EarlyStopping(monitor='val_loss', patience=10)
-    history = model.fit(X, y,
-                        epochs=100,
-                        validation_split=0.2,
+    history = model.fit(X_train, y_train,
+                        # epochs=1000,
+                        epochs=500,
+                        # validation_split=0.2,
+                        validation_data=(X_test, y_test),
                         batch_size=batch_size,
-                        # callbacks=[callback]
+                        # callbacks=[tensorboard_callback],
+                        verbose=1
                         )
+
+    y_pred = model.predict(X_train)
+    # y_pred *= np.std(y_raw)  # undo normalization on y
+    # y_pred += np.mean(y_raw)
+    r2 = r2_score(y_train, y_pred)
+    print("Keras training R^2", r2)
+
+    y_pred = model.predict(X_test)
+    r2 = r2_score(y_test, y_pred)
+    print("Keras validation R^2", r2)
 
     if False: # Show training results
         y_pred = model.predict(X)
@@ -2372,7 +2369,7 @@ def rent_deep_learning_model(X_raw=None, y_raw=None):
         plt.legend()
         plt.show()
 
-    return model
+    return model, r2
 
 
 def partitioning():
@@ -2443,14 +2440,14 @@ if __name__ == '__main__':
     # unsup_yearmade()
     # MachineHours()
     # yearmade()
-    # rent()
+    rent()
     # rent_ntrees()
     # unsup_rent()
     # unsup_boston()
     # weight()
     # shap_pregnant()
-    shap_weight(feature_perturbation='tree_path_dependent', twin=True) # more biased but faster
-    shap_weight(feature_perturbation='interventional', twin=True) # takes 04:45 minutes
+    # shap_weight(feature_perturbation='tree_path_dependent', twin=True) # more biased but faster
+    # shap_weight(feature_perturbation='interventional', twin=True) # takes 04:45 minutes
     # weight_ntrees()
     # unsup_weight()
     # meta_weight()

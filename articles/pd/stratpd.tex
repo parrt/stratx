@@ -96,7 +96,7 @@ The first relates to their ability to tease apart the effect of codependent feat
 \begin{center}
 \includegraphics[scale=0.51]{images/bathrooms_vs_price.pdf}\vspace{-3mm}
 \caption{\small Meaningfully different results from a single partial dependence technique, FPD/ICE, applied to the same data but different models. Plots of number of bathrooms versus rent price using New York City apartment rent data \cite{rent} with $n=10,000$ of \textasciitilde50k. (a) marginal plot, (b) plot derived from random forest, (c)  plot derived from gradient boosted machine, and (d) plot derived from ordinary least squares regression. Hyper parameters were tuned using 5-fold cross validation grid search over several hyper parameters. \todo{Keras}.
-\spd{} gives a plausible roughly linear result. $R^2$ were computed on 20\% validation sets.\vspace{-7mm}}
+\spd{} gives a plausible roughly linear result. $R^2$ were computed on 20\% validation sets but curves show training set data.\vspace{-7mm}}
 \label{fig:baths_price}
 \end{center}
 \end{figure}
@@ -232,7 +232,7 @@ $\Ex[ \phi_j(\hat{f},x) | {\bf X}_j = z] = FPD_j(x) - \bar{y}$ if features indep
 % ------------------------------------------------------------------------------------------------------------------------------------
 \section{Experimental results}\label{sec:experiments} 
 
-In this section, we demonstrate experimentally that \spd{} and \cspd{} compute accurate partial dependence curves for synthetic data and plausible results for a real data set. Experiments also provide evidence that existing model-based techniques can provide meaningfully-biased curves. We begin by comparing the partial dependence curves from popular techniques on synthetic data with complex interactions.\footnote{All simulations in this section were run on a 4.0 Ghz 32G RAM machine running OS X 10.13.6 with SHAP 0.34, scikit-learn 0.21.3, XGBoost 0.90, and Python 3.7.4; ALEPlot 1.1 and R 3.6.3.}
+In this section, we demonstrate experimentally that \spd{} and \cspd{} compute accurate partial dependence curves for synthetic data and plausible results for a real data set. Experiments also provide evidence that existing model-based techniques can provide meaningfully-biased curves. We begin by comparing the partial dependence curves from popular techniques on synthetic data with complex interactions.\footnote{All simulations in this section were run on a 4.0 Ghz 32G RAM machine running OS X 10.13.6 with SHAP 0.34, scikit-learn 0.21.3, XGBoost 0.90, TensorFlow 2.1.0, and Python 3.7.4; ALEPlot 1.1 and R 3.6.3.}
 
 \begin{figure}[!htbp]
 \begin{center}

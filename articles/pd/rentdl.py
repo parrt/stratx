@@ -39,36 +39,42 @@ X, y = X_raw.copy(), y_raw.copy()
 # Normalize data
 scaler = StandardScaler()
 X = scaler.fit_transform(X)
+
 # y = (y - np.mean(y))/np.std(y)
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.2)
 
 model = models.Sequential()
-layer1 = 500
-layer2 = 300
-layer3 = 300
+layer1 = 100
+layer2 = 100
+layer3 = 100
+# layer4 = 100
 batch_size = 1000
-dropout = 0.5
+dropout = 0.3
 model.add(layers.Dense(layer1, input_dim=X.shape[1], activation='relu'))
 model.add(layers.BatchNormalization())
 model.add(layers.Dropout(dropout))
 
-model.add(layers.Dense(layer2, activation='relu'))
-model.add(layers.BatchNormalization())
-model.add(layers.Dropout(dropout))
+# model.add(layers.Dense(layer2, activation='relu'))
+# model.add(layers.BatchNormalization())
+# model.add(layers.Dropout(dropout))
 
-model.add(layers.Dense(layer3, activation='relu'))
-model.add(layers.BatchNormalization())
-model.add(layers.Dropout(dropout))
+# model.add(layers.Dense(layer3, activation='relu'))
+# model.add(layers.BatchNormalization())
+# model.add(layers.Dropout(dropout))
+
+# model.add(layers.Dense(layer4, activation='relu'))
+# model.add(layers.BatchNormalization())
+# model.add(layers.Dropout(dropout))
 
 model.add(layers.Dense(1, activation='linear'))
 
 #learning_rate=1e-2 #DEFAULT
-# SGB gets NaNs?
-#opt = optimizers.SGD(lr=0.01)
-opt = optimizers.Adam(lr=0.1)
+opt = optimizers.SGD() # SGB gets NaNs?
+# opt = optimizers.RMSprop(lr=0.1)
+opt = optimizers.Adam(lr=0.3)
 
-model.compile(loss='mean_squared_error', optimizer=opt, metrics=['mae']) # TODO: try optimizer='rmsprop'
+model.compile(loss='mean_squared_error', optimizer=opt, metrics=['mae'])
 # model.compile(loss='mean_absolute_error', optimizer=opt, metrics=['mae'])
 # model.compile(loss='mean_absolute_percentage_error', optimizer=opt, metrics=['mae'])
 
@@ -81,9 +87,9 @@ tensorboard_callback = callbacks.TensorBoard(log_dir=log_dir,
                                              )
 
 history = model.fit(X_train, y_train,
-                    #epochs=1000,
+                    # epochs=1000,
                     epochs=500,
-#                    validation_split=0.2,
+                    # validation_split=0.2,
                     validation_data=(X_test, y_test),
                     batch_size=batch_size,
                     callbacks=[tensorboard_callback],
