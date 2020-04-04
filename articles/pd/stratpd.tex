@@ -1,7 +1,8 @@
-\documentclass[smallextended]{svjour3}       % onecolumn (second format)
+\documentclass[]{article} % for PREPRINT
 \usepackage{natbib}
 
-\smartqed  % flush right qed marks, e.g. at end of proof
+%\documentclass[smallextended]{svjour3}       % onecolumn (second format)
+%\smartqed  % flush right qed marks, e.g. at end of proof
 
 \usepackage[utf8]{inputenc} % allow utf-8 input
 \usepackage[T1]{fontenc}    % use 8-bit T1 fonts
@@ -74,8 +75,17 @@
 
 \title{Technical Report: Nonparametric Partial Dependence}
 
-\author{Terence Parr \and James D. Wilson}
+\author{Terence Parr\\
+  University of San Francisco\\
+  {\tt\small parrt@cs.usfca.edu}
+  \and
+  James D. Wilson \\
+  University of San Francisco\\
+  {\tt\small jdwilson4@usfca.edu} 
+}
 
+\cut{ % for  Springer Verlag
+\author{Terence Parr \and James D. Wilson}
 \institute{Terence Parr \at
   University of San Francisco\\
   \email{{\tt parrt@cs.usfca.edu}}
@@ -84,8 +94,9 @@
   University of San Francisco\\
   \email{{\tt jdwilson4@usfca.edu}} 
 }
+}
 
-\journalname{Statistics and Computing}
+%\journalname{Statistics and Computing}
 
 \maketitle
 
@@ -135,7 +146,7 @@ In special circumstances, we know the precise effect of each feature $x_j$ on $y
 
 \begin{equation}\label{eq:pd}
 \text{\it PD}_j(z) = \int_{min(x_j)}^z \frac{\partial f}{\partial x_j} dx_j
-\end{equation}\vspace{-2mm}
+\end{equation}\vspace{-1mm}
 
 $\text{\it PD}_j(z)$ is the value contributed to $f$ by $x_j$ at $x_j = z$ and $\text{\it PD}_j(min(x_j))=0$. The advantages of this definition are that it does not depend on predictions from a fitted model and is insensitive to codependent features.  Although the underlining generator function is unknown, we can estimate its partial derivatives from the raw training data. ALE also derives partial dependence by estimating and integrating across partial derivatives (e.g., see Equation 7 in \citep{ALE}) but does so using local changes in fitted model predictions.
 
