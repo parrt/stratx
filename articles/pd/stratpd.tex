@@ -54,7 +54,7 @@
 \newcommand{\eg}{{\em e.g.}}
 \newcommand{\ith}{$i^{th}$}
 \newcommand{\cut}[1]{}
-\newcommand{\todo}[1]{{\bf\em TODO:} {{\color{red}{#1}}}}
+\newcommand{\todo}[1]{{{\color{red}{#1}}}}
 
 \newcommand{\spd}{\fontfamily{cmr}\textsc{\small StratPD}}
 \newcommand{\cspd}{\fontfamily{cmr}\textsc{\small CatStratPD}}
@@ -73,7 +73,7 @@
 
 \begin{document}
 
-\title{Technical Report: Nonparametric Partial Dependence}
+\title{Technical Report: Partial Dependence through Stratification}
 
 \author{Terence Parr\\
   University of San Francisco\\
@@ -133,14 +133,14 @@ Experts are often able to quickly recognize model artifacts, such as the  stairs
 
 An accurate mechanism to compute partial dependences that did not peer through fitted models would be most welcome.  Such partial dependence curves would be accessible to users, like business analysts, who lack the expertise to create suitable models. (One can imagine a spreadsheet plug-in that produced partial dependence curves.) A mechanism that did not rely on a user-provided model would also reduce the chance of plot misinterpretation due to model artifacts and could even help machine learning practitioners to choose appropriate models based upon relationships exposed in the data.
 
-In this paper, we propose a strategy, called {\textsc{strat}ified \textsc{p}artial \textsc{d}ependence} (\spd{}), that computes partial dependences directly from training data $({\bf X}, {\bf y})$, rather than through the predictions of a fitted model, and that does not presume mutually-independent features. As an example, \figref{fig:baths_price}(f) shows the partial dependence plot computed by \spd.  \spd{} operates very much like a ``model-free'' ALE, at least for numerical variables.  Our technique is also based upon the notion of an idealized partial dependence:  integration over the partial derivative of $y$ with respect to the variable of interest for the smooth function that generated $({\bf X}, {\bf y})$. As that function is unknown, we estimate the partial derivatives from the data non-parametrically.  Colloquially, the approach examines changes in $y$ across $x_j$ while holding \xnj{} constant or nearly constant (\xnj{} denotes all variables except $x_j$).  To hold \xnj{} constant, we use a single decision tree to partition feature space, a concept used by \citep{rfimp} and \citep{RFunsup} for conditional permutation importance and observation similarity measures, respectively.  Our second contribution, \cspd{}, computes partial dependence curves for categorical variables that, unlike existing techniques, does not assume adjacent category levels are similar. Both \spd{} and \cspd{} are quadratic in $n$, in the worst case (like FPD), though \spd{} behaves linearly on real data sets.  Our prototype is currently limited to regression, isolates only single-variable partial dependence, and cannot identify interaction effects (as ICE can).  The software is available via Python package {\tt stratx} with source at {\tt github}, including the code to regenerate images in this paper.
+In this paper, we propose a strategy, called {\textsc{strat}ified \textsc{p}artial \textsc{d}ependence} (\spd{}), that computes partial dependences directly from training data $({\bf X}, {\bf y})$, rather than through the predictions of a fitted model, and that does not presume mutually-independent features. As an example, \figref{fig:baths_price}(f) shows the partial dependence plot computed by \spd.  \spd{} operates very much like a ``model-free'' ALE, at least for numerical variables.  Our technique is also based upon the notion of an idealized partial dependence:  integration over the partial derivative of $y$ with respect to the variable of interest for the smooth function that generated $({\bf X}, {\bf y})$. As that function is unknown, we estimate the partial derivatives from the data non-parametrically.  Colloquially, the approach examines changes in $y$ across $x_j$ while holding \xnj{} constant or nearly constant (\xnj{} denotes all variables except $x_j$).  To hold \xnj{} constant, we use a single decision tree to partition feature space, a concept used by \citep{rfimp} and \citep{RFunsup} for conditional permutation importance and observation similarity measures, respectively.  Our second contribution, \cspd{}, computes partial dependence curves for categorical variables that, unlike existing techniques, does not assume adjacent category levels are similar. Both \spd{} and \cspd{} are quadratic in $n$, in the worst case (like FPD), though \spd{} behaves linearly on real data sets.  Our prototype is currently limited to regression, isolates only single-variable partial dependence, and cannot identify interaction effects (as ICE can).  The software is available via Python package {\tt stratx} with source at {\tt github/parrt/stratx}, including the code to regenerate images in this paper.
 
 We begin by describing the proposed stratification approach in \secref{sec:stratpd} then compare \spd{} to related (model-based) work in \secref{sec:related}. In \secref{sec:experiments}, we present partial dependence curves generated by \spd{} and \cspd{} on synthetic and real data sets, contrast the plots with those of existing methods, and use synthetic data to highlight possible bias in some model-based methods.
 
 % ------------------------------------------------------------------------------------------------------------------------------------
 \section{Partial dependence without model predictions}\label{sec:stratpd}
 
-In special circumstances, we know the precise effect of each feature $x_j$ on $y$.  Assume we are given training data pair ($\bf X, y$) where ${\bf X} = [x^{(1)}, \ldots, x^{(n)}]$ is an $n \times p$ matrix whose $p$ columns represent observed features and ${\bf y}$ is the $n \times 1$ vector of responses. For any smooth function $f:\mathbb{R}^{p} \rightarrow \mathbb{R}$ that precisely maps each $\xi$ vector to response $y^{(i)}$, ${y^{(i)}} = f(\xi)$, the partial derivative of $y$ with respect to $x_j$ gives the change in $y$ holding all other variables constant.  Integrating the partial derivative then gives the {\em idealized partial dependence}  of $y$ on $x_j$, the isolated contribution of $x_j$ to $y$:
+In special circumstances, we know the precise effect of each feature $x_j$ on response $y$.  Assume we are given training data pair ($\bf X, y$) where ${\bf X} = [x^{(1)}, \ldots, x^{(n)}]$ is an $n \times p$ matrix whose $p$ columns represent observed features and ${\bf y}$ is the $n \times 1$ vector of responses. For any smooth function $f:\mathbb{R}^{p} \rightarrow \mathbb{R}$ that precisely maps each $\xi$ row vector to response $y^{(i)}$, ${y^{(i)}} = f(\xi)$, the partial derivative of $y$ with respect to $x_j$ gives the change in $y$ holding all other variables constant.  Integrating the partial derivative then gives the {\em idealized partial dependence}  of $y$ on $x_j$, the isolated contribution of $x_j$ to $y$:
 
 \noindent {\bf Definition 1} The {\em idealized partial dependence} of $y$ on feature $x_j$ for continuous and smooth generator function $f:\mathbb{R}^{p} \rightarrow \mathbb{R}$ evaluated at $x_j = z$ is the cumulative sum up to $z$:\vspace{-1mm}
 
@@ -148,10 +148,9 @@ In special circumstances, we know the precise effect of each feature $x_j$ on $y
 \text{\it PD}_j(z) = \int_{min(x_j)}^z \frac{\partial f}{\partial x_j} dx_j
 \end{equation}\vspace{-1mm}
 
-$\text{\it PD}_j(z)$ is the value contributed to $f$ by $x_j$ at $x_j = z$ and $\text{\it PD}_j(min(x_j))=0$. The advantages of this definition are (1) that it does not depend on predictions from a fitted model and (2) is insensitive to codependent features.  Although the underlining generator function is unknown, we can estimate its partial derivatives from the raw training data. ALE also derives partial dependence by estimating and integrating across partial derivatives (e.g., see Equation 7 in \citep{ALE}) but does so using local changes in fitted model predictions.
+\noindent $\text{\it PD}_j(z)$ is the value contributed to $f$ by $x_j$ at $x_j = z$ and $\text{\it PD}_j(min(x_j))=0$. \todo{The underlying generator function is unknown, and so other approaches begin by estimating $f$ with a fitted model, $\hat{f}$. Instead, we estimate the partial derivatives of the true function, ${\partial f}/{\partial x_j}$, from the raw training data then integrate to obtain $PD_j$. ALE also derives partial dependence by estimating and integrating across partial derivatives (e.g., see Equation 7 in \citep{ALE}) but does so using local changes in predictions from $\hat{f}$ rather than $f$.}  The advantages of this $PD_j$ definition are that it ({\em i}) does not require a fitted model or its predictions and ({\em ii}) is insensitive to codependent features.  
 
-
-The key idea is to stratify \xnj{} feature space into disjoint regions of observations where all \xnj{} variables are approximately matched across the observations in that region. Within each \xnj{} region, any fluctuations in the response variable are likely due to the variable of interest, $x_j$.  \todo{Update: In the ideal case, the values for each \xnj{} variable within a region are identical and, because only $x_j$ is changing, $y$ changes should be attributed to $x_j$, noise, or irreducible error. (More on this shortly.)} Estimates of the partial derivative within a region are estimated discretely as the changes in $y$ values between unique and ordered $x_j$ positions:  $(\bar{y}^{(i+1)} - \bar{y}^{(i)})/(x_j^{(i+1)} - x_j^{(i)})$ for all $i$ in a region such that $x_j^{(i)}$ is unique and $\bar{y}^{(i)}$ is the average $y$ at unique $x_j^{(i)}$.  This amounts to performing piecewise linear regression through the region observations, one model per unique pair of $x_j$ values, and collecting the model $\beta_1$ coefficients to estimate partial derivatives. The overall partial derivative at $x_j=z$ is the average of all slopes, found in any region, whose range $[x_j^{(i)},x_j^{(i+1)})$ spans $z$. The partial dependence curve points are, therefore, often the result of two averaging operations, one within and one across regions, which tends to smooth the curve; e.g., see \figref{fig:interactions}(d) below.
+The key idea is to stratify \xnj{} feature space into disjoint regions of observations where all \xnj{} variables are approximately matched across the observations in that region. Within each \xnj{} region, any fluctuations in the response variable are likely due to the variable of interest, $x_j$.  In the ideal case, the values for each \xnj{} variable within a region are identical and, because only $x_j$ is changing, $y$ changes should be attributed to $x_j$, noise, or irreducible error. (More on this shortly.) Estimates of the partial derivative within a region are computed discretely as the changes in $y$ values between unique and ordered $x_j$ positions:  $(\bar{y}^{(i+1)} - \bar{y}^{(i)})/(x_j^{(i+1)} - x_j^{(i)})$ for all $i$ in a region such that $x_j^{(i)}$ is unique and $\bar{y}^{(i)}$ is the average $y$ at unique $x_j^{(i)}$.  This amounts to performing piecewise linear regression through the region observations, one model per unique pair of $x_j$ values, and collecting the model $\beta_1$ coefficients to estimate partial derivatives. The overall partial derivative at $x_j=z$ is the average of all slopes, found in any region, whose range $[x_j^{(i)},x_j^{(i+1)})$ spans $z$.  \todo{One could apply a nonparametric method to smooth through the discontinuities at $x_j$ points within a leaf, but this has not proven necessary in practice.}  The partial dependence curve points are often the result of two averaging operations, one within and one across regions, which tends to smooth the curve; e.g., see \figref{fig:interactions}(d) below. 
 
 Stratification occurs through the use of a decision tree fit to (\Xnj, $\bf y$), whose leaves aggregate observations with equal or similar \xnj{} features. The \xnj{} features can be numerical variables or label-encoded categorical variables (assigned a unique integer). \spd{} only uses the tree for the purpose of partitioning feature space and never uses predictions from any model. See \algref{alg:StratPD} for more details.
 
@@ -161,7 +160,7 @@ For the stratification approach to work, decision tree leaves must satisfactoril
 
 \spd{} uses another hyper parameter called {\tt\small min\_slopes\_per\_x} to ignore any partial derivatives estimated with too few observations.  Dropping uncertain partial derivatives greatly improves accuracy and stability. Partial dependences computed by integrating over local partial derivatives are highly sensitive to partial derivatives computed at the left edge of any $x_j$'s range because imprecision at the left edge affects the entire curve.  This presents a problem when there are few samples with $x_j$ values at the extreme left (see, for example, the $x_j$ histogram of \figref{fig:yearmade}(d)).  Fortunately, sensible defaults for \spd{} (10 observations and 5 slopes) work well in most cases and  were used to generate all plots in this paper.
 
-For categorical variables, \cspd{} uses the same stratification approach, but cannot apply  regression of $y$ to non-ordinal, categorical $x_j$. Instead, \cspd{} groups leaf observations by category and computes the average $y$ per category in each leaf, yielding $p$-vector $\bar{\bf y}$. Then,  within each leaf, it chooses a random reference category and subtracts that category's  average value from the leaf $\bar{\bf y}$ vector to get a vector of relative deltas between categories: $\Delta {\bf y}$ = $\bar{\bf y} - \bar{\bf y}_{\it refcat}$. The $\Delta  {\bf y}$ vectors from all leaves are then merged via averaging, weighted by the number of observations per category, to get the overall effect of each category on $y$.  The delta vectors for two leaves, $\Delta {\bf y}$ and $\Delta {\bf y}'$, can only be merged if there is at least one category in common.  \cspd{} initializes a running average vector to the first leaf's $\Delta  {\bf y}$ and then makes  passes over the remaining vectors, merging any vectors with a category in common with the running average vector.  Observations associated with any remaining, unmerged leaves must be ignored. \cspd{} uses a single hyper parameter {\tt\small min\_samples\_leaf} to control stratification. 
+For categorical explanatory variables, \cspd{} uses the same stratification approach, but cannot apply regression of $y$ to non-ordinal, categorical $x_j$. Instead, \cspd{} groups leaf observations by category and computes the average response per category in each leaf. Consider a single leaf and its  $p$-dimensional average response vector $\bar{\bf y}$. Then choose a random reference category and subtract that category's  average value from $\bar{\bf y}$ to get a vector of relative deltas between categories: $\Delta {\bf y}$ = $\bar{\bf y} - \bar{\bf y}_{\it refcat}$. The $\Delta  {\bf y}$ vectors from all leaves are then merged via averaging, weighted by the number of observations per category, to get the overall effect of each category on the response.  The delta vectors for two leaves, $\Delta {\bf y}$ and $\Delta {\bf y}'$, can only be merged if there is at least one category in common.  \cspd{} initializes a running average vector to an arbitrary starting leaf's $\Delta  {\bf y}$ and then makes multiple passes over the remaining vectors, merging any vectors with a category in common with the running average vector.  Observations associated with any remaining, unmerged leaves must be ignored. \cspd{} uses a single hyper parameter {\tt\small min\_samples\_leaf} to control stratification. 
 
 Stratification of high-cardinality categorical variables tends to create small groups of category subsets, which complicates the averaging process across groups. (Such $\Delta {\bf y}$ vectors are sparse and we use {\it NaN}s to represent missing values.) If both groups have the same reference category, merging is a simple matter of averaging the two delta vectors, where {\it mean}({\it z,NaN}) = {\it z}.  For delta vectors with different reference categories and at least one category in common, one vector is adjusted to use a randomly-selected reference category, $c$, in common: $\Delta {\bf y}' = \Delta {\bf y}' - \Delta {\bf y}_c' + \Delta {\bf y}_c$. That equation adjusts vector $\Delta {\bf y}'$ so $\Delta {\bf y}_c'=0$ then adds the corresponding value from $\Delta {\bf y}$ so $\Delta {\bf y}_c' = \Delta {\bf y}_c$, which renders the average of $\Delta {\bf y}$ and $\Delta {\bf y}'$ meaningful.  See \algref{alg:CatStratPD} for more details.
 
@@ -170,33 +169,23 @@ Stratification of high-cardinality categorical variables tends to create small g
 % ------------------------------------------------------------------------------------------------------------------------------------
 \section{Related work}\label{sec:related}
 
-\citet{PDP} defines the partial dependence of $\hat{f}$ on feature subsets, $S \subset F = \{1, 2, .., p\}$, as an expectation conditioned on the remaining variables:\vspace{-2mm}
+\todo{The mechanisms most closely related to \spd{} and \cspd{} are FPD, ICE, SHAP, and ALE, which all define partial dependence in terms of impact on estimated models, $\hat{f}$, rather than the unknown true function $f$. Let $x_S$ be the subset of features of interest where $S \subset F = \{1, 2, .., p\}$. \citet{PDP} defines the partial dependence as an expectation conditioned on the remaining variables:\vspace{-2mm}
 
 \begin{equation}
-{\it FPD}_S(x_S) = \Ex[\hat{f}(x_S,{\bf X}_{\slash S})] = \frac{1}{n} \sum_{i=1}^n \hat{f}(x_S, x_{\slash S}^{(i)})
-\end{equation}\vspace{-2mm}
+{\it FPD}_S(x_S) = \Ex[\hat{f}(x_S,{\bf X}_{\slash S})]
+\end{equation}\vspace{-3mm}
 
-\cut{
-\[
-{\it FPD}_j(x_j=z) = \Ex[\hat{f}(x_{j}=z,{\bf X}_{\slash j})] = \frac{1}{n} \sum_{i=1}^n \hat{f}(x_j=z, x_{\slash j}^{(i)})
-\]
-}
-
-\cut{
-\noindent FPD replaces ${\bf X}_j$ with $z$ then computes the average model output for the altered $x^{(i)}$.
-}
-
+\noindent where the expectation can be estimated by $\frac{1}{n} \sum_{i=1}^n \hat{f}(x_S, x_{\slash S}^{(i)})$.}
 % ICE 
-
 The Individual Conditional Expectation (ICE) plot \citep{ICE} estimates the partial dependence of the prediction $\hat{f}$ on $x_S$, or single variable $x_j$, across individual observations. ICE produces a curve from the fitted model over all values of $x_j$ while holding \xnj{} fixed: $\hat{f}^{(i)}_j = \widehat{f}(\{x_j^{(k)}\}_{k = 1}^n, x_{\slash j}^{(i)})$;  the FPD curve for  $x_j$ is the average over all $x_j$ ICE curves. The motivation for ICE is to identify variable interactions that average out in the FPD curve. 
 
 % SHAP
 
-The SHAP method from \citet{shap} has roots in {\em Shapley regression values} \citep{shapley-regression} and calculates the average marginal effect of adding $x_j$ to models trained on all possible  subsets of features:
+The SHAP method from \citet{shap} has roots in {\em Shapley regression values} \citep{shapley-regression} and calculates the average marginal effect of adding $x_j$ to models, \todo{$\hat{f}_S$}, trained on all possible subsets of features:
 \vspace{-1mm}
 
 \begin{equation}\label{eq:shap}
-\phi_j(\hat{f},{\bf x}) = \sum_{S \subseteq F \slash \{j\}}\
+\phi_j(\hat{f},x_F) = \sum_{S \subseteq F \slash \{j\}}\
 \frac{|S|!(|F|-|S|-1)!}{|F|!}\
  [ \hat{f}_{S \cup \{j\}}(x_{S \cup \{j\}}) - \hat{f}_S(x_S) ]
 \end{equation}\vspace{-1mm}
@@ -220,6 +209,10 @@ The goal of ALE \citep{ALE} is to overcome the bias in previous model-based tech
 
 Another related technique that integrates over partial derivatives to measure $x_j$ effects is called Integrated Gradients (IG) from \citet{intgrad}. Given a single input vector, $\bf x$, to a deep learning network, IG integrates over the loss function gradient at points along the path from a baseline vector, $\bf x'$, to $\bf x$. IG can be seen as computing the partial dependence of the loss function, rather than model output, $\hat{f}$, on the $x_j$ values in ${\bf x}$.
 
+\spd{} is like a ``model-free'' version of ALE in that \spd{} also defines partial dependence as the cumulative sum of partial derivatives, but we estimate derivatives using response values directly rather than $\hat{f}$ predictions.  An advantage to estimating partial dependence via fitted models is that $\hat{f}$ removes variability from the potentially noisy response values, $\bf y$. However, in practice, this requires expertise to choose and tune an appropriate model for a data set.  The fact that different models can lead to meaningfully different curves for the same data can lead to misinterpretation.  Also, expertise is often required to distinguish between model artifacts and interesting visual phenomena arising from the data.
+
+ALE partitions $x_j$ into bins then fixes \xnj{} as it shifts $x_j$ to bin edges to compute finite differences, as depicted in \figref{fig:partitioning}(b) for $p=2$. The wedges on the $x_1$ axis indicate the $x_1$ points of the computed partial dependence curve.  \spd{} partitions \xnj{} into regions of (hopefully) similar observations and computes finite differences between the average $y$ values at unique $x_j$ values in each region, as depicted in \figref{fig:partitioning}(a).  The leftmost two observations are ignored as there is no change in $x_1$ in that leaf. The shaded area illustrates that the partial derivative at any $x_j=z$ is the average of all derivatives spanning $z$ across \xnj{} regions.  \spd{} assumes all points within a region are identical in \xnj{}, effectively projecting points in \xnj{} space onto a hyperplane if they are not.  ALE shifts $x_j$ values in a small neighborhood and \spd{} depends on a suitable {\tt\small min\_samples\_leaf}  hyper parameter to prevent \xnj{} points in a regions from becoming too dissimilar.  \spd{} automatically generates more curve points in areas of high $x_j$ density, but ALE is more efficient.
+
 \begin{figure}[!htbp]
 \begin{center}
 \includegraphics[scale=.4]{images/partitioning.pdf}\vspace{-3mm}
@@ -227,10 +220,6 @@ Another related technique that integrates over partial derivatives to measure $x
 \label{fig:partitioning}
 \end{center}
 \end{figure}
-
-\spd{} is like a ``model-free'' version of ALE in that \spd{} also defines partial dependence as the cumulative sum of partial derivatives, but we estimate derivatives using response values directly rather than $\hat{f}$ predictions.  \todo{Update: An advantage to estimating partial dependence via fitted models is that $\hat{f}$ removes variability from the potentially noisy response values, $\bf y$. However, in practice, this requires expertise to choose and tune an appropriate model for a data set.  The fact that different models can lead to meaningfully different curves for the same data can lead to misinterpretation.  Also, expertise is often required to distinguish between model artifacts and interesting visual phenomena arising from the data.}
-
-ALE partitions $x_j$ into bins then fixes \xnj{} as it shifts $x_j$ to bin edges to compute finite differences, as depicted in \figref{fig:partitioning}(b) for $p=2$. The wedges on the $x_1$ axis indicate the $x_1$ points of the computed partial dependence curve.  \spd{} partitions \xnj{} into regions of (hopefully) similar observations and computes finite differences between the average $y$ values at unique $x_j$ values in each region, as depicted in \figref{fig:partitioning}(a).  The leftmost two observations are ignored as there is no change in $x_1$ in that leaf. The shaded area illustrates that the partial derivative at any $x_j=z$ is the average of all derivatives spanning $z$ across \xnj{} regions.  \spd{} assumes all points within a region are identical in \xnj{}, effectively projecting points in \xnj{} space onto a hyperplane if they are not.  ALE shifts $x_j$ values in a small neighborhood and \spd{} depends on a suitable {\tt\small min\_samples\_leaf}  hyper parameter to prevent \xnj{} points in a regions from becoming too dissimilar.  \spd{} automatically generates more curve points in areas of high $x_j$ density, but ALE is more efficient.
 
 Using decision trees for the purpose of partitioning feature space as \spd{} does was previously used by \citet{rfimp} to improve permutation importance for random forests by permuting $x_j$ only within the observations of a leaf. Earlier, \citet{RFunsup} defined a similarity measure between two observations according to how often they appear in the same leaf in a random forest.  Rather than partitioning  \xnj{} space like \spd, those techniques partitioned all of $x$ space.
 
@@ -343,7 +332,6 @@ Even for experts, explaining this behavior requires some thought, and one must d
 \end{center}
 \end{figure}
 
-
 Also, SHAP defines $x_j$ feature importance as the average magnitude of the $x_j$ SHAP values, which introduces a paradox.  The spread of the SHAP values alerts users to variable interactions, but allows contributions from other variables to leak in, thus, potentially leading to less precise estimates of $x_{height}$'s importance. The average SHAP magnitude skews upward, in this case, because of the contributions from pregnant women.
 
 It is conceivable that a more sophisticated model (in terms of extrapolation) could sharpen the FPD and SHAP curves for $x_{height}$. There is a difference, however, between extrapolating to a meaningful but unsupported vector and making predictions for nonsensical vectors arising from variable codependencies.  Techniques that rely on such predictions make the implicit assumption of variable independence, introducing the potential for bias. Consider \figref{fig:pregnant} that presents the partial dependence results for categorical variable $x_{pregnant}$ (same data set). The weight gain from pregnancy is 40 pounds per \eqref{eq:weight}, but only \cspd{} identifies that exact relationship; FPD, SHAP, and ALE show a gain of 30 pounds. 
@@ -413,8 +401,7 @@ bulldozer shape (362781, 14) records, 5 cats
 % ------------------------------------------------------------------------------------------------------------------------------------
 \section{Conclusion and future work}
 
-In this paper, we contribute a method for computing partial dependence curves, for both numerical and categorical variables, that does not use  predictions from a fitted model.   Working directly from the data  makes partial dependences accessible to business analysts and scientists not qualified to choose, tune, and assess machine learning models.  For experts, it can  provide hints about the relationships in the data to help guide their choice of model. Our experiments show that \spd{} and \cspd{} are fast enough for practical use and correctly identify partial dependences for synthetic data and give plausible curves on real data sets. \spd{} relies on two important hyper parameters (with broadly applicable defaults) but model-based techniques should include the hyper parameters of the required fitted model for a fair comparison.  Our goal here is not to  argue  that model-based techniques are not useful. Rather, we are pointing out potential issues and hoping to open a new line of nonparametric inquiry that experiments have shown to be applicable in situations and accurate in cases where model-based techniques are not. The obvious next goal for this approach is a version for classifiers and to extend the technique to two variables, paralleling ALE's second order derivative approach.
-
+In this paper, we contribute a method for computing partial dependence curves, for both numerical and categorical explanatory variables, that does not use  predictions from a fitted model.   Working directly from the data  makes partial dependences accessible to business analysts and scientists not qualified to choose, tune, and assess machine learning models.  For experts, it can  provide hints about the relationships in the data to help guide their choice of model. Our experiments show that \spd{} and \cspd{} are fast enough for practical use and correctly identify partial dependences for synthetic data and give plausible curves on real data sets. \spd{} relies on two important hyper parameters (with broadly applicable defaults) but model-based techniques should include the hyper parameters of the required fitted model for a fair comparison.  Our goal here is not to  argue  that model-based techniques are not useful. Rather, we are pointing out potential issues and hoping to open a new line of nonparametric inquiry that experiments have shown to be applicable in situations and accurate in cases where model-based techniques are not. An obvious next goal for this approach is a version for classifiers and to extend the technique to two variables, paralleling ALE's second order derivative approach. 
 
 %\bibliographystyle{spmpsci}
 %\bibliographystyle{spbasic}
@@ -426,6 +413,8 @@ In this paper, we contribute a method for computing partial dependence curves, f
 % ------------------------------------------------------------------------------------------------------------------------------------
 \section{Appendix}
 
+Pseudocode for \spd{} and \cspd.\\
+ 
 \SetAlgoNoEnd%
 \setlength{\algomargin}{5pt}
 \begin{algorithm}[H]
@@ -456,6 +445,8 @@ $\bf pdy$ := [0] + cumulative\_sum(${\bf dydx} * \bf pdx$)~~~\Comment*{\it integ
 \Return{$\bf pdx, pdy$}
 \label{alg:StratPD}
 \end{algorithm}
+
+\vspace{10mm}
 
 \setlength{\algomargin}{5pt}
 \begin{algorithm}[H]
