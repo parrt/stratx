@@ -411,10 +411,11 @@ In this paper, we contribute a method for computing partial dependence curves, f
 }
 
 % ------------------------------------------------------------------------------------------------------------------------------------
+
 \section{Appendix}
 
 Pseudocode for \spd{} and \cspd.\\
- 
+
 \SetAlgoNoEnd%
 \setlength{\algomargin}{5pt}
 \begin{algorithm}[H]
@@ -423,26 +424,25 @@ Pseudocode for \spd{} and \cspd.\\
 \SetAlgorithmName{Algorithm}{List of Algorithms}
 \SetAlgoSkip{}
 \TitleOfAlgo{{\em StratPD}({\bf X}, {\bf y}, $j$, {\it min\_samples\_leaf}, {\it min\_slopes\_per\_x})}
-
 $T$ := Decision tree regressor fit to (\Xnj{}, $\bf y$) with hyper parameter: ${\it min\_samples\_leaf}$\;
 \For{each leaf $L \in T$}{
-        $({\bf x}_L, {\bf y}_L)$ := $\{(x_j^{(i)},  y^{(i)})\}_{i \in L}$\Comment*{\it Get leaf observations}
-	${\bf ux}, \bar{\bf y}$ := Group and sort $({\bf x}_L, {\bf y}_L)$ by $x_j$ value, computing $\bar{y}$ per unique $x_j$ value\\
-	${\bf dx}$ := ${\bf ux}^{(i+1)} - {\bf ux}^{(i)}$ for $i = 1..|{\bf ux}|-1$\Comment*{\it Discrete difference between adjacent}
-	${\bf dy}$ := $\bar{\bf y}^{(i+1)} - \bar{\bf y}^{(i)}$ for $i = 1..|{\bf ux}|-1$\\
-	Add tuples ${({\bf ux}^{(i)}, {\bf ux}^{(i+1)},~ {\bf dy}^{(i)}/{\bf dx}^{(i)})}$  to list ${\bf D}$ for $i = 1..|{\bf ux}|-1$\\
+        ${\bf x}_L := \{x_j^{(i)}\}_{i \in L}$, the unique and ordered $x_j$ in $L$\Comment*{\it Get leaf observations}
+        $\bar{\bf y}_L^{(k)} := \Ex[ y^{(i)} \,|\, (x_j^{(i)}=x_L^{(k)},  y^{(i)})] \text{ for } k = 1..|{\bf x}_L|, i \in L$\Comment*{\it Compute $\bar{y}$ per unique $x_j$ value}
+        $\delta_L^{(k)} = \frac{\bar{\bf y}_L^{(k+1)} - \bar{\bf y}_L^{(k)}}{{\bf x}_L^{(k+1)} - {\bf x}_L^{(k)}}$\Comment*{\it Discrete forward difference between adjacent unique $x_j$ values}
+	Add tuples ${({\bf x}_L^{(k)}, {\bf x}_L^{(k+1)},~ \delta_L^{(k)})}$  to list ${\bf D}$ for $k = 1..|{\bf x}_L|-1$\\
 }
-$\bf ux$ := $unique({\bf X}_j)$\\
+${\bf ux} := \{x_j^{(i)}\}_{i \in 1..n}$, the unique and ordered $x_j$ in ${\bf X}_j$\\
+Let $\bf c$ and $\delta$ be vectors of length $|\bf ux|$\\
 \For(\hfill$\triangleright$\ {\it\textcolor{gray}{\small Count slopes and compute average slope per unique $x_j$ value}}){each $x \in {\bf ux}$}{
-	{\bf slopes} := [$slope$ for $(a,b,slope) \in \bf D$ if $x \ge a$ and $x <b$]\\
-	${\bf c}_x$ := $|{\bf slopes}|$\\
-	${\bf dydx}_x$ := $\overline{\bf slopes}$\\
+	${\bf slopes}_x$ := [$slope$ for $(a,b,slope) \in \bf D$ if $x \ge a$ and $x <b$]\\
+	${\bf c}_x$ := $|{\bf slopes}_x|$\Comment*{\it Count number of slopes used to estimate overall slope at $x$}
+	${\delta}_x$ := $\overline{\bf slopes}_x$\Comment*{\it Slope estimate at $x$ is average of slopes whose range overlaps $x$}
 }
-${\bf dydx}$ := ${\bf dydx}[{\bf c} \ge min\_slopes\_per\_x]$\Comment*{\it Drop missing slopes, those computed with too few}
-${\bf ux}$ := ${\bf ux}[{\bf c} \ge min\_slopes\_per\_x]$\\
-$\bf pdx$ := ${\bf ux}^{(i+1)} - {\bf ux}^{(i)}$ for $i = 1..|{\bf ux}|-1$\\
-$\bf pdy$ := [0] + cumulative\_sum(${\bf dydx} * \bf pdx$)~~~\Comment*{\it integrate, inserting 0 for leftmost $x_j$}
-\Return{$\bf pdx, pdy$}
+${\bf \delta}$ := ${\bf \delta}[{\bf c} \ge min\_slopes\_per\_x]$\Comment*{\it Drop missing slopes and those computed with too few}
+${\bf ux}$ := ${\bf ux}[{\bf c} \ge min\_slopes\_per\_x]$\Comment*{\it Drop $x_j$ values without sufficient estimates}
+${\bf pd}_x$ := ${\bf ux}^{(k+1)} - {\bf ux}^{(k)}$ for $k = 1..|{\bf ux}|-1$\\
+${\bf pd}_y$ := [0] + cumulative\_sum($\delta \times {\bf pd}_x$)~~~\Comment*{\it integrate, inserting 0 for leftmost $x_j$}
+\Return{${\bf pd}_x, {\bf pd}_y$}
 \label{alg:StratPD}
 \end{algorithm}
 
@@ -463,28 +463,28 @@ n^{(k)} = \text{number of supported observations per category $k$}\\
 \end{array}$
 }
 }
+$n_{cats} := |\{x_j^{(i)}\}_{i \in 1..n}|$, $n_{leaves} := |T|$\\
 $T$ := Decision tree regressor fit to (\Xnj{}, $\bf y$) with hyper parameter: ${\it min\_samples\_leaf}$\;
-Let $\Delta Y$ be a matrix whose columns are vectors of leaf category deltas\\
-Let $C$ be a matrix whose columns are vectors for leaf category counts\\
+Let $\Delta Y$ be a $n_{cats} \times n_{leaves}$ matrix whose columns, $\Delta Y_L$, are vectors of leaf category deltas\\
+Let $C$ be a $n_{cats} \times n_{leaves}$ matrix whose columns, $C_L$, are vectors for leaf category counts\\
 \For(\hfill$\triangleright$\ {\it\textcolor{gray}{\small Get average $y$ delta relative to random ref category for obs. in leaves}}){each leaf $L \in T$}{
-        $({\bf x}_L, {\bf y}_L)$ := $\{(x_j^{(i)},  y^{(i)})\}_{i \in L}$\Comment*{\it Get leaf observations}
-        ${\bf ucats}$, $C_L$ := $unique({\bf x}_L)$\Comment*{\it Get unique categories, counts from leaf observations}
-	$\bar{\bf y}$ := Group leaf records $({\bf x}_L, {\bf y}_L)$ by category, computing $\bar{y}$ per unique category\\
-	${\it refcat}$ := random category from ${\bf x}_L$\\
-%	$y_{\it ref}$ := random choice from $\bar{\bf y}$\\
-	$\Delta {Y}_L$ = $\bar{\bf y} - \bar{\bf y}_{\it refcat}$\\
+        ${\bf x}_L := \{x_j^{(i)}\}_{i \in L}$, the unique $x_j$ categories in $L$\Comment*{\it Get leaf observations}
+        $\bar{\bf y}_L^{(k)} := \Ex[ y^{(i)} \,|\, (x_j^{(i)}=x_L^{(k)},  y^{(i)})] \text{ for } k = 1..|{\bf x}_L|, i \in L$\Comment*{\it Compute $\bar{y}$ per unique $x_j$ category level}
+        $C_L^{(k)} := |i \in L : x_j^{(i)}={\bf x}_L^{(k)}|$\Comment*{\it Count occurrences of each category}
+	${\it refcat}$ := random category chosen from ${\bf x}_L$\\
+	$\Delta {Y}_L$ = $\bar{\bf y}_L - \bar{\bf y}_L^{\it refcat}$\\
 }
 $\Delta {\bf y}$, {\bf c} := $\Delta {Y}_1$, $C_1$\Comment*{\it $\Delta {\bf y}$ is running average vector mapping category to average $y$ delta}
-$completed$ := $\{1\}$; $work$ := $\{2 .. |leaves|\}$; \Comment*{\it set of leaf indexes}
-%${\bf ucats}$ := $unique({\bf X}_j)$\\
+$completed$ := $\{L_1\}$; $work$ := $\{L_2 .. L_{n_{leaves}}\}$; \Comment*{\it sets of leaves}
 \While(\hfill$\triangleright$\ {\it\textcolor{gray}{\small 2 passes is typical to merge all $\Delta {Y}_L$ into $\Delta {\bf y}$}}){$|work| > 0$ and $|completed|>0$}{
     completed := $\emptyset$\\
     \For{each leaf $L$ in work}{
-        \If{$\Delta {Y}_L$ has category in common with $\Delta {\bf y}$}{
+        Let $common$ := categories in common between $\Delta {Y}_L$ and $\Delta \bf y$\\
+        \If{$common \ne \emptyset$}{
             ${\it completed}$ := ${\it completed} \cup \{L\}$\\
-            $c$ = random category in intersection\\
-            $\Delta {\bf y}_L$ := $\Delta {Y}_L- \Delta {Y}_{L,{\it c}} + \Delta {\bf y}_{\it c}$\Comment*{\it Adjust so $\Delta {Y}_{L,{\it c}}=0$, add corresponding $\Delta {\bf y}_{\it c}$ value}
-            $\Delta {\bf y}$ := $({\bf c} \times \Delta {\bf y} + C_L \times \Delta {\bf y}_L)/({\bf c} + C_L)$ where $z+NaN$={\it z}\Comment*{\it weighted average}
+            $cat$ := random category in $common$\\
+            $\Delta Y_L$ := $\Delta {Y}_L- \Delta {Y}_{L}^{(cat)} + \Delta {\bf y}^{(cat)}$\Comment*{\it Adjust so $\Delta {Y}_{L}^{(cat)}=0$ then add corresponding $\Delta {\bf y}^{(cat)}$ value}
+            $\Delta {\bf y}$ := $({\bf c} \times \Delta {\bf y} + C_L \times \Delta Y_L)/({\bf c} + C_L)$ where $z+NaN$={\it z}\Comment*{\it weighted average}
             ${\bf c} := {\bf c} + C_L$\Comment*{\it update running weight}
         }
     }
