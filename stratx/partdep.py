@@ -273,6 +273,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  barchart_size=0.20,
                  # if show_slope_counts, what ratio of vertical space should barchart use at bottom?
                  barchar_alpha=1.0,
+                 barchar_color='#BABABA',
                  verbose=False,
                  figsize=None
                  ):
@@ -420,7 +421,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         # draw just 0 and max count
         ax2.yaxis.set_major_locator(plt.FixedLocator([0, max(pdpx_counts)]))
         ax2.bar(x=pdpx, height=pdpx_counts, width=count_bar_width,
-                facecolor='#BABABA', align='center', alpha=barchar_alpha)
+                facecolor=barchar_color, align='center', alpha=barchar_alpha)
         ax2.set_ylabel(f"$x$ point count", labelpad=-12, fontsize=label_fontsize,
                        fontstretch='extra-condensed',
                        fontname=fontname)
@@ -450,7 +451,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         # draw just 0 and max count
         ax2.yaxis.set_major_locator(plt.FixedLocator([0, max(slope_counts_at_x)]))
         ax2.bar(x=pdpx, height=slope_counts_at_x, width=count_bar_width,
-                facecolor='#BABABA', align='center', alpha=barchar_alpha)
+                facecolor=barchar_color, align='center', alpha=barchar_alpha)
         ax2.set_ylabel(f"slope count", labelpad=-12, fontsize=label_fontsize,
                        fontstretch='extra-condensed',
                        fontname=fontname)

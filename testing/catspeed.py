@@ -1,21 +1,7 @@
-from sklearn.utils import resample
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import normalize
-from sklearn.ensemble import RandomForestRegressor
-from timeit import default_timer as timer
-from sklearn.utils import resample
-from timeit import default_timer as timer
-
-import shap
-
 from stratx.partdep import *
-from stratx.support import *
+from articles.pd.support import *
 
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-
-from numpy import nan
 
 from test_catmerge import stratify_cats
 

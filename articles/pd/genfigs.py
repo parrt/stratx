@@ -680,44 +680,44 @@ def weight():
 
     TUNE_RF = False
 
-    # fig, ax = plt.subplots(1, 1, figsize=figsize)
-    # plot_stratpd(X, y, 'education', 'weight', ax=ax,
-    #              show_x_counts=False,
-    #              pdp_marker_size=5,
-    #              yrange=(-12, 0.05), slope_line_alpha=.1, show_ylabel=True)
-    # #    ax.get_yaxis().set_visible(False)
-    # ax.set_title("StratPD", fontsize=10)
-    # ax.set_xlim(10,18)
-    # ax.set_xticks([10,12,14,16,18])
-    # savefig(f"education_vs_weight_stratpd")
-    #
-    # fig, ax = plt.subplots(1, 1, figsize=figsize)
-    # plot_stratpd(X, y, 'height', 'weight', ax=ax,
-    #              pdp_marker_size=.2,
-    #              show_x_counts=False,
-    #              yrange=(0, 160), show_ylabel=False)
-    # #    ax.get_yaxis().set_visible(False)
-    # ax.set_title("StratPD", fontsize=10)
-    # ax.set_xticks([60,65,70,75])
-    # savefig(f"height_vs_weight_stratpd")
-    #
-    # fig, ax = plt.subplots(1, 1, figsize=(1.3,2))
-    # plot_catstratpd(X, y, 'sex', 'weight', ax=ax,
-    #                 show_x_counts=False,
-    #                 catnames={0:'M',1:'F'},
-    #                 yrange=(-1, 35),
-    #                 )
-    # ax.set_title("CatStratPD", fontsize=10)
-    # savefig(f"sex_vs_weight_stratpd")
-    #
-    # fig, ax = plt.subplots(1, 1, figsize=(1.5,1.8))
-    # plot_catstratpd(X, y, 'pregnant', 'weight', ax=ax,
-    #                 show_x_counts=False,
-    #                 catnames={0:False, 1:True},
-    #                 yrange=(-1, 45),
-    #                 )
-    # ax.set_title("CatStratPD", fontsize=10)
-    # savefig(f"pregnant_vs_weight_stratpd")
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    plot_stratpd(X, y, 'education', 'weight', ax=ax,
+                 show_x_counts=False,
+                 pdp_marker_size=5,
+                 yrange=(-12, 0.05), slope_line_alpha=.1, show_ylabel=True)
+    #    ax.get_yaxis().set_visible(False)
+    ax.set_title("StratPD", fontsize=10)
+    ax.set_xlim(10,18)
+    ax.set_xticks([10,12,14,16,18])
+    savefig(f"education_vs_weight_stratpd")
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    plot_stratpd(X, y, 'height', 'weight', ax=ax,
+                 pdp_marker_size=.2,
+                 show_x_counts=False,
+                 yrange=(0, 160), show_ylabel=False)
+    #    ax.get_yaxis().set_visible(False)
+    ax.set_title("StratPD", fontsize=10)
+    ax.set_xticks([60,65,70,75])
+    savefig(f"height_vs_weight_stratpd")
+
+    fig, ax = plt.subplots(1, 1, figsize=(1.3,2))
+    plot_catstratpd(X, y, 'sex', 'weight', ax=ax,
+                    show_x_counts=False,
+                    catnames={0:'M',1:'F'},
+                    yrange=(-1, 35),
+                    )
+    ax.set_title("CatStratPD", fontsize=10)
+    savefig(f"sex_vs_weight_stratpd")
+
+    fig, ax = plt.subplots(1, 1, figsize=(1.5,1.8))
+    plot_catstratpd(X, y, 'pregnant', 'weight', ax=ax,
+                    show_x_counts=False,
+                    catnames={0:False, 1:True},
+                    yrange=(-1, 45),
+                    )
+    ax.set_title("CatStratPD", fontsize=10)
+    savefig(f"pregnant_vs_weight_stratpd")
 
     if TUNE_RF:
         rf, bestparams = tune_RF(X, y)
@@ -728,21 +728,21 @@ def weight():
         rf.fit(X, y) # Use full data set for plotting
         print("RF OOB R^2", rf.oob_score_)
 
-    # # show pregnant female at max range drops going taller
-    # X_test = np.array([[1, 1, 70, 10]])
-    # y_pred = rf.predict(X_test)
-    # print("pregnant female at max range", X_test, "predicts", y_pred)
-    # X_test = np.array([[1, 1, 72, 10]]) # make them taller
-    # y_pred = rf.predict(X_test)
-    # print("pregnant female in male height range", X_test, "predicts", y_pred)
-    #
-    # fig, ax = plt.subplots(1, 1, figsize=figsize)
-    # ice = predict_ice(rf, X, 'education', 'weight')
-    # plot_ice(ice, 'education', 'weight', ax=ax, yrange=(-12, 0), min_y_shifted_to_zero=True)
-    # ax.set_xlim(10,18)
-    # ax.set_xticks([10,12,14,16,18])
-    # ax.set_title("FPD/ICE", fontsize=10)
-    # savefig(f"education_vs_weight_pdp")
+    # show pregnant female at max range drops going taller
+    X_test = np.array([[1, 1, 70, 10]])
+    y_pred = rf.predict(X_test)
+    print("pregnant female at max range", X_test, "predicts", y_pred)
+    X_test = np.array([[1, 1, 72, 10]]) # make them taller
+    y_pred = rf.predict(X_test)
+    print("pregnant female in male height range", X_test, "predicts", y_pred)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    ice = predict_ice(rf, X, 'education', 'weight')
+    plot_ice(ice, 'education', 'weight', ax=ax, yrange=(-12, 0), min_y_shifted_to_zero=True)
+    ax.set_xlim(10,18)
+    ax.set_xticks([10,12,14,16,18])
+    ax.set_title("FPD/ICE", fontsize=10)
+    savefig(f"education_vs_weight_pdp")
 
     fig, ax = plt.subplots(1, 1, figsize=(2.4, 2.2))
     ice = predict_ice(rf, X, 'height', 'weight')
@@ -753,8 +753,6 @@ def weight():
     ax.set_title("FPD/ICE", fontsize=10)
     ax.set_xticks([60,65,70,75])
     savefig(f"height_vs_weight_pdp")
-
-    return
 
     fig, ax = plt.subplots(1, 1, figsize=(1.3,2))
     ice = predict_catice(rf, X, 'sex', 'weight')
@@ -1298,6 +1296,7 @@ def MachineHours():
     ax.spines['bottom'].set_smart_bounds(True)
     savefig(f"bulldozer_MachineHours_marginal")
 
+    # SHAP
     explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100),
                                    feature_perturbation='interventional')
     shap_sample = X.sample(shap_test_size, replace=False)
@@ -1320,9 +1319,9 @@ def MachineHours():
     ax.set_xlabel("MachineHours\n(b)", fontsize=11)
     ax.set_xlim(0,30_000)
     ax.tick_params(axis='both', which='major', labelsize=10)
-
     savefig(f"bulldozer_MachineHours_shap")
 
+    # STRATPD
     fig, ax = plt.subplots(1, 1, figsize=figsize2)
     plot_stratpd(X, y, colname='MachineHours', targetname='SalePrice',
                  n_trials=10,
@@ -1331,6 +1330,7 @@ def MachineHours():
                  show_slope_lines=False,
                  show_x_counts=True,
                  barchar_alpha=1.0,
+                 barchar_color='k',
                  show_ylabel=False,
                  show_xlabel=False,
                  show_impact=False,
@@ -1338,8 +1338,8 @@ def MachineHours():
                  pdp_marker_alpha=.3,
                  ax=ax
                  )
-    ax.annotate("Imputed median value", xytext=(10000,-4800),
-                xy=(3138,-4700), fontsize=9,
+    ax.annotate("Imputed median value", xytext=(10000,-5300),
+                xy=(3138,-5200), fontsize=9,
                 arrowprops={'arrowstyle':"->"})
     ax.yaxis.label.set_visible(False)
     ax.set_title("StratPD", fontsize=13)
@@ -2178,7 +2178,7 @@ def ale_MachineHours():
     ax.tick_params(axis='both', which='major', labelsize=10)
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
-    savefig('MachineHours_ale')
+    savefig('bulldozer_MachineHours_ale')
 
 
 def ale_height():
@@ -2373,7 +2373,6 @@ def partitioning():
 
 
 if __name__ == '__main__':
-    # FROM PAPER:
     interactions()
     MachineHours()
     yearmade()
@@ -2388,10 +2387,10 @@ if __name__ == '__main__':
 
     # Invoke R to generate csv files then load with python to plot
 
-    # gen_ale_plot_data_in_R()
-    #
-    # ale_MachineHours()
-    # ale_yearmade()
-    # ale_height()
-    # ale_pregnant()
-    # ale_state()
+    gen_ale_plot_data_in_R()
+
+    ale_MachineHours()
+    ale_yearmade()
+    ale_height()
+    ale_pregnant()
+    ale_state()

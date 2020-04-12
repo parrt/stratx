@@ -1,6 +1,6 @@
 # Code to gen .csv files for use with R
 
-from stratx.support import *
+from articles.pd.support import *
 
 X, y = load_bulldozer(n=10_000)
 df = pd.concat([X, y], axis=1)
