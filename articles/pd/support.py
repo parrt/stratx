@@ -25,17 +25,6 @@ SOFTWARE.
 import numpy as np
 import pandas as pd
 
-import statsmodels.api as sm
-from scipy.stats import spearmanr
-from sklearn.decomposition import PCA
-
-import matplotlib.pyplot as plt
-
-from collections import OrderedDict
-
-from sklearn.linear_model import LinearRegression, Lasso, LogisticRegression
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.utils import resample
 from sklearn.model_selection import train_test_split
 from timeit import default_timer as timer
@@ -50,8 +39,9 @@ from sklearn import linear_model
 import xgboost as xgb
 from sklearn import svm
 from sklearn.model_selection import KFold
+import os
+import errno
 
-from stratx.partdep import *
 
 # WARNING: THIS FILE IS INTENDED FOR USE BY PARRT TO TEST / GENERATE SAMPLE IMAGES
 
@@ -92,14 +82,18 @@ def df_split_dates(df,colname):
 
 
 def load_flights(n):
-    """
-    Download from https://www.kaggle.com/usdot/flight-delays/download and save
-    flight-delays.zip; unzip to convenient data dir.  Save time by storing as
-    feather.  5.8M records.
+    global datadir
+    if not os.path.exists(datadir):
+        datadir = "data"
+
+    msg = """Download from https://www.kaggle.com/usdot/flight-delays/download and save
+    flight-delays.zip; unzip to convenient data dir.
     """
     dir = f"{datadir}/flight-delays"
     if os.path.exists(dir+"/flights.feather"):
         df_flights = pd.read_feather(dir + "/flights.feather")
+    elif not os.path.exists(f"{dir}/flights.csv"):
+        raise ValueError(msg)
     else:
         df_flights = pd.read_csv(dir+"/flights.csv", low_memory=False)
         df_flights.to_feather(dir+"/flights.feather")
@@ -226,13 +220,16 @@ def toy_weather_data():
 
 
 def load_bulldozer(n):
-    """
-    Download Train.csv data from https://www.kaggle.com/c/bluebook-for-bulldozers/data
-    and save in data subdir
-    """
+    global datadir
+    if not os.path.exists(datadir):
+        datadir = "data"
+
+    msg = "Download Train.csv data from https://www.kaggle.com/c/bluebook-for-bulldozers/data and save in data subdir"
     if os.path.exists(f"{datadir}/bulldozer-train-all.feather"):
         print("Loading cached version...")
         df = pd.read_feather(f"{datadir}/bulldozer-train-all.feather")
+    elif not os.path.exists(f"{datadir}/Train.csv"):
+        raise ValueError(msg)
     else:
         dtypes = {col: str for col in
                   ['fiModelSeries', 'Coupler_System', 'Grouser_Tracks', 'Hydraulics_Flow']}
@@ -296,10 +293,14 @@ def load_bulldozer(n):
 
 
 def load_rent(n:int=None, clean_prices=True):
-    """
-    Download train.json from https://www.kaggle.com/c/two-sigma-connect-rental-listing-inquiries/data
-    and save into data subdir.
-    """
+    global datadir
+    if not os.path.exists(datadir):
+        datadir = "data"
+    msg = """Download train.json from https://www.kaggle.com/c/two-sigma-connect-rental-listing-inquiries/data
+    and save into data subdir."""
+    if not os.path.exists(f"{datadir}/train.json"):
+        raise ValueError(msg)
+
     df = pd.read_json(f'{datadir}/train.json')
     print(f"Rent has {len(df)} records")
 

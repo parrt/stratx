@@ -22,62 +22,37 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import numpy as np
-import pandas as pd
-from typing import Mapping, List, Tuple
-from collections import defaultdict, OrderedDict
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-from sklearn.linear_model import LinearRegression, Lasso
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.datasets import load_boston, load_iris, load_wine, load_digits, \
-    load_breast_cancer, load_diabetes, fetch_mldata
-from matplotlib.collections import LineCollection
-import time
-from pandas.api.types import is_string_dtype, is_object_dtype, is_categorical_dtype, \
-    is_bool_dtype
-from sklearn.ensemble.partial_dependence import partial_dependence, \
-    plot_partial_dependence
-from sklearn import svm
+from sklearn.ensemble.partial_dependence import partial_dependence
 from sklearn.neighbors import KNeighborsRegressor
-from pdpbox import pdp
-from rfpimp import *
-from scipy.integrate import cumtrapz
-from stratx.partdep import *
-from stratx.ice import *
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
+from articles.pd.support import *
+from stratx.partdep import plot_stratpd, plot_catstratpd, \
+                           plot_stratpd_gridsearch, plot_catstratpd_gridsearch, \
+                           marginal_plot_
+from stratx.ice import predict_ice, predict_catice, plot_ice, plot_catice, friedman_partial_dependence
 import inspect
-import statsmodels.api as sm
+import matplotlib.patches as mpatches
+from collections import OrderedDict
+import matplotlib.pyplot as plt
+import os
+
+import shap
+import xgboost as xgb
+from colour import rgb2hex, Color
+
+from dtreeviz.trees import tree, ShadowDecTree
+
+figsize = (2.5, 2)
+figsize2 = (3.8, 3.2)
+GREY = '#444443'
+
 
 # This genfigs.py code is just demonstration code to generate figures for the paper.
 # There are lots of programming sins committed here; to not take this to be
 # our idea of good code. ;)
 
 # For data sources, please see notebooks/examples.ipynb
-
-def df_split_dates(df,colname):
-    df["saleyear"] = df[colname].dt.year
-    df["salemonth"] = df[colname].dt.month
-    df["saleday"] = df[colname].dt.day
-    df["saledayofweek"] = df[colname].dt.dayofweek
-    df["saledayofyear"] = df[colname].dt.dayofyear
-    df[colname] = df[colname].astype(np.int64) # convert to seconds since 1970
-
-
-def df_string_to_cat(df: pd.DataFrame) -> dict:
-    catencoders = {}
-    for colname in df.columns:
-        if is_string_dtype(df[colname]) or is_object_dtype(df[colname]):
-            df[colname] = df[colname].astype('category').cat.as_ordered()
-            catencoders[colname] = df[colname].cat.categories
-    return catencoders
-
-
-def df_cat_to_catcode(df):
-    for col in df.columns:
-        if is_categorical_dtype(df[col]):
-            df[col] = df[col].cat.codes + 1
-
 
 def addnoise(df, n=1, c=0.5, prefix=''):
     if n == 1:
@@ -94,301 +69,176 @@ def fix_missing_num(df, colname):
 
 def savefig(filename, pad=0):
     plt.tight_layout(pad=pad, w_pad=0, h_pad=0)
-    # plt.savefig(f"images/{filename}.pdf")
-    plt.savefig(f"images/{filename}.png", dpi=150)
+    plt.savefig(f"images/{filename}.pdf", bbox_inches="tight", pad_inches=0)
+    # plt.savefig(f"images/{filename}.png", dpi=150)
 
-    # plt.tight_layout()
-    # plt.show()
+    plt.tight_layout()
+    plt.show()
 
     plt.close()
-
-
-def toy_weight_data(n):
-    df = pd.DataFrame()
-    nmen = n // 2
-    nwomen = n // 2
-    df['sex'] = ['M'] * nmen + ['F'] * nwomen
-    df.loc[df['sex'] == 'F', 'pregnant'] = np.random.randint(0, 2, size=(nwomen,))
-    df.loc[df['sex'] == 'M', 'pregnant'] = 0
-    df.loc[df['sex'] == 'M', 'height'] = 5 * 12 + 8 + np.random.uniform(-7, +8,
-                                                                        size=(nmen,))
-    df.loc[df['sex'] == 'F', 'height'] = 5 * 12 + 5 + np.random.uniform(-4.5, +5,
-                                                                        size=(nwomen,))
-    df.loc[df['sex'] == 'M', 'education'] = 10 + np.random.randint(0, 8, size=nmen)
-    df.loc[df['sex'] == 'F', 'education'] = 12 + np.random.randint(0, 8, size=nwomen)
-    df['weight'] = 120 \
-                   + (df['height'] - df['height'].min()) * 10 \
-                   + df['pregnant'] * 30 \
-                   - df['education'] * 1.5
-    df['pregnant'] = df['pregnant'].astype(bool)
-    df['education'] = df['education'].astype(int)
-    return df
-
-
-def load_rent():
-    """
-    *Data use rules prevent us from storing this data in this repo*. Download the data
-    set from Kaggle. (You must be a registered Kaggle user and must be logged in.)
-    Go to the Kaggle [data page](https://www.kaggle.com/c/two-sigma-connect-rental-listing-inquiries/data)
-    and save `train.json`
-    """
-    df = pd.read_json('data/train.json')
-
-    # Create ideal numeric data set w/o outliers etc...
-    df = df[(df.price > 1_000) & (df.price < 10_000)]
-    df = df[df.bathrooms <= 4]  # There's almost no data for above with small sample
-    df = df[(df.longitude != 0) | (df.latitude != 0)]
-    df = df[(df['latitude'] > 40.55) & (df['latitude'] < 40.94) &
-            (df['longitude'] > -74.1) & (df['longitude'] < -73.67)]
-    df = df.sort_values('created')
-    df_rent = df[['bedrooms', 'bathrooms', 'latitude', 'longitude', 'price']]
-
-    return df_rent
-
-
-def load_bulldozer():
-    """
-    Download Train.csv data from https://www.kaggle.com/c/bluebook-for-bulldozers/data
-    and save in data subdir
-    """
-    if os.path.exists("data/bulldozer-train-all.feather"):
-        print("Loading cached version...")
-        df = pd.read_feather("data/bulldozer-train-all.feather")
-    else:
-        dtypes = {col: str for col in
-                  ['fiModelSeries', 'Coupler_System', 'Grouser_Tracks', 'Hydraulics_Flow']}
-        df = pd.read_csv('data/Train.csv', dtype=dtypes, parse_dates=['saledate'])  # 35s load
-        df = df.sort_values('saledate')
-        df = df.reset_index(drop=True)
-        df.to_feather("data/bulldozer-train-all.feather")
-
-    df['MachineHours'] = df['MachineHoursCurrentMeter']  # shorten name
-    df.loc[df.eval("MachineHours==0"),
-           'MachineHours'] = np.nan
-    fix_missing_num(df, 'MachineHours')
-
-    # df.loc[df.YearMade < 1950, 'YearMade'] = np.nan
-    # fix_missing_num(df, 'YearMade')
-    df = df.loc[df.YearMade > 1950].copy()
-    df_split_dates(df, 'saledate')
-    df['age'] = df['saleyear'] - df['YearMade']
-    df['YearMade'] = df['YearMade'].astype(int)
-    sizes = {None: 0, 'Mini': 1, 'Compact': 1, 'Small': 2, 'Medium': 3,
-             'Large / Medium': 4, 'Large': 5}
-    df['ProductSize'] = df['ProductSize'].map(sizes).values
-
-    df['Enclosure'] = df['Enclosure'].replace('EROPS w AC', 'EROPS AC')
-    df['Enclosure'] = df['Enclosure'].replace('None or Unspecified', np.nan)
-    df['Enclosure'] = df['Enclosure'].replace('NO ROPS', np.nan)
-    df['AC'] = df['Enclosure'].fillna('').str.contains('AC')
-    df['AC'] = df['AC'].astype(int)
-    # print(df.columns)
-
-    # del df['SalesID']  # unique sales ID so not generalizer (OLS clearly overfits)
-    # delete MachineID as it has inconsistencies and errors per Kaggle
-
-    basefeatures = ['ModelID',
-                    'datasource', 'YearMade',
-                    # some missing values but use anyway:
-                    'auctioneerID',
-                    'MachineHours'
-                    ]
-    X = df[basefeatures+
-           [
-            'age',
-            'AC',
-            'ProductSize',
-            'MachineHours_na',
-            'saleyear', 'salemonth', 'saleday', 'saledayofweek', 'saledayofyear']
-           ]
-
-    X = X.fillna(0)  # flip missing numeric values to zeros
-    y = df['SalePrice']
-    return X, y
 
 
 def rent():
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_rent = load_rent()
-    df_rent = df_rent[-10_000:]  # get a small subsample since SVM is slowwww
-    X = df_rent.drop('price', axis=1)
-    y = df_rent['price']
-    figsize = (5, 4)
+    np.random.seed(1)  # pick seed for reproducible article images
+    X,y = load_rent(n=10_000)
+    df_rent = X.copy()
+    df_rent['price'] = y
     colname = 'bedrooms'
+    colname = 'bathrooms'
 
-    fig, axes = plt.subplots(2, 2, figsize=figsize)
+    TUNE_RF = False
+    TUNE_XGB = False
 
-    axes[0, 0].set_title("(a) Marginal", fontsize=10)
-    axes[0, 0].set_xlim(0,8); axes[0, 0].set_xticks([0,2,4,6,8])
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
-    axes[0, 1].set_title("(b) PD/ICE RF", fontsize=10)
-    axes[0, 1].set_xlim(0,8); axes[0, 1].set_xticks([0,2,4,6,8])
+    if TUNE_RF:
+        rf, bestparams = tune_RF(X, y)   # does CV on entire data set to tune
+        # bedrooms
+        # RF best: {'max_features': 0.3, 'min_samples_leaf': 1, 'n_estimators': 125}
+        # validation R^2 0.7873724127323822
+        # bathrooms
+        # RF best: {'max_features': 0.3, 'min_samples_leaf': 1, 'n_estimators': 200}
+        # validation R^2 0.8066593395345907
+    else:
+        rf = RandomForestRegressor(n_estimators=200, min_samples_leaf=1, max_features=.3,
+                                   oob_score=True, n_jobs=-1)
+    rf.fit(X_train, y_train) # Use training set for plotting
+    print("RF OOB R^2", rf.oob_score_)
+    rf_score = rf.score(X_test, y_test)
+    print("RF validation R^2", rf_score)
 
-    axes[1, 0].set_title("(c) PD/ICE SVM", fontsize=10)
-    axes[1, 0].set_xlim(0,8); axes[1, 0].set_xticks([0,2,4,6,8])
+    if TUNE_XGB:
+        tuned_parameters = {'n_estimators': [400, 450, 500, 600, 1000],
+                            'learning_rate': [0.008, 0.01, 0.02, 0.05, 0.08, 0.1, 0.11],
+                            'max_depth': [3, 4, 5, 6, 7, 8, 9]}
+        grid = GridSearchCV(
+            xgb.XGBRegressor(), tuned_parameters, scoring='r2',
+            cv=5,
+            n_jobs=-1,
+            verbose=2
+        )
+        grid.fit(X, y)  # does CV on entire data set to tune
+        print("XGB best:", grid.best_params_)
+        b = grid.best_estimator_
+        # bedrooms
+        # XGB best: {'max_depth': 7, 'n_estimators': 250}
+        # XGB validation R^2 0.7945797751555217
+        # bathrooms
+        # XGB best: {'learning_rate': 0.11, 'max_depth': 6, 'n_estimators': 1000}
+        # XGB train R^2 0.9834399795800324
+        # XGB validation R^2 0.8244958014380593
+    else:
+        b = xgb.XGBRegressor(n_estimators=1000,
+                             max_depth=6,
+                             learning_rate=.11,
+                             verbose=2,
+                             n_jobs=8)
 
-    axes[1, 1].set_title("(d) StratPD", fontsize=10)
-    axes[1, 1].set_xlim(0,8); axes[1, 1].set_xticks([0,2,4,6,8])
+    b.fit(X_train, y_train)
+    xgb_score = b.score(X_test, y_test)
+    print("XGB validation R^2", xgb_score)
+
+    lm = LinearRegression()
+    lm.fit(X_train, y_train)
+    lm_score = lm.score(X_test, y_test)
+    print("OLS validation R^2", lm_score)
+    lm.fit(X, y)
+
+    model, r2_keras = rent_deep_learning_model(X_train, y_train, X_test, y_test)
+
+    fig, axes = plt.subplots(1, 6, figsize=(10, 1.8),
+                             gridspec_kw = {'wspace':0.15})
+
+    for i in range(len(axes)):
+        axes[i].set_xlim(0-.3,4+.3)
+        axes[i].set_xticks([0,1,2,3,4])
+        axes[i].set_ylim(1800, 9000)
+        axes[i].set_yticks([2000,4000,6000,8000])
+
+    axes[1].get_yaxis().set_visible(False)
+    axes[2].get_yaxis().set_visible(False)
+    axes[3].get_yaxis().set_visible(False)
+    axes[4].get_yaxis().set_visible(False)
+
+    axes[0].set_title("(a) Marginal", fontsize=10)
+
+    axes[1].set_title("(b) RF", fontsize=10)
+    axes[1].text(2,8000, f"$R^2=${rf_score:.3f}", horizontalalignment='center', fontsize=9)
+
+    axes[2].set_title("(c) XGBoost", fontsize=10)
+    axes[2].text(2,8000, f"$R^2=${xgb_score:.3f}", horizontalalignment='center', fontsize=9)
+
+    axes[3].set_title("(d) OLS", fontsize=10)
+    axes[3].text(2,8000, f"$R^2=${lm_score:.3f}", horizontalalignment='center', fontsize=9)
+
+    axes[4].set_title("(e) Keras", fontsize=10)
+    axes[4].text(2,8000, f"$R^2=${r2_keras:.3f}", horizontalalignment='center', fontsize=9)
+
+    axes[5].set_title("(f) StratPD", fontsize=10)
 
     avg_per_baths = df_rent.groupby(colname).mean()['price']
-    axes[0, 0].scatter(df_rent[colname], df_rent['price'], alpha=0.07,
-                       s=5)  # , label="observation")
-    axes[0, 0].scatter(np.unique(df_rent[colname]), avg_per_baths, s=6, c='black',
+    axes[0].scatter(df_rent[colname], df_rent['price'], alpha=0.07, s=5)
+    axes[0].scatter(np.unique(df_rent[colname]), avg_per_baths, s=6, c='black',
                        label="average price/{colname}")
-    axes[0, 0].set_ylabel("price")  # , fontsize=12)
-    axes[0, 0].set_ylim(0, 10_000)
+    axes[0].set_ylabel("price")  # , fontsize=12)
+    axes[0].set_xlabel("bathrooms")
+    axes[0].spines['right'].set_visible(False)
+    axes[0].spines['top'].set_visible(False)
 
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
-    rf.fit(X, y)
-
-    ice = predict_ice(rf, X, colname, 'price', nlines=1000)
-    plot_ice(ice, colname, 'price', alpha=.05, ax=axes[0, 1], show_xlabel=False,
+    ice = predict_ice(rf, X, colname, 'price', numx=30, nlines=100)
+    plot_ice(ice, colname, 'price', alpha=.3, ax=axes[1], show_xlabel=True,
              show_ylabel=False)
-    axes[0, 1].set_ylim(-1000, 5000)
 
-    nfeatures = 4
-    m = svm.SVR(gamma=1 / nfeatures)
-    # m = KNeighborsRegressor()
-    # m = Lasso()
-    m.fit(X, y)
+    ice = predict_ice(b, X, colname, 'price', numx=30, nlines=100)
+    plot_ice(ice, colname, 'price', alpha=.3, ax=axes[2], show_ylabel=False)
 
-    ice = predict_ice(m, X, colname, 'price', nlines=1000)
-    plot_ice(ice, colname, 'price', alpha=.3, ax=axes[1, 0], show_ylabel=True)
-    axes[1, 0].set_ylim(-1000, 5000)
+    ice = predict_ice(lm, X, colname, 'price', numx=30, nlines=100)
+    plot_ice(ice, colname, 'price', alpha=.3, ax=axes[3], show_ylabel=False)
 
-    plot_stratpd(X, y, colname, 'price', ax=axes[1, 1], slope_line_alpha=.1, show_ylabel=False, pdp_marker_size=8)
-    axes[1, 1].set_ylim(-1000, 5000)
+    scaler = StandardScaler()
+    X_train_ = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns)
+    # y_pred = model.predict(X_)
+    # print("Keras training R^2", r2_score(y, y_pred)) # y_test in y
+    ice = predict_ice(model, X_train_, colname, 'price', numx=30, nlines=100)
+    # replace normalized unique X with unnormalized
+    ice.iloc[0, :] = np.linspace(np.min(X_train[colname]), np.max(X_train[colname]), 30, endpoint=True)
+    plot_ice(ice, colname, 'price', alpha=.3, ax=axes[4], show_ylabel=True)
+
+    pdpx, pdpy, ignored = \
+        plot_stratpd(X, y, colname, 'price', ax=axes[5],
+                     pdp_marker_size=6,
+                     show_x_counts=False,
+                     hide_top_right_axes=False,
+                     show_xlabel=True, show_ylabel=False)
+    print(f"StratPD ignored {ignored} records")
+    axes[5].yaxis.tick_right()
+    axes[5].yaxis.set_label_position('right')
+    axes[5].set_ylim(-250,2250)
+    axes[5].set_yticks([0,1000,2000])
+    axes[5].set_ylabel("price")
 
     savefig(f"{colname}_vs_price")
 
 
-def rent_grid():
-    print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_rent = load_rent()
-    df_rent = df_rent[-10_000:]  # get a small subsample
-    X = df_rent.drop('price', axis=1)
-    y = df_rent['price']
-
-    plot_stratpd_gridsearch(X, y, 'latitude', 'price',
-                            min_samples_leaf_values=[5,10,30,50],
-                            yrange=(-500,3500),
-                            show_slope_lines=True,
-                            marginal_alpha=0.05
-                            )
-
-    savefig("latitude_meta")
-
-    plot_stratpd_gridsearch(X, y, 'longitude', 'price',
-                            min_samples_leaf_values=[5,10,30,50],
-                            yrange=(1000,-4000),
-                            show_slope_lines=True,
-                            marginal_alpha=0.05
-                            )
-
-    savefig("longitude_meta")
-
-    plot_stratpd_gridsearch(X, y, 'bathrooms', 'price',
-                            min_samples_leaf_values=[5,10,30,50],
-                            yrange=(-500,4000),
-                            show_slope_lines=True,
-                            slope_line_alpha=.15)
-
-    savefig("bathrooms_meta")
-
-
-def rent_alone():
-    print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_rent = load_rent()
-    df_rent = df_rent[-10_000:]  # get a small subsample
-    X = df_rent.drop('price', axis=1)
-    y = df_rent['price']
-
-    def onevar(colname, row, col, yrange=None, slope_line_alpha=.2):
-        plot_stratpd(X, y, colname, 'price', ax=axes[row, col],
-                     min_samples_leaf=20,
-                     yrange=yrange,
-                     slope_line_alpha=slope_line_alpha,
-                     pdp_marker_size=2 if row >= 2 else 8)
-        plot_stratpd(X, y, colname, 'price', ax=axes[row, col + 1],
-                     min_samples_leaf=20,
-                     yrange=yrange,
-                     slope_line_alpha=slope_line_alpha,
-                     pdp_marker_size=2 if row >= 2 else 8)
-
-    fig, axes = plt.subplots(4, 2, figsize=(5, 8))#, sharey=True)
-    # for i in range(1, 4):
-    #     axes[0, i].get_yaxis().set_visible(False)
-    #     axes[1, i].get_yaxis().set_visible(False)
-    #     axes[2, i].get_yaxis().set_visible(False)
-
-    onevar('bedrooms', row=0, col=0, yrange=(0, 3000))
-    onevar('bathrooms', row=1, col=0, yrange=(-500, 3000))
-    onevar('latitude', row=2, col=0, yrange=(-500, 3000))
-    onevar('longitude', row=3, col=0, slope_line_alpha=.08, yrange=(-3000, 1000))
-
-    savefig(f"rent_all")
-    plt.close()
-
-
-def rent_int():
-    # np.random.seed(42)
-    print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_rent = load_rent()
-    df_rent = df_rent[-10_000:]  # get a small subsample since SVM is slowwww
-    X = df_rent.drop('price', axis=1)
-    y = df_rent['price']
-    figsize = (5, 4)
-
-    fig, axes = plt.subplots(2, 3, figsize=(6, 4))
-
-    avg_per_baths = df_rent.groupby('bedrooms').mean()['price']
-    axes[0, 0].scatter(df_rent['bedrooms'], df_rent['price'], alpha=0.07,
-                       s=5)  # , label="observation")
-    axes[0, 0].scatter(np.unique(df_rent['bedrooms']), avg_per_baths, s=6, c='black',
-                       label="average price/bedrooms")
-    axes[0, 0].set_xlabel("bedrooms")  # , fontsize=12)
-    axes[0, 0].set_ylabel("price")  # , fontsize=12)
-    axes[0, 0].set_ylim(0, 10_000)
-    avg_per_baths = df_rent.groupby('bathrooms').mean()['price']
-    axes[1, 0].scatter(df_rent['bathrooms'], df_rent['price'], alpha=0.07,
-                       s=5)  # , label="observation")
-    axes[1, 0].scatter(np.unique(df_rent['bathrooms']), avg_per_baths, s=6, c='black',
-                       label="average price/bathrooms")
-    axes[1, 0].set_xlabel("bathrooms")  # , fontsize=12)
-    axes[1, 0].set_ylabel("price")  # , fontsize=12)
-    axes[1, 0].set_ylim(0, 10_000)
-
-    stratpd_min_samples_leaf_partition = 40  # the default
-    catstratpd_min_samples_leaf_partition = 10
-
-    plot_stratpd(X, y, 'bedrooms', 'price',
-                 min_samples_leaf=stratpd_min_samples_leaf_partition,
-                 ax=axes[0, 1], slope_line_alpha=.2, show_ylabel=False)
-    axes[0, 1].set_ylim(-500, 5000)
-
-    plot_catstratpd(X, y, 'bedrooms', 'price', catnames=np.unique(X['bedrooms']),
-                    min_samples_leaf=catstratpd_min_samples_leaf_partition,
-                    ax=axes[0, 2], show_ylabel=False)
-    axes[0, 2].set_ylim(-500, 5000)
-
-    plot_stratpd(X, y, 'bathrooms', 'price',
-                 min_samples_leaf=stratpd_min_samples_leaf_partition,
-                 ax=axes[1, 1], slope_line_alpha=.2, show_ylabel=False)
-    axes[1, 1].set_ylim(-500, 5000)
-
-    X['bathrooms'] = X['bathrooms'].astype(str)
-    baths = np.unique(X['bathrooms'])
-    plot_catstratpd(X, y, 'bathrooms', 'price', catnames=baths,
-                    min_samples_leaf=catstratpd_min_samples_leaf_partition,
-                    ax=axes[1, 2], show_ylabel=False)
-    axes[1, 2].set_ylim(-500, 5000)
-
-    axes[0, 0].set_title("Marginal")  # , fontsize=12)
-    axes[0, 1].set_title("StratPD")  # , fontsize=12)
-    axes[0, 2].set_title("CatStratPD")  # , fontsize=12)
-
-    savefig(f"rent_intcat")
-    plt.close()
+def tune_RF(X, y, verbose=2):
+    tuned_parameters = {'n_estimators': [50, 100, 125, 150, 200],
+                        'min_samples_leaf': [1, 3, 5, 7],
+                        'max_features': [.1, .3, .5, .7, .9]}
+    grid = GridSearchCV(
+        RandomForestRegressor(), tuned_parameters, scoring='r2',
+        cv=5,
+        n_jobs=-1,
+        verbose=verbose
+    )
+    grid.fit(X, y)  # does CV on entire data set
+    rf = grid.best_estimator_
+    print("RF best:", grid.best_params_)
+    #
+    # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    # rf.fit(X_train, y_train)
+    # print("validation R^2", rf.score(X_test, y_test))
+    return rf, grid.best_params_
 
 
 def plot_with_noise_col(df, colname):
@@ -432,7 +282,7 @@ def plot_with_noise_col(df, colname):
     uniq_x, pdp_curve = \
         plot_ice(ice, colname, 'price', alpha=.05, ax=axes[1, 0], show_xlabel=True)
     axes[1, 0].set_ylim(-1000, 5000)
-    axes[1, 0].set_title(f"PD/ICE")
+    axes[1, 0].set_title(f"FPD/ICE")
 
     for i in range(2):
         for j in range(2):
@@ -448,7 +298,7 @@ def plot_with_noise_col(df, colname):
         plot_ice(ice, colname, 'price', alpha=.05, ax=axes[1, 1], show_xlabel=True,
                  show_ylabel=False)
     axes[1, 1].set_ylim(-1000, 5000)
-    axes[1, 1].set_title(f"PD/ICE w/{type} col")
+    axes[1, 1].set_title(f"FPD/ICE w/{type} col")
     # print(f"max ICE curve {np.max(pdp_curve):.0f}, max curve with dup {np.max(pdp_curve_):.0f}")
 
     axes[0, 0].get_xaxis().set_visible(False)
@@ -514,7 +364,7 @@ def plot_with_dup_col(df, colname, min_samples_leaf):
     ice = predict_ice(rf, X, colname, 'price', nlines=1000)
     plot_ice(ice, colname, 'price', alpha=.05, ax=axes[1, 0], show_xlabel=True)
     axes[1, 0].set_ylim(-1000, 5000)
-    axes[1, 0].set_title(f"PD/ICE")
+    axes[1, 0].set_title(f"FPD/ICE")
 
     for i in range(2):
         for j in range(3):
@@ -529,10 +379,10 @@ def plot_with_dup_col(df, colname, min_samples_leaf):
     ice = predict_ice(rf, X, colname, 'price', nlines=1000)
     plot_ice(ice, colname, 'price', alpha=.05, ax=axes[1, 1], show_xlabel=True, show_ylabel=False)
     axes[1, 1].set_ylim(-1000, 5000)
-    axes[1, 1].set_title(f"PD/ICE w/{type} col")
+    axes[1, 1].set_title(f"FPD/ICE w/{type} col")
     # print(f"max ICE curve {np.max(pdp_curve):.0f}, max curve with dup {np.max(pdp_curve_):.0f}")
 
-    axes[1, 2].set_title(f"PD/ICE w/{type} col")
+    axes[1, 2].set_title(f"FPD/ICE w/{type} col")
     axes[1, 2].text(.2, 4000, "Cannot compensate")
     axes[1, 2].set_xlabel(colname)
 
@@ -542,39 +392,10 @@ def plot_with_dup_col(df, colname, min_samples_leaf):
     axes[0, 1].get_xaxis().set_visible(False)
 
 
-def rent_extra_cols():
-    print(f"----------- {inspect.stack()[0][3]} -----------")
-
-    df_rent = load_rent()
-    df_rent = df_rent[-10_000:]  # get a small subsample
-
-    colname = 'bedrooms'
-    print(f"Range of {colname}: {min(df_rent[colname]), max(df_rent[colname])}")
-    plot_with_dup_col(df_rent, colname, min_samples_leaf=10)
-    savefig(f"{colname}_vs_price_dup")
-
-    plot_with_noise_col(df_rent, colname)
-    savefig(f"{colname}_vs_price_noise")
-
-    colname = 'bathrooms'
-    print(f"Range of {colname}: {min(df_rent[colname]), max(df_rent[colname])}")
-    plot_with_dup_col(df_rent, colname, min_samples_leaf=10)
-    savefig(f"{colname}_vs_price_dup")
-
-    colname = 'bathrooms'
-    plot_with_noise_col(df_rent, colname)
-    savefig(f"{colname}_vs_price_noise")
-
-
 def rent_ntrees():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_rent = load_rent()
-    df_rent = df_rent[-10_000:]  # get a small subsample
-    X = df_rent.drop('price', axis=1)
-    y = df_rent['price']
-
-    X = df_rent.drop('price', axis=1)
-    y = df_rent['price']
+    X, y = load_rent(n=10_000)
 
     trees = [1, 5, 10, 30]
 
@@ -612,6 +433,7 @@ def rent_ntrees():
 
 
 def meta_boston():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
     boston = load_boston()
     print(len(boston.data))
@@ -637,6 +459,7 @@ def meta_boston():
 
 
 def plot_meta_multivar(X, y, colnames, targetname, nbins, yranges=None):
+    np.random.seed(1)  # pick seed for reproducible article images
     min_samples_leaf_values = [2, 5, 10, 30, 50, 100, 200]
 
     nrows = len(colnames)
@@ -673,23 +496,31 @@ def plot_meta_multivar(X, y, colnames, targetname, nbins, yranges=None):
 
 
 def unsup_rent():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_rent = load_rent()
-    df_rent = df_rent[-10_000:]
+    X, y = load_rent(n=10_000)
 
-    X = df_rent.drop('price', axis=1)
-    y = df_rent['price']
+    fig, axes = plt.subplots(4, 2, figsize=(4, 8))
 
-    fig, axes = plt.subplots(3, 2, figsize=(4, 6))
+    plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 0], yrange=(-500,4000),
+                 slope_line_alpha=.2, supervised=False)
+    plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 1], yrange=(-500,4000),
+                 slope_line_alpha=.2, supervised=True)
 
-    plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 0], yrange=(-500,4000), slope_line_alpha=.2, supervised=False)
-    plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 1], yrange=(-500,4000), slope_line_alpha=.2, supervised=True)
+    plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 0], yrange=(-500,4000),
+                 slope_line_alpha=.2, supervised=False)
+    plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 1], yrange=(-500,4000),
+                 slope_line_alpha=.2, supervised=True)
 
-    plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 0], yrange=(-500,4000), slope_line_alpha=.2, supervised=False)
-    plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 1], yrange=(-500,4000), slope_line_alpha=.2, supervised=True)
+    plot_stratpd(X, y, 'latitude', 'price', ax=axes[2, 0], yrange=(-500,2000),
+                 slope_line_alpha=.2, supervised=False, verbose=True)
+    plot_stratpd(X, y, 'latitude', 'price', ax=axes[2, 1], yrange=(-500,2000),
+                 slope_line_alpha=.2, supervised=True, verbose=True)
 
-    plot_stratpd(X, y, 'latitude', 'price', ax=axes[2, 0], yrange=(-500,4000), slope_line_alpha=.2, supervised=False)
-    plot_stratpd(X, y, 'latitude', 'price', ax=axes[2, 1], yrange=(-500,4000), slope_line_alpha=.2, supervised=True)
+    plot_stratpd(X, y, 'longitude', 'price', ax=axes[3, 0], yrange=(-500,500),
+                 slope_line_alpha=.2, supervised=False)
+    plot_stratpd(X, y, 'longitude', 'price', ax=axes[3, 1], yrange=(-500,500),
+                 slope_line_alpha=.2, supervised=True)
 
     axes[0, 0].set_title("Unsupervised")
     axes[0, 1].set_title("Supervised")
@@ -701,114 +532,33 @@ def unsup_rent():
     plt.close()
 
 
-def toy_weather_data():
-    def temp(x): return np.sin((x + 365 / 2) * (2 * np.pi) / 365)
-
-    def noise(state): return np.random.normal(-5, 5, sum(df['state'] == state))
-
-    df = pd.DataFrame()
-    df['dayofyear'] = range(1, 365 + 1)
-    df['state'] = np.random.choice(['CA', 'CO', 'AZ', 'WA'], len(df))
-    df['temperature'] = temp(df['dayofyear'])
-    df.loc[df['state'] == 'CA', 'temperature'] = 70 + df.loc[
-        df['state'] == 'CA', 'temperature'] * noise('CA')
-    df.loc[df['state'] == 'CO', 'temperature'] = 40 + df.loc[
-        df['state'] == 'CO', 'temperature'] * noise('CO')
-    df.loc[df['state'] == 'AZ', 'temperature'] = 90 + df.loc[
-        df['state'] == 'AZ', 'temperature'] * noise('AZ')
-    df.loc[df['state'] == 'WA', 'temperature'] = 60 + df.loc[
-        df['state'] == 'WA', 'temperature'] * noise('WA')
-    return df
-
-
 def weather():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_yr1 = toy_weather_data()
-    df_yr1['year'] = 1980
-    df_yr2 = toy_weather_data()
-    df_yr2['year'] = 1981
-    df_yr3 = toy_weather_data()
-    df_yr3['year'] = 1982
-    df_raw = pd.concat([df_yr1, df_yr2, df_yr3], axis=0)
+    TUNE_RF = False
+    df_raw = toy_weather_data()
     df = df_raw.copy()
-    catencoders = df_string_to_cat(df_raw.copy())
-    # states = catencoders['state']
-    # print(states)
-    #
-    # df_cat_to_catcode(df)
 
-    names = {'CO': 5, 'CA': 10, 'AZ': 15, 'WA': 20}
-    df['state'] = df['state'].map(names)
+    df_string_to_cat(df)
+    names = np.unique(df['state'])
     catnames = OrderedDict()
-    for k,v in names.items():
-        catnames[v] = k
+    for i,v in enumerate(names):
+        catnames[i+1] = v
+    df_cat_to_catcode(df)
 
     X = df.drop('temperature', axis=1)
     y = df['temperature']
     # cats = catencoders['state'].values
     # cats = np.insert(cats, 0, None) # prepend a None for catcode 0
 
-    figsize = (2.5, 2.5)
-    """
-    The scale diff between states, obscures the sinusoidal nature of the
-    dayofyear vs temp plot. With noise N(0,5) gotta zoom in -3,3 on mine too.
-    otherwise, smooth quasilinear plot with lots of bristles showing volatility.
-    Flip to N(-5,5) which is more realistic and we see sinusoid for both, even at
-    scale. yep, the N(0,5) was obscuring sine for both. 
-    """
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
-    plot_stratpd(X, y, 'dayofyear', 'temperature', ax=ax,
-                 yrange=(-10, 10),
-                 pdp_marker_size=2, slope_line_alpha=.5)
-
-    ax.set_title("(b) StratPD")
-    savefig(f"dayofyear_vs_temp_stratpd")
-    plt.close()
-
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
-    plot_catstratpd(X, y, 'state', 'temperature', catnames=catnames,
-                    min_samples_leaf=30,
-                    alpha=.3,
-                    ax=ax,
-                    yrange=(-2, 60))
-
-    ax.set_title("(b) StratPD")
-    savefig(f"state_vs_temp_stratpd")
-
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
-    rf.fit(X, y)
-
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
-    ice = predict_ice(rf, X, 'dayofyear', 'temperature')
-    plot_ice(ice, 'dayofyear', 'temperature', ax=ax, yrange=(-15, 15))
-    ax.set_title("(c) PD/ICE")
-    savefig(f"dayofyear_vs_temp_pdp")
-
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
-    ice = predict_catice(rf, X, 'state', 'temperature')
-    plot_catice(ice, 'state', 'temperature', catnames=catnames, ax=ax,
-                pdp_marker_size=10,
-                yrange=(-2, 60))
-    ax.set_title("(c) PD/ICE")
-    savefig(f"state_vs_temp_pdp")
-
-    # fig, ax = plt.subplots(1, 1, figsize=figsize)
-    # rtreeviz_univar(ax,
-    #                 X['state'], y,
-    #                 feature_name='state',
-    #                 target_name='y',
-    #                 fontsize=10, show={'splits'})
-    #
-    # plt.show()
-
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
-    ax.scatter(X['state'], y, alpha=.05, s=15)
-    ax.set_xticks([5,10,15,20])
-    ax.set_xticklabels(catnames.values())
-    ax.set_xlabel("state")
-    ax.set_ylabel("temperature")
-    ax.set_title("(a) Marginal")
-    savefig(f"state_vs_temp")
+    if TUNE_RF:
+        rf, bestparams = tune_RF(X, y)
+        # RF best: {'max_features': 0.9, 'min_samples_leaf': 5, 'n_estimators': 150}
+        # validation R^2 0.9500072628270099
+    else:
+        rf = RandomForestRegressor(n_estimators=150, min_samples_leaf=5, max_features=0.9, oob_score=True)
+        rf.fit(X, y) # Use full data set for plotting
+        print("RF OOB R^2", rf.oob_score_)
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     df = df_raw.copy()
@@ -818,20 +568,72 @@ def weather():
     co = avgtmp.query('state=="CO"')
     az = avgtmp.query('state=="AZ"')
     wa = avgtmp.query('state=="WA"')
+    nv = avgtmp.query('state=="NV"')
     ax.plot(ca['dayofyear'], ca['temperature'], lw=.5, c='#fdae61', label="CA")
     ax.plot(co['dayofyear'], co['temperature'], lw=.5, c='#225ea8', label="CO")
     ax.plot(az['dayofyear'], az['temperature'], lw=.5, c='#41b6c4', label="AZ")
     ax.plot(wa['dayofyear'], wa['temperature'], lw=.5, c='#a1dab4', label="WA")
-    ax.legend(loc='lower left', borderpad=0, labelspacing=0)
+    ax.plot(nv['dayofyear'], nv['temperature'], lw=.5, c='#a1dab4', label="NV")
+    ax.legend(loc='upper left', borderpad=0, labelspacing=0)
     ax.set_xlabel("dayofyear")
     ax.set_ylabel("temperature")
     ax.set_title("(a) State/day vs temp")
-
     savefig(f"dayofyear_vs_temp")
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    plot_stratpd(X, y, 'dayofyear', 'temperature', ax=ax,
+                 show_x_counts=False,
+                 yrange=(-10, 10),
+                 pdp_marker_size=2, slope_line_alpha=.5, n_trials=1)
+
+    ax.set_title("(b) StratPD")
+    savefig(f"dayofyear_vs_temp_stratpd")
+    plt.close()
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    plot_catstratpd(X, y, 'state', 'temperature', catnames=catnames,
+                    show_x_counts=False,
+                    # min_samples_leaf=30,
+                    min_y_shifted_to_zero=True,
+                    # alpha=.3,
+                    ax=ax,
+                    yrange=(-1, 55))
+    ax.set_yticks([0,10,20,30,40,50])
+
+    ax.set_title("(d) CatStratPD")
+    savefig(f"state_vs_temp_stratpd")
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    ice = predict_ice(rf, X, 'dayofyear', 'temperature')
+    plot_ice(ice, 'dayofyear', 'temperature', ax=ax)
+    ax.set_title("(c) FPD/ICE")
+    savefig(f"dayofyear_vs_temp_pdp")
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    ice = predict_catice(rf, X, 'state', 'temperature')
+    plot_catice(ice, 'state', 'temperature', catnames=catnames, ax=ax,
+                pdp_marker_size=15,
+                min_y_shifted_to_zero = True,
+                yrange=(-2, 50)
+                )
+    ax.set_yticks([0,10,20,30,40,50])
+    ax.set_title("(b) FPD/ICE")
+    savefig(f"state_vs_temp_pdp")
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    ax.scatter(X['state'], y, alpha=.05, s=15)
+    ax.set_xticks(range(1,len(names)))
+    ax.set_xticklabels(catnames.values())
+    ax.set_xlabel("state")
+    ax.set_ylabel("temperature")
+    ax.set_title("(a) Marginal")
+    savefig(f"state_vs_temp")
+
     plt.close()
 
 
 def meta_weather():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
     # np.random.seed(66)
 
@@ -872,90 +674,721 @@ def meta_weather():
 
 
 def weight():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_raw = toy_weight_data(2000)
+    X, y, df_raw, eqn = toy_weight_data(2000)
+
+    TUNE_RF = False
+
+    # fig, ax = plt.subplots(1, 1, figsize=figsize)
+    # plot_stratpd(X, y, 'education', 'weight', ax=ax,
+    #              show_x_counts=False,
+    #              pdp_marker_size=5,
+    #              yrange=(-12, 0.05), slope_line_alpha=.1, show_ylabel=True)
+    # #    ax.get_yaxis().set_visible(False)
+    # ax.set_title("StratPD", fontsize=10)
+    # ax.set_xlim(10,18)
+    # ax.set_xticks([10,12,14,16,18])
+    # savefig(f"education_vs_weight_stratpd")
+    #
+    # fig, ax = plt.subplots(1, 1, figsize=figsize)
+    # plot_stratpd(X, y, 'height', 'weight', ax=ax,
+    #              pdp_marker_size=.2,
+    #              show_x_counts=False,
+    #              yrange=(0, 160), show_ylabel=False)
+    # #    ax.get_yaxis().set_visible(False)
+    # ax.set_title("StratPD", fontsize=10)
+    # ax.set_xticks([60,65,70,75])
+    # savefig(f"height_vs_weight_stratpd")
+    #
+    # fig, ax = plt.subplots(1, 1, figsize=(1.3,2))
+    # plot_catstratpd(X, y, 'sex', 'weight', ax=ax,
+    #                 show_x_counts=False,
+    #                 catnames={0:'M',1:'F'},
+    #                 yrange=(-1, 35),
+    #                 )
+    # ax.set_title("CatStratPD", fontsize=10)
+    # savefig(f"sex_vs_weight_stratpd")
+    #
+    # fig, ax = plt.subplots(1, 1, figsize=(1.5,1.8))
+    # plot_catstratpd(X, y, 'pregnant', 'weight', ax=ax,
+    #                 show_x_counts=False,
+    #                 catnames={0:False, 1:True},
+    #                 yrange=(-1, 45),
+    #                 )
+    # ax.set_title("CatStratPD", fontsize=10)
+    # savefig(f"pregnant_vs_weight_stratpd")
+
+    if TUNE_RF:
+        rf, bestparams = tune_RF(X, y)
+        # RF best: {'max_features': 0.9, 'min_samples_leaf': 1, 'n_estimators': 200}
+        # validation R^2 0.9996343699640691
+    else:
+        rf = RandomForestRegressor(n_estimators=200, min_samples_leaf=1, max_features=0.9, oob_score=True)
+        rf.fit(X, y) # Use full data set for plotting
+        print("RF OOB R^2", rf.oob_score_)
+
+    # # show pregnant female at max range drops going taller
+    # X_test = np.array([[1, 1, 70, 10]])
+    # y_pred = rf.predict(X_test)
+    # print("pregnant female at max range", X_test, "predicts", y_pred)
+    # X_test = np.array([[1, 1, 72, 10]]) # make them taller
+    # y_pred = rf.predict(X_test)
+    # print("pregnant female in male height range", X_test, "predicts", y_pred)
+    #
+    # fig, ax = plt.subplots(1, 1, figsize=figsize)
+    # ice = predict_ice(rf, X, 'education', 'weight')
+    # plot_ice(ice, 'education', 'weight', ax=ax, yrange=(-12, 0), min_y_shifted_to_zero=True)
+    # ax.set_xlim(10,18)
+    # ax.set_xticks([10,12,14,16,18])
+    # ax.set_title("FPD/ICE", fontsize=10)
+    # savefig(f"education_vs_weight_pdp")
+
+    fig, ax = plt.subplots(1, 1, figsize=(2.4, 2.2))
+    ice = predict_ice(rf, X, 'height', 'weight')
+    plot_ice(ice, 'height', 'weight', ax=ax, pdp_linewidth=2, yrange=(100, 250),
+             min_y_shifted_to_zero=False)
+    ax.set_xlabel("height\n(a)", fontsize=10)
+    ax.set_ylabel("weight", fontsize=10)
+    ax.set_title("FPD/ICE", fontsize=10)
+    ax.set_xticks([60,65,70,75])
+    savefig(f"height_vs_weight_pdp")
+
+    return
+
+    fig, ax = plt.subplots(1, 1, figsize=(1.3,2))
+    ice = predict_catice(rf, X, 'sex', 'weight')
+    plot_catice(ice, 'sex', 'weight', catnames={0:'M',1:'F'}, ax=ax, yrange=(0, 35),
+                pdp_marker_size=15)
+    ax.set_title("FPD/ICE", fontsize=10)
+    savefig(f"sex_vs_weight_pdp")
+
+    fig, ax = plt.subplots(1, 1, figsize=(1.3,1.8))
+    ice = predict_catice(rf, X, 'pregnant', 'weight', cats=df_raw['pregnant'].unique())
+    plot_catice(ice, 'pregnant', 'weight', catnames={0:'M',1:'F'}, ax=ax,
+                min_y_shifted_to_zero=True,
+                yrange=(-5, 45), pdp_marker_size=20)
+    ax.set_title("FPD/ICE", fontsize=10)
+    savefig(f"pregnant_vs_weight_pdp")
+
+
+def shap_pregnant():
+    np.random.seed(1)  # pick seed for reproducible article images
+    n = 2000
+    shap_test_size = 300
+    X, y, df_raw, eqn = toy_weight_data(n=n)
     df = df_raw.copy()
-    catencoders = df_string_to_cat(df)
+    df_string_to_cat(df)
     df_cat_to_catcode(df)
     df['pregnant'] = df['pregnant'].astype(int)
     X = df.drop('weight', axis=1)
     y = df['weight']
-    figsize = (2.5, 2.5)
 
+    # parameters from tune_RF() called in weight()
+    rf = RandomForestRegressor(n_estimators=200, min_samples_leaf=1,
+                               max_features=0.9,
+                               oob_score=True)
+    rf.fit(X, y)  # Use full data set for plotting
+    print("RF OOB R^2", rf.oob_score_)
+
+    explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100),
+                                   feature_perturbation='interventional')
+    shap_sample = X.sample(shap_test_size, replace=False)
+    shap_values = explainer.shap_values(shap_sample, check_additivity=False)
+
+    GREY = '#444443'
+    fig, ax = plt.subplots(1, 1, figsize=(1.3,1.8))
+
+    preg_shap_values = shap_values[:, 1]
+    avg_not_preg_weight = np.mean(preg_shap_values[np.where(shap_sample['pregnant']==0)])
+    avg_preg_weight = np.mean(preg_shap_values[np.where(shap_sample['pregnant']==1)])
+    ax.bar([0, 1], [avg_not_preg_weight-avg_not_preg_weight, avg_preg_weight-avg_not_preg_weight],
+           color='#1E88E5')
+    ax.set_title("SHAP", fontsize=10)
+    ax.set_xlabel("pregnant")
+    ax.set_xticks([0,1])
+    ax.set_xticklabels(['False','True'])
+    ax.set_ylabel("weight")
+    ax.set_ylim(-1,45)
+    ax.set_yticks([0,10,20,30,40])
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    savefig('pregnant_vs_weight_shap')
+
+
+def shap_weight(feature_perturbation, twin=False):
+    np.random.seed(1)  # pick seed for reproducible article images
+    n = 2000
+    shap_test_size = 2000
+    X, y, df_raw, eqn = toy_weight_data(n=n)
+    df = df_raw.copy()
+    df_string_to_cat(df)
+    df_cat_to_catcode(df)
+    df['pregnant'] = df['pregnant'].astype(int)
+    X = df.drop('weight', axis=1)
+    y = df['weight']
+
+    # parameters from tune_RF() called in weight()
+    rf = RandomForestRegressor(n_estimators=200, min_samples_leaf=1,
+                               max_features=0.9,
+                               oob_score=True)
+    rf.fit(X, y)  # Use full data set for plotting
+    print("RF OOB R^2", rf.oob_score_)
+
+    if feature_perturbation=='interventional':
+        explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100), feature_perturbation='interventional')
+        xlabel = "height\n(c)"
+        ylabel = None
+        yticks = []
+        figsize = (2.2, 2.2)
+    else:
+        explainer = shap.TreeExplainer(rf, feature_perturbation='tree_path_dependent')
+        xlabel = "height\n(b)"
+        ylabel = "SHAP height"
+        yticks = [-75, -60, -40, -20, 0, 20, 40, 60, 75]
+        figsize = (2.6, 2.2)
+    shap_sample = X.sample(shap_test_size, replace=False)
+    shap_values = explainer.shap_values(shap_sample, check_additivity=False)
+
+    df_shap = pd.DataFrame()
+    df_shap['weight'] = shap_values[:, 2]
+    df_shap['height'] = shap_sample.iloc[:, 2]
+
+    pdpy = df_shap.groupby('height').mean().reset_index()
+    print("len pdpy", len(pdpy))
+
+    GREY = '#444443'
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    plot_stratpd(X, y, 'education', 'weight', ax=ax,
-                 # min_samples_leaf=2,
-                 yrange=(-12, 0), slope_line_alpha=.1, show_ylabel=True)
-    #    ax.get_yaxis().set_visible(False)
-    ax.set_title("StratPD", fontsize=10)
-    ax.set_xlim(10,18)
-    ax.set_xticks([10,12,14,16,18])
-    savefig(f"education_vs_weight_stratpd")
 
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
-    plot_stratpd(X, y, 'height', 'weight', ax=ax,
-                 # min_samples_leaf=2,
-                 yrange=(0, 160), slope_line_alpha=.1, show_ylabel=False)
-    #    ax.get_yaxis().set_visible(False)
-    ax.set_title("StratPD", fontsize=10)
-    savefig(f"height_vs_weight_stratpd")
+    shap.dependence_plot("height", shap_values, shap_sample,
+                         interaction_index=None, ax=ax, dot_size=5,
+                         show=False, alpha=1)
+    # ax.plot(pdpy['height'], pdpy['weight'], '.', c='k', markersize=.5, alpha=.5)
 
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
-    plot_catstratpd(X, y, 'sex', 'weight', ax=ax,
-                    # min_samples_leaf=50,
-                    alpha=.2,
-                    catnames={1: 'F', 2: 'M'},
-                    yrange=(0, 5),
-                    )
-    ax.set_title("StratPD", fontsize=10)
-    savefig(f"sex_vs_weight_stratpd")
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
+    ax.spines['right'].set_linewidth(.5)
+    ax.spines['top'].set_linewidth(.5)
 
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
-    plot_catstratpd(X, y, 'pregnant', 'weight', ax=ax,
-                    # min_samples_leaf=15,
-                    alpha=.2,
-                    catnames={0:False, 1:True},
-                    yrange=(-5, 35),
-                    )
-    ax.set_title("StratPD", fontsize=10)
-    savefig(f"pregnant_vs_weight_stratpd")
+    ax.set_ylabel(ylabel, fontsize=10, labelpad=0)
+    ax.set_xlabel(xlabel, fontsize=10)
+    ax.tick_params(axis='both', which='major', labelsize=10)
 
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
-    rf.fit(X, y)
+    ax.plot([70,70], [-75,75], '--', lw=.6, color=GREY)
+    ax.text(69.8,60, "Max female", horizontalalignment='right',
+            fontsize=9)
 
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
-    ice = predict_ice(rf, X, 'education', 'weight')
-    plot_ice(ice, 'education', 'weight', ax=ax, yrange=(-12, 0))
-    ax.set_xlim(10,18)
-    ax.set_xticks([10,12,14,16,18])
-    ax.set_title("PD/ICE", fontsize=10)
-    savefig(f"education_vs_weight_pdp")
+    leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored = \
+        partial_dependence(X=X, y=y, colname='height')
 
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
-    ice = predict_ice(rf, X, 'height', 'weight')
-    plot_ice(ice, 'height', 'weight', ax=ax, yrange=(0, 160))
-    ax.set_title("PD/ICE", fontsize=10)
-    ax.set_title("PD/ICE", fontsize=10)
-    savefig(f"height_vs_weight_pdp")
+    ax.set_ylim(-77,75)
+    # ax.set_xlim(min(pdpx), max(pdpx))
+    ax.set_xticks([60,65,70,75])
+    ax.set_yticks(yticks)
 
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
-    ice = predict_catice(rf, X, 'sex', 'weight')
-    plot_catice(ice, 'sex', 'weight', catnames=df_raw['sex'].unique(), ax=ax, yrange=(0, 5),
-                pdp_marker_size=15)
-    ax.set_title("PD/ICE", fontsize=10)
-    savefig(f"sex_vs_weight_pdp")
+    ax.set_title(f"SHAP {feature_perturbation}", fontsize=10)
+    # ax.set_ylim(-40,70)
 
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
-    ice = predict_catice(rf, X, 'pregnant', 'weight', cats=df_raw['pregnant'].unique())
-    plot_catice(ice, 'pregnant', 'weight', catnames=df_raw['pregnant'].unique(), ax=ax,
-                yrange=(-5, 35), pdp_marker_size=15)
-    ax.set_title("PD/ICE", fontsize=10)
-    savefig(f"pregnant_vs_weight_pdp")
+    print(min(pdpx), max(pdpx))
+    print(min(pdpy), max(pdpy))
+    rise = max(pdpy) - min(pdpy)
+    run = max(pdpx) - min(pdpx)
+    slope = rise/run
+    print(slope)
+    # ax.plot([min(pdpx),max(pdpyX['height'])], [0,]
+
+    if twin:
+        ax2 = ax.twinx()
+        # ax2.set_xlim(min(pdpx), max(pdpx))
+        ax2.set_ylim(min(pdpy)-5, max(pdpy)+5)
+        ax2.set_xticks([60,65,70,75])
+        ax2.set_yticks([0,20,40,60,80,100,120,140,150])
+        # ax2.set_ylabel("weight", fontsize=12)
+
+        ax2.plot(pdpx, pdpy, '.', markersize=1, c='k')
+        # ax2.text(65,25, f"StratPD slope = {slope:.1f}")
+        ax2.annotate(f"StratPD", (64.65,39), xytext=(66,18),
+                     horizontalalignment='left',
+                     arrowprops=dict(facecolor='black', width=.5, headwidth=5, headlength=5),
+                     fontsize=9)
+
+    savefig(f"weight_{feature_perturbation}_shap")
+
+
+def saledayofweek():
+    np.random.seed(1)  # pick seed for reproducible article images
+    n = 10_000
+    shap_test_size = 1000
+    TUNE_RF = False
+    X, y = load_bulldozer(n=n)
+
+    avgprice = pd.concat([X,y], axis=1).groupby('saledayofweek')[['SalePrice']].mean()
+    avgprice = avgprice.reset_index()['SalePrice']
+    print(avgprice)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    ax.scatter(range(0,7), avgprice, s=20, c='k')
+    ax.scatter(X['saledayofweek'], y, s=3, alpha=.1, c='#1E88E5')
+    # ax.set_xlim(1960,2010)
+    ax.set_xlabel("saledayofweek\n(a)", fontsize=11)
+    ax.set_ylabel("SalePrice ($)", fontsize=11)
+    ax.set_title("Marginal plot", fontsize=13)
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
+    ax.spines['top'].set_color('none')
+    ax.spines['right'].set_color('none')
+    ax.spines['left'].set_smart_bounds(True)
+    ax.spines['bottom'].set_smart_bounds(True)
+    savefig(f"bulldozer_saledayofweek_marginal")
+
+    if TUNE_RF:
+        rf, _ = tune_RF(X, y)
+        # RF best: {'max_features': 0.9, 'min_samples_leaf': 1, 'n_estimators': 150}
+        # validation R^2 0.8001628465688546
+    else:
+        rf = RandomForestRegressor(n_estimators=150, n_jobs=-1,
+                                   max_features=0.9,
+                                   min_samples_leaf=1, oob_score=True)
+        rf.fit(X, y)
+        print("RF OOB R^2", rf.oob_score_)
+
+    explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100),
+                                   feature_perturbation='interventional')
+    shap_sample = X.sample(shap_test_size, replace=False)
+    shap_values = explainer.shap_values(shap_sample, check_additivity=False)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    shap.dependence_plot("saledayofweek", shap_values, shap_sample,
+                         interaction_index=None, ax=ax, dot_size=5,
+                         show=False, alpha=.5)
+
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
+    ax.spines['top'].set_color('none')
+    ax.spines['right'].set_color('none')
+    ax.spines['left'].set_smart_bounds(True)
+    ax.spines['bottom'].set_smart_bounds(True)
+
+    ax.set_title("SHAP", fontsize=13)
+    ax.set_ylabel("Impact on SalePrice\n(saledayofweek SHAP)", fontsize=11)
+    ax.set_xlabel("saledayofweek\n(b)", fontsize=11)
+    # ax.set_xlim(1960, 2010)
+    ax.tick_params(axis='both', which='major', labelsize=10)
+
+    savefig(f"bulldozer_saledayofweek_shap")
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    plot_catstratpd(X, y, colname='saledayofweek', targetname='SalePrice',
+                    catnames={0:'M',1:'T',2:'W',3:'R',4:'F',5:'S',6:'S'},
+                 n_trials=1,
+                 bootstrap=True,
+                 show_x_counts=True,
+                 show_xlabel=False,
+                 show_impact=False,
+                 pdp_marker_size=4,
+                 pdp_marker_alpha=1,
+                 ax=ax
+                 )
+    ax.set_title("StratPD", fontsize=13)
+    ax.set_xlabel("saledayofweek\n(d)", fontsize=11)
+    # ax.set_xlim(1960,2010)
+    # ax.set_ylim(-10000,30_000)
+    savefig(f"bulldozer_saledayofweek_stratpd")
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    ice = predict_ice(rf, X, "saledayofweek", 'SalePrice', numx=30, nlines=100)
+    plot_ice(ice, "saledayofweek", 'SalePrice', alpha=.3, ax=ax, show_ylabel=True,
+#             yrange=(-10000,30_000),
+             min_y_shifted_to_zero=True)
+    # ax.set_xlim(1960, 2010)
+    savefig(f"bulldozer_saledayofweek_pdp")
+
+
+def productsize():
+    np.random.seed(1)  # pick seed for reproducible article images
+    n = 10_000
+    shap_test_size = 1000
+    TUNE_RF = False
+    X, y = load_bulldozer(n=n)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    ax.scatter(X['ProductSize'], y, s=3, alpha=.1, c='#1E88E5')
+    # ax.set_xlim(1960,2010)
+    ax.set_xlabel("ProductSize\n(a)", fontsize=11)
+    ax.set_ylabel("SalePrice ($)", fontsize=11)
+    ax.set_title("Marginal plot", fontsize=13)
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
+    ax.spines['top'].set_color('none')
+    ax.spines['right'].set_color('none')
+    ax.spines['left'].set_smart_bounds(True)
+    ax.spines['bottom'].set_smart_bounds(True)
+    savefig(f"bulldozer_ProductSize_marginal")
+
+    if TUNE_RF:
+        rf, _ = tune_RF(X, y)
+        # RF best: {'max_features': 0.9, 'min_samples_leaf': 1, 'n_estimators': 150}
+        # validation R^2 0.8001628465688546
+    else:
+        rf = RandomForestRegressor(n_estimators=150, n_jobs=-1,
+                                   max_features=0.9,
+                                   min_samples_leaf=1, oob_score=True)
+        rf.fit(X, y)
+        print("RF OOB R^2", rf.oob_score_)
+
+    explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100),
+                                   feature_perturbation='interventional')
+    shap_sample = X.sample(shap_test_size, replace=False)
+    shap_values = explainer.shap_values(shap_sample, check_additivity=False)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    shap.dependence_plot("ProductSize", shap_values, shap_sample,
+                         interaction_index=None, ax=ax, dot_size=5,
+                         show=False, alpha=.5)
+
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
+    ax.spines['top'].set_color('none')
+    ax.spines['right'].set_color('none')
+    ax.spines['left'].set_smart_bounds(True)
+    ax.spines['bottom'].set_smart_bounds(True)
+
+    ax.set_title("SHAP", fontsize=13)
+    ax.set_ylabel("Impact on SalePrice\n(ProductSize SHAP)", fontsize=11)
+    ax.set_xlabel("ProductSize\n(b)", fontsize=11)
+    # ax.set_xlim(1960, 2010)
+    ax.tick_params(axis='both', which='major', labelsize=10)
+
+    savefig(f"bulldozer_ProductSize_shap")
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    plot_stratpd(X, y, colname='ProductSize', targetname='SalePrice',
+                 n_trials=10,
+                 bootstrap=True,
+                 show_slope_lines=False,
+                 show_x_counts=True,
+                 show_xlabel=False,
+                 show_impact=False,
+                 pdp_marker_size=4,
+                 pdp_marker_alpha=1,
+                 ax=ax
+                 )
+    ax.set_title("StratPD", fontsize=13)
+    ax.set_xlabel("ProductSize\n(d)", fontsize=11)
+    # ax.set_xlim(1960,2010)
+    # ax.set_ylim(-10000,30_000)
+    savefig(f"bulldozer_ProductSize_stratpd")
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    ice = predict_ice(rf, X, "ProductSize", 'SalePrice', numx=30, nlines=100)
+    plot_ice(ice, "ProductSize", 'SalePrice', alpha=.3, ax=ax, show_ylabel=True,
+#             yrange=(-10000,30_000),
+             min_y_shifted_to_zero=True)
+    # ax.set_xlim(1960, 2010)
+    savefig(f"bulldozer_ProductSize_pdp")
+
+
+def saledayofyear():
+    np.random.seed(1)  # pick seed for reproducible article images
+    n = 10_000
+    shap_test_size = 1000
+    TUNE_RF = False
+    X, y = load_bulldozer(n=n)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    ax.scatter(X['saledayofyear'], y, s=3, alpha=.1, c='#1E88E5')
+    # ax.set_xlim(1960,2010)
+    ax.set_xlabel("saledayofyear\n(a)", fontsize=11)
+    ax.set_ylabel("SalePrice ($)", fontsize=11)
+    ax.set_title("Marginal plot", fontsize=13)
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
+    ax.spines['top'].set_color('none')
+    ax.spines['right'].set_color('none')
+    ax.spines['left'].set_smart_bounds(True)
+    ax.spines['bottom'].set_smart_bounds(True)
+    savefig(f"bulldozer_saledayofyear_marginal")
+
+    if TUNE_RF:
+        rf, _ = tune_RF(X, y)
+        # RF best: {'max_features': 0.9, 'min_samples_leaf': 1, 'n_estimators': 150}
+        # validation R^2 0.8001628465688546
+    else:
+        rf = RandomForestRegressor(n_estimators=150, n_jobs=-1,
+                                   max_features=0.9,
+                                   min_samples_leaf=1, oob_score=True)
+        rf.fit(X, y)
+        print("RF OOB R^2", rf.oob_score_)
+
+    explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100),
+                                   feature_perturbation='interventional')
+    shap_sample = X.sample(shap_test_size, replace=False)
+    shap_values = explainer.shap_values(shap_sample, check_additivity=False)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    shap.dependence_plot("saledayofyear", shap_values, shap_sample,
+                         interaction_index=None, ax=ax, dot_size=5,
+                         show=False, alpha=.5)
+
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
+    ax.spines['top'].set_color('none')
+    ax.spines['right'].set_color('none')
+    ax.spines['left'].set_smart_bounds(True)
+    ax.spines['bottom'].set_smart_bounds(True)
+
+    ax.set_title("SHAP", fontsize=13)
+    ax.set_ylabel("Impact on SalePrice\n(saledayofyear SHAP)", fontsize=11)
+    ax.set_xlabel("saledayofyear\n(b)", fontsize=11)
+    # ax.set_xlim(1960, 2010)
+    ax.tick_params(axis='both', which='major', labelsize=10)
+
+    savefig(f"bulldozer_saledayofyear_shap")
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    plot_stratpd(X, y, colname='saledayofyear', targetname='SalePrice',
+                 n_trials=10,
+                 bootstrap=True,
+                 show_all_pdp=False,
+                 show_slope_lines=False,
+                 show_x_counts=True,
+                 show_xlabel=False,
+                 show_impact=False,
+                 pdp_marker_size=4,
+                 pdp_marker_alpha=1,
+                 ax=ax
+                 )
+    ax.set_title("StratPD", fontsize=13)
+    ax.set_xlabel("saledayofyear\n(d)", fontsize=11)
+    # ax.set_xlim(1960,2010)
+    # ax.set_ylim(-10000,30_000)
+    savefig(f"bulldozer_saledayofyear_stratpd")
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    ice = predict_ice(rf, X, "saledayofyear", 'SalePrice', numx=30, nlines=100)
+    plot_ice(ice, "saledayofyear", 'SalePrice', alpha=.3, ax=ax, show_ylabel=True,
+#             yrange=(-10000,30_000),
+             min_y_shifted_to_zero=True)
+    # ax.set_xlim(1960, 2010)
+    savefig(f"bulldozer_saledayofyear_pdp")
+
+
+def yearmade():
+    np.random.seed(1)  # pick seed for reproducible article images
+    n = 20_000
+    shap_test_size = 1000
+    TUNE_RF = False
+
+    # X, y = load_bulldozer(n=n)
+
+    # reuse same data generated by gencsv.py for bulldozer to
+    # make same comparison.
+    df = pd.read_csv("bulldozer10k.csv")
+    X = df.drop('SalePrice', axis=1)
+    y = df['SalePrice']
+
+    if TUNE_RF:
+        rf, _ = tune_RF(X, y)
+        # RF best: {'max_features': 0.9, 'min_samples_leaf': 1, 'n_estimators': 150}
+        # validation R^2 0.8001628465688546
+    else:
+        rf = RandomForestRegressor(n_estimators=150, n_jobs=-1,
+                                   max_features=0.9,
+                                   min_samples_leaf=1, oob_score=True)
+        rf.fit(X, y)
+        print("RF OOB R^2", rf.oob_score_)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    ax.scatter(X['YearMade'], y, s=3, alpha=.1, c='#1E88E5')
+    ax.set_xlim(1960,2010)
+    ax.set_xlabel("YearMade", fontsize=11)
+    ax.set_ylabel("SalePrice ($)", fontsize=11)
+    ax.set_title("(a) Marginal plot", fontsize=13)
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
+    ax.spines['top'].set_color('none')
+    ax.spines['right'].set_color('none')
+    ax.spines['left'].set_smart_bounds(True)
+    ax.spines['bottom'].set_smart_bounds(True)
+    savefig(f"bulldozer_YearMade_marginal")
+
+    explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100),
+                                   feature_perturbation='interventional')
+    shap_sample = X.sample(shap_test_size, replace=False)
+    shap_values = explainer.shap_values(shap_sample, check_additivity=False)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    shap.dependence_plot("YearMade", shap_values, shap_sample,
+                         interaction_index=None, ax=ax, dot_size=5,
+                         show=False, alpha=.5)
+    ax.yaxis.label.set_visible(False)
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
+    ax.spines['top'].set_color('none')
+    ax.spines['right'].set_color('none')
+    ax.spines['left'].set_smart_bounds(True)
+    ax.spines['bottom'].set_smart_bounds(True)
+
+    ax.set_title("(b) SHAP", fontsize=13)
+    ax.set_ylabel("Impact on SalePrice\n(YearMade SHAP)", fontsize=11)
+    ax.set_xlabel("YearMade", fontsize=11)
+    ax.set_xlim(1960, 2010)
+    ax.tick_params(axis='both', which='major', labelsize=10)
+
+    savefig(f"bulldozer_YearMade_shap")
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    plot_stratpd(X, y, colname='YearMade', targetname='SalePrice',
+                 n_trials=10,
+                 bootstrap=True,
+                 show_slope_lines=False,
+                 show_x_counts=True,
+                 show_ylabel=False,
+                 show_xlabel=False,
+                 show_impact=False,
+                 pdp_marker_size=4,
+                 pdp_marker_alpha=1,
+                 ax=ax
+                 )
+    ax.set_title("(d) StratPD", fontsize=13)
+    ax.set_xlabel("YearMade", fontsize=11)
+    ax.set_xlim(1960,2010)
+    ax.set_ylim(-5000,30_000)
+    savefig(f"bulldozer_YearMade_stratpd")
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    ice = predict_ice(rf, X, "YearMade", 'SalePrice', numx=30, nlines=100)
+    plot_ice(ice, "YearMade", 'SalePrice', alpha=.3, ax=ax, show_ylabel=True,
+             yrange=(20_000,55_000))
+    ax.set_xlabel("YearMade", fontsize=11)
+    ax.set_xlim(1960, 2010)
+    ax.set_title("(a) FPD/ICE plot", fontsize=13)
+    savefig(f"bulldozer_YearMade_pdp")
+
+
+def MachineHours():
+    np.random.seed(1)  # pick seed for reproducible article images
+    n = 20_000
+    shap_test_size = 1000
+    TUNE_RF = False
+    X, y = load_bulldozer(n=n)
+
+    if TUNE_RF:
+        rf, _ = tune_RF(X, y)
+        # RF best: {'max_features': 0.9, 'min_samples_leaf': 1, 'n_estimators': 150}
+        # validation R^2 0.8001628465688546
+    else:
+        rf = RandomForestRegressor(n_estimators=150, n_jobs=-1,
+                                   max_features=0.9,
+                                   min_samples_leaf=1, oob_score=True)
+        rf.fit(X, y)
+        print("RF OOB R^2", rf.oob_score_)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    ax.scatter(X['MachineHours'], y, s=3, alpha=.1, c='#1E88E5')
+    ax.set_xlim(0,30_000)
+    ax.set_xlabel("MachineHours\n(a)", fontsize=11)
+    ax.set_ylabel("SalePrice ($)", fontsize=11)
+    ax.set_title("Marginal plot", fontsize=13)
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
+    ax.spines['top'].set_color('none')
+    ax.spines['right'].set_color('none')
+    ax.spines['left'].set_smart_bounds(True)
+    ax.spines['bottom'].set_smart_bounds(True)
+    savefig(f"bulldozer_MachineHours_marginal")
+
+    explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100),
+                                   feature_perturbation='interventional')
+    shap_sample = X.sample(shap_test_size, replace=False)
+    shap_values = explainer.shap_values(shap_sample, check_additivity=False)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    shap.dependence_plot("MachineHours", shap_values, shap_sample,
+                         interaction_index=None, ax=ax, dot_size=5,
+                         show=False, alpha=.5)
+    ax.yaxis.label.set_visible(False)
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
+    ax.spines['top'].set_color('none')
+    ax.spines['right'].set_color('none')
+    ax.spines['left'].set_smart_bounds(True)
+    ax.spines['bottom'].set_smart_bounds(True)
+
+    ax.set_title("SHAP", fontsize=13)
+    ax.set_ylabel("SHAP MachineHours)", fontsize=11)
+    ax.set_xlabel("MachineHours\n(b)", fontsize=11)
+    ax.set_xlim(0,30_000)
+    ax.tick_params(axis='both', which='major', labelsize=10)
+
+    savefig(f"bulldozer_MachineHours_shap")
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    plot_stratpd(X, y, colname='MachineHours', targetname='SalePrice',
+                 n_trials=10,
+                 bootstrap=True,
+                 show_all_pdp=False,
+                 show_slope_lines=False,
+                 show_x_counts=True,
+                 barchar_alpha=1.0,
+                 show_ylabel=False,
+                 show_xlabel=False,
+                 show_impact=False,
+                 pdp_marker_size=1,
+                 pdp_marker_alpha=.3,
+                 ax=ax
+                 )
+    ax.annotate("Imputed median value", xytext=(10000,-4800),
+                xy=(3138,-4700), fontsize=9,
+                arrowprops={'arrowstyle':"->"})
+    ax.yaxis.label.set_visible(False)
+    ax.set_title("StratPD", fontsize=13)
+    ax.set_xlim(0,30_000)
+    ax.set_xlabel("MachineHours\n(d)", fontsize=11)
+    ax.set_ylim(-6500,2_000)
+    savefig(f"bulldozer_MachineHours_stratpd")
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    ice = predict_ice(rf, X, "MachineHours", 'SalePrice', numx=300, nlines=200)
+    plot_ice(ice, "MachineHours", 'SalePrice', alpha=.5, ax=ax,
+             show_ylabel=True,
+             yrange=(33_000,38_000)
+             )
+    ax.set_xlabel("MachineHours\n(a)", fontsize=11)
+    ax.set_title("FPD/ICE plot", fontsize=13)
+    ax.set_xlim(0,30_000)
+    savefig(f"bulldozer_MachineHours_pdp")
+
+
+def unsup_yearmade():
+    np.random.seed(1)  # pick seed for reproducible article images
+    n = 10_000
+    X, y = load_bulldozer(n=n)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    plot_stratpd(X, y, colname='YearMade', targetname='SalePrice',
+                 n_trials=1,
+                 bootstrap=True,
+                 show_slope_lines=False,
+                 show_x_counts=True,
+                 show_xlabel=False,
+                 show_impact=False,
+                 pdp_marker_size=4,
+                 pdp_marker_alpha=1,
+                 ax=ax,
+                 supervised=False
+                 )
+    ax.set_title("Unsupervised StratPD", fontsize=13)
+    ax.set_xlabel("YearMade", fontsize=11)
+    ax.set_xlim(1960,2010)
+    ax.set_ylim(-10000,30_000)
+    savefig(f"bulldozer_YearMade_stratpd_unsup")
 
 
 def unsup_weight():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_raw = toy_weight_data(2000)
+    X, y, df_raw, eqn = toy_weight_data(2000)
     df = df_raw.copy()
     catencoders = df_string_to_cat(df)
     df_cat_to_catcode(df)
@@ -965,16 +1398,20 @@ def unsup_weight():
 
     fig, axes = plt.subplots(2, 2, figsize=(4, 4))
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 0],
-                 yrange=(-12, 0), slope_line_alpha=.1, supervised=False)
+                 show_x_counts=False,
+                 yrange=(-13, 0), slope_line_alpha=.1, supervised=False)
     plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 1],
-                 yrange=(-12, 0), slope_line_alpha=.1, supervised=True)
+                 show_x_counts=False,
+                 yrange=(-13, 0), slope_line_alpha=.1, supervised=True)
 
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 0],
+                    show_x_counts=False,
                     catnames=df_raw['pregnant'].unique(),
-                    yrange=(-5, 35), supervised=False)
+                    yrange=(-5, 45))
     plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 1],
+                    show_x_counts=False,
                     catnames=df_raw['pregnant'].unique(),
-                    yrange=(-5, 35), supervised=True)
+                    yrange=(-5, 45))
 
     axes[0, 0].set_title("Unsupervised")
     axes[0, 1].set_title("Supervised")
@@ -987,8 +1424,9 @@ def unsup_weight():
 
 
 def weight_ntrees():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_raw = toy_weight_data(1000)
+    X, y, df_raw, eqn = toy_weight_data(1000)
     df = df_raw.copy()
     catencoders = df_string_to_cat(df)
     df_cat_to_catcode(df)
@@ -1045,8 +1483,9 @@ def weight_ntrees():
 
 
 def meta_weight():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    df_raw = toy_weight_data(1000)
+    X, y, df_raw, eqn = toy_weight_data(1000)
     df = df_raw.copy()
     catencoders = df_string_to_cat(df)
     df_cat_to_catcode(df)
@@ -1065,11 +1504,11 @@ def meta_weight():
     savefig("height_weight_meta")
 
 
-def additivity_data(n, sd=1.0):
-    x1 = np.random.uniform(-1, 1, size=n)
-    x2 = np.random.uniform(-1, 1, size=n)
+def noisy_poly_data(n, sd=1.0):
+    x1 = np.random.uniform(-2, 2, size=n)
+    x2 = np.random.uniform(-2, 2, size=n)
 
-    y = x1 ** 2 + x2 + np.random.normal(0, sd, size=n)
+    y = x1 ** 2 + x2 + 10 + np.random.normal(0, sd, size=n)
     df = pd.DataFrame()
     df['x1'] = x1
     df['x2'] = x2
@@ -1077,54 +1516,47 @@ def additivity_data(n, sd=1.0):
     return df
 
 
-def additivity():
+def noise():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
     n = 1000
-    df = additivity_data(n=n, sd=1)  # quite noisy
-    X = df.drop('y', axis=1)
-    y = df['y']
 
-    fig, axes = plt.subplots(2, 2, figsize=(4, 4))  # , sharey=True)
-    plot_stratpd(X, y, 'x1', 'y',
-                 min_samples_leaf=10,
-                 ax=axes[0, 0], yrange=(-3, 3))
+    fig, axes = plt.subplots(1, 4, figsize=(8, 2), sharey=True)
 
-    plot_stratpd(X, y, 'x2', 'y',
-                 min_samples_leaf=10,
-                 ax=axes[1, 0],
-                 yrange=(-3,3))
+    sds = [0,.5,1,2]
 
-    # axes[0, 0].set_ylim(-2, 2)
-    # axes[1, 0].set_ylim(-2, 2)
+    for i,sd in enumerate(sds):
+        df = noisy_poly_data(n=n, sd=sd)
+        X = df.drop('y', axis=1)
+        y = df['y']
+        plot_stratpd(X, y, 'x1', 'y',
+                     show_ylabel=False,
+                     pdp_marker_size=1,
+                     show_x_counts=False,
+                     ax=axes[i], yrange=(-4, .5))
+    axes[0].set_ylabel("y", fontsize=12)
 
-    rf = RandomForestRegressor(n_estimators=100, min_samples_leaf=1, oob_score=True)
-    rf.fit(X, y)
-    print(f"RF OOB {rf.oob_score_}")
+    for i,(ax,which) in enumerate(zip(axes,['(a)','(b)','(c)','(d)'])):
+        ax.text(0, -1, f"{which}\n$\sigma = {sds[i]}$", horizontalalignment='center')
+        ax.set_xlabel('$x_1$', fontsize=12)
+        ax.set_xticks([-2,-1,0,1,2])
 
-    ice = predict_ice(rf, X, 'x1', 'y', numx=20, nlines=700)
-    plot_ice(ice, 'x1', 'y', ax=axes[0, 1], yrange=(-3, 3), show_ylabel=False)
-
-    ice = predict_ice(rf, X, 'x2', 'y', numx=20, nlines=700)
-    plot_ice(ice, 'x2', 'y', ax=axes[1, 1], yrange=(-3, 3), show_ylabel=False)
-
-    axes[0, 0].set_title("StratPD", fontsize=10)
-    axes[0, 1].set_title("PD/ICE", fontsize=10)
-
-    savefig(f"additivity")
+    savefig(f"noise")
 
 
-def meta_additivity():
+def meta_noise():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
     n = 1000
     noises = [0, .5, .8, 1.0]
     sizes = [2, 10, 30, 50]
 
-    fig, axes = plt.subplots(len(noises) + 1, len(sizes), figsize=(7, 8), sharey=True,
+    fig, axes = plt.subplots(len(noises), len(sizes), figsize=(7, 6), sharey=True,
                              sharex=True)
 
     row = 0
     for sd in noises:
-        df = additivity_data(n=n, sd=sd)
+        df = noisy_poly_data(n=n, sd=sd)
         X = df.drop('y', axis=1)
         y = df['y']
         col = 0
@@ -1136,10 +1568,10 @@ def meta_additivity():
             print(f"------------------- noise {sd}, SIZE {s} --------------------")
             if col > 1: axes[row, col].get_yaxis().set_visible(False)
             plot_stratpd(X, y, 'x1', 'y', ax=axes[row, col],
+                         show_x_counts=False,
                          min_samples_leaf=s,
-                         yrange=(-1.5, .5),
+                         yrange=(-3.5, .5),
                          pdp_marker_size=1,
-                         slope_line_alpha=.4,
                          show_ylabel=False,
                          show_xlabel=show_xlabel)
             if col == 0:
@@ -1153,8 +1585,6 @@ def meta_additivity():
 
     lastrow = len(noises)
 
-    axes[lastrow, 0].set_ylabel(f'$y$ vs $x_c$ partition')
-
     # row = 0
     # for sd in noises:
     #     axes[row, 0].scatter(X['x1'], y, slope_line_alpha=.12, label=None)
@@ -1164,20 +1594,21 @@ def meta_additivity():
     #     axes[row, 0].set_title(f"$y = x_1^2 + x_2 + \epsilon$, $\epsilon \sim N(0,{sd:.2f})$")
     #     row += 1
 
-    col = 0
-    for s in sizes:
-        rtreeviz_univar(axes[lastrow, col],
-                        X['x2'], y,
-                        min_samples_leaf=s,
-                        feature_name='x2',
-                        target_name='y',
-                        fontsize=10, show={'splits'},
-                        split_linewidth=.5,
-                        markersize=5)
-        axes[lastrow, col].set_xlabel("x2")
-        col += 1
+    # axes[lastrow, 0].set_ylabel(f'$y$ vs $x_c$ partition')
+    # col = 0
+    # for s in sizes:
+    #     rtreeviz_univar(axes[lastrow, col],
+    #                     X['x2'], y,
+    #                     min_samples_leaf=s,
+    #                     feature_name='x2',
+    #                     target_name='y',
+    #                     fontsize=10, show={'splits'},
+    #                     split_linewidth=.5,
+    #                     markersize=5)
+    #     axes[lastrow, col].set_xlabel("x2")
+    #     col += 1
 
-    savefig(f"meta_additivity_noise", pad=.85)
+    savefig(f"meta_additivity_noise")
 
 
 def bigX_data(n):
@@ -1196,6 +1627,7 @@ def bigX_data(n):
 
 
 def bigX():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
     n = 1000
     df = bigX_data(n=n)
@@ -1245,13 +1677,14 @@ def bigX():
     axes[1, 1].get_yaxis().set_visible(False)
 
     axes[0, 0].set_title("StratPD", fontsize=10)
-    axes[0, 1].set_title("PD/ICE", fontsize=10)
+    axes[0, 1].set_title("FPD/ICE", fontsize=10)
 
     savefig(f"bigx")
     plt.close()
 
 
 def unsup_boston():
+    np.random.seed(1)  # pick seed for reproducible article images
     # np.random.seed(42)
 
     print(f"----------- {inspect.stack()[0][3]} -----------")
@@ -1272,7 +1705,7 @@ def unsup_boston():
     axes[0].set_title("Marginal")
     axes[1].set_title("Unsupervised StratPD")
     axes[2].set_title("Supervised StratPD")
-    axes[3].set_title("PD/ICE")
+    axes[3].set_title("FPD/ICE")
 
     plot_stratpd(X, y, 'AGE', 'MEDV', ax=axes[1], yrange=(-20, 20),
                  n_trees=20,
@@ -1334,6 +1767,7 @@ def lm_plot(X, y, colname, targetname, ax=None):
 
 
 def cars():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
     df_cars = pd.read_csv("../notebooks/data/auto-mpg.csv")
     df_cars = df_cars[df_cars['horsepower'] != '?']  # drop the few missing values
@@ -1385,6 +1819,7 @@ def cars():
 
 
 def meta_cars():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
     df_cars = pd.read_csv("../notebooks/data/auto-mpg.csv")
     df_cars = df_cars[df_cars['horsepower'] != '?']  # drop the few missing values
@@ -1410,109 +1845,8 @@ def meta_cars():
     savefig("weight_meta")
 
 
-def bulldozer():  # warning: takes like 5 minutes to run
-    print(f"----------- {inspect.stack()[0][3]} -----------")
-
-    # np.random.seed(42)
-
-    def onecol(X, y, colname, axes, row, xrange, yrange):
-        axes[row, 0].scatter(X[colname], y, alpha=0.07, s=1)
-        axes[row, 0].set_ylabel("SalePrice")  # , fontsize=12)
-        axes[row, 0].set_xlabel(colname)  # , fontsize=12)
-
-        plot_stratpd(X, y, colname, 'SalePrice', ax=axes[row, 1], xrange=xrange,
-                     yrange=yrange, show_ylabel=False,
-                     verbose=False, slope_line_alpha=.07)
-
-        rf = RandomForestRegressor(n_estimators=20, min_samples_leaf=1, n_jobs=-1,
-                                   oob_score=True)
-        rf.fit(X, y)
-        print(f"{colname} PD/ICE: RF OOB R^2 {rf.oob_score_:.3f}, training R^2 {rf.score(X,y)}")
-        ice = predict_ice(rf, X, colname, 'SalePrice', numx=130, nlines=500)
-        plot_ice(ice, colname, 'SalePrice', alpha=.05, ax=axes[row, 2], show_ylabel=False,
-                 xrange=xrange, yrange=yrange)
-        axes[row, 1].set_xlabel(colname)  # , fontsize=12)
-        axes[row, 1].set_ylim(*yrange)
-
-    X, y = load_bulldozer()
-
-    # Most recent timeseries data is more relevant so get big recent chunk
-    # then we can sample from that to get n
-    X = X.iloc[-50_000:]
-    y = y.iloc[-50_000:]
-
-    n = 10_000
-    idxs = resample(range(50_000), n_samples=n, replace=False, )
-    X, y = X.iloc[idxs], y.iloc[idxs]
-
-    print(f"Avg bulldozer price is {np.mean(y):.2f}$")
-
-    fig, axes = plt.subplots(3, 3, figsize=(7, 6))
-
-    onecol(X, y, 'YearMade', axes, 0, xrange=(1960, 2012), yrange=(-1000, 60000))
-    onecol(X, y, 'MachineHours', axes, 1, xrange=(0, 35_000),
-           yrange=(-40_000, 40_000))
-
-    # show marginal plot sorted by model's sale price
-    sort_indexes = y.argsort()
-
-    modelids = X['ModelID'].values
-    sorted_modelids = modelids[sort_indexes]
-    sorted_ys = y.values[sort_indexes]
-    cats = modelids[sort_indexes]
-    ncats = len(cats)
-
-    axes[2, 0].set_xticks(range(1, ncats + 1))
-    axes[2, 0].set_xticklabels([])
-    # axes[2, 0].get_xaxis().set_visible(False)
-
-    xlocs = np.arange(1, ncats + 1)
-    axes[2, 0].scatter(xlocs, sorted_ys, alpha=0.2, s=2)  # , label="observation")
-    axes[2, 0].set_ylabel("SalePrice")  # , fontsize=12)
-    axes[2, 0].set_xlabel('ModelID')  # , fontsize=12)
-    axes[2, 0].tick_params(axis='x', which='both', bottom=False)
-
-    plot_catstratpd(X, y, 'ModelID', 'SalePrice',
-                    min_samples_leaf=5,
-                    ax=axes[2, 1],
-                    yrange=(0, 130000),
-                    show_ylabel=False,
-                    alpha=0.1,
-                    # style='strip',
-                    marker_size=3,
-                    show_xticks=False,
-                    verbose=False)
-
-    # plt.tight_layout()
-    # plt.show()
-    # return
-
-    rf = RandomForestRegressor(n_estimators=20, min_samples_leaf=1, oob_score=True,
-                               n_jobs=-1)
-    rf.fit(X, y)
-    print(
-        f"ModelID PD/ICE: RF OOB R^2 {rf.oob_score_:.3f}, training R^2 {rf.score(X, y)}")
-
-    # too slow to do all so get 1000
-    ucats = np.unique(X['ModelID'])
-    ucats = np.random.choice(ucats, size=1000, replace=False)
-    ice = predict_catice(rf, X, 'ModelID', 'SalePrice', cats=ucats)
-    plot_catice(ice, 'ModelID', targetname='SalePrice', catnames=ucats,
-                alpha=.05, ax=axes[2, 2], yrange=(0, 130000), show_ylabel=False,
-                marker_size=3,
-                sort='ascending',
-                show_xticks=False)
-
-    axes[0, 0].set_title("Marginal")
-    axes[0, 1].set_title("StratPD")
-    axes[0, 2].set_title("PD/ICE")
-
-    savefig("bulldozer")
-    # plt.tight_layout()
-    # plt.show()
-
-
 def multi_joint_distr():
+    np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
     # np.random.seed(42)
     n = 1000
@@ -1623,13 +1957,13 @@ def multi_joint_distr():
         regr.fit(X, y)
         rname = regr.__class__.__name__
         if rname == 'SVR':
-            rname = "SVM PD/ICE"
+            rname = "SVM FPD/ICE"
         if rname == 'RandomForestRegressor':
-            rname = "RF PD/ICE"
+            rname = "RF FPD/ICE"
         if rname == 'LinearRegression':
-            rname = 'Linear PD/ICE'
+            rname = 'Linear FPD/ICE'
         if rname == 'KNeighborsRegressor':
-            rname = 'kNN PD/ICE'
+            rname = 'kNN FPD/ICE'
 
         show_xlabel = True if row == 5 else False
 
@@ -1660,28 +1994,404 @@ def multi_joint_distr():
     savefig("multivar_multimodel_normal")
 
 
+def interactions():
+    np.random.seed(1)  # pick seed for reproducible article images
+    n = 2000
+    df = synthetic_interaction_data(n)
+
+    X, y = df[['x1', 'x2', 'x3']].copy(), df['y'].copy()
+    X1 = X.iloc[:, 0]
+    X2 = X.iloc[:, 1]
+    X3 = X.iloc[:, 2] # UNUSED in y
+
+    rf = RandomForestRegressor(n_estimators=10, oob_score=True)
+    rf.fit(X, y)
+    print("R^2 training", rf.score(X, y))
+    print("R^2 OOB", rf.oob_score_)
+
+    print("mean(y) =", np.mean(y))
+    print("mean(X_1), mean(X_2) =", np.mean(X1), np.mean(X2))
+
+    pdp_x1 = friedman_partial_dependence(rf, X, 'x1', numx=None, mean_centered=False)
+    pdp_x2 = friedman_partial_dependence(rf, X, 'x2', numx=None, mean_centered=False)
+    pdp_x3 = friedman_partial_dependence(rf, X, 'x3', numx=None, mean_centered=False)
+    m1 = np.mean(pdp_x1[1])
+    m2 = np.mean(pdp_x2[1])
+    m3 = np.mean(pdp_x3[1])
+    print("mean(PDP_1) =", np.mean(pdp_x1[1]))
+    print("mean(PDP_2) =", np.mean(pdp_x2[1]))
+    print("mean(PDP_2) =", np.mean(pdp_x3[1]))
+
+    print("mean abs PDP_1-ybar", np.mean(np.abs(pdp_x1[1] - m1)))
+    print("mean abs PDP_2-ybar", np.mean(np.abs(pdp_x2[1] - m2)))
+    print("mean abs PDP_3-ybar", np.mean(np.abs(pdp_x3[1] - m3)))
+
+    explainer = shap.TreeExplainer(rf, data=X,
+                                   feature_perturbation='interventional')
+    shap_values = explainer.shap_values(X, check_additivity=False)
+    shapavg = np.mean(shap_values, axis=0)
+    print("SHAP avg x1,x2,x3 =", shapavg)
+    shapimp = np.mean(np.abs(shap_values), axis=0)
+    print("SHAP avg |x1|,|x2|,|x3| =", shapimp)
+
+    fig, axes = plt.subplots(1,4,figsize=(11.33,2.8))
+
+    x1_color = '#1E88E5'
+    x2_color = 'orange'
+    x3_color = '#A22396'
+
+    axes[0].plot(pdp_x1[0], pdp_x1[1], '.', markersize=1, c=x1_color, label='$FPD_1$', alpha=1)
+    axes[0].plot(pdp_x2[0], pdp_x2[1], '.', markersize=1, c=x2_color, label='$FPD_2$', alpha=1)
+    axes[0].plot(pdp_x3[0], pdp_x3[1], '.', markersize=1, c=x3_color, label='$FPD_3$', alpha=1)
+
+    axes[0].text(0, 75, f"$\\bar{{y}}={np.mean(y):.1f}$", fontsize=13)
+    axes[0].set_xticks([0,2,4,6,8,10])
+    axes[0].set_xlabel("$x_1, x_2, x_3$", fontsize=10)
+    axes[0].set_ylabel("y")
+    axes[0].set_yticks([0, 25, 50, 75, 100, 125, 150])
+    axes[0].set_ylim(-10,160)
+    axes[0].set_title(f"(a) Friedman FPD")
+
+    axes[0].spines['top'].set_linewidth(.5)
+    axes[0].spines['right'].set_linewidth(.5)
+    axes[0].spines['left'].set_linewidth(.5)
+    axes[0].spines['bottom'].set_linewidth(.5)
+    axes[0].spines['top'].set_color('none')
+    axes[0].spines['right'].set_color('none')
+
+    x1_patch = mpatches.Patch(color=x1_color, label='$x_1$')
+    x2_patch = mpatches.Patch(color=x2_color, label='$x_2$')
+    x3_patch = mpatches.Patch(color=x3_color, label='$x_3$')
+    axes[0].legend(handles=[x1_patch,x2_patch,x3_patch], fontsize=10)
+
+    # axes[0].legend(fontsize=10)
+
+    #axes[1].plot(shap_values)
+    shap.dependence_plot("x1", shap_values, X,
+                         interaction_index=None, ax=axes[1], dot_size=4,
+                         show=False, alpha=.5, color=x1_color)
+    shap.dependence_plot("x2", shap_values, X,
+                         interaction_index=None, ax=axes[1], dot_size=4,
+                         show=False, alpha=.5, color=x2_color)
+    shap.dependence_plot("x3", shap_values, X,
+                         interaction_index=None, ax=axes[1], dot_size=4,
+                         show=False, alpha=.5, color=x3_color)
+    axes[1].set_xticks([0,2,4,6,8,10])
+    axes[1].set_xlabel("$x_1, x_2, x_3$", fontsize=12)
+    axes[1].set_ylim(-95,110)
+    axes[1].set_title("(b) SHAP")
+    axes[1].set_ylabel("SHAP values", fontsize=11)
+    x1_patch = mpatches.Patch(color=x1_color, label='$x_1$')
+    x2_patch = mpatches.Patch(color=x2_color, label='$x_2$')
+    x3_patch = mpatches.Patch(color=x3_color, label='$x_3$')
+    axes[1].legend(handles=[x1_patch,x2_patch,x3_patch], fontsize=12)
+
+    df_x1 = pd.read_csv("images/x1_ale.csv")
+    df_x2 = pd.read_csv("images/x2_ale.csv")
+    df_x3 = pd.read_csv("images/x3_ale.csv")
+    axes[2].plot(df_x1['x.values'],df_x1['f.values'],'.',color=x1_color,markersize=2)
+    axes[2].plot(df_x2['x.values'],df_x2['f.values'],'.',color=x2_color,markersize=2)
+    axes[2].plot(df_x3['x.values'],df_x3['f.values'],'.',color=x3_color,markersize=2)
+    axes[2].set_title("(c) ALE")
+    # axes[2].set_ylabel("y", fontsize=12)
+    axes[2].set_xlabel("$x_1, x_2, x_3$", fontsize=12)
+    axes[2].set_ylim(-95,110)
+    # axes[2].tick_params(axis='both', which='major', labelsize=10)
+    axes[2].set_xticks([0,2,4,6,8,10])
+    axes[2].spines['top'].set_linewidth(.5)
+    axes[2].spines['right'].set_linewidth(.5)
+    axes[2].spines['left'].set_linewidth(.5)
+    axes[2].spines['bottom'].set_linewidth(.5)
+    axes[2].spines['top'].set_color('none')
+    axes[2].spines['right'].set_color('none')
+    x1_patch = mpatches.Patch(color=x1_color, label='$x_1$')
+    x2_patch = mpatches.Patch(color=x2_color, label='$x_2$')
+    x3_patch = mpatches.Patch(color=x3_color, label='$x_3$')
+    axes[2].legend(handles=[x1_patch,x2_patch,x3_patch], fontsize=12)
+
+    plot_stratpd(X, y, "x1", "y", ax=axes[3], pdp_marker_size=1,
+                 pdp_marker_color=x1_color,
+                 show_x_counts=False, n_trials=1, show_slope_lines=False)
+    plot_stratpd(X, y, "x2", "y", ax=axes[3], pdp_marker_size=1,
+                 pdp_marker_color=x2_color,
+                 show_x_counts=False, n_trials=1, show_slope_lines=False)
+    plot_stratpd(X, y, "x3", "y", ax=axes[3], pdp_marker_size=1,
+                 pdp_marker_color=x3_color,
+                 show_x_counts=False, n_trials=1, show_slope_lines=False)
+    axes[3].set_xticks([0,2,4,6,8,10])
+    axes[3].set_ylim(-20,160)
+    axes[3].set_yticks([0, 25, 50, 75, 100, 125, 150])
+    axes[3].set_xlabel("$x_1, x_2, x_3$", fontsize=12)
+    # axes[3].set_ylabel("y", fontsize=12)
+    axes[3].set_title("(d) StratPD")
+    axes[3].spines['top'].set_linewidth(.5)
+    axes[3].spines['right'].set_linewidth(.5)
+    axes[3].spines['left'].set_linewidth(.5)
+    axes[3].spines['bottom'].set_linewidth(.5)
+    axes[3].spines['top'].set_color('none')
+    axes[3].spines['right'].set_color('none')
+    x1_patch = mpatches.Patch(color=x1_color, label='$x_1$')
+    x2_patch = mpatches.Patch(color=x2_color, label='$x_2$')
+    x3_patch = mpatches.Patch(color=x3_color, label='$x_3$')
+    axes[3].legend(handles=[x1_patch,x2_patch,x3_patch], fontsize=12)
+
+    savefig("interactions")
+
+
+def gen_ale_plot_data_in_R():
+    "Exec R and generate images/*.csv files.  Then plot with Python"
+    os.system("R CMD BATCH ale_plots_bulldozer.R")
+    os.system("R CMD BATCH ale_plots_rent.R")
+    os.system("R CMD BATCH ale_plots_weather.R")
+    os.system("R CMD BATCH ale_plots_weight.R")
+
+
+def ale_yearmade():
+    df = pd.read_csv("images/YearMade_ale.csv")
+    # df['f.values'] -= np.min(df['f.values'])
+    print(df)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    ax.plot(df['x.values'],df['f.values'],'.',color='k',markersize=4)
+    ax.set_title("(c) ALE", fontsize=13)
+    ax.set_xlabel("YearMade", fontsize=11)
+    ax.set_xlim(1960, 2010)
+    ax.set_ylim(-25000,30000)
+    ax.tick_params(axis='both', which='major', labelsize=10)
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    savefig('YearMade_ale')
+
+
+def ale_MachineHours():
+    df = pd.read_csv("images/MachineHours_ale.csv")
+    # df['f.values'] -= np.min(df['f.values'])
+    print(df)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize2)
+    ax.plot(df['x.values'],df['f.values'],'.',color='k',markersize=4)
+    ax.set_title("(c) ALE", fontsize=13)
+    # ax.set_ylabel("SalePrice", fontsize=11)
+    ax.set_xlabel("MachineHours", fontsize=11)
+    ax.set_xlim(0, 30_000)
+    ax.set_ylim(-2000,3000)
+    ax.tick_params(axis='both', which='major', labelsize=10)
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    savefig('MachineHours_ale')
+
+
+def ale_height():
+    df = pd.read_csv("images/height_ale.csv")
+    # df['f.values'] -= np.min(df['f.values'])
+    print(df)
+
+    fig, ax = plt.subplots(1, 1, figsize=(2.4, 2.2))
+    ax.plot(df['x.values'],df['f.values'],'.',color='k',markersize=1)
+    # ax.set_ylim(-5,150)
+    ax.set_ylim(-65,90)
+    # ax.set_yticks([0,20,40,60,80,100,120,140,150])
+    ax.set_title("ALE", fontsize=10)
+    ax.set_ylabel("Weight", fontsize=10, labelpad=0)
+    ax.set_xlabel("Height\n(d)", fontsize=10)
+    ax.set_xticks([60,65,70,75])
+    ax.set_yticks([-75, -60, -40, -20, 0, 20, 40, 60, 75])
+
+    ax.tick_params(axis='both', which='major', labelsize=10)
+    # ax.spines['right'].set_visible(False)
+    # ax.spines['top'].set_visible(False)
+    savefig('height_ale')
+
+
+def ale_state():
+    df = pd.read_csv("images/state_ale.csv")
+    df = df.sort_values(by="x.values")
+    df['f.values'] -= np.min(df['f.values'])
+    print(df)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    ax.bar(df['x.values'],df['f.values'],color='#BEBEBE')
+    ax.set_title("ALE", fontsize=13)
+    ax.set_xlabel("state")
+    ax.set_ylabel("temperature")
+    ax.set_title("(c) ALE")
+    ax.set_ylim(0,55)
+    ax.set_yticks([0,10,20,30,40,50])
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    savefig('state_ale')
+
+
+def ale_pregnant():
+    df = pd.read_csv("images/pregnant_ale.csv")
+    df['x.values'] = df['x.values'].map({0:"False",1:"True"})
+    df['f.values'] -= np.min(df['f.values'])
+    print(df)
+
+    fig, ax = plt.subplots(1, 1, figsize=(1.3,1.8))
+    ax.bar(df['x.values'],df['f.values'],color='#BEBEBE')
+    ax.set_title("ALE", fontsize=10)
+    ax.set_xlabel("pregnant")
+    ax.set_ylabel("weight")
+    ax.set_title("ALE")
+    ax.set_ylim(-1,45)
+    ax.set_yticks([0,10,20,30,40])
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    savefig('pregnant_2_ale')
+
+
+def rent_deep_learning_model(X_train, y_train, X_test, y_test):
+    np.random.seed(1)  # pick seed for reproducible article images
+    from tensorflow.keras import models, layers, callbacks, optimizers
+
+    # Normalize data
+    scaler = StandardScaler()
+    X_train = scaler.fit_transform(X_train)
+    X_test = scaler.fit_transform(X_test)
+    # for colname in X.columns:
+    #     m = np.mean(X[colname])
+    #     sd = np.std(X[colname])
+    #     X[colname] = (X[colname]-m)/sd
+
+    #y = (y - np.mean(y))/np.std(y)
+
+    model = models.Sequential()
+    layer1 = 100
+    batch_size = 1000
+    dropout = 0.3
+    model.add(layers.Dense(layer1, input_dim=X_train.shape[1], activation='relu'))
+    model.add(layers.BatchNormalization())
+    model.add(layers.Dropout(dropout))
+    model.add(layers.Dense(1, activation='linear'))
+
+    # learning_rate=1e-2 #DEFAULT
+    opt = optimizers.SGD()  # SGB gets NaNs?
+    # opt = optimizers.RMSprop(lr=0.1)
+    opt = optimizers.Adam(lr=0.3)
+
+    model.compile(loss='mean_squared_error', optimizer=opt, metrics=['mae'])
+
+    callback = callbacks.EarlyStopping(monitor='val_loss', patience=10)
+    history = model.fit(X_train, y_train,
+                        # epochs=1000,
+                        epochs=500,
+                        # validation_split=0.2,
+                        validation_data=(X_test, y_test),
+                        batch_size=batch_size,
+                        # callbacks=[tensorboard_callback],
+                        verbose=1
+                        )
+
+    y_pred = model.predict(X_train)
+    # y_pred *= np.std(y_raw)  # undo normalization on y
+    # y_pred += np.mean(y_raw)
+    r2 = r2_score(y_train, y_pred)
+    print("Keras training R^2", r2)
+
+    y_pred = model.predict(X_test)
+    r2 = r2_score(y_test, y_pred)
+    print("Keras validation R^2", r2)
+
+    if False: # Show training results
+        y_pred = model.predict(X)
+        y_pred *= np.std(y_raw)     # undo normalization on y
+        y_pred += np.mean(y_raw)
+        r2 = r2_score(y_raw, y_pred)
+        print("Keras training R^2", r2)
+        plt.ylabel("MAE")
+        plt.xlabel("epochs")
+
+        plt.plot(history.history['val_mae'], label='val_mae')
+        plt.plot(history.history['mae'], label='train_mae')
+        plt.title(f"batch_size {batch_size}, Layer1 {layer1}, Layer2 {layer2}, R^2 {r2:.3f}")
+        plt.legend()
+        plt.show()
+
+    return model, r2
+
+
+def partitioning():
+    np.random.seed(1)  # pick seed for reproducible article images
+    # np.random.seed(2)
+    n = 200
+    x = np.random.uniform(0, 1, size=n)
+    x1 = x + np.random.normal(0, 0.1, n)
+    # x2 = x + np.random.normal(0, 0.03, n)
+    x2 = (x*4).astype(int) + np.random.randint(0, 5, n)
+    X = np.vstack([x1, x2]).T
+
+    y = X[:, 0] + X[:, 1] ** 2
+
+    regr = tree.DecisionTreeRegressor(max_leaf_nodes=8,
+                                      min_samples_leaf=1)  # limit depth of tree
+    regr.fit(X[:,1].reshape(-1,1), y)
+
+    shadow_tree = ShadowDecTree(regr, X[:,1].reshape(-1,1), y, feature_names=['x1', 'x2'])
+    splits = []
+    print("splits")
+    for node in shadow_tree.internal:
+        splits.append(node.split())
+        print("\t",node.split())
+    splits = sorted(splits)
+
+    fig, ax = plt.subplots(1, 1, figsize=(3,2.5))
+
+    color_map_min = '#c7e9b4'
+    color_map_max = '#081d58'
+
+    y_lim = np.min(y), np.max(y)
+    y_range = y_lim[1] - y_lim[0]
+    n_colors_in_map = 100
+    markersize = 5
+    scatter_edge=GREY
+    color_map = [rgb2hex(c.rgb, force_long=True)
+                 for c in Color(color_map_min).range_to(Color(color_map_max), n_colors_in_map)]
+    color_map = [color_map[int(((y_-y_lim[0])/y_range)*(n_colors_in_map-1))] for y_ in y]
+    # ax.scatter(x, y, marker='o', c=color_map, edgecolor=scatter_edge, lw=.3, s=markersize)
+
+    ax.scatter(X[:,0], X[:,1], marker='o', c=color_map, alpha=.7, edgecolor=scatter_edge, lw=.3, s=markersize)
+    ax.set_xlabel("$x_1$", fontsize=12)
+    ax.set_ylabel("$x_2$", fontsize=12)
+    a = -.08
+    b = 1.05
+    ax.set_xlim(a, b)
+    # ax.set_ylim(a, b+0.02)
+    ax.spines['left'].set_linewidth(.5)
+    ax.spines['bottom'].set_linewidth(.5)
+    ax.spines['top'].set_color('none')
+    ax.spines['right'].set_color('none')
+    ax.spines['left'].set_smart_bounds(True)
+    ax.spines['bottom'].set_smart_bounds(True)
+    for s in splits:
+        ax.plot([a,b], [s,s], '-', c='grey', lw=.5)
+
+    # savefig("partitioning_background")
+    plt.tight_layout(pad=0, w_pad=0, h_pad=0)
+    plt.savefig(f"images/partitioning_background.svg", bbox_inches="tight", pad_inches=0)
+    plt.show()
+
+
 if __name__ == '__main__':
     # FROM PAPER:
-    bulldozer()
+    interactions()
+    MachineHours()
+    yearmade()
     rent()
-    rent_grid()
     rent_ntrees()
-    rent_extra_cols()
-    unsup_rent()
-    unsup_boston()
     weight()
-    weight_ntrees()
-    unsup_weight()
-    meta_weight()
+    shap_pregnant()
+    shap_weight(feature_perturbation='tree_path_dependent', twin=True) # more biased but faster
+    shap_weight(feature_perturbation='interventional', twin=True) # takes 04:45 minutes
     weather()
-    meta_weather()
-    additivity()
-    meta_additivity()
-    bigX()
-    multi_joint_distr()
+    noise()
 
-    # EXTRA GOODIES
-    # meta_boston()
-    # rent_alone()
-    # cars()
-    # meta_cars()
+    # Invoke R to generate csv files then load with python to plot
+
+    # gen_ale_plot_data_in_R()
+    #
+    # ale_MachineHours()
+    # ale_yearmade()
+    # ale_height()
+    # ale_pregnant()
+    # ale_state()
