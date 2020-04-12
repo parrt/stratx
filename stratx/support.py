@@ -135,6 +135,8 @@ def load_flights(n):
                 'SCHEDULED_TIME',
                 'ARRIVAL_DELAY']  # target
 
+    print(f"Flight has {len(df_flights)} records")
+
     df_flights = df_flights[features]
     df_flights = df_flights.dropna()  # ignore missing stuff for ease and reduce size
     df_flights = df_flights.sample(n)
@@ -150,8 +152,6 @@ def toy_weight_data(n):
     df = pd.DataFrame()
     nmen = n // 2 # 50/50 men/women
     nwomen = n // 2
-    # nmen = int(.7 * n)
-    # nwomen = int(.3 * n)
     df['sex'] = ['M'] * nmen + ['F'] * nwomen
     df.loc[df['sex'] == 'F', 'pregnant'] = np.random.randint(0, 2, size=(nwomen,))
     # df.loc[df['sex'] == 'F', 'pregnant'] = 1 # assume all women are pregnant
@@ -164,7 +164,7 @@ def toy_weight_data(n):
     df.loc[df['sex'] == 'F', 'education'] = 12 + np.random.randint(0, 8, size=nwomen)
     df['weight'] = 120 \
                    + (df['height'] - df['height'].min()) * 10 \
-                   + df['pregnant'] * 70 \
+                   + df['pregnant'] * 40 \
                    - df['education'] * 1.5
     df['pregnant'] = df['pregnant'].astype(bool)
     df['education'] = df['education'].astype(int)
@@ -178,23 +178,50 @@ def toy_weight_data(n):
     return X, y, df, eqn
 
 
-def toy_weather_data():
-    def temp(x): return np.sin((x + 365 / 2) * (2 * np.pi) / 365)
+def toy_weather_data_1yr():
+    # def temp(x): return 10*np.sin((2*x + 365) * (np.pi) / 365)
+    def temp(x): return 10*np.sin(((2/365)*np.pi*x + np.pi))
 
-    def noise(state): return np.random.normal(-5, 5, sum(df['state'] == state))
+    def noise(state):
+        # noise_per_state = {'CA':2, 'CO':4, 'AZ':7, 'WA':2, 'NV':5}
+        return np.random.normal(0, 4, sum(df['state'] == state))
 
     df = pd.DataFrame()
     df['dayofyear'] = range(1, 365 + 1)
-    df['state'] = np.random.choice(['CA', 'CO', 'AZ', 'WA'], len(df))
+    df['state'] = np.random.choice(['CA', 'CO', 'AZ', 'WA', 'NV'], len(df))
     df['temperature'] = temp(df['dayofyear'])
     df.loc[df['state'] == 'CA', 'temperature'] = \
-        70 + df.loc[df['state'] == 'CA', 'temperature'] * noise('CA')
+        70 + df.loc[df['state'] == 'CA', 'temperature'] + noise('CA')
     df.loc[df['state'] == 'CO', 'temperature'] = \
-        40 + df.loc[df['state'] == 'CO', 'temperature'] * noise('CO')
+        40 + df.loc[df['state'] == 'CO', 'temperature'] + noise('CO')
     df.loc[df['state'] == 'AZ', 'temperature'] = \
-        90 + df.loc[df['state'] == 'AZ', 'temperature'] * noise('AZ')
+        90 + df.loc[df['state'] == 'AZ', 'temperature'] + noise('AZ')
     df.loc[df['state'] == 'WA', 'temperature'] = \
-        60 + df.loc[df['state'] == 'WA', 'temperature'] * noise('WA')
+        60 + df.loc[df['state'] == 'WA', 'temperature'] + noise('WA')
+    df.loc[df['state'] == 'NV', 'temperature'] = \
+        80 + df.loc[df['state'] == 'NV', 'temperature'] + noise('NV')
+
+    return df
+
+
+def synthetic_interaction_data(n, yintercept = 10):
+    df = pd.DataFrame()
+    df[f'x1'] = np.random.random(size=n)*10
+    df[f'x2'] = np.random.random(size=n)*10
+    df[f'x3'] = np.random.random(size=n)*10
+    df['y'] = df['x1']**2 + df['x1']*df['x2'] + 5*df['x1']*np.sin(3*df['x2'])  + yintercept
+    return df
+
+
+def toy_weather_data():
+    df_yr1 = toy_weather_data_1yr()
+    df_yr1['year'] = 1980
+    df_yr2 = toy_weather_data_1yr()
+    df_yr2['year'] = 1981
+    df_yr3 = toy_weather_data_1yr()
+    df_yr3['year'] = 1982
+    df_raw = pd.concat([df_yr1, df_yr2, df_yr3], axis=0)
+    df = df_raw.copy()
     return df
 
 
@@ -219,8 +246,6 @@ def load_bulldozer(n):
            'MachineHours'] = np.nan
     fix_missing_num(df, 'MachineHours')
 
-    # df.loc[df.YearMade < 1950, 'YearMade'] = np.nan
-    # fix_missing_num(df, 'YearMade')
     df = df.loc[df.YearMade > 1950].copy()
     df_split_dates(df, 'saledate')
     df['age'] = df['saleyear'] - df['YearMade']
@@ -262,6 +287,8 @@ def load_bulldozer(n):
     X = X.iloc[-50_000:]
     y = y.iloc[-50_000:]
 
+    print(f"Bulldozer has {len(df)} records")
+
     idxs = resample(range(50_000), n_samples=n, replace=False, )
     X, y = X.iloc[idxs], y.iloc[idxs]
 
@@ -274,6 +301,7 @@ def load_rent(n:int=None, clean_prices=True):
     and save into data subdir.
     """
     df = pd.read_json(f'{datadir}/train.json')
+    print(f"Rent has {len(df)} records")
 
     # Create ideal numeric data set w/o outliers etc...
 
@@ -288,13 +316,6 @@ def load_rent(n:int=None, clean_prices=True):
     df["num_desc_words"] = df["description"].apply(lambda x: len(x.split()))
     df["num_features"] = df["features"].apply(lambda x: len(x))
     df["num_photos"] = df["photos"].apply(lambda x: len(x))
-
-    # The numeric stratpd can't extract data too well when so many data points sit
-    # on same values; flip it to integers from flops like 1.5 baths; can consider
-    # categorical nominal or as ordinal but it stratpd ignores lots of data as ordinal
-    # so best to use catstratpd
-    uniq_b = np.unique(df['bathrooms'])
-    df['bathrooms'] = df['bathrooms'].map({v: i + 1 for i, v in enumerate(uniq_b)})
 
     hoods = {
         "hells": [40.7622, -73.9924],

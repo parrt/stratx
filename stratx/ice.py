@@ -27,6 +27,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from  matplotlib.collections import LineCollection
 import time
+from stratx.partdep import getcats
 
 """
 This code was built just to generate ICE plots for comparison in the paper.
@@ -155,7 +156,7 @@ def predict_ice(model, X:pd.DataFrame, colname:str, targetname="target", cats=No
     for v in linex:
         X[colname] = v
         y_pred = model.predict(X)
-        lines[1:, i] = y_pred
+        lines[1:, i] = y_pred.flatten()
         i += 1
     X[colname] = save
     columns = [f"predicted {targetname}\n{colname}={str(v)}"
@@ -198,6 +199,7 @@ def ice2lines(ice:np.ndarray) -> np.ndarray:
 
 
 def plot_ice(ice, colname, targetname="target", ax=None, linewidth=.5, linecolor='#9CD1E3',
+             min_y_shifted_to_zero=False, # easier to read if values are relative to 0 (usually)
              alpha=.1, title=None, xrange=None, yrange=None, pdp=True, pdp_linewidth=.5, pdp_alpha=1,
              pdp_color='black', show_xlabel=True, show_ylabel=True):
     start = time.time()
@@ -216,14 +218,15 @@ def plot_ice(ice, colname, targetname="target", ax=None, linewidth=.5, linecolor
         min_pdp_y = avg_y[closest_x_to_0]
 
     lines = ice2lines(ice)
-    lines[:,:,1] = lines[:,:,1] - min_pdp_y
+    if min_y_shifted_to_zero:
+        lines[:,:,1] = lines[:,:,1] - min_pdp_y
     # lines[:,:,0] scans all lines, all points in a line, and gets x column
     minx, maxx = np.min(lines[:,:,0]), np.max(lines[:,:,0])
     miny, maxy = np.min(lines[:,:,1]), np.max(lines[:,:,1])
     if yrange is not None:
         ax.set_ylim(*yrange)
-    else:
-        ax.set_ylim(miny, maxy)
+    # else:
+    #     ax.set_ylim(miny, maxy)
     if show_xlabel:
         ax.set_xlabel(colname)
     if show_ylabel:
@@ -235,11 +238,15 @@ def plot_ice(ice, colname, targetname="target", ax=None, linewidth=.5, linecolor
 
     if xrange is not None:
         ax.set_xlim(*xrange)
-    else:
-        ax.set_xlim(minx, maxx)
+    # else:
+    #     ax.set_xlim(minx, maxx)
 
     uniq_x = ice.iloc[0, :]
-    pdp_curve = avg_y - min_pdp_y
+    if min_y_shifted_to_zero:
+        pdp_curve = avg_y - min_pdp_y
+    else:
+        pdp_curve = avg_y
+
     if pdp:
         ax.plot(uniq_x, pdp_curve,
                 alpha=pdp_alpha, linewidth=pdp_linewidth, c=pdp_color)
@@ -251,14 +258,14 @@ def plot_ice(ice, colname, targetname="target", ax=None, linewidth=.5, linecolor
 def plot_catice(ice, colname, targetname,
                 catnames,  # cat names indexed by cat code
                 ax=None,
+                min_y_shifted_to_zero=False,
                 color='#9CD1E3',
                 alpha=.1, title=None, yrange=None, pdp=True,
                 pdp_marker_size=.5, pdp_alpha=1,
                 pdp_color='black',
                 marker_size=10,
                 show_xlabel=True, show_ylabel=True,
-                show_xticks=True,
-                sort='ascending'):
+                show_xticks=True):
     start = time.time()
     if ax is None:
         fig, ax = plt.subplots(1,1)
@@ -270,36 +277,33 @@ def plot_catice(ice, colname, targetname,
     lines = ice2lines(ice)
 
     nobs = lines.shape[0]
-    nx = lines.shape[1]
 
-    from stratx.partdep import getcats
     catcodes, _, catcode2name = getcats(None, colname, catnames)
-    sorted_catcodes = catcodes
-    if sort == 'ascending':
-        sorted_indexes = avg_y.argsort()
-        sorted_catcodes = catcodes[sorted_indexes]
-    elif sort == 'descending':
-        sorted_indexes = avg_y.argsort()[::-1] # reversed
-        sorted_catcodes = catcodes[sorted_indexes]
 
-    # find leftmost value (lowest value if sorted ascending) and shift by this
-    min_pdp_y = avg_y[sorted_indexes[0]]
+    avg_y = np.mean(ice[1:], axis=0)
+    min_pdp_y = np.min(avg_y)
+    # min_pdp_y = 0
+
     lines[:,:,1] = lines[:,:,1] - min_pdp_y
     pdp_curve = avg_y - min_pdp_y
 
     # plot predicted values for each category at each observation point
-    if True in catnames or False in catnames:
-        xlocs = np.arange(0, ncats)
+    if isinstance(list(catnames.keys())[0], bool):
+        xlocs = np.arange(0, 1+1)
     else:
         xlocs = np.arange(1,ncats+1)
     # print(f"shape {lines.shape}, ncats {ncats}, nx {nx}, len(pdp) {len(pdp_curve)}")
     for i in range(nobs): # for each observation
-        ax.scatter(xlocs, lines[i,sorted_indexes,1], # lines[i] is ith observation
+        ax.scatter(xlocs, lines[i,:,1], # lines[i] is ith observation
                    alpha=alpha, marker='o', s=marker_size,
                    c=color)
 
+    pdpy = pdp_curve
+    if min_y_shifted_to_zero:
+        avg_y = avg_y - min_pdp_y
+
     if pdp:
-        ax.scatter(xlocs, pdp_curve[sorted_indexes], c=pdp_color, s=pdp_marker_size, alpha=pdp_alpha)
+        ax.scatter(xlocs, avg_y, c=pdp_color, s=pdp_marker_size, alpha=pdp_alpha)
 
     if yrange is not None:
         ax.set_ylim(*yrange)
@@ -310,13 +314,10 @@ def plot_catice(ice, colname, targetname,
     if title is not None:
         ax.set_title(title)
 
-    if True in catnames or False in catnames:
-        ax.set_xticks(range(0, 1+1))
-    else:
-        ax.set_xticks(range(1, ncats+1))
+    ax.set_xticks(xlocs)
 
     if show_xticks: # sometimes too many
-        ax.set_xticklabels(catcode2name[sorted_catcodes])
+        ax.set_xticklabels(catcode2name[catcodes])
     else:
         ax.set_xticklabels([])
         ax.tick_params(axis='x', which='both', bottom=False)

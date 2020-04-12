@@ -164,10 +164,10 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
         if verbose: print("USING UNSUPERVISED MODE")
         X_synth, y_synth = conjure_twoclass(X)
         rf = RandomForestClassifier(n_estimators=n_trees,
-                                   min_samples_leaf=int(min_samples_leaf * 2),  # there are 2x as many samples (X,X') so must double leaf size
-                                   bootstrap=bootstrap,
-                                   max_features=max_features,
-                                   oob_score=False)
+                                    min_samples_leaf=min_samples_leaf,
+                                    bootstrap=bootstrap,
+                                    max_features=max_features,
+                                    oob_score=False)
         rf.fit(X_synth.drop(colname, axis=1), y_synth)
 
     if verbose:
@@ -198,6 +198,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
     # Last slope is nan since no data after last x value so that will get dropped too
     # Also cut out any pdp x for which we don't have enough support (num slopes avg'd together)
     # Make sure to drop slope_counts_at_x, uniq_x values too :)
+    # print("slope counts", np.unique(slope_counts_at_x, return_counts=True))
     if min_slopes_per_x <= 0:
         min_slopes_per_x = 1 # must have at least one slope value
     notnan_idx = ~np.isnan(slope_at_x)
@@ -208,7 +209,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
     pdpx = real_uniq_x[idx]
 
     # Integrate the partial derivative estimate in slope_at_x across pdpx to get dependence
-    dx = np.diff(pdpx)
+    dx = np.diff(pdpx) # we lose a value here
     dydx = slope_at_x[:-1] # ignore last point as dx is always one smaller
 
     '''
@@ -222,7 +223,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
 
     y_deltas = dydx * dx   # change in y from dx[i] to dx[i+1]
     # print(f"y_deltas: {y_deltas}")
-    pdpy = np.cumsum(y_deltas)                    # we lose one value here
+    pdpy = np.cumsum(y_deltas)                    # we lose one value from np.diff(pdpx)
     pdpy = np.concatenate([np.array([0]), pdpy])  # add back the 0 we lost
 
     return leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored
@@ -231,10 +232,10 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
 def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  min_slopes_per_x=5,  # ignore pdp y values derived from too few slopes (usually at edges)
                  # important for getting good starting point of PD so AUC isn't skewed.
-                 n_trials=5, # how many pd curves to show (subsampling by 2/3 to get diff X sets)
+                 n_trials=1, # how many pd curves to show (subsampling by 2/3 to get diff X sets)
                  n_trees=1,
                  min_samples_leaf=10,
-                 bootstrap=False,
+                 bootstrap=False, # used for both RF and n_trials>1 sampling
                  subsample_size=.75,
                  max_features=1.0,
                  supervised=True,
@@ -246,12 +247,13 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  show_ylabel=True,
                  show_pdp_line=False,
                  show_all_pdp=True,
-                 show_slope_lines=True,
+                 show_slope_lines=False,
                  show_slope_counts=False,
                  show_x_counts=True,
                  show_impact=False,
                  show_impact_dots=True,
                  show_impact_line=True,
+                 hide_top_right_axes=True,
                  pdp_marker_size=2,
                  pdp_marker_alpha=.5,
                  pdp_line_width=.5,
@@ -270,7 +272,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  ticklabel_fontsize=10,
                  barchart_size=0.20,
                  # if show_slope_counts, what ratio of vertical space should barchart use at bottom?
-                 barchar_alpha=0.7,
+                 barchar_alpha=1.0,
                  verbose=False,
                  figsize=None
                  ):
@@ -338,6 +340,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                                supervised=supervised,
                                verbose=verbose)
         ignored += ignored_
+        # print("ignored", ignored_, "pdpy", pdpy)
         all_pdpx.append(pdpx)
         all_pdpy.append(pdpy)
 
@@ -357,7 +360,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         for i in range(n_trials):
             ax.plot(all_pdpx[sorted_by_imp[i]], all_pdpy[sorted_by_imp[i]],
                     '.', markersize=pdp_marker_size, alpha=pdp_marker_alpha)
-        avg_pdp_marker_size += 1
+        avg_pdp_marker_size += 2
 
     # Get avg curve, reset pdpx and pdpy to the average
     pdpx, pdpy = avg_pd_curve(all_pdpx, all_pdpy)
@@ -367,6 +370,9 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         ax.plot(pdpx, pdpy, lw=pdp_line_width, c=pdp_line_color)
 
     domain = (np.min(X[colname]), np.max(X[colname]))  # ignores any max(x) points as no slope info after that
+
+    if len(pdpy)==0:
+        raise ValueError("No partial dependence y values, often due to value of min_samples_leaf that is too small or min_slopes_per_x that is too large")
 
     min_y = min(pdpy)
     max_y = max(pdpy)
@@ -391,8 +397,8 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
 
     if xrange is not None:
         ax.set_xlim(*xrange)
-    else:
-        ax.set_xlim(*domain)
+    # else:
+    #     ax.set_xlim(*domain)
     if yrange is not None:
         ax.set_ylim(*yrange)
     else:
@@ -432,6 +438,10 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         ax2.spines['right'].set_linewidth(.5)
         ax2.spines['left'].set_linewidth(.5)
         ax2.spines['bottom'].set_linewidth(.5)
+    else:
+        if hide_top_right_axes:
+            ax.spines['right'].set_visible(False)
+            ax.spines['top'].set_visible(False)
 
     if n_trials==1 and show_slope_counts:
         ax2 = ax.twinx()
@@ -753,7 +763,7 @@ def avg_values_at_x_nonparallel_jit(uniq_x, leaf_ranges, leaf_slopes):
 def plot_stratpd_gridsearch(X, y, colname, targetname,
                             min_samples_leaf_values=(2,5,10,20,30),
                             min_slopes_per_x_values=(5,), # Show default count only by default
-                            n_trials=5,
+                            n_trials=1,
                             nbins_values=(1,2,3,4,5),
                             nbins_smoothing=None,
                             binned=False,
@@ -849,7 +859,7 @@ def marginal_catplot_(X, y, colname, targetname, ax, catnames, alpha=.1, show_xt
         ax.set_xticks([])
 
 def plot_catstratpd_gridsearch(X, y, colname, targetname,
-                               n_trials=3,
+                               n_trials=1,
                                min_samples_leaf_values=(2, 5, 10, 20, 30),
                                min_y_shifted_to_zero=True,  # easier to read if values are relative to 0 (usually); do this for high cardinality cat vars
                                show_xticks=True,
@@ -881,7 +891,6 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
                                 yrange=yrange,
                                 n_trees=1,
                                 show_xticks=show_xticks,
-                                show_all_deltas=show_all_cat_deltas,
                                 show_ylabel=False,
                                 min_y_shifted_to_zero=min_y_shifted_to_zero)
         except ValueError:
@@ -987,8 +996,7 @@ def cat_partial_dependence(X, y,
         print("USING UNSUPERVISED MODE")
         X_synth, y_synth = conjure_twoclass(X)
         rf = RandomForestClassifier(n_estimators=n_trees,
-                                    min_samples_leaf=min_samples_leaf * 2,
-                                    # there are 2x as many samples (X,X') so must double leaf size
+                                    min_samples_leaf=min_samples_leaf,# * 2, # there are 2x as many samples (X,X') so must double leaf size
                                     bootstrap=bootstrap,
                                     max_features=max_features,
                                     oob_score=False)
@@ -1317,6 +1325,8 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose=Fal
     work = set(range(1,leaf_deltas.shape[1]))
     completed = {-1} # init to any nonempty set to enter loop
     iteration = 1
+    # Two passes should be sufficient to merge all possible vectors, but
+    # I'm being paranoid here and allowing it to run until completion or some maximum iterations
     while len(work)>0 and len(completed)>0 and iteration<=max_iter:
         # print(f"PASS {iteration} len(work)", len(work))
         completed = set()
@@ -1332,7 +1342,7 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose=Fal
             # pick random category in intersection to use as common refcat
             ix = np.random.choice(intersection_idx, size=1)[0]
 
-            # Merge column j into catavg vector
+            # Merge column j inWowto catavg vector
             shifted_v = v - v[ix]                       # make ix the reference cat in common
             relative_to_value = catavg[ix]              # corresponding value in catavg
             adjusted_v = shifted_v + relative_to_value  # adjust so v is mergeable with catavg
@@ -1353,7 +1363,7 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose=Fal
         work = work - completed
 
     if len(work)>0:
-        print(f"Left {len(work)} leaves/unique cats in work list")
+        #print(f"Left {len(work)} leaves/unique cats in work list")
         # hmm..couldn't merge some vectors; total up the samples we ignored
         for j in work:
             merge_ignored += weight_for_refcats[j]
@@ -1370,7 +1380,7 @@ def plot_catstratpd(X, y,
                     # must pass dict or series if catcodes are not 1..n contiguous
                     # None implies use np.unique(X[colname]) values
                     # Must be 0-indexed list of names if list
-                    n_trials=5,
+                    n_trials=1,
                     subsample_size = .75,
                     bootstrap=False,
                     ax=None,
@@ -1380,17 +1390,17 @@ def plot_catstratpd(X, y,
                     yrange=None,
                     title=None,
                     show_x_counts=True,
-                    pdp_marker_lw=1,
                     pdp_marker_size=6,
                     pdp_marker_alpha=.6,
-                    pdp_color='black',
+                    pdp_color='#A5D9B5',
                     fontname='Arial',
                     title_fontsize=11,
                     label_fontsize=10,
                     barchart_size=0.20,
                     barchar_alpha=0.9,
                     ticklabel_fontsize=10,
-                    min_y_shifted_to_zero=True,
+                    min_y_shifted_to_zero=False,
+                    leftmost_shifted_to_zero=True, # either this or min_y_shifted_to_zero can be true
                     # easier to read if values are relative to 0 (usually); do this for high cardinality cat vars
                     show_xlabel=True,
                     show_xticks=True,
@@ -1458,11 +1468,15 @@ def plot_catstratpd(X, y,
                                    bootstrap=False,
                                    verbose=verbose)
         impacts.append(np.nanmean(np.abs(avg_per_cat)))
-        if min_y_shifted_to_zero:
-            avg_per_cat -= np.nanmin(avg_per_cat)
         ignored += ignored_
         merge_ignored += merge_ignored_
         all_avg_per_cat.append( avg_per_cat )
+
+    all_avg_per_cat = np.array(all_avg_per_cat)
+    if leftmost_shifted_to_zero:
+        all_avg_per_cat -= all_avg_per_cat[np.isfinite(all_avg_per_cat)][0]
+    if min_y_shifted_to_zero:
+        all_avg_per_cat -= np.nanmin(all_avg_per_cat)
 
     ignored /= n_trials # average number of x values ignored across trials
     merge_ignored /= n_trials # average number of x values ignored across trials
@@ -1491,6 +1505,7 @@ def plot_catstratpd(X, y,
         ax.plot(range(len(uniq_catcodes)), all_avg_per_cat[i][uniq_catcodes], '.', c=mpl.colors.rgb2hex(colors[impact_order[i]]),
                 markersize=pdp_marker_size, alpha=pdp_marker_alpha)
 
+    '''
     # Show avg line
     segments = []
     for cat, delta in zip(range(len(uniq_catcodes)), combined_avg_per_cat[uniq_catcodes]):
@@ -1501,6 +1516,15 @@ def plot_catstratpd(X, y,
         # ax.plot(range(len(uniq_catcodes)), avg_delta, '.', c='k', markersize=pdp_marker_size + 1)
     lines = LineCollection(segments, alpha=pdp_marker_alpha, color=pdp_color, linewidths=pdp_marker_lw)
     ax.add_collection(lines)
+    '''
+
+    barcontainer = ax.bar(x=range(len(uniq_catcodes)),
+                          height=combined_avg_per_cat[uniq_catcodes],
+                          color=pdp_color)
+    # Alter appearance of each bar
+    for rect in barcontainer.patches:
+        rect.set_linewidth(.1)
+        rect.set_edgecolor('#444443')
 
     leave_room_scaler = 1.3
 
@@ -1553,6 +1577,11 @@ def plot_catstratpd(X, y,
         ax.set_xticks([])
         ax.set_xticklabels([])
 
+    ax.spines['left'].set_smart_bounds(True)
+    ax.spines['bottom'].set_smart_bounds(True)
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+
     if show_xlabel:
         label = colname
         if show_impact:
@@ -1569,8 +1598,6 @@ def plot_catstratpd(X, y,
     if title is not None:
         ax.set_title(title, fontsize=title_fontsize, fontname=fontname)
 
-    ax.spines['top'].set_linewidth(.5)
-    ax.spines['right'].set_linewidth(.5)
     ax.spines['left'].set_linewidth(.5)
     ax.spines['bottom'].set_linewidth(.5)
 
@@ -1635,6 +1662,7 @@ def df_scramble(X : pd.DataFrame) -> pd.DataFrame:
     """
     X_rand = X.copy()
     for colname in X:
+        # X_rand[colname] = np.random.choice(X[colname], len(X), replace=True)
         X_rand[colname] = X_rand[colname].sample(frac=1.0)
     return X_rand
 
