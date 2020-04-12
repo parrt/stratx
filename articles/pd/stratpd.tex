@@ -119,7 +119,7 @@ The first relates to their ability to tease apart the effect of codependent feat
 
 \begin{figure}
 \begin{center}
-\includegraphics[scale=0.6]{images/bathrooms_vs_price.pdf}\vspace{-3mm}
+\includegraphics[scale=0.65]{images/bathrooms_vs_price.pdf}\vspace{-3mm}
 \caption{\small Meaningfully different results from a single partial dependence technique, FPD/ICE, applied to the same data but different models. Plots of number of bathrooms versus rent price using New York City apartment rent data \citep{rent} with $n=10,000$ of \textasciitilde50k. (a) marginal plot, (b) plot derived from random forest, (c)  plot derived from gradient boosted machine, and (d) plot derived from ordinary least squares regression. Hyper parameters were tuned using 5-fold cross validation grid search over several hyper parameters. Keras model trained by experimentation: single hidden layer of 100 neurons, 500 epochs, batch size of 1000, batch normalization, and 30\% dropout. \spd{} gives a plausible roughly result that rent goes up linearly with the number of bathrooms. $R^2$ were computed on 20\% validation sets.\vspace{-7mm}}
 \label{fig:baths_price}
 \end{center}
@@ -250,7 +250,7 @@ In this section, we demonstrate experimentally that \spd{} and \cspd{} compute a
 
 \begin{figure}[!htbp]
 \begin{center}
-\includegraphics[scale=0.41]{images/interactions.pdf}\vspace{-2mm}
+\includegraphics[scale=0.45]{images/interactions.pdf}\vspace{-2mm}
 \caption{\small  Partial dependence plots of $n=2000$ data generated from noiseless $y = x_1^2 + x_1 x_2 + 5 x_1 sin(3 x_2) + 10$ where $x_1,x_2,x_3 \sim U(0,10)$ and $x_3$ does not affect $y$. The model is a random forest with 10 trees trained on all data ($R^2=0.997$). SHAP used all $\bf X$ as background data and ALE used $K=300$. The curves were generated from same 2000 data points that the model was trained on.}
 \label{fig:interactions}
 \end{center}
@@ -311,9 +311,9 @@ y & = &120 + 10(x_{height} - min(x_{height})) + 40x_{pregnant} - 1.5x_{education
 
 \begin{figure}[!htbp]
 \begin{center}
-\includegraphics[scale=0.46]{images/height_vs_weight_pdp.pdf}~\includegraphics[scale=0.46]{images/weight_tree_path_dependent_shap.pdf}
-\includegraphics[scale=0.46]{images/weight_interventional_shap.pdf}~
-\includegraphics[scale=0.46]{images/height_ale.pdf}\vspace{-2mm}
+\includegraphics[scale=0.55]{images/height_vs_weight_pdp.pdf}~\includegraphics[scale=0.55]{images/weight_tree_path_dependent_shap.pdf}
+\includegraphics[scale=0.55]{images/weight_interventional_shap.pdf}~
+\includegraphics[scale=0.55]{images/height_ale.pdf}\vspace{-2mm}
 \caption{\small Partial dependence plots of response body weight on feature $x_{height}$ using $n$=2000 synthetic observations from \eqref{eq:weight}. FPD and SHAP have ``kinks'' at the maximum female height. SHAP defines feature importance as the average SHAP value magnitude, which overemphasizes importance for heights below 70 inches here. The male/female ratio is 50/50, half of the women are pregnant, and pregnancy contributes 40 pounds. SHAP interrogated an RF tuned via 5-fold cross validation grid search (OOB $R^2$ 0.999) and explained all 2000 samples; the interventional case used 100 observations as background data.}
 \label{fig:heightweight}
 \end{center}
@@ -367,7 +367,7 @@ $1/n*\sum_{i=1}^n f(x_j = pregnant, x_{i, \bar{j}}) - f(x_j = not pregnant, x_{i
 The stratification approach also gives plausible results for real data sets, such as the bulldozer auction data from \citet{bulldozer}. \figref{fig:yearmade} shows the partial dependence curves for the same set of techniques as before on feature {\tt\small YearMade}, chosen as a representative because it is very predictive of sale price. The shape and magnitude of the FPD, SHAP, ALE, and \spd{} curves are similar, indicating that older bulldozers are worth less at auction, which is plausible. The \spd{} curve shows 10 bootstrapped trials where the heavy black dots represent the partial dependence curve and the other colored curves describe the variability. 
 
  % I'm just not sure this example is necessary and might be beating a dead horse
-As a second example, consider the curves for feature {\tt\small MachineHours} in \figref{fig:machinehours}. As with bulldozer age, one would expect bulldozers with more use to cost less, but only the \spd{} curve shows that general trend.  Each plot shows some kind of visual phenomenon at 3138 hours, which coincides with a spike in the $x$ histogram of \figref{fig:machinehours}(d).  It would be easy to misinterpret this as an interesting feature of the data, but this actually an artifact of data preparation.  A very common and effective technique is to replace missing values with the median (and add a ``is missing'' variable), as recommended by \citet{missingdata}.  Roughly 50\% of the {\tt\small MachineHours} values are missing and the dip in price at the median is because bulldozers with missing {\tt\small MachineHours} are, on average, worth less according to the training data by about 4k\$. (Bulldozers with {\tt MachineHours} average \$35,628 but only \$31,320 with that variable missing.) The true relationship is unknown but the \spd{} plot seems the most plausible.
+As a second example, consider the curves for feature {\tt\small MachineHours} in \figref{fig:machinehours}. As with bulldozer age, one would expect bulldozers with more use to cost less, but only the \spd{} curve shows that general trend.  Each plot shows some kind of visual phenomenon at 3138 hours, which coincides with a spike in the $x$ histogram of \figref{fig:machinehours}(d).  It would be easy to misinterpret this as an interesting feature of the data, but this actually an artifact of data preparation.  A very common and effective technique is to replace missing values with the median (and add an ``is missing'' variable), as recommended by \citet{missingdata}.  Roughly 50\% of the {\tt\small MachineHours} values are missing and the dip in price at the median is because bulldozers with missing {\tt\small MachineHours} are, on average, worth less according to the training data by about 4k\$. (Bulldozers with {\tt MachineHours} average \$35,628 but only \$31,320 with that variable missing.) The true relationship is unknown but the \spd{} plot seems the most plausible.
 
 \begin{figure}[!htbp]
 \begin{center}
@@ -375,15 +375,14 @@ As a second example, consider the curves for feature {\tt\small MachineHours} in
 \includegraphics[scale=0.35]{images/bulldozer_MachineHours_shap.pdf}~~
 \includegraphics[scale=0.35]{images/bulldozer_MachineHours_ale.pdf}~~
 \includegraphics[scale=0.35]{images/bulldozer_MachineHours_stratpd.pdf}
-\caption{\small Partial dependence curves of bulldozer {\tt MachineHours} versus {\tt SalePrice} for FPD/ SHAP, ALE, and \spd. $n$=10,000 observations drawn from \textasciitilde{}362k. Same model, setup as in \figref{fig:yearmade}. 4945 out of 10000 records have missing machine hours.  The spike in density at 3138 hours is the imputed median. The \spd{} black dots are the average of 10 bootstrapped trials.}
+\caption{\small Partial dependence curves of bulldozer {\tt MachineHours} versus {\tt SalePrice} for FPD/ICE, SHAP, ALE, and \spd. $n$=10,000 observations drawn from \textasciitilde{}362k. Same model, setup as in \figref{fig:yearmade}. 4945 out of 10000 records have missing machine hours.  The spike in {\tt MachineHours} density at 3138 hours is the imputed median. The \spd{} black dots are the average of 10 bootstrapped trials.}
 \label{fig:machinehours}
 \end{center}
 \end{figure}
 
-
 \begin{figure}[!htbp]
 \begin{center}
-\includegraphics[scale=.4]{images/timing.pdf}\vspace{-3mm}
+\includegraphics[scale=.45]{images/timing.pdf}\vspace{-3mm}
 \caption{\small Time to compute partial dependence curve for up to 30,000 observations for 40 numerical and 11 categorical variables timing blah. $p=20$, bulldozer $p=14$, and flight $p=17$. The Numba just-in-time compiler is used to improve performance, but timing does not include compilation; users do experience this ``warm-up'' time.}
 \label{fig:timing}
 \end{center}
