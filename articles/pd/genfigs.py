@@ -2160,7 +2160,7 @@ def ale_yearmade():
     ax.tick_params(axis='both', which='major', labelsize=10)
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
-    savefig('YearMade_ale')
+    savefig('bulldozer_YearMade_ale')
 
 
 def ale_MachineHours():
