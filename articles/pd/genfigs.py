@@ -1322,6 +1322,7 @@ def MachineHours():
     ax.set_ylabel("SHAP MachineHours)", fontsize=11)
     ax.set_xlabel("MachineHours\n(b)", fontsize=11)
     ax.set_xlim(0,30_000)
+    ax.set_ylim(-3000,5000)
     ax.tick_params(axis='both', which='major', labelsize=10)
     savefig(f"bulldozer_MachineHours_shap")
 
@@ -2174,11 +2175,11 @@ def ale_MachineHours():
 
     fig, ax = plt.subplots(1, 1, figsize=figsize2)
     ax.plot(df['x.values'],df['f.values'],'.',color='k',markersize=4)
-    ax.set_title("(c) ALE", fontsize=13)
+    ax.set_title("ALE", fontsize=13)
     # ax.set_ylabel("SalePrice", fontsize=11)
-    ax.set_xlabel("MachineHours", fontsize=11)
+    ax.set_xlabel("(c) MachineHours", fontsize=11)
     ax.set_xlim(0, 30_000)
-    ax.set_ylim(-2000,3000)
+    ax.set_ylim(-3000,5000)
     ax.tick_params(axis='both', which='major', labelsize=10)
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
@@ -2377,24 +2378,24 @@ def partitioning():
 
 
 if __name__ == '__main__':
-    # interactions()
+    interactions()
     MachineHours()
-    # yearmade()
-    # rent()
-    # rent_ntrees()
-    # weight()
-    # shap_pregnant()
-    # shap_weight(feature_perturbation='tree_path_dependent', twin=True) # more biased but faster
-    # shap_weight(feature_perturbation='interventional', twin=True) # takes 04:45 minutes
-    # weather()
-    # noise()
-    #
-    # # Invoke R to generate csv files then load with python to plot
-    #
-    # gen_ale_plot_data_in_R()
-    #
-    # ale_MachineHours()
-    # ale_yearmade()
-    # ale_height()
-    # ale_pregnant()
-    # ale_state()
+    yearmade()
+    rent()
+    rent_ntrees()
+    weight()
+    shap_pregnant()
+    shap_weight(feature_perturbation='tree_path_dependent', twin=True) # more biased but faster
+    shap_weight(feature_perturbation='interventional', twin=True) # takes 04:45 minutes
+    weather()
+    noise()
+
+    # Invoke R to generate csv files then load with python to plot
+
+    gen_ale_plot_data_in_R()
+
+    ale_MachineHours()
+    ale_yearmade()
+    ale_height()
+    ale_pregnant()
+    ale_state()
