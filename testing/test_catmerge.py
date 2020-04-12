@@ -79,8 +79,7 @@ def stratify_cats(X, y,
         print("USING UNSUPERVISED MODE")
         X_synth, y_synth = conjure_twoclass(X)
         rf = RandomForestClassifier(n_estimators=n_trees,
-                                    min_samples_leaf=min_samples_leaf * 2,
-                                    # there are 2x as many samples (X,X') so must double leaf size
+                                    min_samples_leaf=min_samples_leaf,# * 2,  # there are 2x as many samples (X,X') so must double leaf size
                                     bootstrap=bootstrap,
                                     max_features=max_features,
                                     oob_score=False)

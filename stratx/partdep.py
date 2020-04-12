@@ -36,10 +36,10 @@ import warnings
 import collections
 from timeit import default_timer as timer
 from sklearn.utils import resample
+from collections import defaultdict
+from typing import Sequence
 
-from dtreeviz.trees import *
 from numba import jit, prange
-import numba
 
 
 def leaf_samples(rf, X_not_col:np.ndarray) -> Sequence:
