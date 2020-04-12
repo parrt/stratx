@@ -6,6 +6,10 @@ X, y = load_bulldozer(n=10_000)
 df = pd.concat([X, y], axis=1)
 df.to_csv("bulldozer10k.csv", index=False)
 
+X, y = load_bulldozer(n=20_000)
+df = pd.concat([X, y], axis=1)
+df.to_csv("bulldozer20k.csv", index=False)
+
 X, y = load_rent(n=10_000)
 df = pd.concat([X, y], axis=1)
 df.to_csv("rent10k.csv", index=False)

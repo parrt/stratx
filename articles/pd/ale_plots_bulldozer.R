@@ -8,7 +8,8 @@ library(randomForest)
 library(ALEPlot)
 
 # Load, modify data ----------------------------------------------------------------------
-df_bd <- read_csv('bulldozer10k.csv')
+#df_bd <- read_csv('bulldozer10k.csv')
+df_bd <- read_csv('bulldozer20k.csv')
 X <- df_bd %>% select(-SalePrice) %>% as.data.frame
 y <- df_bd$SalePrice
 
