@@ -25,6 +25,9 @@ from stratx.ice import *
 import inspect
 import statsmodels.api as sm
 
+from sklearn.datasets import load_boston
+from stratx.partdep import *
+
 
 def df_string_to_cat(df: pd.DataFrame) -> dict:
     catencoders = {}
@@ -169,4 +172,48 @@ def bigX():
     axes[0, 1].set_title("PD/ICE", fontsize=10)
     plt.show()
 
-weather()
+
+def boston():
+    boston = load_boston()
+    df = pd.DataFrame(boston.data, columns=boston.feature_names)
+    df['MEDV'] = boston.target
+
+    X = df.drop('MEDV', axis=1)
+    y = df['MEDV']
+
+    # WORKS ONLY WITH DATAFRAMES AT MOMENT
+    plt.figure(figsize=(3.5,3.5))
+    plot_stratpd(X, y, 'LSTAT', 'MEDV', yrange=(-20, 5), n_trials=10)
+    plt.tight_layout()
+    plt.savefig("../../images/boston_LSTAT.svg")
+    plt.show()
+
+
+def diabetes():
+    diabetes = load_diabetes()
+    df = pd.DataFrame(diabetes.data, columns=diabetes.feature_names)
+    df['sex'] = np.where(df['sex']<0, 0, 1)
+    df['y'] = diabetes.target
+    X = df.drop('y', axis=1)
+    y = df['y']
+    # plt.figure(figsize=(3.5,3.5))
+    # plot_stratpd(X, y, 'bmi', 'y', n_trials=10)
+    # plt.tight_layout()
+    # plt.savefig("../../images/diabetes_bmi.svg")
+    # plt.show()
+
+    plt.figure(figsize=(3.5,3.5))
+    plot_catstratpd(X, y, 'sex', 'y',
+                    show_x_counts=False,
+                    n_trials=10,
+                    min_y_shifted_to_zero=True,
+                    catnames=['female','male'])
+    plt.tight_layout()
+    plt.savefig("../../images/diabetes_sex.svg")
+    plt.show()
+
+
+# boston()
+diabetes()
+
+# weather()

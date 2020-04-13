@@ -1190,11 +1190,11 @@ def plot_catstratpd(X, y,
     merge_ignored /= n_trials # average number of x values ignored across trials
 
     combined_avg_per_cat = avg_pd_catvalues(all_avg_per_cat)
-    print("mean(pdpy)", np.nanmean(combined_avg_per_cat))
+    # print("mean(pdpy)", np.nanmean(combined_avg_per_cat))
 
     impact_order = np.argsort(impacts)
-    print("impacts", impacts)
-    print("avg impact", np.mean(impacts))
+    # print("impacts", impacts)
+    # print("avg impact", np.mean(impacts))
 
     cmap = plt.get_cmap('coolwarm')
     colors=cmap(np.linspace(0, 1, num=n_trials))
