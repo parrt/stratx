@@ -41,7 +41,7 @@ from articles.pd.support import load_rent, load_bulldozer, load_flights, \
                                 df_string_to_cat, synthetic_interaction_data
 from stratx.partdep import plot_stratpd, plot_catstratpd, \
                            plot_stratpd_gridsearch, plot_catstratpd_gridsearch, \
-                           marginal_plot_
+                           marginal_plot_, partial_dependence
 from stratx.ice import predict_ice, predict_catice, plot_ice, plot_catice, friedman_partial_dependence
 import inspect
 import matplotlib.patches as mpatches
@@ -864,8 +864,8 @@ def shap_weight(feature_perturbation, twin=False):
     df_shap['weight'] = shap_values[:, 2]
     df_shap['height'] = shap_sample.iloc[:, 2]
 
-    pdpy = df_shap.groupby('height').mean().reset_index()
-    print("len pdpy", len(pdpy))
+    # pdpy = df_shap.groupby('height').mean().reset_index()
+    # print("len pdpy", len(pdpy))
 
     GREY = '#444443'
     fig, ax = plt.subplots(1, 1, figsize=figsize)
@@ -2425,7 +2425,7 @@ if __name__ == '__main__':
     weight()
     shap_pregnant()
     shap_weight(feature_perturbation='tree_path_dependent', twin=True) # more biased but faster
-    shap_weight(feature_perturbation='interventional', twin=True) # takes 04:45 minutes
+    shap_weight(feature_perturbation='interventional', twin=True)      # takes 04:45 minutes
     weather()
     noise()
 
