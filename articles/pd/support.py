@@ -26,21 +26,9 @@ import numpy as np
 import pandas as pd
 
 from sklearn.utils import resample
-from sklearn.model_selection import train_test_split
-from timeit import default_timer as timer
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from sklearn.model_selection import GridSearchCV
-from sklearn.datasets import load_boston
 from pandas.api.types import is_string_dtype, is_object_dtype, is_categorical_dtype, is_bool_dtype
-from sklearn.preprocessing import StandardScaler
-from sklearn.preprocessing import PolynomialFeatures
-from sklearn import linear_model
 
-import xgboost as xgb
-from sklearn import svm
-from sklearn.model_selection import KFold
 import os
-import errno
 
 
 # WARNING: THIS FILE IS INTENDED FOR USE BY PARRT TO TEST / GENERATE SAMPLE IMAGES

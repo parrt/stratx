@@ -23,17 +23,13 @@ SOFTWARE.
 """
 
 import numpy as np
-from numpy import nan, where
 import pandas as pd
-from typing import Mapping, List, Tuple
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from  matplotlib.collections import LineCollection
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 import warnings
-import collections
-from timeit import default_timer as timer
 from sklearn.utils import resample
 from collections import defaultdict
 from typing import Sequence

@@ -22,11 +22,23 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+import numpy as np
+import pandas as pd
 from sklearn.ensemble.partial_dependence import partial_dependence
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.linear_model import LinearRegression
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
-from articles.pd.support import *
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GridSearchCV
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn import svm
+from sklearn.datasets import load_boston
+
+from articles.pd.support import load_rent, load_bulldozer, load_flights, \
+                                toy_weather_data, toy_weight_data, \
+                                df_cat_to_catcode, df_split_dates, \
+                                df_string_to_cat, synthetic_interaction_data
 from stratx.partdep import plot_stratpd, plot_catstratpd, \
                            plot_stratpd_gridsearch, plot_catstratpd_gridsearch, \
                            marginal_plot_
@@ -2406,25 +2418,24 @@ def partitioning():
 
 if __name__ == '__main__':
     productsize()
-    # MachineHours()
-    # interactions()
-    # yearmade()
-    # rent()
-    # rent_ntrees()
-    # weight()
-    # shap_pregnant()
-    # shap_weight(feature_perturbation='tree_path_dependent', twin=True) # more biased but faster
-    # shap_weight(feature_perturbation='interventional', twin=True) # takes 04:45 minutes
-    # weather()
-    # noise()
-    #
-    # # Invoke R to generate csv files then load with python to plot
-    #
-    # gen_ale_plot_data_in_R()
-    #
-    # ale_MachineHours()
-    # ale_yearmade()
-    # ale_height()
-    # ale_pregnant()
-    # ale_state()
-    # ale_productsize()
+    interactions()
+    yearmade()
+    rent()
+    rent_ntrees()
+    weight()
+    shap_pregnant()
+    shap_weight(feature_perturbation='tree_path_dependent', twin=True) # more biased but faster
+    shap_weight(feature_perturbation='interventional', twin=True) # takes 04:45 minutes
+    weather()
+    noise()
+
+    # Invoke R to generate csv files then load with python to plot
+
+    gen_ale_plot_data_in_R()
+
+    ale_MachineHours()
+    ale_yearmade()
+    ale_height()
+    ale_pregnant()
+    ale_state()
+    ale_productsize()
