@@ -58,49 +58,8 @@ def leaf_samples(rf, X_not_col:np.ndarray) -> Sequence:
     return leaf_samples
 
 
-def collect_point_betas(X, y, colname, leaves, nbins:int):
-    ignored = 0
-    leaf_xranges = []
-    leaf_slopes = []
-    point_betas = np.full(shape=(len(X),), fill_value=np.nan)
-
-    for samples in leaves: # samples is set of obs indexes that live in a single leaf
-        leaf_all_x = X.iloc[samples]
-        leaf_x = leaf_all_x[colname].values
-        leaf_y = y.iloc[samples].values
-        # Right edge of last bin is max(leaf_x) but that means we ignore the last value
-        # every time. Tweak domain right edge a bit so max(leaf_x) falls in last bin.
-        last_bin_extension = 0.0000001
-        domain = (np.min(leaf_x), np.max(leaf_x)+last_bin_extension)
-        bins = np.linspace(*domain, num=nbins+1, endpoint=True)
-        binned_idx = np.digitize(leaf_x, bins) # bin number for values in leaf_x
-        for b in range(1, len(bins)+1):
-            bin_x = leaf_x[binned_idx == b]
-            bin_y = leaf_y[binned_idx == b]
-            if len(bin_x) < 2: # could be none or 1 in bin
-                ignored += len(bin_x)
-                continue
-            r = (np.min(bin_x), np.max(bin_x))
-            if len(bin_x)<2 or np.isclose(r[0], r[1]):
-    #             print(f'ignoring {bin_x} -> {bin_y} for same range')
-                ignored += len(bin_x)
-                continue
-            lm = LinearRegression()
-            leaf_obs_idx_for_bin = np.nonzero((leaf_x>=bins[b-1]) &(leaf_x<bins[b]))
-            obs_idx = samples[leaf_obs_idx_for_bin]
-            lm.fit(bin_x.reshape(-1, 1), bin_y)
-            point_betas[obs_idx] = lm.coef_[0]
-            leaf_slopes.append(lm.coef_[0])
-            leaf_xranges.append(r)
-
-    leaf_slopes = np.array(leaf_slopes)
-    return leaf_xranges, leaf_slopes, point_betas, ignored
-
-
 def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
                        min_slopes_per_x=5,
-                       # ignore pdp y values derived from too few slopes (usually at edges)
-                       # important for getting good starting point of PD so AUC isn't skewed.
                        parallel_jit=True,
                        n_trees=1, min_samples_leaf=10, bootstrap=False, max_features=1.0,
                        supervised=True,
@@ -109,17 +68,12 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
     Internal computation of partial dependence information about X[colname]'s effect on y.
     Also computes partial derivative of y with respect to X[colname].
 
-    :param X: 
-    :param y: 
-    :param colname: 
-    :param min_slopes_per_x:   ignore pdp y values derived from too few slopes (less than .3% of num records)
-                            tried percentage of max slope count but was too variable; this is same count across all features
-    :param n_trees:
-    :param min_samples_leaf: 
-    :param bootstrap: 
-    :param max_features: 
-    :param supervised: 
-    :param verbose: 
+    :param X: Dataframe with all explanatory variables
+    :param y: Series or vector with response variable
+    :param colname: which X[colname] (a string) to compute partial dependence for
+    :param min_slopes_per_x: ignore pdp y values derived from too few slopes; this is
+           same count across all features (tried percentage of max slope count but was
+           too variable). Important for getting good starting point of PD.
 
     Returns:
         leaf_xranges    The ranges of X[colname] partitions
@@ -127,9 +81,11 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
 
         leaf_slopes     Associated slope for each leaf xrange
 
+        slope_counts_at_x How many slopes are available at each x_j location
+
         dx              The change in x from one non-NaN unique X[colname] to the next
 
-        dydx            The slope at each non-NaN unique X[colname]
+        slope_at_x      The slope at each non-NaN unique X[colname]
 
         pdpx            The non-NaN unique X[colname] values
 
@@ -138,9 +94,9 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
                         z in X[colname]). The first value is always 0.
 
         ignored         How many samples from len(X) total records did we have to
-                        ignore because of samples in leaves with identical X[colname]
+                        ignore because samples in leaves had identical X[colname]
                         values.
-    """
+  """
     X_not_col = X.drop(colname, axis=1).values
     X_col = X[colname]
     if supervised:
@@ -217,7 +173,6 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
     '''
 
     y_deltas = dydx * dx   # change in y from dx[i] to dx[i+1]
-    # print(f"y_deltas: {y_deltas}")
     pdpy = np.cumsum(y_deltas)                    # we lose one value from np.diff(pdpx)
     pdpy = np.concatenate([np.array([0]), pdpy])  # add back the 0 we lost
 
@@ -225,9 +180,8 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
 
 
 def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
-                 min_slopes_per_x=5,  # ignore pdp y values derived from too few slopes (usually at edges)
-                 # important for getting good starting point of PD so AUC isn't skewed.
-                 n_trials=1, # how many pd curves to show (subsampling by 2/3 to get diff X sets)
+                 min_slopes_per_x=5,
+                 n_trials=1,
                  n_trees=1,
                  min_samples_leaf=10,
                  bootstrap=False, # used for both RF and n_trials>1 sampling
@@ -266,33 +220,65 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  label_fontsize=10,
                  ticklabel_fontsize=10,
                  barchart_size=0.20,
-                 # if show_slope_counts, what ratio of vertical space should barchart use at bottom?
-                 barchar_alpha=1.0,
+                 barchar_alpha=1.0, # if show_slope_counts, what ratio of vertical space should barchart use at bottom?
                  barchar_color='#BABABA',
                  verbose=False,
                  figsize=None
                  ):
     """
-    Plot the partial dependence of X[colname] on y.
+    Plot the partial dependence of X[colname] on y for numerical X[colname].
+
+    Key parameters:
+
+    :param X: Dataframe with all explanatory variables
+
+    :param y: Series or vector with response variable
+
+    :param colname: which X[colname] (a string) to compute partial dependence for
+
+    :param targetname: for plotting purposes, will what is the y axis label?
+
+    :param n_trials:  How many times should we run the stratpd algorithm and get PD
+                      curves, using bootstrapped or subsample sets? Default is 10.
+
+    :param min_samples_leaf Key hyper parameter to the stratification
+                            process. The default is 10 and usually
+                            works out pretty well.  It controls the
+                            minimum number of observations in each
+                            decision tree leaf used to stratify X other than colname.
+                            Generally speaking,
+                            smaller values lead to more confidence
+                            that fluctuations in y are due solely to
+                            X[colname], but more observations per leaf allow
+                            StratPD to capture more nonlinearities and
+                            make it less susceptible to noise. As the
+                            leaf size grows, however, one risks
+                            introducing contributions from X not colname into
+                            the relationship between X[colname] and y. At the
+                            extreme, the decision tree would consist
+                            of a single leaf node containing all
+                            observations, leading to a marginal not
+                            partial dependence curve.
+
+    :param min_slopes_per_x: ignore any partial derivatives estimated
+                             with too few observations. Dropping uncertain partial derivatives
+                             greatly improves accuracy and stability. Partial dependences
+                             computed by integrating over local partial derivatives are highly
+                             sensitive to partial derivatives computed at the left edge of any
+                             X[colname]’s range because imprecision at the left edge affects the entire
+                             curve. This presents a problem when there are few samples with X[colname]
+                             values at the extreme left. Default is 5.
 
     Returns:
-        leaf_xranges    The ranges of X[colname] partitions
-
-
-        leaf_slopes     Associated slope for each leaf xrange
-
-        dx              The change in x from one non-NaN unique X[colname] to the next
-
-        dydx            The slope at each non-NaN unique X[colname]
 
         pdpx            The non-NaN unique X[colname] values
 
         pdpy            The effect of each non-NaN unique X[colname] on y; effectively
-                        the cumulative sum (integration from X[colname] x to z for all
-                        z in X[colname]). The first value is always 0.
+                        the cumulative sum of the partial derivative of y with respect to
+                        X[colname]. The first value is always 0.
 
         ignored         How many samples from len(X) total records did we have to
-                        ignore because of samples in leaves with identical X[colname]
+                        ignore because samples in leaves had identical X[colname]
                         values.
     """
     def avg_pd_curve(all_pdpx, all_pdpy):
@@ -500,7 +486,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
 @jit(nopython=True)
 def discrete_xc_space(x: np.ndarray, y: np.ndarray):
     """
-    Use the unique x values within a leaf to dynamically compute the bins,
+    Use the unique x values within a leaf to dynamically compute the "bins,"
     rather then using a fixed nbins hyper parameter. Group the leaf x,y by x
     and collect the average y.  The unique x and y averages are the new x and y pairs.
     The slope for each x is:
@@ -513,7 +499,7 @@ def discrete_xc_space(x: np.ndarray, y: np.ndarray):
     of 1 to 3. The two slopes are [(8-9)/(3-1), (10-8)/(4-3)] and bin widths are [2,1].
 
     If there is exactly one unique x value in the leaf, the leaf provides no information
-    about how x_c contributes to changes in y. We have to ignore this leaf.
+    about how X[colname] contributes to changes in y. We have to ignore this leaf.
     """
     ignored = 0
 
@@ -533,19 +519,19 @@ def discrete_xc_space(x: np.ndarray, y: np.ndarray):
 
     return leaf_xranges, leaf_slopes, ignored
 
+
 def collect_discrete_slopes(rf, X, y, colname):
     """
-    For each leaf of each tree of the random forest rf (trained on all features
-    except colname), get the leaf samples then isolate the column of interest X values
-    and the target y values. Perform piecewise linear regression of X[colname] vs y
+    For each leaf of each tree of the decision tree or RF rf (trained on all features
+    except colname), get the leaf samples then isolate the X[colname] values
+    and the target y values.  Compute the y deltas between unique X[colname] values.
+    Like performing piecewise linear regression of X[colname] vs y
     to get the slopes in various regions of X[colname].  We don't need to subtract
     the minimum y value before regressing because the slope won't be different.
     (We are ignoring the intercept of the regression line).
 
     Return for each leaf, the ranges of X[colname] partitions,
-    associated slope for each range
-
-    Only does discrete now after doing pointwise continuous slopes differently.
+    associated slope for each range, and number of ignored samples.
     """
     # start = timer()
     leaf_slopes = []   # drop or rise between discrete x values
@@ -601,44 +587,24 @@ def avg_values_at_x_jit(uniq_x, leaf_ranges, leaf_slopes):
     """
     Compute the weighted average of leaf_slopes at each uniq_x.
 
-    Value at max(x) is NaN since we have no data beyond that point.
+    Value at max(x) is NaN since we have no data beyond that point and so there is
+    no forward difference.
     """
     nx = uniq_x.shape[0]
     nslopes = leaf_slopes.shape[0]
     slopes = np.empty(shape=(nx, nslopes), dtype=np.double)
-    # collect the slope for each range (taken from a leaf) as collection of
-    # flat lines across the same x range
-
-    '''
-    for j in prange(nslopes):
-        xl = leaf_ranges[j,0]
-        xr = leaf_ranges[j,1]
-        slope = leaf_slopes[j]
-        # s = np.full(nx, slope)#, dtype=double)
-        # s[np.where( (uniq_x < xr[0]) | (uniq_x >= xr[1]) )] = np.nan
-        # slopes[:, i] = s
-
-        # Compute slope all the way across uniq_x but then trim line so
-        # slope is only valid in range xr; don't set slope on right edge
-        for i in prange(nx):
-            if (uniq_x[i] >= xl) or (uniq_x[i] < xr):
-                slopes[i, j] = slope
-            else:
-                slopes[i, j] = np.nan
-    '''
-
     for i in prange(nslopes):
         xr, slope = leaf_ranges[i], leaf_slopes[i]
         # Compute slope all the way across uniq_x but then trim line so
         # slope is only valid in range xr; don't set slope on right edge
         slopes[:, i] = np.where( (uniq_x < xr[0]) | (uniq_x >= xr[1]), np.nan, slope)
 
-    # The value could be genuinely zero so we use nan not 0 for out-of-range
+    # Slope values could be genuinely zero so we use nan not 0 for out-of-range.
+
     # Now average horiz across the matrix, averaging within each range
-    # Wrap nanmean() in catcher to avoid "Mean of empty slice" warning, which
-    # comes from some rows being purely NaN; I should probably look at this sometime
-    # to decide whether that's hiding a bug (can there ever be a nan for an x range)?
-    # Oh right. We might have to ignore some leaves (those with single unique x values)
+    # It's possible that some some rows would be purely NaN, indicating there are no
+    # slopes for that X[colname] value. This can happen when we ignore some leaves,
+    # when they have a single unique X[colname] value.
 
     # Compute:
     #   avg_value_at_x = np.mean(slopes[good], axis=1)  (numba doesn't allow axis arg)
@@ -655,34 +621,31 @@ def avg_values_at_x_jit(uniq_x, leaf_ranges, leaf_slopes):
     return avg_value_at_x, slope_counts_at_x
 
 
-# Hideous copying to get different kinds of jit'ing. This is slower by 20%
+# Hideous copying of avg_values_at_x_jit() to get different kinds of jit'ing. This is slower by 20%
 # than other version but can run in parallel with multiprocessing package.
 @jit(nopython=True)
 def avg_values_at_x_nonparallel_jit(uniq_x, leaf_ranges, leaf_slopes):
     """
     Compute the weighted average of leaf_slopes at each uniq_x.
 
-    Value at max(x) is NaN since we have no data beyond that point.
+    Value at max(x) is NaN since we have no data beyond that point and so there is
+    no forward difference.
     """
     nx = len(uniq_x)
     nslopes = len(leaf_slopes)
     slopes = np.zeros(shape=(nx, nslopes))
-    # collect the slope for each range (taken from a leaf) as collection of
-    # flat lines across the same x range
-
     for i in range(nslopes):
         xr, slope = leaf_ranges[i], leaf_slopes[i]
         # Compute slope all the way across uniq_x but then trim line so
         # slope is only valid in range xr; don't set slope on right edge
         slopes[:, i] = np.where( (uniq_x < xr[0]) | (uniq_x >= xr[1]), np.nan, slope)
 
+    # Slope values could be genuinely zero so we use nan not 0 for out-of-range.
 
-    # The value could be genuinely zero so we use nan not 0 for out-of-range
     # Now average horiz across the matrix, averaging within each range
-    # Wrap nanmean() in catcher to avoid "Mean of empty slice" warning, which
-    # comes from some rows being purely NaN; I should probably look at this sometime
-    # to decide whether that's hiding a bug (can there ever be a nan for an x range)?
-    # Oh right. We might have to ignore some leaves (those with single unique x values)
+    # It's possible that some some rows would be purely NaN, indicating there are no
+    # slopes for that X[colname] value. This can happen when we ignore some leaves,
+    # when they have a single unique X[colname] value.
 
     # Compute:
     #   avg_value_at_x = np.mean(slopes[good], axis=1)  (numba doesn't allow axis arg)
@@ -842,10 +805,11 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
 def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
     """
     Return a 2D array with the average y value for each category in each leaf
-    normalized by subtracting the overall avg y value from all categories.
+    normalized by subtracting the the avg y value for a randomly-chosen
+    reference category from the avg for all categories.
 
     The columns are the y avg value changes per cat found in a single leaf as
-    they differ from the overall y average. Each row represents a category level. E.g.,
+    they differ from the reference cat y average. Each row represents a category level. E.g.,
 
     row           leaf0       leaf1
      0       166.430176  186.796956
@@ -853,17 +817,9 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
 
     Cats are possibly noncontiguous with nan rows for cat codes not present. Not all
     values in a leaf column will be non-nan.  Only those categories mentioned in
-    a leaf have values.
-    Shape is (max cat + 1, num leaves).
+    a leaf have values.  Shape is (max cat + 1, num leaves).
 
-    As reference cat, use the smallest cat in the leaf. Previously, we
-    subtracted the average of the leaf y not the overall y avg,  but this failed
-    to capture the relationship between categories when there are many levels. Tried
-    subtracting mean(y) but that was harder to interpret later in noisy environment;
-    couldn't get the proper zero PDP y value on left edge of PDP.
-
-    Within a single leave, there will typically only be a few categories
-    represented.
+    Within a single leaf, there will typically only be a few categories represented.
     """
     leaves = leaf_samples(rf, X_not_col)
 
@@ -980,10 +936,11 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose=Fal
     over the columns of leaf_deltas until nothing changes, we hit the maximum number
     of iterations, or everything has merged.
 
-    To merge vector v (column j of leaf_deltas) into catavg, select a category, index ix, in common at random.
-    Subtract v[ix] from v so that ix is v's new reference and v[ix]=0. Add catavg[ix] to
-    the adjusted v so that v is now comparable to catavg. We can now do a weighted
-    average of catavg and v, paying careful attention of NaN.
+    To merge vector v (column j of leaf_deltas) into catavg, select a category,
+    index ix, in common at random.  Subtract v[ix] from v so that ix is v's new
+    reference and v[ix]=0. Add catavg[ix] to the adjusted v so that v is now
+    comparable to catavg. We can now do a weighted average of catavg and v,
+    paying careful attention of NaN.
 
     It's possible that more than a single value within a leaf_deltas vector is 0.
     I.e., the reference category value is always 0 in the vector, but there might be
@@ -1031,8 +988,6 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose=Fal
          new avg    = [ 7.81  -22.52  10.60   4.72   1.06 ]
 
     final cat avgs [ 7.813 -22.520 10.600  4.720  1.058 ]
-
-    Then divide by
 
     So we get a final avg per cat of:  [ 0.  1.  3.  3.  0. nan]
 
@@ -1100,10 +1055,7 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose=Fal
 def plot_catstratpd(X, y,
                     colname,  # X[colname] expected to be numeric codes
                     targetname,
-                    catnames=None,  # map of catcodes to catnames; converted to map if sequence passed
-                    # must pass dict or series if catcodes are not 1..n contiguous
-                    # None implies use np.unique(X[colname]) values
-                    # Must be 0-indexed list of names if list
+                    catnames=None,
                     n_trials=1,
                     subsample_size = .75,
                     bootstrap=False,
@@ -1133,11 +1085,43 @@ def plot_catstratpd(X, y,
                     verbose=False,
                     figsize=(5,3)):
     """
+    Plot the partial dependence of categorical variable X[colname] on y.
     Warning: cat columns are assumed to be label encoded as unique integers. This
     function uses the cat code as a raw index internally. So if you have two cat
     codes 1 and 1000, this function allocates internal arrays of size 1000+1.
 
-    only works for ints, not floats
+    Key parameters:
+
+    :param X: Dataframe with all explanatory variables
+
+    :param y: Series or vector with response variable
+
+    :param colname: which X[colname] (a string) to compute partial dependence for
+
+    :param targetname: for plotting purposes, will what is the y axis label?
+
+    :param catnames: dict or array mapping catcode to catname, used for plotting x axis
+
+    :param n_trials:  How many times should we run the catstratpd algorithm and get PD
+                      curves, using bootstrapped or subsample sets? Default is 10.
+
+    :param min_samples_leaf Key hyper parameter to the stratification
+                            process. The default is 10 and usually
+                            works out pretty well.  It controls the
+                            minimum number of observations in each
+                            decision tree leaf used to stratify X other than colname.
+                            Generally speaking, smaller values lead to more confidence
+                            that fluctuations in y are due solely to
+                            X[colname], but more observations per leaf allow
+                            CatStratPD to capture more relationships and
+                            make it less susceptible to noise. As the
+                            leaf size grows, however, one risks
+                            introducing contributions from X not colname into
+                            the relationship between X[colname] and y. At the
+                            extreme, the decision tree would consist
+                            of a single leaf node containing all
+                            observations, leading to a marginal not
+                            partial dependence curve.
     """
     if ax is None:
         if figsize is not None:
@@ -1421,12 +1405,9 @@ def nanavg_vectors(a, b, wa=1.0, wb=1.0):
     "Add two vectors a+b but support nan+x==x and nan+nan=nan"
     a_nan = np.isnan(a)
     b_nan = np.isnan(b)
-    # both_nan = a_nan & b_nan
-    c = a*wa + b*wb # weighted average where both are non-nan
-    c /= zero_as_one(wa+wb) # weighted avg
-    # c = np.where(a_nan, 0, a) * wa + np.where(b_nan, 0, b) * wb
-    # if adding nan to nan, leave as nan
-    c[a_nan] = b[a_nan]   # copy any stuff where b has only value (unweighted into result)
+    c = a*wa + b*wb               # weighted average where both are non-nan
+    c /= zero_as_one(wa+wb)       # weighted avg
+    c[a_nan] = b[a_nan]           # copy any stuff where b has only value (unweighted into result)
     in_a_not_b = (~a_nan) & b_nan
     c[in_a_not_b] = a[in_a_not_b] # copy stuff where a has only value
     return c
