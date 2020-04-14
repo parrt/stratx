@@ -1,5 +1,6 @@
 from stratx.partdep import *
 from articles.pd.support import *
+from timeit import default_timer as timer
 
 import numpy as np
 
