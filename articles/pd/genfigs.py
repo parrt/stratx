@@ -38,7 +38,8 @@ from sklearn.datasets import load_boston
 from articles.pd.support import load_rent, load_bulldozer, load_flights, \
                                 toy_weather_data, toy_weight_data, \
                                 df_cat_to_catcode, df_split_dates, \
-                                df_string_to_cat, synthetic_interaction_data
+                                df_string_to_cat, synthetic_interaction_data,\
+                                tune_RF
 from stratx.partdep import plot_stratpd, plot_catstratpd, \
                            plot_stratpd_gridsearch, plot_catstratpd_gridsearch, \
                            marginal_plot_, partial_dependence
@@ -231,26 +232,6 @@ def rent():
     axes[5].set_ylabel("price")
 
     savefig(f"{colname}_vs_price")
-
-
-def tune_RF(X, y, verbose=2):
-    tuned_parameters = {'n_estimators': [50, 100, 125, 150, 200],
-                        'min_samples_leaf': [1, 3, 5, 7],
-                        'max_features': [.1, .3, .5, .7, .9]}
-    grid = GridSearchCV(
-        RandomForestRegressor(), tuned_parameters, scoring='r2',
-        cv=5,
-        n_jobs=-1,
-        verbose=verbose
-    )
-    grid.fit(X, y)  # does CV on entire data set
-    rf = grid.best_estimator_
-    print("RF best:", grid.best_params_)
-    #
-    # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-    # rf.fit(X_train, y_train)
-    # print("validation R^2", rf.score(X_test, y_test))
-    return rf, grid.best_params_
 
 
 def plot_with_noise_col(df, colname):

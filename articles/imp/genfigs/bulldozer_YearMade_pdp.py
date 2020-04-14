@@ -19,17 +19,9 @@ np.set_printoptions(precision=2, suppress=True, linewidth=300, threshold=2000)
 
 n = 20_000
 
-X, y = load_bulldozer()
+X, y = load_bulldozer(n)
 
-# Most recent timeseries data is more relevant so get big recent chunk
-# then we can sample from that to get n
-X = X.iloc[-50_000:]
-y = y.iloc[-50_000:]
-
-idxs = resample(range(50_000), n_samples=n, replace=False,)
-X_, y_ = X.iloc[idxs], y.iloc[idxs]
-
-plot_stratpd(X_, y_, colname='YearMade', targetname='SalePrice',
+plot_stratpd(X, y, colname='YearMade', targetname='SalePrice',
              n_trials=10,
              show_slope_lines=False,
              show_impact=False,

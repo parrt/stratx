@@ -23,9 +23,13 @@ SOFTWARE.
 """
 import numpy as np
 import pandas as pd
-import statsmodels.api as sm
 
+import statsmodels.api as sm
 from scipy.stats import spearmanr
+
+from sklearn.model_selection import GridSearchCV
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.utils import resample
 from pandas.api.types import is_string_dtype, is_object_dtype, is_categorical_dtype, is_bool_dtype
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import PolynomialFeatures
@@ -875,6 +879,15 @@ def load_flights(n):
     return X, y, df_flights
 
 
+def synthetic_interaction_data(n, yintercept = 10):
+    df = pd.DataFrame()
+    df[f'x1'] = np.random.random(size=n)*10
+    df[f'x2'] = np.random.random(size=n)*10
+    df[f'x3'] = np.random.random(size=n)*10
+    df['y'] = df['x1']**2 + df['x1']*df['x2'] + 5*df['x1']*np.sin(3*df['x2'])  + yintercept
+    return df
+
+
 def toy_weight_data(n):
     df = pd.DataFrame()
     nmen = n // 2 # 50/50 men/women
@@ -1047,3 +1060,57 @@ def load_rent(n:int=None, clean_prices=True):
     X = df_rent.drop('price', axis=1)
     y = df_rent['price']
     return X, y
+
+
+def tune_RF(X, y, verbose=2):
+    tuned_parameters = {'n_estimators': [50, 100, 125, 150, 200],
+                        'min_samples_leaf': [1, 3, 5, 7],
+                        'max_features': [.1, .3, .5, .7, .9]}
+    grid = GridSearchCV(
+        RandomForestRegressor(), tuned_parameters, scoring='r2',
+        cv=5,
+        n_jobs=-1,
+        verbose=verbose
+    )
+    grid.fit(X, y)  # does CV on entire data set
+    rf = grid.best_estimator_
+    print("RF best:", grid.best_params_)
+    #
+    # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    # rf.fit(X_train, y_train)
+    # print("validation R^2", rf.score(X_test, y_test))
+    return rf, grid.best_params_
+
+
+def tune_XGBoost(X, y):
+    tuned_parameters = {'n_estimators': [300, 400, 450, 500, 600, 1000],
+                        'learning_rate': [0.008, 0.01, 0.02, 0.05, 0.08, 0.1, 0.11, 0.2],
+                        'max_depth': [3, 4, 5, 6, 7, 8, 9]}
+    grid = GridSearchCV(
+        xgb.XGBRegressor(), tuned_parameters, scoring='r2',
+        cv=5,
+        n_jobs=-1,
+        verbose=2
+    )
+    grid.fit(X, y)  # does CV on entire data set to tune
+    print("XGB best:", grid.best_params_)
+    b = grid.best_estimator_
+
+    return b, grid.best_params_
+
+
+def tune_SVM(X, y):
+    grid = GridSearchCV(
+        svm.SVR(),
+        param_grid={"kernel":['rbf', 'sigmoid'], # 'linear','poly' are too slow. ugh
+                    "gamma" : [0.00001, 0.0001, 0.001, 0.01, 0.1, 1],
+                    "C": [1, 10, 50, 100, 200, 500, 1000, 2000, 3000, 5000, 6000, 7000, 8000]},
+        cv=5,
+        n_jobs=-1,
+        verbose=2
+    )
+    grid.fit(X, y)
+    print(grid.best_params_)
+    s = grid.best_estimator_
+    print("SVM best:", grid.best_params_)
+    return s, grid.best_params_

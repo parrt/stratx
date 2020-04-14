@@ -1,4 +1,5 @@
 from support import *
+from sklearn.datasets import load_boston
 
 np.random.seed(1)
 

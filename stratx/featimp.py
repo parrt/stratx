@@ -24,19 +24,26 @@ SOFTWARE.
 
 import numpy as np
 import pandas as pd
+
 from sklearn.utils import resample
+
 import matplotlib.pyplot as plt
-from timeit import default_timer as timer
-from joblib import parallel_backend, Parallel, delayed
-from matplotlib.colors import ListedColormap
-from matplotlib.ticker import FormatStrFormatter
-from os import getpid, makedirs
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
 
-from stratx.partdep import *
-from stratx.ice import *
+from stratx.partdep import plot_stratpd, plot_catstratpd, \
+                           plot_stratpd_gridsearch, plot_catstratpd_gridsearch, \
+                           marginal_plot_, partial_dependence, compress_catcodes, \
+                           cat_partial_dependence
 
+from stratx.ice import predict_ice, predict_catice, plot_ice, plot_catice, \
+                       friedman_partial_dependences
+
+from timeit import default_timer as timer
+from joblib import parallel_backend, Parallel, delayed
+from matplotlib.ticker import FormatStrFormatter
+from os import getpid
+import tempfile
 
 def importances(X: pd.DataFrame,
                 y: pd.Series,

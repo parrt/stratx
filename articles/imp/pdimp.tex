@@ -69,7 +69,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \title{\bf Tech Report:\\
-Nonparametric Feature Impact and Importance}
+Feature Impact and Importance through Stratification}
 
 \author{Terence Parr \email parrt@cs.usfca.edu
 \addr University of San Francisco\\
@@ -91,6 +91,18 @@ feature importance, business insights, medical insights, partial dependence, mod
 \section{Introduction}
 \label{sec:intro}
 
+\todo{
+integrating gradients for loss functions and neural networks
+
+strobl  tree specific permutation importance
+
+talk about gini drop and how it is biased; random var.
+
+Hooker's fix to gini drop
+
+add how we tuned RF, other models. What is $R^2$?
+}
+
 Among data analysis techniques, feature importance is one of the most widely applied and practitioners use it for two key purposes. First, to select features for predictive models (dropping the least predictive features to simplify and potentially increase the generality of the model). Second, to gain business or medical insights, such as identifying product characteristics valued by customers or treatments contributing to patient recovery.  To distinguish the two use cases, we will refer to feature predictiveness for modeling purposes as {\em importance} (the usual meaning) and the effect of features on business or medical response variables as {\em impact}.
 
 While some feature importance approaches work directly on the data, such as minimal-redundancy-maximal-relevance (mRMR) by \cite{mRMR}, almost all algorithms used in practice rank features by interrogating a specific fitted model (e.g., SHAP by \citealt{shap}, permutation importance by \citealt{RF}, and drop column importance), or even interrogating subsidiary models to analyze such fitted models (e.g., LIME by \citealt{lime}). It is accepted as self-evident that identifying the most important features for a model is best done through interrogation of that  model, but this is not always the case.  For example, when asked to identify the single most important feature of a real dataset \citep{bulldozer}, through interrogation and validation on a random forest, the features selected by model-based techniques get twice the validation error of the nonparametric technique proposed in this paper; see \figref{fig:topk}(c). Still, model interrogation is generally effective in practice for feature importance purposes.
@@ -102,7 +114,7 @@ Consider the feature importance charts in \figref{fig:diff-models} derived from 
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.6]{images/diff-models.pdf}
-\caption{\small Ranking and relative predictiveness of the top 8 of 13 Boston data set features determined by SHAP interrogating four different models.  There is considerable variation, particularly for the random forest (RF) model and we chose a random seed to highlight the possibility of conflicting results from the same technique applied to the same data. Rough timing for explaining $n$=506 test records is (a) less than 1 second, (b) 10s, (c) 3s, and (d) 13 minutes.  Scikit-learn model hyper-parameters: OLS normalized explanatory variables; RF with 30 trees; XGBoost with 50 trees, $\eta=0.01$, max depth 5; SVM with $\gamma=0.001$, $C=100$.}
+\caption{\small Ranking and relative predictiveness of the top 8 of 13 Boston data set features determined by SHAP interrogating four different models.  There is considerable variation, particularly for the random forest (RF) model and we chose a random seed to highlight the possibility of conflicting results from the same technique applied to the same data. Rough timing for explaining $n$=506 test records is (a) less than 1 second, (b) 10s, (c) 3s, and (d) 13 minutes.  Scikit-learn model hyper-parameters: OLS/SVM normalized explanatory variables; RF with 30 trees; XGBoost/SVM tuned with 5-fold cross-validation grid search on a variety of hyper parameters.}
 \label{fig:diff-models}
 \end{center}
 \end{figure}
@@ -238,11 +250,10 @@ SHAP has its roots in {\em Shapley regression values} \citep{shapley-regression}
 To avoid training a combinatorial explosion of models with the various feature subsets, $\hat{f}_S(x_S)$, SHAP reuses the same fitted model by running simplified feature vectors into the model. One possible implementation for simplified vectors is to replace ``missing'' $x_j$ features with the expected value of $x_j$. SHAP uses a more general approach that approximates $\hat{f}_S(x_S)$, with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}}) | {\bf X}_S = x_S]$ where ${\bf X}$ is called the {\em background set} and users can pass in, for example, $x_j$ averages or even the entire training set.  For efficiency reasons, SHAP's implementation (in ``interventional'' mode)  approximates $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}}) | {\bf X}_S = x_S]$ with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$, which assumes feature independence.  To further reduce computation costs, SHAP users typically explain a very small subsample of the data set, with potentially a commensurate reduction in the explanatory resolution of the underlying population. SHAP has model-type-dependent optimizations for linear regression, deep learning, and decision-tree based models.
 
 \begin{figure}[htbp]
-\begin{center}
-\includegraphics[scale=0.6]{images/FPD-SHAP-PD.pdf}\vspace{-5mm}
-\caption{\small $y = x_1^2 + x_1 x_2 + 20*sin(3 x_2) + 10$ with $x_j \sim U(0,10)$ where $x_3$ has no effect on $y$ and $n=1000$. RF with 10 trees.}
-\label{fig:shap-weight}
-\end{center}
+\includegraphics[scale=0.53]{images/FPD-SHAP-PD.pdf}\vspace{-3mm}
+\caption{\small Partial dependence plots of $n=1000$ data generated from noiseless $y = x_1^2 + x_1 x_2 + 5 x_1 sin(3 x_2) + 10$ where $x_1,x_2,x_3 \sim U(0,10)$ and $x_3$ does not affect $y$. The model is a random forest with 30 trees trained on all data (training $R^2=0.997$, Out-of-bag $R^2=0.968$). SHAP used all $\bf X$ as background data and ALE used $K=300$. The curves were generated from same 1000 data points that the model was trained on. \todo{ALE needed here? move to ALE discussion?}
+}
+\label{fig:FPD_vs_SHAP}
 \end{figure}
 
 SHAP and \simp{} appear dissimilar on the surface, but they share the same overall strategy: Isolate the effect of $x_j$ upon $y$, even in the presence of highly-codependent features, then measure the average $x_j$ deviation (at several $x_j=z$ locations) from a common reference point. The techniques differ only in how they isolate $x_j$ from the effects of other features and in the common reference point. SHAP isolates $x_j$ by tracking $x_j$'s marginal contribution to model $\hat{f}(x)$ via all possible feature subsets, whereas \simp{} stratifies and examines the data set directly (via \spd{} and \cspd). SHAP measures deviations from $\bar{y}$ to obtain the area straddling $\bar{y}$ and \simp{} measures deviations from 0 to obtain the area under the PD curve.
@@ -298,11 +309,11 @@ This bias arises because the marginal expectation $\Ex[\hat{f}(x_{S},{\bf X}_{\b
 \begin{center}
 \includegraphics[scale=0.53]{images/rent-pdp-vs-shap.pdf}\includegraphics[scale=0.53]{images/bulldozer-pdp-vs-shap.pdf}
 \caption[short]{\small  Feature importance ranking of top 8 for rent and bulldozer data sets demonstrating similarity between average magnitude of Friedman's partial dependence curves, (a) \& (c), and average magnitude of SHAP values, (b) \& (d). 20,000 training records and 300 records to explain. RF with 40 trees; Rent $R^2 = 0.82$, bulldozer $R^2 = 0.86$.}
-\label{fig:FPD_vs_SHAP}
+\label{fig:fpd_imp}
 \end{center}
 \end{figure}
 
-If the individual $\hat{f}(x_{S \texttt{\char`\\} \{j\}}) - \hat{f}(x_{S})$ contributions are known to be biased, measuring the effect of many $S$ permutations is likely unproductive. That begs the question of whether a one-off FPD curve would be just as effective as a SHAP implementation that  simulates feature dropping with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$.  \figref{fig:FPD_vs_SHAP} compares feature importances derived from FPD curves and SHAP values for two real data sets, rent and bulldozer. The rank and magnitude of the feature importances are extremely similar between the techniques for all $p$ features (top 8 shown here). At least for these examples, the complex machinery of SHAP is unnecessary because FPD gets virtually the same answer.
+If the individual $\hat{f}(x_{S \texttt{\char`\\} \{j\}}) - \hat{f}(x_{S})$ contributions are known to be biased, measuring the effect of many $S$ permutations is likely unproductive. That begs the question of whether a one-off FPD curve would be just as effective as a SHAP implementation that  simulates feature dropping with $\Ex[\hat{f}(x_{S},{\bf X}_{\bar{S}})]$.  \figref{fig:fpd_imp} compares feature importances derived from FPD curves and SHAP values for two real data sets, rent and bulldozer. The rank and magnitude of the feature importances are extremely similar between the techniques for all $p$ features (top 8 shown here). At least for these examples, the complex machinery of SHAP is unnecessary because FPD gets virtually the same answer.
 
 Our final concern is that SHAP effectively limits the user's choice of model to those with model-type-dependent implementations, such as {\tt\small TreeExplainer}, for efficiency reasons. For example, SHAP applied to a support vector machine (without a model-specific optimization) trained on Boston's 506 records takes 13 minutes to explain the same 506 records.  Large data sets also pose problems even for the model-type-dependent optimizations. SHAP applied to a modest 50-tree random forest trained on the 1.2M record ``League of legends'' data set \citep{lol} takes 25 minutes to explain a sample of size 1000.
 
@@ -538,7 +549,7 @@ flight has 5,819,080 records.
 
 
 
-The entire \simp{} code base is available at {\tt\small https://github.com/parrt/stratx} and running {\tt\small articles/imp/genfigs/RUNME.py} will regenerate all figures in this paper, after downloading the three Kaggle data sets.  Simulations were run on a 4.0 Ghz 32G RAM machine running OS X 10.13.6 with SHAP 0.34, scikit-learn                       0.21.3, XGBoost 0.90, and Python 3.7.4.
+The entire \simp{} code base is available at {\tt\small https://github.com/parrt/stratx} and running {\tt\small articles/imp/genfigs/RUNME.py} will regenerate all figures in this paper, after downloading the three Kaggle data sets.  Simulations were run on a 4.0 Ghz 32G RAM machine running OS X 10.13.6 with SHAP 0.35, scikit-learn                       0.21.3, XGBoost 0.90, and Python 3.7.4.
 
 \section{Discussion and future work}\label{sec:discussion}
 

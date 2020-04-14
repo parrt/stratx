@@ -1,14 +1,30 @@
 
-from stratx.featimp import *
-from support import *
+from stratx.featimp import importances, plot_importances
+from support import tune_SVM, tune_RF, tune_XGBoost, shap_importances
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
+from sklearn.datasets import load_boston
+import tempfile
+from sklearn.linear_model import LinearRegression, Lasso, LogisticRegression
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.utils import resample
+from sklearn.model_selection import train_test_split
+from timeit import default_timer as timer
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import GridSearchCV
+
+import xgboost as xgb
+from sklearn import svm
 
 np.random.seed(44) # choose a seed that demonstrates diff RF/GBM importances
+
+TUNE_XGB = False
+TUNE_SVM = False
 
 boston = load_boston()
 X = pd.DataFrame(boston.data, columns=boston.feature_names)
@@ -23,11 +39,10 @@ lm = LinearRegression()
 X_ = StandardScaler().fit_transform(X)
 X_ = pd.DataFrame(X_, columns=X.columns)
 lm.fit(X_, y)
-ols_I, score = linear_model_importance(lm, X_, y)
+lm_score = lm.score(X_,y)
+print("OLS", lm_score, mean_absolute_error(y, lm.predict(X_)))
 ols_shap_I = shap_importances(lm, X_, X_, n_shap=n_shap)  # fast enough so use all data
-# print(ols_shap_I)
-lm_score = lm.score(X,y)
-print("OLS", lm_score, mean_absolute_error(y, lm.predict(X)))
+print(ols_shap_I)
 
 """
 Uncomment to compute variance of RF SHAP
@@ -56,24 +71,40 @@ rf_I = shap_importances(rf, X, X, n_shap)
 rf_score = rf.score(X, y)
 print("RF", rf_score, rf.oob_score_, mean_absolute_error(y, rf.predict(X)))
 
-b = xgb.XGBRegressor(max_depth=5, eta=.01, n_estimators=50)
+if TUNE_XGB:
+    b, bestparams = tune_XGBoost(X, y)
+    # XGB best: {'learning_rate': 0.1, 'max_depth': 3, 'n_estimators': 300}
+    # XGB training R^2 0.9925102435056687
+    # SHAP time for 10 test records using XGBRegressor = 0.2s
+    # XGBRegressor 0.9925102435056687 0.6102726817602225
+else:
+    b = xgb.XGBRegressor(n_estimators=300,
+                         max_depth=3,
+                         learning_rate=.1,
+                         verbose=2,
+                         n_jobs=8)
+
 b.fit(X, y)
+xgb_score = b.score(X, y)
+print("XGB training R^2", xgb_score)
 m_I = shap_importances(b, X, X, n_shap)
 b_score = b.score(X, y)
 print("XGBRegressor", b_score, mean_absolute_error(y, b.predict(X)))
 
-# model = GridSearchCV(svm.SVR(), cv=5,
-#                      param_grid={"C": [1, 1000, 2000, 3000, 5000],
-#                                "gamma": [1e-5, 1e-4, 1e-3, 1e-2, 1e-1]})
-# model.fit(X, y)
-# svr = model.best_estimator_
-# print("SVM best:",model.best_params_)
-s = svm.SVR(gamma=0.001, C=100.)
-s.fit(X, y)
-# print(model.best_params_)
-svm_score = s.score(X, y)
+X_ = StandardScaler().fit_transform(X)
+X_ = pd.DataFrame(X_, columns=X.columns)
+
+if TUNE_SVM:
+    s, bestparams = tune_SVM(X_, y)
+    # SVM best: {'C': 5000, 'gamma': 0.001, 'kernel': 'rbf'}
+    # svm_score 0.8591641343478678
+else:
+    s = svm.SVR(kernel='rbf', gamma=0.001, C=5000.)
+
+s.fit(X_, y)
+svm_score = s.score(X_, y)
 print("svm_score", svm_score)
-svm_shap_I = shap_importances(s, X, X, n_shap=n_shap)  # fast enough so use all data
+svm_shap_I = shap_importances(s, X_, X_, n_shap=n_shap)
 """
 Takes 13 minutes for all records
 100%|██████████| 506/506 [13:30<00:00,  1.60s/it]
