@@ -1,31 +1,55 @@
+"""
+MIT License
+
+Copyright (c) 2019 Terence Parr
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+"""
 import numpy as np
 import pandas as pd
-
 import statsmodels.api as sm
+
 from scipy.stats import spearmanr
-from sklearn.decomposition import PCA
-
-import matplotlib.pyplot as plt
-
-from collections import OrderedDict
-
-from sklearn.linear_model import LinearRegression, Lasso, LogisticRegression
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.utils import resample
-from sklearn.model_selection import train_test_split
-from timeit import default_timer as timer
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from sklearn.model_selection import GridSearchCV
-from sklearn.datasets import load_boston
 from pandas.api.types import is_string_dtype, is_object_dtype, is_categorical_dtype, is_bool_dtype
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import PolynomialFeatures
-from sklearn import linear_model
-
-import xgboost as xgb
+from sklearn.decomposition import PCA
+from sklearn.linear_model import LinearRegression, Lasso, LogisticRegression
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn import svm
 from sklearn.model_selection import KFold
+from sklearn.model_selection import train_test_split
+
+import xgboost as xgb
+
+from collections import OrderedDict
+import os
+
+
+# WARNING: THIS FILE IS INTENDED FOR USE BY PARRT TO TEST / GENERATE SAMPLE IMAGES
+
+datadir = "/Users/parrt/data"
+
+def set_data_dir(dir):
+    global datadir
+    datadir = dir
 
 pd.set_option('display.max_columns', 10)
 pd.set_option('display.width', 300)
@@ -791,14 +815,18 @@ def stability(X, y, sample_size, n_trials, technique='StratImpact',
 
 
 def load_flights(n):
+    global datadir
+    if not os.path.exists(datadir):
+        datadir = "data"
+
+    msg = """Download from https://www.kaggle.com/usdot/flight-delays/download and save
+    flight-delays.zip; unzip to convenient data dir.
     """
-    Download from https://www.kaggle.com/usdot/flight-delays/download and save
-    flight-delays.zip; unzip to convenient data dir.  Save time by storing as
-    feather.  5.8M records.
-    """
-    dir = "data/flight-delays"
+    dir = f"{datadir}/flight-delays"
     if os.path.exists(dir+"/flights.feather"):
         df_flights = pd.read_feather(dir + "/flights.feather")
+    elif not os.path.exists(f"{dir}/flights.csv"):
+        raise ValueError(msg)
     else:
         df_flights = pd.read_csv(dir+"/flights.csv", low_memory=False)
         df_flights.to_feather(dir+"/flights.feather")
@@ -834,6 +862,8 @@ def load_flights(n):
                 'SCHEDULED_TIME',
                 'ARRIVAL_DELAY']  # target
 
+    print(f"Flight has {len(df_flights)} records")
+
     df_flights = df_flights[features]
     df_flights = df_flights.dropna()  # ignore missing stuff for ease and reduce size
     df_flights = df_flights.sample(n)
@@ -849,11 +879,8 @@ def toy_weight_data(n):
     df = pd.DataFrame()
     nmen = n // 2 # 50/50 men/women
     nwomen = n // 2
-    # nmen = int(.7 * n)
-    # nwomen = int(.3 * n)
     df['sex'] = ['M'] * nmen + ['F'] * nwomen
     df.loc[df['sex'] == 'F', 'pregnant'] = np.random.randint(0, 2, size=(nwomen,))
-    # df.loc[df['sex'] == 'F', 'pregnant'] = 1 # assume all women are pregnant
     df.loc[df['sex'] == 'M', 'pregnant'] = 0
     df.loc[df['sex'] == 'M', 'height'] = 5 * 12 + 8 + np.random.uniform(-7, +8,
                                                                         size=(nmen,))
@@ -863,7 +890,7 @@ def toy_weight_data(n):
     df.loc[df['sex'] == 'F', 'education'] = 12 + np.random.randint(0, 8, size=nwomen)
     df['weight'] = 120 \
                    + (df['height'] - df['height'].min()) * 10 \
-                   + df['pregnant'] * 70 \
+                   + df['pregnant'] * 40 \
                    - df['education'] * 1.5
     df['pregnant'] = df['pregnant'].astype(bool)
     df['education'] = df['education'].astype(int)
@@ -877,21 +904,24 @@ def toy_weight_data(n):
     return X, y, df, eqn
 
 
-def load_bulldozer():
-    """
-    Download Train.csv data from https://www.kaggle.com/c/bluebook-for-bulldozers/data
-    and save in data subdir
-    """
-    if os.path.exists("data/bulldozer-train-all.feather"):
+def load_bulldozer(n):
+    global datadir
+    if not os.path.exists(datadir):
+        datadir = "data"
+
+    msg = "Download Train.csv data from https://www.kaggle.com/c/bluebook-for-bulldozers/data and save in data subdir"
+    if os.path.exists(f"{datadir}/bulldozer-train-all.feather"):
         print("Loading cached version...")
-        df = pd.read_feather("data/bulldozer-train-all.feather")
+        df = pd.read_feather(f"{datadir}/bulldozer-train-all.feather")
+    elif not os.path.exists(f"{datadir}/Train.csv"):
+        raise ValueError(msg)
     else:
         dtypes = {col: str for col in
                   ['fiModelSeries', 'Coupler_System', 'Grouser_Tracks', 'Hydraulics_Flow']}
-        df = pd.read_csv('data/Train.csv', dtype=dtypes, parse_dates=['saledate'])  # 35s load
+        df = pd.read_csv(f'{datadir}/Train.csv', dtype=dtypes, parse_dates=['saledate'])  # 35s load
         df = df.sort_values('saledate')
         df = df.reset_index(drop=True)
-        df.to_feather("data/bulldozer-train-all.feather")
+        df.to_feather(f"{datadir}/bulldozer-train-all.feather")
 
     df['MachineHours'] = df['MachineHoursCurrentMeter']  # shorten name
     df.loc[df.eval("MachineHours==0"),
@@ -935,15 +965,31 @@ def load_bulldozer():
 
     X = X.fillna(0)  # flip missing numeric values to zeros
     y = df['SalePrice']
+
+    # Most recent timeseries data is more relevant so get big recent chunk
+    # then we can sample from that to get n
+    X = X.iloc[-50_000:]
+    y = y.iloc[-50_000:]
+
+    print(f"Bulldozer has {len(df)} records")
+
+    idxs = resample(range(50_000), n_samples=n, replace=False, )
+    X, y = X.iloc[idxs], y.iloc[idxs]
+
     return X, y
 
 
 def load_rent(n:int=None, clean_prices=True):
-    """
-    Download train.json from https://www.kaggle.com/c/two-sigma-connect-rental-listing-inquiries/data
-    and save into data subdir.
-    """
-    df = pd.read_json('data/train.json')
+    global datadir
+    if not os.path.exists(datadir):
+        datadir = "data"
+    msg = """Download train.json from https://www.kaggle.com/c/two-sigma-connect-rental-listing-inquiries/data
+    and save into data subdir."""
+    if not os.path.exists(f"{datadir}/train.json"):
+        raise ValueError(msg)
+
+    df = pd.read_json(f'{datadir}/train.json')
+    print(f"Rent has {len(df)} records")
 
     # Create ideal numeric data set w/o outliers etc...
 
