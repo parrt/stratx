@@ -18,7 +18,7 @@ invalid value encountered in less
 invalid value encountered in less_equal
 ```
 * don't say "top-4 training ..." in R dataframe
-* don't compress X[colname] in plot catstrat; messes up labels
 * set default rank to Importance or Impact?
 * try X_train=X for computing features again?
 * set all hyper param defaults per examples
+* reuse rent10k.csv for our YearMade paper example

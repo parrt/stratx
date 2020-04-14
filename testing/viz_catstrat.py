@@ -1,8 +1,30 @@
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
+"""
+MIT License
+
+Copyright (c) 2019 Terence Parr
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+"""
+
 import traceback
 from PIL import Image
+import os
 
 from stratx.partdep import *
 
@@ -32,7 +54,7 @@ def toy_weather_data(n = 1000, p=50, n_outliers=None):
     """
     def noise(state): return np.random.normal(-5, 5, sum(df['state'] == state))
 
-    df_avgs = pd.read_csv("../articles/imp/genfigs/data/weather.csv")
+    df_avgs = pd.read_csv("state_avgtemp.csv")
     avgtemp = df_avgs['avgtemp']
 
     df = pd.DataFrame()
@@ -90,15 +112,14 @@ def viz_clean_synth_uniform(n,p,max_x,min_samples_leaf, seed=None):
     df, eqn = synthetic_poly_data(n, p=p, max_x=max_x, dtype=int)
     X = df.drop('y', axis=1)
     y = df['y']
-    uniq_catcodes, avg_per_cat, ignored = \
+    uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored = \
         plot_catstratpd(X, y, colname='x1', targetname='y',
                         n_trials=1,
                         min_samples_leaf=min_samples_leaf,
                         show_x_counts=True,
                         show_xticks=True,
-                        show_impact=True,
                         min_y_shifted_to_zero=True,
-                        verbose=True,
+                        verbose=False,
                         figsize=(10, 4)
                         # yrange=(-1000,1000)
                         )
@@ -115,10 +136,10 @@ def viz_clean_synth_uniform(n,p,max_x,min_samples_leaf, seed=None):
         compare(caller_fname)
 
 def viz_clean_synth_uniform_n1000_xrange10_minleaf2():
-    viz_clean_synth_gauss(1000,2,10,2, seed=222)
+    viz_clean_synth_uniform(1000,2,10,2, seed=222)
 
 def viz_clean_synth_uniform_n1000_xrange100_minleaf2():
-    viz_clean_synth_gauss(1000,2,100,2, seed=222)
+    viz_clean_synth_uniform(1000,2,100,2, seed=222)
 
 def viz_clean_synth_gauss(n,p,max_x,min_samples_leaf, seed=None):
     if seed is not None:
@@ -134,11 +155,9 @@ def viz_clean_synth_gauss(n,p,max_x,min_samples_leaf, seed=None):
                         min_samples_leaf=min_samples_leaf,
                         show_x_counts=True,
                         show_xticks=True,
-                        show_impact=True,
                         min_y_shifted_to_zero=True,
-                        verbose=True,
+                        verbose=False,
                         figsize=(10, 4)
-                        # yrange=(-1000,1000)
                         )
 
     if seed is not None:
@@ -156,8 +175,8 @@ def viz_clean_synth_gauss(n,p,max_x,min_samples_leaf, seed=None):
 def viz_clean_synth_gauss_n1000_xrange25_minleaf2():
     viz_clean_synth_gauss(1000,2,25,2, seed=222)
 
-def viz_clean_synth_gauss_n20_xrange12_minleaf2():
-    viz_clean_synth_gauss(20,2,12,2, seed=222)
+def viz_clean_synth_gauss_n100_xrange12_minleaf2():
+    viz_clean_synth_gauss(100,2,12,2, seed=222)
 
 def viz_clean_synth_gauss_n20_xrange10_minleaf5():
     viz_clean_synth_gauss(20,2,10,5, seed=222)
@@ -190,7 +209,6 @@ def viz_weather(n, p, min_samples_leaf, n_outliers=0, seed=None, show_truth=True
                         show_x_counts=True,
                         ticklabel_fontsize=6,
                         pdp_marker_size=10,
-                        show_impact=True,
                         yrange=(0,50),
                         min_y_shifted_to_zero=True,
                         ax=ax,
@@ -227,6 +245,9 @@ def viz_clean_weather_n100_p10_minleaf5():
 def viz_clean_weather_n100_p20_minleaf5():
     viz_weather(100, 20, 5, seed=222)
 
+def viz_clean_weather_n100_p5_minleaf5():
+    viz_weather(100, 5, 5, seed=222)
+
 def viz_clean_weather_n100_p20_minleaf10():
     viz_weather(100, 20, 10, seed=222)
 
@@ -238,7 +259,7 @@ def viz_outlier8_weather_n100_p17_minleaf5(): # play
 
 
 viz_clean_synth_uniform_n1000_xrange10_minleaf2()
-viz_clean_synth_gauss_n20_xrange12_minleaf2()
+viz_clean_synth_gauss_n100_xrange12_minleaf2()
 viz_clean_synth_gauss_n20_xrange10_minleaf5()
 viz_clean_synth_uniform_n1000_xrange100_minleaf2()
 viz_clean_synth_gauss_n1000_xrange25_minleaf2()
@@ -248,5 +269,6 @@ viz_clean_weather_n100_p4_minleaf5()
 viz_clean_weather_n100_p10_minleaf5()
 viz_outlier8_weather_n100_p17_minleaf5()
 viz_clean_weather_n100_p20_minleaf10()
+viz_clean_weather_n100_p5_minleaf5()
 viz_clean_weather_n100_p20_minleaf5()
 viz_outlier8_weather_n100_p10_minleaf5()
