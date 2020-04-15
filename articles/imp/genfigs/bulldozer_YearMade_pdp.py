@@ -18,7 +18,6 @@ import matplotlib.pyplot as plt
 np.set_printoptions(precision=2, suppress=True, linewidth=300, threshold=2000)
 
 n = 20_000
-
 X, y = load_bulldozer(n)
 
 plot_stratpd(X, y, colname='YearMade', targetname='SalePrice',
@@ -26,6 +25,7 @@ plot_stratpd(X, y, colname='YearMade', targetname='SalePrice',
              show_slope_lines=False,
              show_impact=False,
              pdp_marker_alpha=.7,
+             pdp_marker_size=4,
              figsize=(3.8,3.2)
              )
 plt.xlim(1970,2010)

@@ -8,8 +8,9 @@ from sklearn.utils import resample
 import shap
 from sympy.simplify.radsimp import fraction_expand
 
-from stratx.featimp import *
-from support import *
+#from support import load_bulldozer
+import support
+from stratx.partdep import plot_stratpd
 
 import numpy as np
 import pandas as pd
@@ -18,23 +19,19 @@ import matplotlib.pyplot as plt
 np.set_printoptions(precision=2, suppress=True, linewidth=300, threshold=2000)
 
 n = 20_000
+X, y = support.load_bulldozer(n)
 
-X, y = load_bulldozer()
-
-# Most recent timeseries data is more relevant so get big recent chunk
-# then we can sample from that to get n
-X = X.iloc[-50_000:]
-y = y.iloc[-50_000:]
-
-idxs = resample(range(50_000), n_samples=n, replace=False,)
-X_, y_ = X.iloc[idxs], y.iloc[idxs]
-
-# order = X_['ModelID'].values.argsort()
-# ranks = order.argsort()
-# X_['ModelID'] = ranks  # aid debugging
-X_ = X_.copy()
-# X_['ModelID'] -= np.min(X_['ModelID'])  # aid debugging
-# X_['ModelID'] += 1
+plot_stratpd(X, y, colname='YearMade', targetname='SalePrice',
+             n_trials=10,
+             show_slope_lines=False,
+             show_impact=True,
+             figsize=(3.8,3.2)
+             )
+#plt.xlim(1970,2010)
+plt.tight_layout()
+plt.savefig(f"/Users/parrt/Desktop/james-YearMade.pdf", pad_inches=0)
+# plt.savefig(f"/Users/parrt/Desktop/james-YearMade-x-shuffled.pdf", pad_inches=0)
+plt.show()
 
 #
 # I = importances(X_, y_,
@@ -73,19 +70,6 @@ X_ = X_.copy()
 # plt.show()
 
 
-X_ = X_.copy()
-#X_['YearMade'] = np.random.choice(X_['YearMade'], size=len(X_), replace=False)
-plot_stratpd(X_, y_, colname='YearMade', targetname='SalePrice',
-             n_trials=10,
-             show_slope_lines=False,
-             show_impact=False,
-             figsize=(3.8,3.2)
-             )
-plt.xlim(1970,2010)
-plt.tight_layout()
-plt.savefig(f"/Users/parrt/Desktop/james-YearMade.pdf", pad_inches=0)
-# plt.savefig(f"/Users/parrt/Desktop/james-YearMade-x-shuffled.pdf", pad_inches=0)
-plt.show()
 
 
 # I = importances(X_, y_,

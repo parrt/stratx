@@ -36,6 +36,8 @@ from typing import Sequence
 
 from numba import jit, prange
 
+import stratx.featimp as featimp
+
 
 def leaf_samples(rf, X_not_col:np.ndarray) -> Sequence:
     """
@@ -460,9 +462,9 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
 
     if show_xlabel:
         xl = colname
-        # if show_impact:
-        #     impact, importance = compute_importance(X_col, pdpx, pdpy)
-        #     xl += f" (Impact {impact:.2f}, importance {importance:.2f})"
+        if show_impact:
+            impact, importance = featimp.compute_importance(X_col, pdpx, pdpy)
+            xl += f" (Impact {impact:.2f}, importance {importance:.2f})"
         ax.set_xlabel(xl, fontsize=label_fontsize, fontname=fontname)
     if show_ylabel:
         ax.set_ylabel(targetname, fontsize=label_fontsize, fontname=fontname)
@@ -666,18 +668,16 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
                             min_samples_leaf_values=(2,5,10,20,30),
                             min_slopes_per_x_values=(5,), # Show default count only by default
                             n_trials=1,
-                            nbins_values=(1,2,3,4,5),
-                            nbins_smoothing=None,
-                            binned=False,
                             yrange=None,
                             xrange=None,
                             show_regr_line=False,
-                            show_slope_lines=True,
+                            show_slope_lines=False,
                             show_impact=False,
                             show_slope_counts=False,
                             show_x_counts=True,
                             marginal_alpha=.05,
                             slope_line_alpha=.1,
+                            pdp_marker_size=2,
                             title_fontsize=8,
                             label_fontsize=7,
                             ticklabel_fontsize=7,
@@ -698,15 +698,19 @@ def plot_stratpd_gridsearch(X, y, colname, targetname,
         for msl in min_samples_leaf_values:
             #print(f"---------- min_samples_leaf={msl} ----------- ")
             try:
+                xrange_ = xrange
+                if xrange is None:
+                    xrange_ = (np.min(X[colname]), np.max(X[colname]))
                 pdpx, pdpy, ignored = \
                     plot_stratpd(X, y, colname, targetname, ax=axes[row][col],
                                  min_samples_leaf=msl,
                                  min_slopes_per_x=min_slopes_per_x,
                                  n_trials=n_trials,
-                                 xrange=xrange,
+                                 xrange=xrange_,
                                  yrange=yrange,
                                  n_trees=1,
                                  show_ylabel=False,
+                                 pdp_marker_size=pdp_marker_size,
                                  slope_line_alpha=slope_line_alpha,
                                  show_slope_lines=show_slope_lines,
                                  show_impact=show_impact,

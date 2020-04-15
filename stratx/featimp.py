@@ -31,11 +31,7 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
 
-from stratx.partdep import plot_stratpd, plot_catstratpd, \
-                           plot_stratpd_gridsearch, plot_catstratpd_gridsearch, \
-                           marginal_plot_, partial_dependence, compress_catcodes, \
-                           cat_partial_dependence
-
+import stratx.partdep as partdep
 from stratx.ice import predict_ice, predict_catice, plot_ice, plot_catice, \
                        friedman_partial_dependences
 
@@ -52,7 +48,7 @@ def importances(X: pd.DataFrame,
                 supervised=True,
                 n_jobs=1,
                 sortby='Importance',  # sort by importance or impact
-                min_slopes_per_x=15,  # ignore pdp y values derived from too few slopes (usually at edges); for smallerData sets, drop this to five or so
+                min_slopes_per_x=5,  # ignore pdp y values derived from too few slopes (usually at edges); for smallerData sets, drop this to five or so
                 # important for getting good starting point of PD so AUC isn't skewed.
                 n_trials: int = 1,
                 pvalues=False,  # use to get p-values for each importance; it's number trials
@@ -65,7 +61,7 @@ def importances(X: pd.DataFrame,
     if not isinstance(X, pd.DataFrame):
         raise ValueError("Can only operate on dataframes at the moment")
 
-    X = compress_catcodes(X, catcolnames)
+    X = partdep.compress_catcodes(X, catcolnames)
 
     n,p = X.shape
     impact_trials = np.zeros(shape=(p, n_trials))
@@ -211,25 +207,25 @@ def single_feature_importance(X: pd.DataFrame, y: pd.Series,
     # print(f"Start {colname}")
     if colname in catcolnames:
         leaf_deltas, leaf_counts, avg_per_cat, count_per_cat, ignored, merge_ignored = \
-            cat_partial_dependence(X, y, colname=colname,
-                                   n_trees=n_trees,
-                                   min_samples_leaf=cat_min_samples_leaf,
-                                   bootstrap=bootstrap,
-                                   max_features=max_features,
-                                   verbose=verbose,
-                                   supervised=supervised)
+            partdep.cat_partial_dependence(X, y, colname=colname,
+                                           n_trees=n_trees,
+                                           min_samples_leaf=cat_min_samples_leaf,
+                                           bootstrap=bootstrap,
+                                           max_features=max_features,
+                                           verbose=verbose,
+                                           supervised=supervised)
         impact, importance = cat_compute_importance(avg_per_cat, count_per_cat)
     else:
         leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored = \
-            partial_dependence(X=X, y=y, colname=colname,
-                               n_trees=n_trees,
-                               min_samples_leaf=min_samples_leaf,
-                               min_slopes_per_x=min_slopes_per_x,
-                               bootstrap=bootstrap,
-                               max_features=max_features,
-                               verbose=verbose,
-                               parallel_jit=n_jobs == 1,
-                               supervised=supervised)
+            partdep.partial_dependence(X=X, y=y, colname=colname,
+                                       n_trees=n_trees,
+                                       min_samples_leaf=min_samples_leaf,
+                                       min_slopes_per_x=min_slopes_per_x,
+                                       bootstrap=bootstrap,
+                                       max_features=max_features,
+                                       verbose=verbose,
+                                       parallel_jit=n_jobs == 1,
+                                       supervised=supervised)
         impact, importance = compute_importance(X[colname], pdpx, pdpy)
     # print(f"{colname}:{avg_abs_pdp:.3f} mass")
     # print(f"Stop {colname}")

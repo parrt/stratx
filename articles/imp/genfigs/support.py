@@ -40,11 +40,17 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn import svm
 from sklearn.model_selection import KFold
 from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
 
 import xgboost as xgb
 
+from timeit import default_timer as timer
 from collections import OrderedDict
 import os
+
+import rfpimp
+
+import stratx.featimp as featimp #import plot_importances, importances, friedman_partial_dependences
 
 
 # WARNING: THIS FILE IS INTENDED FOR USE BY PARRT TO TEST / GENERATE SAMPLE IMAGES
@@ -58,10 +64,6 @@ def set_data_dir(dir):
 pd.set_option('display.max_columns', 10)
 pd.set_option('display.width', 300)
 
-import rfpimp
-
-from stratx.partdep import *
-from stratx.featimp import *
 
 import shap
 
@@ -416,8 +418,8 @@ def test_top_features(X, y,
 
 
 def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yrange=None,figsize=(3.5, 3.0),
-                  min_slopes_per_x=15,
-                  cat_min_samples_leaf=5,
+                  min_slopes_per_x=5,
+                  cat_min_samples_leaf=10,
                   min_samples_leaf=10):
     model = "RF"
     test_size = .2  # Some techniques use validation set to pick best features
@@ -440,14 +442,14 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yra
                              imp_n_trials=n_trials,
                              )
     w = 4.5 if dataset == 'flights' else 3
-    plot_importances(imps['StratImpact'].iloc[:8], imp_range=(0, 0.4), width=w,
+    featimp.plot_importances(imps['StratImpact'].iloc[:8], imp_range=(0, 0.4), width=w,
                      title=f"{dataset} StratImpact importances")
     plt.tight_layout()
     plt.savefig(f"../images/{dataset}-features.pdf")
     # plt.show()
     plt.close()
 
-    plot_importances(imps['RF SHAP'].iloc[:8], imp_range=(0, 0.4), width=w,
+    featimp.plot_importances(imps['RF SHAP'].iloc[:8], imp_range=(0, 0.4), width=w,
                      title=f"{dataset} SHAP RF importances")
     plt.tight_layout()
     plt.savefig(f"../images/{dataset}-features-shap-rf.pdf")
@@ -627,7 +629,7 @@ def get_multiple_imps(dataset,
                       n_stratpd_trees=1,
                       bootstrap=False,
                       catcolnames=set(),
-                      min_slopes_per_x=10,
+                      min_slopes_per_x=5,
                       supervised=True,
                       # include=['Spearman', 'PCA', 'OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact'],
                       normalize=True):
@@ -679,26 +681,26 @@ def get_multiple_imps(dataset,
         # RF SHAP and RF perm get to look at the test data to decide which features
         # are more predictive and useful for generality's sake but we only get to
         # see X_train.
-        ours_I = importances(X_train, y_train,
-                             verbose=False,
-                             sortby=sortby,
-                             min_samples_leaf=stratpd_min_samples_leaf,
-                             cat_min_samples_leaf=stratpd_cat_min_samples_leaf,
-                             n_trials=imp_n_trials,
-                             pvalues=imp_pvalues_n_trials>0,
-                             pvalues_n_trials=imp_pvalues_n_trials,
-                             n_trees=n_stratpd_trees,
-                             bootstrap=bootstrap,
-                             catcolnames=catcolnames,
-                             min_slopes_per_x=min_slopes_per_x,
-                             supervised=supervised,
-                             normalize=normalize)
+        ours_I = featimp.importances(X_train, y_train,
+                                     verbose=False,
+                                     sortby=sortby,
+                                     min_samples_leaf=stratpd_min_samples_leaf,
+                                     cat_min_samples_leaf=stratpd_cat_min_samples_leaf,
+                                     n_trials=imp_n_trials,
+                                     pvalues=imp_pvalues_n_trials > 0,
+                                     pvalues_n_trials=imp_pvalues_n_trials,
+                                     n_trees=n_stratpd_trees,
+                                     bootstrap=bootstrap,
+                                     catcolnames=catcolnames,
+                                     min_slopes_per_x=min_slopes_per_x,
+                                     supervised=supervised,
+                                     normalize=normalize)
         print("OURS\n",ours_I)
 
     if "PDP" in include:
         rf = RandomForestRegressor(n_estimators=30)
         rf.fit(X, y)
-        pdpy = friedman_partial_dependences(rf, X, mean_centered=True)
+        pdpy = featimp.friedman_partial_dependences(rf, X, mean_centered=True)
         pdp_I = pd.DataFrame(data={'Feature': X.columns})
         pdp_I = pdp_I.set_index('Feature')
         pdp_I['Importance'] = np.mean(np.mean(np.abs(pdpy)), axis=1)
@@ -781,7 +783,7 @@ def plot_topk(R, ax=None, k=None,
 def stability(X, y, sample_size, n_trials, technique='StratImpact',
               catcolnames=set(),
               imp_n_trials=1,
-              min_slopes_per_x=15,
+              min_slopes_per_x=5,
               n_trees=1, min_samples_leaf=10, bootstrap=False, max_features=1.0
               ):
     n = len(X)
@@ -791,15 +793,15 @@ def stability(X, y, sample_size, n_trials, technique='StratImpact',
         subsample_idxs = resample(range(n), n_samples=sample_size, replace=False)
         X_, y_ = X.iloc[subsample_idxs], y.iloc[subsample_idxs]
         if technique=='StratImpact':
-            I = importances(X_, y_,
-                            catcolnames=catcolnames,
-                            n_trials=imp_n_trials,
-                            max_features=max_features,
-                            min_samples_leaf=min_samples_leaf,
-                            min_slopes_per_x=min_slopes_per_x,
-                            n_trees=n_trees,
-                            bootstrap=bootstrap)
-        elif technique=='RFSHAP':
+            I = featimp.importances(X_, y_,
+                                    catcolnames=catcolnames,
+                                    n_trials=imp_n_trials,
+                                    max_features=max_features,
+                                    min_samples_leaf=min_samples_leaf,
+                                    min_slopes_per_x=min_slopes_per_x,
+                                    n_trees=n_trees,
+                                    bootstrap=bootstrap)
+        elif technique == 'RFSHAP':
             print("RFSHAP",i)
             rf = RandomForestRegressor(n_estimators=40)
             rf.fit(X_, y_)

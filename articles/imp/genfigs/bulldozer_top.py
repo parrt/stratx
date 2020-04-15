@@ -8,22 +8,11 @@ use_oob=False
 metric = mean_absolute_error
 n = 25_000
 model='RF' # ('RF','SVM','GBM','OLS','Lasso')
+X, y = load_bulldozer(n)
 
-# np.seterr(divide='raise')
-
-X, y = load_bulldozer()
-
-# Most recent timeseries data is more relevant so get big recent chunk
-# then we can sample from that to get n
-X = X.iloc[-50_000:]
-y = y.iloc[-50_000:]
-
-idxs = resample(range(50_000), n_samples=n, replace=False)
-X_, y_ = X.iloc[idxs], y.iloc[idxs]
-
-gen_topk_figs(X_,y_,kfolds=5,n_trials=1,dataset="bulldozer",title="Bulldozer auction prices",
-              cat_min_samples_leaf=5,
-              min_slopes_per_x=15,
+gen_topk_figs(X,y,kfolds=5,n_trials=1,dataset="bulldozer",title="Bulldozer auction prices",
+              # cat_min_samples_leaf=5,
+              # min_slopes_per_x=15,
               catcolnames={'AC', 'ModelID'},
               yrange=(5000,20000), yunits="$")
 
