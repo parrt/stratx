@@ -2,18 +2,11 @@ from support import *
 
 np.random.seed(1)
 
-figsize = (3.5, 3.0)
-use_oob=False
 n = 25_000
-metric = mean_absolute_error
-model='RF' # ('RF','SVM','GBM','OLS','Lasso')
-
-# np.random.seed(999) # set for testing effects
-
 X, y = load_rent(n=n)
 
-gen_topk_figs(X,y,kfolds=5,n_trials=1,dataset="rent",title="NYC rent prices",
-              # min_slopes_per_x=15,
+gen_topk_figs(X,y,kfolds=5,n_trials=10,dataset="rent",title="NYC rent prices",
+              # min_samples_leaf=15,
               yrange=(300,900), yunits="$")
 
 """
