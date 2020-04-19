@@ -27,7 +27,8 @@ plt.tight_layout()
 plt.savefig("../images/bulldozer-YearMade-marginal.pdf", bbox_inches="tight", pad_inches=0)
 plt.show()
 #
-rf = RandomForestRegressor(n_estimators=40, n_jobs=-1)
+tuned_params = models[("bulldozer", "RF")]
+rf = RandomForestRegressor(**tuned_params, n_jobs=-1)
 rf.fit(X, y)
 
 explainer = shap.TreeExplainer(rf, data=shap.sample(X, 100),

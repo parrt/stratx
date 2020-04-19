@@ -96,11 +96,21 @@ integrating gradients for loss functions and neural networks
 
 strobl  tree specific permutation importance
 
-talk about gini drop and how it is biased; random var.
+talk about gini drop and how it is biased; random var. but also doesn't use prediction.
 
 Hooker's fix to gini drop
 
 add how we tuned RF, other models. What is $R^2$?
+
+we use all X,y
+boston: 1 trial. min samples per x = 1
+rent: defaults, 5 trials
+flight: cat min samples leaf=2
+bulldozer: default
+
+tune GBM
+
+update ALE bibtex
 }
 
 Among data analysis techniques, feature importance is one of the most widely applied and practitioners use it for two key purposes. First, to select features for predictive models (dropping the least predictive features to simplify and potentially increase the generality of the model). Second, to gain business or medical insights, such as identifying product characteristics valued by customers or treatments contributing to patient recovery.  To distinguish the two use cases, we will refer to feature predictiveness for modeling purposes as {\em importance} (the usual meaning) and the effect of features on business or medical response variables as {\em impact}.
@@ -114,7 +124,7 @@ Consider the feature importance charts in \figref{fig:diff-models} derived from 
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.6]{images/diff-models.pdf}
-\caption{\small Ranking and relative predictiveness of the top 8 of 13 Boston data set features determined by SHAP interrogating four different models.  There is considerable variation, particularly for the random forest (RF) model and we chose a random seed to highlight the possibility of conflicting results from the same technique applied to the same data. Rough timing for explaining $n$=506 test records is (a) less than 1 second, (b) 10s, (c) 3s, and (d) 13 minutes.  Scikit-learn model hyper-parameters: OLS/SVM normalized explanatory variables; RF with 30 trees; XGBoost/SVM tuned with 5-fold cross-validation grid search on a variety of hyper parameters.}
+\caption{\small Ranking and relative predictiveness of the top 8 of 13 Boston data set features determined by SHAP interrogating four different models.  There is considerable variation, particularly for the random forest (RF) model and we chose a random seed to highlight the possibility of conflicting results from the same technique applied to the same data. Rough timing for explaining $n$=506 test records is (a) less than 1 second, (b) 10s, (c) 3s, and (d) 13 minutes.  Scikit-learn model hyper-parameters: OLS/SVM normalized explanatory variables; RF with 30 trees; XGBoost/SVM tuned with 5-fold cross-validation grid search on a variety of hyper parameters. \todo{SHAP time for 506 test records using SVR = 753.6s, 506/506 [12:33<00:00,  1.49s/it]}}
 \label{fig:diff-models}
 \end{center}
 \end{figure}
@@ -278,7 +288,7 @@ While SHAP has very strong theoretical foundations and its implementation is imp
 \includegraphics[scale=0.5]{images/bulldozer-YearMade-marginal.pdf}~~
 \includegraphics[scale=0.5]{images/bulldozer-YearMade-shap.pdf}~~
 \includegraphics[scale=0.5]{images/bulldozer-YearMade-stratpd.pdf}
-\caption{\small (a) Marginal plot of bulldozer {\tt YearMade} versus {\tt SalePrice} using subsample of 20k observations, (b) partial dependence drawn by SHAP interrogating an RF with 40 trees and explaining 1000 values with 100 observations as background data, (c) \spd{} partial dependence.}
+\caption{\small (a) Marginal plot of bulldozer {\tt YearMade} versus {\tt SalePrice} using subsample of 20k observations, (b) partial dependence drawn by SHAP interrogating an RF with 40 trees and explaining 1000 observations with 100 observations as background data, (c) \spd{} partial dependence.}
 \label{fig:shap-stratpd-YearMade}
 \end{center}
 \end{figure}
@@ -289,7 +299,7 @@ Second, while the formal SHAP definition does not assume feature independence, t
 \begin{center}
 \includegraphics[scale=0.5]{images/weight-shap-tree_path_dependent.pdf}~~
 \includegraphics[scale=0.5]{images/weight-shap-interventional.pdf}
-\caption{\small SHAP partial dependence plots of response body weight on feature {\tt height} using 2000 synthetic observations from Equation \eqref{eq:weight}. SHAP interrogated an RF with 40 trees and explained all 2000 samples; the interventional case used 100 observations as background data.}
+\caption{\small SHAP partial dependence plots of response body weight on feature {\tt height} using 2000 synthetic observations from Equation \eqref{eq:weight}. SHAP interrogated an RF with 40 trees and explained all 2000 samples; the interventional case used 100 observations as background data. \todo{just ref paper \#1}}
 \label{fig:shap-weight}
 \end{center}
 \end{figure}
@@ -332,32 +342,32 @@ Our first experiment is to compare the feature rankings recommended by \simp{} t
 \centering
 \begin{subfigure}{.245\textwidth}
     \centering
-\includegraphics[scale=0.45]{images/boston-topk-baseline-Importance.pdf}
+\includegraphics[scale=0.45]{images/boston-topk-RF-baseline.pdf}
 \subcaption{}
 \end{subfigure}%
 %\hfill
 \begin{subfigure}{.245\textwidth}
     \centering
-\includegraphics[scale=0.45]{images/flights-topk-baseline-Importance.pdf}
+\includegraphics[scale=0.45]{images/flights-topk-RF-baseline.pdf}
 \subcaption{}
 \end{subfigure}
 %\hfill
 \begin{subfigure}{.245\textwidth}
     \centering
-\includegraphics[scale=0.45]{images/bulldozer-topk-baseline-Importance.pdf}
+\includegraphics[scale=0.45]{images/bulldozer-topk-RF-baseline.pdf}
 \subcaption{}
 \end{subfigure}
 %\hfill
 \begin{subfigure}{.245\textwidth}
     \centering
-\includegraphics[scale=0.45]{images/rent-topk-baseline-Importance.pdf}
+\includegraphics[scale=0.45]{images/rent-topk-RF-baseline.pdf}
 \subcaption{}
 \end{subfigure} 
 \caption{\small {\bf RF MAE curves from \underline{baseline} rankings}. The mean absolute error curves from 40-tree RF models trained on boston, flight, bulldozer, and rent data sets. Error curves represent 5-fold cross validation using the top-$k$ features from the following feature rankings: OLS coefficients divided by standard errors, Spearman's R between feature and response variable, PCA ``loads'' associated with the first component, and \simp{}. $n=506$ for Boston and random $n=25,000$ subsets are drawn for the other data sets. OLS used 80\% for model fitting to get coefficients, but standard errors were computed on the 20\% validation set.  Spearman's R and PCA operated on all $n$ records. \simp{} operated on just 80\% training data.}
 \label{fig:baseline}
 \end{figure}
 
-Next, in \figref{fig:topk}, we compare \simp{}'s rankings to those of OLS, RF-based permutation importance, and SHAP interrogating OLS and RF models. MAE error curves were generated with an RF model trained on the top-$k$ features recommended by each technique, using $n$=25,000 records sampled from the total data set population with an 80/20 train/validation split. (Boston only has 506  total records.) RF SHAP and RF permutation importances have a distinct advantage here because they use the same kind of model (RF) for both feature ranking and top-$k$ error curves. Moreover, the model-based methods were all able to select features using the validation set, the same validation set used to compute error curves. In contrast, \simp{} cannot use predictions from a fitted model, by design, and we restricted \simp{} to examining just the training data, without access to the validation data, to see how it fared. 
+Next, in \figref{fig:topk}, we compare \simp{}'s rankings to those of OLS, RF-based permutation importance, and SHAP interrogating OLS and RF models. MAE error curves were generated with an RF model trained on the top-$k$ features recommended by each technique, using $n$=25,000 records sampled from the total data set population with an 80/20 train/validation split. (Boston only has 506  total records.) RF SHAP and RF permutation importances have a distinct advantage here because they use the same kind of model (RF) for both feature ranking and top-$k$ error curves. Moreover, the model-based methods were all able to select features using the validation set, the same validation set used to compute error curves. \todo{nope, no we do 5-fold CV} In contrast, \simp{} cannot use predictions from a fitted model, by design, and we restricted \simp{} to examining just the training data, without access to the validation data, to see how it fared. \todo{now it uses all X,y}
 
 \begin{figure}
 \centering
@@ -419,7 +429,7 @@ The feature rankings derived from OLS perform poorly for the first few features,
 \includegraphics[scale=0.45]{images/rent-topk-RF-Impact.pdf}
 \subcaption{}
 \end{subfigure}
-\caption[short]{\small MAE curves as in \figref{fig:topk} except using \simp{} {\em impact} rather than {\em importance}.}
+\caption[short]{\small MAE curves as in \figref{fig:topk} except using \simp{} {\em impact} rather than {\em importance}. \todo{Note OLS beats for 1st feature!}}
 \label{fig:topk-impact}
 \end{figure}
 
@@ -448,6 +458,7 @@ Features that are predictive in one model are not necessarily predictive in anot
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/rent-topk-GBM-Importance.pdf}
+\subcaption{}
 \end{subfigure}
 \caption[short]{\small MAE curves as in \figref{fig:topk} except measuring {\tt xgboost} predictions, rather than RF, with learning rate 0.5,  max depth 5, and 100 trees.}
 \label{fig:topk-gbm}
@@ -478,7 +489,7 @@ To compute the feature rankings described thus far, we set the random seed to 1 
 \includegraphics[scale=0.65]{images/rent-stability-impact.pdf}
 \subcaption{\simp{} Rent Impact}
 \end{subfigure}%
-\captionof{figure}{\small  Average feature importance and impact across 10 trials on the rent data set, with 75\% subsamples from 48k total records.  Error bars show two standard deviations; red indicates two standard deviations reach zero.}
+\captionof{figure}{\small  Average feature importance and impact across 10 trials on the rent data set, with 75\% subsamples from 48k total records.  Error bars show two standard deviations. Red indicates two standard deviations reach zero.}
 \label{fig:stability}
 \end{center}
 \end{figure}
@@ -492,11 +503,12 @@ The cost of computing each $x_j$'s impact is dominated by the cost of computing 
 \begin{tabular}{r r r r r r r r r}
 {\bf dataset} & $p$ & catvars & {\small $n$=1,000} & {\small 10,000} & {\small 20,000} & {\small 30,000} & time versus $n$~~ & $R^2$\\
 \hline
-{\tt\small flight} & 17 & 5 & 0.6s & 18.4s & 65.4s & 152.7s & {\small $-0.219 n + 0.170 n^2$} & {\small 0.9990}\\
-{\tt\small bulldozer} & 14 & 2 & 0.2s & 2.7s & 8.6s & 18.3s & {\small $0.078 n + 0.017 n^2$} & {\small 0.9997}\\
-{\tt\small rent} & 20 & 0 & 0.3s & 3.7s & 8.2s & 13.0s & {\small $0.385 n + 0.002 n^2$} & {\small 0.9985}\\
+{\tt\small flight} & 17 & 5 & 0.7s & 18.1s & 59.3s & 142.9s & {\small $-0.288 n + 0.159 n^2$} & {\small 0.9969}\\
+{\tt\small bulldozer} & 14 & 2 & 0.2s & 3.1s & 10.8s & 21.5s & {\small $0.125 n + 0.020 n^2$} & {\small 0.9997}\\
+{\tt\small rent} & 20 & 0 & 0.3s & 4.0s & 8.9s & 13.3s & {\small $0.435 n + 0.001 n^2$} & {\small 0.9991}\\
 \end{tabular}
-\caption{\small  Execution time for subsets of size 1,000 to 30,000 stepping by 1,000 43 real data sets. Rent has no categorical variables and exhibits linear performance, whereas categorical variables introduce mildly quadratic behavior. Final two columns describe how data fits to quadratic equations.}
+
+\caption{\small  Execution time for subsets of size 1,000 to 30,000 for three real data sets. Rent has no categorical variables and exhibits linear performance, whereas categorical variables introduce mildly quadratic behavior. Final two columns describe how data fits to quadratic equations.}
 \label{fig:timing}
 \end{figure}
 

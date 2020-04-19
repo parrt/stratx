@@ -1,6 +1,6 @@
 
 from stratx.featimp import importances, plot_importances
-from support import tune_SVM, tune_RF, tune_XGBoost, shap_importances
+from support import shap_importances, models
 
 import numpy as np
 import pandas as pd
@@ -22,9 +22,6 @@ import xgboost as xgb
 from sklearn import svm
 
 np.random.seed(44) # choose a seed that demonstrates diff RF/GBM importances
-
-TUNE_XGB = False
-TUNE_SVM = False
 
 boston = load_boston()
 X = pd.DataFrame(boston.data, columns=boston.feature_names)
@@ -65,25 +62,15 @@ rf_I.reset_index().to_feather("/tmp/t.feather")
 # print(rf_I)
 """
 
-rf = RandomForestRegressor(n_estimators=30, oob_score=True)
+tuned_params = models[("boston", "RF")]
+rf = RandomForestRegressor(**tuned_params, oob_score=True, n_jobs=-1)
 rf.fit(X, y)
 rf_I = shap_importances(rf, X, X, n_shap)
 rf_score = rf.score(X, y)
 print("RF", rf_score, rf.oob_score_, mean_absolute_error(y, rf.predict(X)))
 
-if TUNE_XGB:
-    b, bestparams = tune_XGBoost(X, y)
-    # XGB best: {'learning_rate': 0.1, 'max_depth': 3, 'n_estimators': 300}
-    # XGB training R^2 0.9925102435056687
-    # SHAP time for 10 test records using XGBRegressor = 0.2s
-    # XGBRegressor 0.9925102435056687 0.6102726817602225
-else:
-    b = xgb.XGBRegressor(n_estimators=300,
-                         max_depth=3,
-                         learning_rate=.1,
-                         verbose=2,
-                         n_jobs=8)
-
+tuned_params = models[("boston", "GBM")]
+b = xgb.XGBRegressor(**tuned_params, n_jobs=-1)
 b.fit(X, y)
 xgb_score = b.score(X, y)
 print("XGB training R^2", xgb_score)
@@ -91,16 +78,10 @@ m_I = shap_importances(b, X, X, n_shap)
 b_score = b.score(X, y)
 print("XGBRegressor", b_score, mean_absolute_error(y, b.predict(X)))
 
+tuned_params = models[("boston", "SVM")]
+s = svm.SVR(**tuned_params)
 X_ = StandardScaler().fit_transform(X)
 X_ = pd.DataFrame(X_, columns=X.columns)
-
-if TUNE_SVM:
-    s, bestparams = tune_SVM(X_, y)
-    # SVM best: {'C': 5000, 'gamma': 0.001, 'kernel': 'rbf'}
-    # svm_score 0.8591641343478678
-else:
-    s = svm.SVR(kernel='rbf', gamma=0.001, C=5000.)
-
 s.fit(X_, y)
 svm_score = s.score(X_, y)
 print("svm_score", svm_score)

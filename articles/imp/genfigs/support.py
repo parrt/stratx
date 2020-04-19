@@ -33,6 +33,7 @@ from sklearn.utils import resample
 from pandas.api.types import is_string_dtype, is_object_dtype, is_categorical_dtype, is_bool_dtype
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import PolynomialFeatures
+from sklearn.datasets import load_boston
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LinearRegression, Lasso, LogisticRegression
 from sklearn.ensemble import GradientBoostingRegressor
@@ -50,10 +51,11 @@ import os
 
 import rfpimp
 
+import shap
+
 import stratx.featimp as featimp #import plot_importances, importances, friedman_partial_dependences
 
-
-# WARNING: THIS FILE IS INTENDED FOR USE BY PARRT TO TEST / GENERATE SAMPLE IMAGES
+# THIS FILE IS INTENDED FOR USE BY PARRT TO TEST / GENERATE SAMPLE IMAGES
 
 datadir = "/Users/parrt/data"
 
@@ -64,8 +66,58 @@ def set_data_dir(dir):
 pd.set_option('display.max_columns', 10)
 pd.set_option('display.width', 300)
 
+# Didn't allow super huge forests in RF and GBM as generating top-k images takes many hours
+# Very small impact on scores.
 
-import shap
+models = {
+    ("boston", "RF"):{'max_features': 0.5, 'min_samples_leaf': 1, 'n_estimators': 80},
+    ("boston", "GBM"):{'learning_rate': 0.15, 'max_depth': 3, 'n_estimators': 100},
+    ("boston", "SVM"):{'C': 5000, 'gamma': 0.001, 'kernel': 'rbf'},
+    ("flights", "RF"):{'max_features': 0.9, 'min_samples_leaf': 1, 'n_estimators': 80},
+    ("flights", "GBM"):{'learning_rate': 0.2, 'max_depth': 6, 'n_estimators': 100},
+    ("bulldozer", "RF"):{'max_features': 0.9, 'min_samples_leaf': 1, 'n_estimators': 80},
+    ("bulldozer", "GBM"):{'learning_rate': 0.2, 'max_depth': 8, 'n_estimators': 100},
+    ("rent", "RF"):{'max_features': 0.3, 'min_samples_leaf': 1, 'n_estimators': 80},
+    ("rent", "GBM"):{'learning_rate': 0.2, 'max_depth': 9, 'n_estimators': 100},
+}
+
+valscores = {
+    ("boston", "RF"):0.6686571173409532,
+    ("boston", "GBM"):0.6876583572051903,
+    ("boston", "SVM"):0.7014652575387574,
+    ("flights", "RF"):0.7466871286645599,
+    ("flights", "GBM"):0.8285358262297152,
+    ("bulldozer", "RF"):0.8532942777695387,
+    ("bulldozer", "GBM"):0.8755231689492822,
+    ("rent", "RF"):0.8480527800606038,
+    ("rent", "GBM"):0.8470623951646141,
+}
+
+trnscores = {
+    ("boston", "RF"):0.9837105973451798,
+    ("boston", "GBM"):0.9825632873392053,
+    ("boston", "SVM"):0.8591641343478678,
+    ("flights", "RF"):0.9657629058097076,
+    ("flights", "GBM"):0.9771471818436606,
+    ("bulldozer", "RF"):0.9808035893998547,
+    ("bulldozer", "GBM"):0.9559587416679752,
+    ("rent", "RF"):0.9789323191668672,
+    ("rent", "GBM"):0.9538255747205425,
+}
+
+
+pairs = [
+    ("boston", "RF"),
+    ("boston", "SVM"),
+    ("boston", "GBM"),
+    ("flights", "RF"),
+    ("flights", "GBM"),
+    ("bulldozer", "RF"),
+    ("bulldozer", "GBM"),
+    ("rent", "RF"),
+    ("rent", "GBM")
+]
+
 
 def df_string_to_cat(df:pd.DataFrame) -> dict:
     catencoders = {}
@@ -149,7 +201,7 @@ def linear_model_importance(model, X, y):
 
 def shap_importances(model, X_train, X_test, n_shap, normalize=True, sort=True):
     start = timer()
-    #X = shap.kmeans(X, k=n_shap)
+    # only use n_shap from X_test
     X_test = X_test.sample(n=min(n_shap, len(X_test)), replace=False)
     if isinstance(model, RandomForestRegressor) or \
         isinstance(model, GradientBoostingRegressor) or \
@@ -158,10 +210,15 @@ def shap_importances(model, X_train, X_test, n_shap, normalize=True, sort=True):
         We get this warning for big X_train so choose smaller
         'Passing 20000 background samples may lead to slow runtimes. Consider using shap.sample(data, 100) to create a smaller background data set.'
         """
-        explainer = shap.TreeExplainer(model, data=shap.sample(X_train, 100), feature_perturbation='interventional')
+        explainer = shap.TreeExplainer(model,
+                                       data=shap.sample(X_train, 100),
+                                       feature_perturbation='interventional')
         shap_values = explainer.shap_values(X_test, check_additivity=False)
     elif isinstance(model, Lasso) or isinstance(model, LinearRegression):
-        shap_values = shap.LinearExplainer(model, X_train, feature_perturbation='interventional').shap_values(X_test)
+        explainer = shap.LinearExplainer(model,
+                                         X_train,
+                                         feature_perturbation='interventional')
+        shap_values = explainer.shap_values(X_test)
     else:
         # gotta use really small sample; verrry slow
         explainer = shap.KernelExplainer(model.predict, X_train.sample(frac=.1))
@@ -199,15 +256,8 @@ def get_shap(rf,to_explain,backing=None,assume_independence=True):
     return I
 
 
-def cv_features(kfold_indexes, X, y, features, metric, catcolnames=None, model='RF'):
-    # if time_sensitive:
-    #     n_test = int(0.20 * len(X))
-    #     n_train = len(X) - n_test
-    #     X_train, X_test = X[:n_train], X[n_train:]
-    #     y_train, y_test = y[:n_train], y[n_train:]
-    # else:
+def cv_features(dataset, kfold_indexes, X, y, features, metric, model):
     scores = []
-    n_estimators = 40  # for both SHAP and testing purposes
 
     if kfold_indexes is None:
         end_training = int(.8 * len(X))
@@ -217,22 +267,20 @@ def cv_features(kfold_indexes, X, y, features, metric, catcolnames=None, model='
         # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
         X_train, X_test = X.iloc[train_index], X.iloc[test_index]
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+        if model != 'OLS':
+            tuned_params = models[(dataset, model)]
         if model=='RF':
-            m = RandomForestRegressor(n_estimators=n_estimators, min_samples_leaf=1, n_jobs=-1)
+            m = RandomForestRegressor(**tuned_params, n_jobs=-1)
             m.fit(X_train[features], y_train)
             y_pred = m.predict(X_test[features])
             s = metric(y_test, y_pred)
         elif model == 'SVM':
-            m = svm.SVR(gamma='auto')
+            m = svm.SVR(**tuned_params)
             m.fit(X_train[features], y_train)
             y_pred = m.predict(X_test[features])
             s = metric(y_test, y_pred)
         elif model == 'GBM':
-            m = xgb.XGBRegressor(objective='reg:squarederror',
-                                 learning_rate=0.5, # default is 1
-                                 max_depth=5, # default is 3
-                                 n_estimators=100 # default is 100
-                                 )
+            m = xgb.XGBRegressor(**tuned_params, n_jobs=-1)
             m.fit(X_train[features], y_train)
             y_pred = m.predict(X_test[features])
             s = metric(y_test, y_pred)
@@ -242,11 +290,11 @@ def cv_features(kfold_indexes, X, y, features, metric, catcolnames=None, model='
             m.fit(X_train[features], y_train)
             y_pred = m.predict(X_test[features])
             s = metric(y_test, y_pred)
-        elif model == 'Lasso':
-            m = Lasso(normalize=True)
-            m.fit(X_train[features], y_train)
-            y_pred = m.predict(X_test[features])
-            s = metric(y_test, y_pred)
+        # elif model == 'Lasso':
+        #     m = Lasso(normalize=True)
+        #     m.fit(X_train[features], y_train)
+        #     y_pred = m.predict(X_test[features])
+        #     s = metric(y_test, y_pred)
         else:
             raise ValueError(model+" is not valid model")
         scores.append(s)
@@ -270,118 +318,26 @@ def todummies(X, features, catcolnames):
     return X
 
 
-"""
-def compare_top_features(X, y,
-                         X_train, X_test, y_train, y_test,
-                         kfold_indexes,
-                         top_features_range=None,
-                         n_shap=300,
-                         metric = mean_absolute_error,
-                         model='RF',
-                         imp_n_trials=1,
-                         imp_pvalues_n_trials=0,
-                         sortby='Importance',
-                         use_oob = False,
-                         #time_sensitive=False,
-                         n_stratpd_trees=1,
-                         bootstrap=False,
-                         stratpd_min_samples_leaf=10,
-                         stratpd_cat_min_samples_leaf=10,
-                         min_slopes_per_x=5,
-                         catcolnames=set(),
-                         normalize=True,
-                         supervised=True):
-    if use_oob and metric!=r2_score:
-        #     print("Warning: use_oob can only give R^2; flipping metric to r2_score")
-        metric=r2_score
-
-    n_estimators = 40 # for both SHAP and testing purposes
-
-    rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=True, n_jobs=-1)
-    rf.fit(X_train, y_train)
-    print(f"Sanity check: R^2 OOB on {X_train.shape[0]} training records: {rf.oob_score_:.3f}, training {metric.__name__}={metric(y_train, rf.predict(X_train))}")
-    print(f"testing {metric.__name__}={metric(y_test, rf.predict(X_test))}")
-
-    all_importances = get_multiple_imps(X_train, y_train, X_test, y_test,
-                                        sortby=sortby,
-                                        n_stratpd_trees=n_stratpd_trees,
-                                        imp_n_trials=imp_n_trials,
-                                        imp_pvalues_n_trials=imp_pvalues_n_trials,
-                                        bootstrap=bootstrap,
-                                        stratpd_min_samples_leaf=stratpd_min_samples_leaf,
-                                        stratpd_cat_min_samples_leaf=stratpd_cat_min_samples_leaf,
-                                        n_estimators=n_estimators,
-                                        n_shap=n_shap,
-                                        catcolnames=catcolnames,
-                                        min_slopes_per_x=min_slopes_per_x,
-                                        supervised=supervised,
-                                        normalize=normalize)\
-
-    print("Spearman\n", all_importances['Spearman'])
-    print("PCA\n", all_importances['PCA'])
-    print("OLS\n", all_importances['OLS'])
-    print("OLS SHAP\n", all_importances['OLS SHAP'])
-    print("RF SHAP\n", all_importances['RF SHAP'])
-    print("RF perm\n", all_importances['RF perm'])
-    print("Our importances\n",all_importances['StratImpact'])
-
-    if top_features_range is None:
-        top_features_range = (1, X.shape[1])
-
-    technique_names = ['Spearman', 'PCA', 'OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact'],
-
-    print(f"n_train={len(X_train)}, n_top={top_features_range[1]}, n_estimators={n_estimators}, n_shap={n_shap}, min_samples_leaf={stratpd_min_samples_leaf}")
-    topscores = []
-    topstddevs = []
-    for top in range(top_features_range[0], top_features_range[1] + 1):
-        results = []
-        stddevs = []
-        # Get list of top features as ranked by various techniques
-        feature_sets = []
-        for technique_name,I in all_importances.items():
-            if I is not None:
-                if technique_name=='StratImpact':
-                    I = I.sort_values(sortby, ascending=False)
-                top_features = I.iloc[:top, 0]
-                feature_sets.append(top_features.index.values)
-
-        for technique_name, features in zip(technique_names, feature_sets):
-            # print(f"Train with {features} from {technique_name}")
-            # Train RF model with top-k features
-            # Do 5-fold cross validation using original full X, y passed in to this method
-            scores = cv_features(kfold_indexes, X, y, features, metric=metric, model=model,
-                                 catcolnames=catcolnames)
-            results.append(np.mean(scores))
-            stddevs.append(np.std(scores))
-            # print(f"{technique_name} valid R^2 {s:.3f}")
-        topscores.append( results )
-        topstddevs.append( stddevs )
-
-        # avg = [f"{round(m,2):9.3f}" for m in np.mean(all, axis=0)]
-        # print(f"Avg top-{top} valid {metric.__name__} {', '.join(avg)}")
-
-    R = pd.DataFrame(data=topscores, columns=technique_names)
-    R.index = [f"top-{top} {'OOB' if use_oob else 'training'} {metric.__name__}" for top in range(top_features_range[0], top_features_range[1] + 1)]
-    Rstddev = pd.DataFrame(data=topstddevs, columns=technique_names)
-    Rstddev.index = [f"top-{top} stddev" for top in range(top_features_range[0], top_features_range[1] + 1)]
-    print(Rstddev)
-
-    # unpack for users
-    return (R, all_importances)
-"""
-
-def test_top_features(X, y,
+def test_top_features(dataset,
+                      X, y,
                       all_importances,
                       kfold_indexes,
-                      sortby,
                       top_features_range=None,
                       metric=mean_absolute_error,
                       model='RF',
                       catcolnames=set()):
+    # Compute top-k curves for all techniques, including both import and impact
     if top_features_range is None:
         top_features_range = (1, X.shape[1])
 
-    technique_names = ['Spearman', 'PCA', 'OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']
+    technique_names = ['Spearman', 'PCA', 'OLS', 'OLS SHAP', 'RF SHAP', "RF perm",
+                       'StratImport', 'StratImpact']
+
+    if dataset=='bulldozer':
+        technique_names.remove('OLS')
+        technique_names.remove('OLS SHAP')
+
+    print(f"test_top_features {dataset} using {technique_names} and {model}")
 
     topscores = []
     topstddevs = []
@@ -392,17 +348,13 @@ def test_top_features(X, y,
         feature_sets = []
         for technique_name,I in all_importances.items():
             if I is not None:
-                if technique_name=='StratImpact':
-                    I = I.sort_values(sortby, ascending=False)
                 top_features = I.iloc[:top, 0]
                 feature_sets.append(top_features.index.values)
-
         for technique_name, features in zip(technique_names, feature_sets):
             # print(f"Train with {features} from {technique_name}")
             # Train RF model with top-k features
             # Do 5-fold cross validation using original full X, y passed in to this method
-            scores = cv_features(kfold_indexes, X, y, features, metric=metric, model=model,
-                                 catcolnames=catcolnames)
+            scores = cv_features(dataset, kfold_indexes, X, y, features, metric=metric, model=model)
             results.append(np.mean(scores))
             stddevs.append(np.std(scores))
             # print(f"{technique_name} valid R^2 {s:.3f}")
@@ -417,21 +369,24 @@ def test_top_features(X, y,
     return R
 
 
-def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yrange=None,figsize=(3.5, 3.0),
+def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),
+                  drop_high_variance_features=True,
+                  yrange=None,figsize=(3.5, 3.0),
                   min_slopes_per_x=5,
-                  cat_min_samples_leaf=10,
-                  min_samples_leaf=10):
-    model = "RF"
+                  cat_min_samples_leaf=5,
+                  min_samples_leaf=15):
     test_size = .2  # Some techniques use validation set to pick best features
-
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
     # use same set of folds for all techniques
     kf = KFold(n_splits=kfolds, shuffle=True)
     kfold_indexes = list(kf.split(X))
 
+    # get all importances
+
     imps = get_multiple_imps(dataset,
                              X, y,
                              X_train, y_train, X_test, y_test,
+                             drop_high_variance_features=drop_high_variance_features,
                              normalize=True,
                              catcolnames=catcolnames,
                              n_shap=300,
@@ -441,8 +396,9 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yra
                              stratpd_min_samples_leaf=min_samples_leaf,
                              imp_n_trials=n_trials,
                              )
+
     w = 4.5 if dataset == 'flights' else 3
-    featimp.plot_importances(imps['StratImpact'].iloc[:8], imp_range=(0, 0.4), width=w,
+    featimp.plot_importances(imps['Strat'].iloc[:8], imp_range=(0, 0.4), width=w,
                      title=f"{dataset} StratImpact importances")
     plt.tight_layout()
     plt.savefig(f"../images/{dataset}-features.pdf")
@@ -456,82 +412,87 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yra
     # plt.show()
     plt.close()
 
-    doall=True
-    if doall:
-        sortby="Importance"
-        R = test_top_features(X, y,
+    model = "RF"
+    topk_for_one_model(dataset, model, X, y, imps, catcolnames, figsize,
+                       kfold_indexes, title,
+                       yrange, yunits)
+
+    model = "GBM"
+    topk_for_one_model(dataset, model, X, y, imps, catcolnames, figsize,
+                       kfold_indexes, title,
+                       yrange, yunits)
+
+    # Do OLS special cases for rent and boston
+
+    main_techniques = ['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImport']
+    if dataset=='rent': # purely numerical features
+        R = test_top_features(dataset,
+                              X, y,
                               imps,
                               kfold_indexes,
-                              sortby=sortby,
                               top_features_range=(1,8),
                               metric=mean_absolute_error,
-                              model=model,
+                              model="OLS",
                               catcolnames=catcolnames)
-        # print(R)
 
-        R_ = R[['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']]
-        plot_topk(R_, k=8, title=f"{model} {title}",
+        R_ = R[main_techniques]
+        plot_topk(R_, k=8, title=f"OLS {title}",
                   ylabel=f"5-fold CV MAE ({yunits})",
-                  xlabel=f"Top $k$ feature ${sortby}$",
+                  xlabel=f"Top $k$ feature $Importance$",
                   title_fontsize=14,
                   label_fontsize=14,
                   ticklabel_fontsize=10,
-                  yrange=yrange,
+                  # legend_location='lower left',
+                  legend_location='upper right',
+                  yrange=(500,1200),
                   figsize=figsize)
         plt.tight_layout()
-        plt.savefig(f"../images/{dataset}-topk-{model}-{sortby}.pdf", bbox_inches="tight", pad_inches=0)
+        plt.savefig(f"../images/{dataset}-topk-OLS-Importance.pdf", bbox_inches="tight", pad_inches=0)
         plt.show()
 
-        R_ = R[['Spearman', 'PCA', 'OLS', 'StratImpact']]
-        plot_topk(R_, k=8, title=f"{model} {title}",
-                  ylabel=f"5-fold CV MAE ({yunits})",
-                  xlabel=f"Top $k$ feature ${sortby}$",
-                  title_fontsize=14,
-                  label_fontsize=14,
-                  ticklabel_fontsize=10,
-                  yrange=yrange,
-                  figsize=figsize)
-        plt.tight_layout()
-        plt.savefig(f"../images/{dataset}-topk-baseline-{sortby}.pdf", bbox_inches="tight", pad_inches=0)
-        plt.show()
-
-        sortby="Impact"
-        R = test_top_features(X, y,
+    if dataset=='boston': # purely numerical features
+        R = test_top_features(dataset,
+                              X, y,
                               imps,
                               kfold_indexes,
-                              sortby=sortby,
                               top_features_range=(1,8),
                               metric=mean_absolute_error,
-                              model=model,
+                              model="OLS",
                               catcolnames=catcolnames)
 
-        R_ = R[['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']]
+        R_ = R[main_techniques]
         plot_topk(R_, k=8, title=f"{model} {title}",
                   ylabel=f"5-fold CV MAE ({yunits})",
-                  xlabel=f"Top $k$ feature ${sortby}$",
+                  xlabel=f"Top $k$ feature $Importance$",
                   title_fontsize=14,
                   label_fontsize=14,
                   ticklabel_fontsize=10,
-                  yrange=yrange,
+                  # legend_location='lower left',
+                  legend_location='upper right',
+                  yrange=(2,6.5),
                   figsize=figsize)
         plt.tight_layout()
-        plt.savefig(f"../images/{dataset}-topk-{model}-{sortby}.pdf", bbox_inches="tight", pad_inches=0)
+        plt.savefig(f"../images/{dataset}-topk-OLS-Importance.pdf", bbox_inches="tight", pad_inches=0)
         plt.show()
 
-        model = "GBM"
-        sortby = "Impact"
-        sortby = "Importance"
-        R = test_top_features(X, y,
-                              imps,
-                              kfold_indexes,
-                              sortby=sortby,
-                              top_features_range=(1, 8),
-                              metric=mean_absolute_error,
-                              model=model,
-                              catcolnames=catcolnames)
 
-        R_ = R[['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']]
-        plot_topk(R_, k=8, title=f"{model} {title}",
+def topk_for_one_model(dataset, model, X, y, imps, catcolnames, figsize, kfold_indexes, title,
+                       yrange, yunits):
+    # GET ALL TOP-K CURVES
+    R = test_top_features(dataset,
+                          X, y,
+                          imps,
+                          kfold_indexes,
+                          top_features_range=(1, 8),
+                          metric=mean_absolute_error,
+                          model=model,
+                          catcolnames=catcolnames)
+    # print(R)
+
+    # OK, so now we have curves for {model} with importance, impact from StratImpact; save these
+
+    def plotimp(sortby, techniques):
+        plot_topk(R[techniques], k=8, title=f"{model} {title}",
                   ylabel=f"5-fold CV MAE ({yunits})",
                   xlabel=f"Top $k$ feature ${sortby}$",
                   title_fontsize=14,
@@ -544,69 +505,23 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),yra
                     pad_inches=0)
         plt.show()
 
-    if dataset=='rent': # purely numerical features
-        model = "OLS"
-        # sortby="Impact"
-        sortby="Importance"
-        R = test_top_features(X, y,
-                              imps,
-                              kfold_indexes,
-                              sortby=sortby,
-                              top_features_range=(1,8),
-                              metric=mean_absolute_error,
-                              model=model,
-                              catcolnames=catcolnames)
-
-        R_ = R[['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']]
-        plot_topk(R_, k=8, title=f"{model} {title}",
-                  ylabel=f"5-fold CV MAE ({yunits})",
-                  xlabel=f"Top $k$ feature ${sortby}$",
-                  title_fontsize=14,
-                  label_fontsize=14,
-                  ticklabel_fontsize=10,
-                  # legend_location='lower left',
-                  legend_location='upper right',
-                  yrange=(500,1200),
-                  figsize=figsize)
-        plt.tight_layout()
-        plt.savefig(f"../images/{dataset}-topk-{model}-{sortby}.pdf", bbox_inches="tight", pad_inches=0)
-        plt.show()
-
-    if dataset=='boston': # purely numerical features
-        model = "OLS"
-        # sortby="Impact"
-        sortby="Importance"
-        R = test_top_features(X, y,
-                              imps,
-                              kfold_indexes,
-                              sortby=sortby,
-                              top_features_range=(1,8),
-                              metric=mean_absolute_error,
-                              model=model,
-                              catcolnames=catcolnames)
-
-        R_ = R[['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']]
-        plot_topk(R_, k=8, title=f"{model} {title}",
-                  ylabel=f"5-fold CV MAE ({yunits})",
-                  xlabel=f"Top $k$ feature ${sortby}$",
-                  title_fontsize=14,
-                  label_fontsize=14,
-                  ticklabel_fontsize=10,
-                  # legend_location='lower left',
-                  legend_location='upper right',
-                  yrange=(2,6.5),
-                  figsize=figsize)
-        plt.tight_layout()
-        plt.savefig(f"../images/{dataset}-topk-{model}-{sortby}.pdf", bbox_inches="tight", pad_inches=0)
-        plt.show()
+    if dataset=='bulldozer':
+        plotimp(sortby='Importance', techniques=['RF SHAP', "RF perm", 'StratImport'])
+        plotimp(sortby='Impact',     techniques=['RF SHAP', "RF perm", 'StratImpact'])
+        plotimp(sortby='baseline',   techniques=['Spearman', 'PCA', 'StratImport'])
+    else:
+        plotimp(sortby='Importance', techniques=['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImport'])
+        plotimp(sortby='Impact',     techniques=['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact'])
+        plotimp(sortby='baseline',   techniques=['Spearman', 'PCA', 'OLS', 'StratImport'])
 
 
-def best_single_feature(X, y, kfolds=5, model='RF'):
+def best_single_feature(X, y, dataset, kfolds=5, model='RF'):
     means = []
     kf = KFold(n_splits=kfolds) if kfolds>1 else None
     kfold_indexes = kf.split(X)
     for colname in X.columns:
-        scores = cv_features(kfold_indexes, X, y, [colname],
+        scores = cv_features(dataset,
+                             kfold_indexes, X, y, [colname],
                              # metric=mean_squared_error,
                              metric=mean_absolute_error,
                              model=model)
@@ -621,13 +536,15 @@ def best_single_feature(X, y, kfolds=5, model='RF'):
 
 def get_multiple_imps(dataset,
                       X, y, X_train, y_train, X_test, y_test, n_shap=300, n_estimators=50,
+                      drop_high_variance_features=True,
                       sortby='Importance',
-                      stratpd_min_samples_leaf=10,
-                      stratpd_cat_min_samples_leaf=10,
+                      stratpd_min_samples_leaf=15,
+                      stratpd_cat_min_samples_leaf=5,
                       imp_n_trials=1,
                       imp_pvalues_n_trials=0,
                       n_stratpd_trees=1,
-                      bootstrap=False,
+                      rf_bootstrap=False,
+                      bootstrap=True,
                       catcolnames=set(),
                       min_slopes_per_x=5,
                       supervised=True,
@@ -637,6 +554,14 @@ def get_multiple_imps(dataset,
 
     # Do everything now
     include = ['Spearman', 'PCA', 'OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact']
+    # include = ['StratImpact']
+
+    if dataset=='bulldozer':
+        include.remove('OLS')
+        include.remove('OLS SHAP')
+
+    X_train = pd.DataFrame(X_train, columns=X.columns)
+    X_test = pd.DataFrame(X_test, columns=X.columns)
 
     if 'Spearman' in include:
         spear_I = spearmans_importances(X, y)
@@ -645,43 +570,41 @@ def get_multiple_imps(dataset,
         pca_I = pca_importances(X)
 
     if "OLS" in include:
-        X_train = StandardScaler().fit_transform(X_train)
-        X_test = StandardScaler().fit_transform(X_test)
-        X_train = pd.DataFrame(X_train, columns=X.columns)
-        X_test = pd.DataFrame(X_test, columns=X.columns)
+        # since we use coefficients, look at all data
+        X_ = StandardScaler().fit_transform(X)
+        X_ = pd.DataFrame(X_, columns=X.columns)
         lm = LinearRegression()
-        lm.fit(X_train, y_train)
-        ols_I, score = linear_model_importance(lm, X_test, y_test)
+        lm.fit(X_, y)
+        ols_I, score = linear_model_importance(lm, X_, y)
         print("OLS\n",ols_I)
 
     if "OLS SHAP" in include:
-        X_train = StandardScaler().fit_transform(X_train)
-        X_test = StandardScaler().fit_transform(X_test)
-        X_train = pd.DataFrame(X_train, columns=X.columns)
-        X_test = pd.DataFrame(X_test, columns=X.columns)
+        # since we use coefficients, look at all data, explain n_shap
+        X_ = StandardScaler().fit_transform(X)
+        X_ = pd.DataFrame(X_, columns=X.columns)
         lm = LinearRegression()
-        lm.fit(X_train, y_train)
-        ols_shap_I = shap_importances(lm, X_train, X_test, n_shap=len(X_test))
-
-    X_train = pd.DataFrame(X_train, columns=X.columns)
-    X_test = pd.DataFrame(X_test, columns=X.columns)
+        lm.fit(X_, y)
+        ols_shap_I = shap_importances(lm, X_, X_, n_shap=n_shap)
 
     if "RF SHAP" in include:
-        rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=True)
+        tuned_params = models[(dataset, "RF")]
+        rf = RandomForestRegressor(**tuned_params, n_jobs=-1)
         rf.fit(X_train, y_train)
         rf_I = shap_importances(rf, X_train, X_test, n_shap, normalize=normalize)
+        print("RF SHAP\n",rf_I)
 
     if "RF perm" in include:
-        rf = RandomForestRegressor(n_estimators=n_estimators, oob_score=True)
+        tuned_params = models[(dataset, "RF")]
+        rf = RandomForestRegressor(**tuned_params, n_jobs=-1)
         rf.fit(X_train, y_train)
         perm_I = rfpimp.importances(rf, X_test, y_test) # permutation; drop in test accuracy
         print("RF perm\n",perm_I)
 
-    if "StratImpact" in include:
+    if "StratImpact" in include or "StratImport" in include:
         # RF SHAP and RF perm get to look at the test data to decide which features
-        # are more predictive and useful for generality's sake but we only get to
-        # see X_train.
-        ours_I = featimp.importances(X_train, y_train,
+        # are more predictive and useful for generality's sake
+        # So, we get to look at all data as well, not just training data
+        ours_I = featimp.importances(X, y, #X_train, y_train,
                                      verbose=False,
                                      sortby=sortby,
                                      min_samples_leaf=stratpd_min_samples_leaf,
@@ -691,14 +614,17 @@ def get_multiple_imps(dataset,
                                      pvalues_n_trials=imp_pvalues_n_trials,
                                      n_trees=n_stratpd_trees,
                                      bootstrap=bootstrap,
+                                     rf_bootstrap=rf_bootstrap,
                                      catcolnames=catcolnames,
                                      min_slopes_per_x=min_slopes_per_x,
                                      supervised=supervised,
-                                     normalize=normalize)
+                                     normalize=normalize,
+                                     drop_high_stddev=1.9 if drop_high_variance_features else 9999)
         print("OURS\n",ours_I)
 
     if "PDP" in include:
-        rf = RandomForestRegressor(n_estimators=30)
+        tuned_params = models[(dataset, "RF")]
+        rf = RandomForestRegressor(**tuned_params, n_jobs=-1)
         rf.fit(X, y)
         pdpy = featimp.friedman_partial_dependences(rf, X, mean_centered=True)
         pdp_I = pd.DataFrame(data={'Feature': X.columns})
@@ -712,7 +638,14 @@ def get_multiple_imps(dataset,
     d['OLS SHAP'] = ols_shap_I
     d['RF SHAP'] = rf_I
     d["RF perm"] = perm_I
-    d['StratImpact'] = ours_I
+    d['Strat'] = ours_I
+
+    # Put both orders for Strat approach into same imps dictionary
+    I = featimp.Isortby(ours_I, 'Importance')
+    d['StratImport'] = pd.DataFrame(I['Impact'])
+
+    I = featimp.Isortby(ours_I, 'Impact')
+    d['StratImpact'] = pd.DataFrame(I['Impact'])
     return d
 
 
@@ -740,13 +673,13 @@ def plot_topk(R, ax=None, k=None,
     feature_counts = range(1, k + 1)
     fmts = {'Spearman':'P-', 'PCA':'D-',
             'OLS':'o-', 'OLS SHAP':'v-', 'RF SHAP':'s-',
-            "RF perm":'x-', 'StratImpact':'-'}
+            "RF perm":'x-', 'StratImport':'-', 'StratImpact':'-'}
     for i,technique in enumerate(R.columns):
         fmt = fmts[technique]
         ms = 8
         if fmt == 'x-': ms = 11
         if fmt == 'P-': ms = 11
-        if technique == 'StratImpact':
+        if technique in ('StratImport','StratImpact'):
             color = emphasis_color
             lw = 2
         else:
@@ -778,46 +711,6 @@ def plot_topk(R, ax=None, k=None,
 
     if title is not None:
         ax.set_title(title, fontsize=title_fontsize, fontname=fontname)
-
-
-def stability(X, y, sample_size, n_trials, technique='StratImpact',
-              catcolnames=set(),
-              imp_n_trials=1,
-              min_slopes_per_x=5,
-              n_trees=1, min_samples_leaf=10, bootstrap=False, max_features=1.0
-              ):
-    n = len(X)
-    all_I = pd.DataFrame(data=X.columns, columns=['Feature'])
-    all_I = all_I.set_index('Feature')
-    for i in range(n_trials):
-        subsample_idxs = resample(range(n), n_samples=sample_size, replace=False)
-        X_, y_ = X.iloc[subsample_idxs], y.iloc[subsample_idxs]
-        if technique=='StratImpact':
-            I = featimp.importances(X_, y_,
-                                    catcolnames=catcolnames,
-                                    n_trials=imp_n_trials,
-                                    max_features=max_features,
-                                    min_samples_leaf=min_samples_leaf,
-                                    min_slopes_per_x=min_slopes_per_x,
-                                    n_trees=n_trees,
-                                    bootstrap=bootstrap)
-        elif technique == 'RFSHAP':
-            print("RFSHAP",i)
-            rf = RandomForestRegressor(n_estimators=40)
-            rf.fit(X_, y_)
-            I = shap_importances(rf, X_, X_, n_shap=300)
-        else:
-            raise ValueError("bad mode: "+technique)
-        print(I.iloc[:8])
-        all_I[i] = I['Importance']
-        # print(all_I)
-    I = pd.DataFrame(data={'Feature': X.columns,
-                           'Importance': np.mean(all_I, axis=1),
-                           'Importance sigma': np.std(all_I, axis=1)})
-    I = I.set_index('Feature')
-    I = I.sort_values('Importance', ascending=False)
-    I.reset_index().to_feather("/tmp/t.feather")
-    return I
 
 
 def load_flights(n):
@@ -939,8 +832,7 @@ def load_bulldozer(n):
         df.to_feather(f"{datadir}/bulldozer-train-all.feather")
 
     df['MachineHours'] = df['MachineHoursCurrentMeter']  # shorten name
-    df.loc[df.eval("MachineHours==0"),
-           'MachineHours'] = np.nan
+    df.loc[df.eval("MachineHours==0"), 'MachineHours'] = np.nan
     fix_missing_num(df, 'MachineHours')
 
     # df.loc[df.YearMade < 1950, 'YearMade'] = np.nan
@@ -963,21 +855,18 @@ def load_bulldozer(n):
     # del df['SalesID']  # unique sales ID so not generalizer (OLS clearly overfits)
     # delete MachineID as it has inconsistencies and errors per Kaggle
 
-    basefeatures = ['ModelID',
-                    'datasource', 'YearMade',
-                    # some missing values but use anyway:
-                    'auctioneerID',
-                    'MachineHours'
-                    ]
-    X = df[basefeatures+
-           [
-            'age',
-            'AC',
-            'ProductSize',
-            'MachineHours_na',
-            'saleyear', 'salemonth', 'saleday', 'saledayofweek', 'saledayofyear']
-           ]
+    features = ['ModelID',
+                'datasource', 'YearMade',
+                # some missing values but use anyway:
+                'auctioneerID',
+                'MachineHours',
+                'age',
+                'AC',
+                'ProductSize',
+                'saleyear', 'salemonth', 'saleday', 'saledayofweek', 'saledayofyear'
+                ]
 
+    X = df[features]
     X = X.fillna(0)  # flip missing numeric values to zeros
     y = df['SalePrice']
 
@@ -1064,14 +953,17 @@ def load_rent(n:int=None, clean_prices=True):
     return X, y
 
 
-def tune_RF(X, y, verbose=2):
-    tuned_parameters = {'n_estimators': [50, 100, 125, 150, 200],
+def tune_RF(X, y, verbose=0):
+    tuning_parameters = {'n_estimators': [40, 50, 80],# 125, 150, 200],
                         'min_samples_leaf': [1, 3, 5, 7],
                         'max_features': [.1, .3, .5, .7, .9]}
     grid = GridSearchCV(
-        RandomForestRegressor(), tuned_parameters, scoring='r2',
+        RandomForestRegressor(),
+        tuning_parameters,
+        scoring='r2',
         cv=5,
         n_jobs=-1,
+        refit=True,
         verbose=verbose
     )
     grid.fit(X, y)  # does CV on entire data set
@@ -1081,38 +973,115 @@ def tune_RF(X, y, verbose=2):
     # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
     # rf.fit(X_train, y_train)
     # print("validation R^2", rf.score(X_test, y_test))
-    return rf, grid.best_params_
+    return rf, grid.best_params_, grid.best_score_
 
 
-def tune_XGBoost(X, y):
-    tuned_parameters = {'n_estimators': [300, 400, 450, 500, 600, 1000],
-                        'learning_rate': [0.008, 0.01, 0.02, 0.05, 0.08, 0.1, 0.11, 0.2],
+def tune_XGBoost(X, y, verbose=0):
+    tuning_parameters = {'n_estimators': [100], #[300, 400, 450, 500, 600, 1000],
+                        'learning_rate': [0.05, 0.08, 0.1, 0.15, 0.2],
                         'max_depth': [3, 4, 5, 6, 7, 8, 9]}
     grid = GridSearchCV(
-        xgb.XGBRegressor(), tuned_parameters, scoring='r2',
+        xgb.XGBRegressor(),
+        tuning_parameters,
+        scoring='r2',
         cv=5,
         n_jobs=-1,
-        verbose=2
+        refit=True,
+        verbose=verbose
     )
     grid.fit(X, y)  # does CV on entire data set to tune
     print("XGB best:", grid.best_params_)
     b = grid.best_estimator_
 
-    return b, grid.best_params_
+    return b, grid.best_params_, grid.best_score_
 
 
-def tune_SVM(X, y):
+def tune_SVM(X, y, verbose=0):
+    X_ = StandardScaler().fit_transform(X)
+    tuning_parameters = {"kernel": ['rbf'],  # 'linear','poly' are too slow. ugh
+          "gamma": [0.00001, 0.0001, 0.001, 0.01, 0.1, 1],
+          "C": [1, 10, 50, 100, 200, 500, 1000, 2000, 3000, 5000, 6000]}
     grid = GridSearchCV(
         svm.SVR(),
-        param_grid={"kernel":['rbf', 'sigmoid'], # 'linear','poly' are too slow. ugh
-                    "gamma" : [0.00001, 0.0001, 0.001, 0.01, 0.1, 1],
-                    "C": [1, 10, 50, 100, 200, 500, 1000, 2000, 3000, 5000, 6000, 7000, 8000]},
+        param_grid=tuning_parameters,
+        scoring='r2',
         cv=5,
         n_jobs=-1,
-        verbose=2
+        refit=True,
+        #return_train_score=True,
+        verbose=verbose
     )
-    grid.fit(X, y)
+    grid.fit(X_, y)
     print(grid.best_params_)
     s = grid.best_estimator_
     print("SVM best:", grid.best_params_)
-    return s, grid.best_params_
+    # print("Scores:")
+    # print(pd.DataFrame.from_dict(grid.cv_results_))
+    return s, grid.best_params_, grid.best_score_
+
+
+def tune_all(n = 25_000, pairs_to_tune=list(models.keys()), verbose=1):
+    data = {}
+
+    np.random.seed(1)
+    boston = load_boston()
+    X = pd.DataFrame(boston.data, columns=boston.feature_names)
+    y = pd.Series(boston.target)
+    data['boston'] = (X,y)
+
+    np.random.seed(1)
+    X, y, _ = load_flights(n=n)
+    data['flights'] = (X,y)
+
+    np.random.seed(1)
+    X, y = load_bulldozer(n=n)
+    data['bulldozer'] = (X,y)
+
+    np.random.seed(1)
+    X, y = load_rent(n=n)
+    np.random.seed(1)
+    data['rent'] = (X,y)
+
+    for dataset, modelname in pairs_to_tune:
+        print(dataset, modelname)
+        X, y = data[dataset]
+        if modelname=='RF':
+            m, bestparams, bestscore = tune_RF(X, y, verbose=verbose)
+        elif modelname == 'GBM':
+            m, bestparams, bestscore = tune_XGBoost(X, y, verbose=verbose)
+        elif modelname=='SVM':
+            X = StandardScaler().fit_transform(X)
+            m, bestparams, bestscore = tune_SVM(X, y, verbose=verbose)
+        else:
+            raise ValueError(f"Invalid modelname {modelname}")
+        models[dataset, modelname] = bestparams
+        valscores[dataset, modelname] = bestscore
+        m.fit(X,y) # already fit
+        trnscores[dataset, modelname] = m.score(X, y)
+
+    # Generate Python code
+
+    print("models = {")
+    for dataset, modelname in models.keys():
+        print(f'    ("{dataset}", "{modelname}"):{models[(dataset, modelname)]},')
+    print("}\n")
+    print("valscores = {")
+    for dataset, modelname in models.keys():
+        print(f'    ("{dataset}", "{modelname}"):{valscores[(dataset, modelname)]},')
+    print("}\n")
+    print("trnscores = {")
+    for dataset, modelname in models.keys():
+        print(f'    ("{dataset}", "{modelname}"):{trnscores[(dataset, modelname)]},')
+    print("}")
+
+
+if __name__ == '__main__':
+    # foo = [
+    #     ("boston", "GBM"),
+    #     ("flights", "GBM"),
+    #     ("bulldozer", "GBM"),
+    #     ("rent", "GBM")
+    # ]
+    #
+    tune_all(n=25_000, pairs_to_tune=pairs, verbose=1)
+

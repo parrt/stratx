@@ -32,8 +32,8 @@ from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
 
 import stratx.partdep as partdep
-from stratx.ice import predict_ice, predict_catice, plot_ice, plot_catice, \
-                       friedman_partial_dependences
+import stratx.ice as ice
+
 
 from timeit import default_timer as timer
 from joblib import parallel_backend, Parallel, delayed
@@ -44,22 +44,33 @@ import tempfile
 def importances(X: pd.DataFrame,
                 y: pd.Series,
                 catcolnames=set(),
-                normalize=True,  # make imp values 0..1
-                supervised=True,
-                n_jobs=1,
                 sortby='Importance',  # sort by importance or impact
-                min_slopes_per_x=5,  # ignore pdp y values derived from too few slopes (usually at edges); for smallerData sets, drop this to five or so
-                # important for getting good starting point of PD so AUC isn't skewed.
                 n_trials: int = 1,
+                min_slopes_per_x=5,   # ignore pdp y values derived from too few slopes (usually at edges); for smallerData sets, drop this to five or so
+                min_samples_leaf=15,
+                cat_min_samples_leaf=5,
+                drop_high_stddev=1.9,
+                bootstrap=True, # boostrap by default, don't subsample
+                subsample_size=.75,
+                normalize=True,  # make imp values 0..1
+                n_trees=1,
+                rf_bootstrap=False, max_features=1.0,
                 pvalues=False,  # use to get p-values for each importance; it's number trials
                 pvalues_n_trials=80,
-                n_trees=1,
-                min_samples_leaf=10,
-                cat_min_samples_leaf=5,
-                bootstrap=False, max_features=1.0,
+                supervised=True,
+                n_jobs=1,
                 verbose=False) -> pd.DataFrame:
     if not isinstance(X, pd.DataFrame):
         raise ValueError("Can only operate on dataframes at the moment")
+
+    print(f"PARAMETERS:")
+    print(f"\tn=|X|                {len(X)}")
+    print(f"\tn_trials             {n_trials}")
+    print(f"\tmin_samples_leaf     {min_samples_leaf}")
+    print(f"\tcat_min_samples_leaf {cat_min_samples_leaf}")
+    print(f"\tmin_slopes_per_x     {min_slopes_per_x}")
+    print(f"\tbootstrap            {bootstrap}")
+    print(f"\tn_trees              {n_trees}")
 
     X = partdep.compress_catcodes(X, catcolnames)
 
@@ -69,11 +80,13 @@ def importances(X: pd.DataFrame,
     # track p var importances for ntrials; cols are trials
     for i in range(n_trials):
         if n_trials==1: # don't shuffle if not bootstrapping
-            bootstrap_sample_idxs = range(n)
+            idxs = range(n)
         else:
-            # bootstrap_sample_idxs = resample(range(n), n_samples=n, replace=True)
-            bootstrap_sample_idxs = resample(range(n), n_samples=int(n*.75), replace=False)
-        X_, y_ = X.iloc[bootstrap_sample_idxs], y.iloc[bootstrap_sample_idxs]
+            if bootstrap:
+                idxs = resample(range(n), n_samples=n, replace=True) # bootstrap
+            else: # subsample
+                idxs = resample(range(n), n_samples=int(n*subsample_size), replace=False)
+        X_, y_ = X.iloc[idxs], y.iloc[idxs]
         impacts, importances = importances_(X_, y_, catcolnames=catcolnames,
                                             normalize=normalize,
                                             supervised=supervised,
@@ -82,7 +95,7 @@ def importances(X: pd.DataFrame,
                                             min_samples_leaf=min_samples_leaf,
                                             cat_min_samples_leaf=cat_min_samples_leaf,
                                             min_slopes_per_x=min_slopes_per_x,
-                                            bootstrap=bootstrap,
+                                            rf_bootstrap=rf_bootstrap,
                                             max_features=max_features,
                                             verbose=verbose)
         impact_trials[:,i] = impacts
@@ -97,7 +110,6 @@ def importances(X: pd.DataFrame,
 
     I['Impact p-value'] = 0.0
     I['Importance p-value'] = 0.0
-    # I['Rank'] = I['Importance']
     if pvalues:
         impact_pvalues, importance_pvalues = \
             importances_pvalues(X, y, catcolnames,
@@ -111,17 +123,24 @@ def importances(X: pd.DataFrame,
                                 n_trees=n_trees,
                                 min_samples_leaf=min_samples_leaf,
                                 cat_min_samples_leaf=cat_min_samples_leaf,
-                                bootstrap=bootstrap,
+                                rf_bootstrap=rf_bootstrap,
                                 max_features=max_features)
         I['Impact p-value'] = importance_pvalues
         I['Importance p-value'] = importance_pvalues
         # I['Rank'] = I['Importance'] * (1.0 - importance_pvalues)
 
-    # knock out any feature whose importance is less than 2 sigma
-    # I['Rank'] = I['Rank'] * ((I['Importance'] - 2 * I['Importance sigma']) > 0).astype(int)
-
     if sortby:
-        I = I.sort_values(sortby, ascending=False)
+        I = Isortby(I, sortby, drop_high_stddev)
+
+    # I['stable'] = True
+    # if n_trials>1 and drop_high_stddev > 0:
+    #     # stable only those features whose impact/importance is >= about 2 sigma
+    #     I['stable'] = I[sortby] >= drop_high_stddev * I[sortby+' sigma']
+    #
+    # if sortby:
+    #     I = I.sort_values(['stable',sortby], ascending=False)
+    #
+    # I = I.drop('stable', axis=1)
 
     # Set reasonable column order
     I = I[['Importance', 'Importance sigma', 'Importance p-value',
@@ -133,6 +152,22 @@ def importances(X: pd.DataFrame,
     return I
 
 
+def Isortby(I, sortby, stddev_threshold=1.9, ascending=False):
+    I = I.copy()
+    I['stable'] = True
+    if sortby+" sigma" in I.columns.values and stddev_threshold > 0:
+        # keep only those features whose impact/importance is >= about 2 sigma
+        # set max_stddev to 0 to disable this filtering
+        # the bigger max_stddev, the more we filter out "iffy" features
+        I['stable'] = I[sortby] > stddev_threshold * I[sortby + ' sigma']
+        I = I.sort_values(['stable', sortby], ascending=ascending)
+        I = I.drop('stable', axis=1)
+    else:
+        I = I.sort_values(sortby, ascending=ascending)
+
+    return I
+
+
 def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                  normalize=True,
                  supervised=True,
@@ -141,7 +176,7 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                  min_samples_leaf=10,
                  cat_min_samples_leaf=5,
                  min_slopes_per_x=5,
-                 bootstrap=False, max_features=1.0,
+                 rf_bootstrap=False, max_features=1.0,
                  verbose=False) -> np.ndarray:
     if not isinstance(X, pd.DataFrame):
         raise ValueError("Can only operate on dataframes at the moment")
@@ -159,7 +194,6 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                                                 min_samples_leaf=min_samples_leaf,
                                                 cat_min_samples_leaf=cat_min_samples_leaf,
                                                 min_slopes_per_x=min_slopes_per_x,
-                                                bootstrap=bootstrap,
                                                 max_features=max_features,
                                                 verbose=verbose) for colname in X.columns)
     else:
@@ -171,7 +205,7 @@ def importances_(X: pd.DataFrame, y: pd.Series, catcolnames=set(),
                                                          min_samples_leaf=min_samples_leaf,
                                                          cat_min_samples_leaf=cat_min_samples_leaf,
                                                          min_slopes_per_x=min_slopes_per_x,
-                                                         bootstrap=bootstrap,
+                                                         rf_bootstrap=rf_bootstrap,
                                                          max_features=max_features,
                                                          verbose=verbose) for colname in X.columns]
 
@@ -201,7 +235,7 @@ def single_feature_importance(X: pd.DataFrame, y: pd.Series,
                               min_samples_leaf=10,
                               cat_min_samples_leaf=5,
                               min_slopes_per_x=5,
-                              bootstrap=False, max_features=1.0,
+                              rf_bootstrap=False, max_features=1.0,
                               verbose=False):
     "Return impact=unweighted avg abs, importance=weighted avg abs"
     # print(f"Start {colname}")
@@ -210,7 +244,7 @@ def single_feature_importance(X: pd.DataFrame, y: pd.Series,
             partdep.cat_partial_dependence(X, y, colname=colname,
                                            n_trees=n_trees,
                                            min_samples_leaf=cat_min_samples_leaf,
-                                           bootstrap=bootstrap,
+                                           rf_bootstrap=rf_bootstrap,
                                            max_features=max_features,
                                            verbose=verbose,
                                            supervised=supervised)
@@ -221,7 +255,7 @@ def single_feature_importance(X: pd.DataFrame, y: pd.Series,
                                        n_trees=n_trees,
                                        min_samples_leaf=min_samples_leaf,
                                        min_slopes_per_x=min_slopes_per_x,
-                                       bootstrap=bootstrap,
+                                       rf_bootstrap=rf_bootstrap,
                                        max_features=max_features,
                                        verbose=verbose,
                                        parallel_jit=n_jobs == 1,
@@ -233,11 +267,11 @@ def single_feature_importance(X: pd.DataFrame, y: pd.Series,
 
 
 def compute_importance(X_col, pdpx, pdpy):
-    # TODO: might include samples not included in pdpy due to thresholding, ignored
-    _, pdpx_counts = np.unique(X_col[np.isin(X_col, pdpx)], return_counts=True)
-    if len(pdpx_counts) > 0:
-        # weighted average of pdpy using pdpx_counts
-        weighted_avg_abs_pdp = np.sum(np.abs(pdpy * pdpx_counts)) / np.sum(pdpx_counts)
+    # Weight pdpy values by how many X[colname] values there are at the associated pdpx
+    _, count_at_uniq_x = np.unique(X_col[np.isin(X_col, pdpx)], return_counts=True)
+    if len(count_at_uniq_x) > 0:
+        # weighted average of pdpy using count_at_uniq_x
+        weighted_avg_abs_pdp = np.sum(np.abs(pdpy * count_at_uniq_x)) / np.sum(count_at_uniq_x)
     else:
         weighted_avg_abs_pdp = np.mean(np.abs(pdpy))
 
@@ -256,7 +290,6 @@ def cat_compute_importance(avg_per_cat, count_per_cat):
     # do unweighted
     # some cats have NaN, such as 0th which is often for "missing values"
     # depending on label encoding scheme.
-    # no need to shift as abs(avg_per_cat) deals with negatives.
     avg_abs_pdp = np.nanmean(abs_avg_per_cat)
     return avg_abs_pdp, weighted_avg_abs_pdp
 
@@ -274,7 +307,7 @@ def importances_pvalues(X: pd.DataFrame,
                         n_trees=1,
                         min_samples_leaf=10,
                         cat_min_samples_leaf=5,
-                        bootstrap=False,
+                        rf_bootstrap=False,
                         max_features=1.0):
     """
     For each feature, compute and return empirical p-values.  The idea is to shuffle y
@@ -293,7 +326,7 @@ def importances_pvalues(X: pd.DataFrame,
                          min_samples_leaf=min_samples_leaf,
                          cat_min_samples_leaf=cat_min_samples_leaf,
                          min_slopes_per_x=min_slopes_per_x,
-                         bootstrap=bootstrap,
+                         rf_bootstrap=rf_bootstrap,
                          max_features=max_features)
 
     impact_counts = np.zeros(shape=X.shape[1])
@@ -308,7 +341,7 @@ def importances_pvalues(X: pd.DataFrame,
                                             min_samples_leaf=min_samples_leaf,
                                             cat_min_samples_leaf=cat_min_samples_leaf,
                                             min_slopes_per_x=min_slopes_per_x,
-                                            bootstrap=bootstrap,
+                                            rf_bootstrap=rf_bootstrap,
                                             max_features=max_features)
         # print("Shuffled impacts\n",impacts)
         # print("Shuffled importances\n",importances)
@@ -333,7 +366,7 @@ def pdp_importances(model,X,numx=30,normalize=True):
     Use standard PDP then mean center and take average magnitude as impact. Return
     an importance dataframe
     """
-    pdpxs,pdpys = friedman_partial_dependences(model, X, numx=numx, mean_centered=True)
+    pdpxs,pdpys = ice.friedman_partial_dependences(model, X, numx=numx, mean_centered=True)
     I = pd.DataFrame(data={'Feature': X.columns})
     I = I.set_index('Feature')
     Ivals = np.mean(np.abs(pdpys), axis=1)
@@ -343,7 +376,6 @@ def pdp_importances(model,X,numx=30,normalize=True):
     I['Importance'] = Ivals
 
     return I.sort_values('Importance', ascending=False)
-
 
 
 class ImpViz:
@@ -375,7 +407,8 @@ class ImpViz:
 
 def plot_importances(df_importances,
                      xlabel=None,
-                     sortby: ('Impact', 'Importance') = 'Impact',
+                     sortby: ('Impact', 'Importance') = 'Importance',
+                     highlight_high_stddev=2.0,
                      yrot=0,
                      title_fontsize=11,
                      label_fontsize=10,
@@ -436,9 +469,11 @@ def plot_importances(df_importances,
     """
     GREY = '#444443'
     I = df_importances
-    if sortby not in I.columns.values:
-        sortby = 'Importance'
-    I = I.sort_values(sortby, ascending=True) # we're drawing in reverse order
+    if isinstance(I, pd.DataFrame):
+        if sortby not in I.columns.values:
+            sortby = 'Importance'
+        I = Isortby(I, sortby, stddev_threshold=highlight_high_stddev, ascending=True) # we plot in reverse order
+
     n_features = len(I)
     left_padding = 0.01
 

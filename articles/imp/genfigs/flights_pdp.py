@@ -17,56 +17,90 @@ import matplotlib.pyplot as plt
 
 np.set_printoptions(precision=2, suppress=True, linewidth=300)#, threshold=1e10)
 
+np.random.seed(2)
 
-#np.random.seed(999)
+n=20_000
+X, y, df_flights = load_flights(n=n)
+#df_flights = pd.read_csv("flights20k.csv")
+# X, y = df_flights.drop('ARRIVAL_DELAY', axis=1), df_flights['ARRIVAL_DELAY']
 
-n=15_000
-#r = (500,600)
-# r = (0,500)
-_, _, df_flights = load_flights(n=n)
-# df_flights = df_flights[df_flights['FLIGHT_NUMBER']>r[0]] # look at subset of flight numbers
-# df_flights = df_flights[df_flights['FLIGHT_NUMBER']<r[1]] # look at subset of flight numbers
-X, y = df_flights.drop('ARRIVAL_DELAY', axis=1), df_flights['ARRIVAL_DELAY']
+# df_flights = df_flights[df_flights['SCHEDULED_DEPARTURE']>=500] # first schedule flight is 5AM
 
 print(f"Avg arrival delay {df_flights['ARRIVAL_DELAY'].mean()}")
 
-I = importances(X, y,
-                catcolnames={'AIRLINE',
-                             'ORIGIN_AIRPORT',
-                             'DESTINATION_AIRPORT',
-                             'FLIGHT_NUMBER',
-                             'DAY_OF_WEEK'},
-                n_trials=2,
-                normalize=False,
-                n_jobs=1,
-                pvalues=True,
-                pvalues_n_trials=10,
-                min_samples_leaf=10,
-                cat_min_samples_leaf=3,
-                sortby='Rank')
-print(I)
+plt.scatter(X['DEPARTURE_TIME'], df_flights['ARRIVAL_DELAY'], s=1, alpha=.5)
+plt.plot([0,np.max(X['DEPARTURE_TIME'])], [0,0], c='k', lw=.5)
+plt.xlabel("DEPARTURE_TIME")
+plt.ylabel("ARRIVAL_DELAY")
+plt.show()
 
-col = 'SCHEDULED_DEPARTURE'
-col = 'TAXI_OUT'
+plt.scatter(X['SCHEDULED_DEPARTURE'], df_flights['ARRIVAL_DELAY'], s=1, alpha=.5)
+plt.plot([0,np.max(X['SCHEDULED_DEPARTURE'])], [0,0], c='k', lw=.5)
+plt.xlabel("SCHEDULED_DEPARTURE")
+plt.ylabel("ARRIVAL_DELAY")
+plt.show()
+
+plt.bar(X['DEPARTURE_TIME'], df_flights['ARRIVAL_DELAY'])
+plt.show()
+plt.bar(X['SCHEDULED_DEPARTURE'], df_flights['ARRIVAL_DELAY'])
+plt.show()
+
+# I = importances(X, y,
+#                 catcolnames={'AIRLINE',
+#                              'ORIGIN_AIRPORT',
+#                              'DESTINATION_AIRPORT',
+#                              'FLIGHT_NUMBER',
+#                              'DAY_OF_WEEK'},
+#                 n_trials=5,
+#                 # normalize=False,
+#
+#                 bootstrap=True,
+#                 # bootstrap=False,
+#                 # subsample_size=.7,
+#
+#                 # n_jobs=1,
+#                 min_samples_leaf=15,
+#                 cat_min_samples_leaf=3
+#                 )
+# print(I)
+
 col = 'ORIGIN_AIRPORT'
 col = 'FLIGHT_NUMBER'
+col = 'SCHEDULED_DEPARTURE'
+col = 'TAXI_OUT'
 col = 'DEPARTURE_TIME'
 
-# plot_stratpd(X, y, colname=col, targetname='delay',
+plot_stratpd(X, y, colname=col, targetname='delay',
+             show_slope_lines=False,
+             min_samples_leaf=30,
+             n_trials=5,
+             show_impact=False,
+             show_x_counts=True,
+             # min_slopes_per_x=1
+             )
+plt.show()
+exit()
+
+# plot_stratpd_gridsearch(X, y, colname=col, targetname='delay',
 #              show_slope_lines=False,
-#              min_samples_leaf=10,
+#              min_samples_leaf_values=(10,20,30),
+#              min_slopes_per_x_values=(5,10,15,20),
+#              # min_samples_leaf=10,
 #              n_trials=5,
 #              show_impact=False,
 #              show_x_counts=True,
-#              min_slopes_per_x=1
+#              # min_slopes_per_x=1
 #              )
 # plt.show()
 
 # col = 'FLIGHT_NUMBER'
 # plot_catstratpd(X, y, colname=col, targetname='delay',
+#                 leftmost_shifted_to_zero=False,
+#                 min_y_shifted_to_zero=False,
 #                 min_samples_leaf=2,
-#                 n_trials=5,
+#                 n_trials=10,
 #                 show_xticks=False,
+#                 show_all_pdp=False,
 #                 show_impact=True,
 #                 yrange=(-150,150))
 # plt.tight_layout()

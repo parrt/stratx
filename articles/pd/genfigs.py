@@ -35,14 +35,8 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn import svm
 from sklearn.datasets import load_boston
 
-from articles.pd.support import load_rent, load_bulldozer, load_flights, \
-                                toy_weather_data, toy_weight_data, \
-                                df_cat_to_catcode, df_split_dates, \
-                                df_string_to_cat, synthetic_interaction_data,\
-                                tune_RF
-from stratx.partdep import plot_stratpd, plot_catstratpd, \
-                           plot_stratpd_gridsearch, plot_catstratpd_gridsearch, \
-                           marginal_plot_, partial_dependence
+import support
+import stratx.partdep as partdep
 from stratx.ice import predict_ice, predict_catice, plot_ice, plot_catice, friedman_partial_dependence
 import inspect
 import matplotlib.patches as mpatches
@@ -94,7 +88,7 @@ def savefig(filename, pad=0):
 def rent():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     np.random.seed(1)  # pick seed for reproducible article images
-    X,y = load_rent(n=10_000)
+    X,y = support.load_rent(n=10_000)
     df_rent = X.copy()
     df_rent['price'] = y
     colname = 'bedrooms'
@@ -106,7 +100,7 @@ def rent():
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
     if TUNE_RF:
-        rf, bestparams = tune_RF(X, y)   # does CV on entire data set to tune
+        rf, bestparams = support.tune_RF(X, y)   # does CV on entire data set to tune
         # bedrooms
         # RF best: {'max_features': 0.3, 'min_samples_leaf': 1, 'n_estimators': 125}
         # validation R^2 0.7873724127323822
@@ -219,7 +213,7 @@ def rent():
     plot_ice(ice, colname, 'price', alpha=.3, ax=axes[4], show_ylabel=True)
 
     pdpx, pdpy, ignored = \
-        plot_stratpd(X, y, colname, 'price', ax=axes[5],
+        partdep.plot_stratpd(X, y, colname, 'price', ax=axes[5],
                      pdp_marker_size=6,
                      show_x_counts=False,
                      hide_top_right_axes=False,
@@ -252,14 +246,14 @@ def plot_with_noise_col(df, colname):
     # STRATPD ON ROW 1
     X = df[features]
     y = df['price']
-    plot_stratpd(X, y, colname, 'price', ax=axes[0, 0], slope_line_alpha=.15, show_xlabel=True,
+    partdep.plot_stratpd(X, y, colname, 'price', ax=axes[0, 0], slope_line_alpha=.15, show_xlabel=True,
                  show_ylabel=False)
     axes[0, 0].set_ylim(-1000, 5000)
     axes[0, 0].set_title(f"StratPD")
 
     X = df[features_with_noise]
     y = df['price']
-    plot_stratpd(X, y, colname, 'price', ax=axes[0, 1], slope_line_alpha=.15,
+    partdep.plot_stratpd(X, y, colname, 'price', ax=axes[0, 1], slope_line_alpha=.15,
                  show_ylabel=False)
     axes[0, 1].set_ylim(-1000, 5000)
     axes[0, 1].set_title(f"StratPD w/{type} col")
@@ -316,7 +310,7 @@ def plot_with_dup_col(df, colname, min_samples_leaf):
     X = df[features]
     y = df['price']
     print(f"shape is {X.shape}")
-    plot_stratpd(X, y, colname, 'price', ax=axes[0, 0], slope_line_alpha=.15,
+    partdep.plot_stratpd(X, y, colname, 'price', ax=axes[0, 0], slope_line_alpha=.15,
                  show_xlabel=True,
                  min_samples_leaf=min_samples_leaf,
                  show_ylabel=True,
@@ -327,13 +321,13 @@ def plot_with_dup_col(df, colname, min_samples_leaf):
     X = df[features_with_dup]
     y = df['price']
     print(f"shape with dup is {X.shape}")
-    plot_stratpd(X, y, colname, 'price', ax=axes[0, 1], slope_line_alpha=.15, show_ylabel=False,
+    partdep.plot_stratpd(X, y, colname, 'price', ax=axes[0, 1], slope_line_alpha=.15, show_ylabel=False,
                  min_samples_leaf=min_samples_leaf,
                  verbose=verbose)
     axes[0, 1].set_ylim(-1000, 5000)
     axes[0, 1].set_title(f"StratPD w/{type} col")
 
-    plot_stratpd(X, y, colname, 'price', ax=axes[0, 2], slope_line_alpha=.15, show_xlabel=True,
+    partdep.plot_stratpd(X, y, colname, 'price', ax=axes[0, 2], slope_line_alpha=.15, show_xlabel=True,
                  min_samples_leaf=min_samples_leaf,
                  show_ylabel=False,
                  n_trees=15,
@@ -388,7 +382,7 @@ def plot_with_dup_col(df, colname, min_samples_leaf):
 def rent_ntrees():
     np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    X, y = load_rent(n=10_000)
+    X, y = support.load_rent(n=10_000)
 
     trees = [1, 5, 10, 30]
 
@@ -397,7 +391,7 @@ def rent_ntrees():
     def onevar(colname, row, yrange=None):
         alphas = [.1,.08,.05,.04]
         for i, t in enumerate(trees):
-            plot_stratpd(X, y, colname, 'price', ax=axes[row, i], slope_line_alpha=alphas[i],
+            partdep.plot_stratpd(X, y, colname, 'price', ax=axes[row, i], slope_line_alpha=alphas[i],
                          # min_samples_leaf=20,
                          yrange=yrange,
                          supervised=supervised,
@@ -437,7 +431,7 @@ def meta_boston():
     y = df['MEDV']
 
 
-    plot_stratpd_gridsearch(X, y, 'AGE', 'MEDV',
+    partdep.plot_stratpd_gridsearch(X, y, 'AGE', 'MEDV',
                             show_slope_lines=True,
                             min_samples_leaf_values=[2,5,10,20,30],
                             yrange=(-10,10))
@@ -464,12 +458,12 @@ def plot_meta_multivar(X, y, colnames, targetname, nbins, yranges=None):
 
     row = 0
     for i, colname in enumerate(colnames):
-        marginal_plot_(X, y, colname, targetname, ax=axes[row, 0])
+        partdep.marginal_plot_(X, y, colname, targetname, ax=axes[row, 0])
         col = 2
         for msl in min_samples_leaf_values:
             print(
                 f"---------- min_samples_leaf={msl}, nbins={nbins:.2f} ----------- ")
-            plot_stratpd(X, y, colname, targetname, ax=axes[row, col],
+            partdep.plot_stratpd(X, y, colname, targetname, ax=axes[row, col],
                          min_samples_leaf=msl,
                          yrange=yranges[i],
                          n_trees=1)
@@ -491,28 +485,28 @@ def plot_meta_multivar(X, y, colnames, targetname, nbins, yranges=None):
 def unsup_rent():
     np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    X, y = load_rent(n=10_000)
+    X, y = support.load_rent(n=10_000)
 
     fig, axes = plt.subplots(4, 2, figsize=(4, 8))
 
-    plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 0], yrange=(-500,4000),
+    partdep.plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 0], yrange=(-500,4000),
                  slope_line_alpha=.2, supervised=False)
-    plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 1], yrange=(-500,4000),
+    partdep.plot_stratpd(X, y, 'bedrooms', 'price', ax=axes[0, 1], yrange=(-500,4000),
                  slope_line_alpha=.2, supervised=True)
 
-    plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 0], yrange=(-500,4000),
+    partdep.plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 0], yrange=(-500,4000),
                  slope_line_alpha=.2, supervised=False)
-    plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 1], yrange=(-500,4000),
+    partdep.plot_stratpd(X, y, 'bathrooms', 'price', ax=axes[1, 1], yrange=(-500,4000),
                  slope_line_alpha=.2, supervised=True)
 
-    plot_stratpd(X, y, 'latitude', 'price', ax=axes[2, 0], yrange=(-500,2000),
+    partdep.plot_stratpd(X, y, 'latitude', 'price', ax=axes[2, 0], yrange=(-500,2000),
                  slope_line_alpha=.2, supervised=False, verbose=True)
-    plot_stratpd(X, y, 'latitude', 'price', ax=axes[2, 1], yrange=(-500,2000),
+    partdep.plot_stratpd(X, y, 'latitude', 'price', ax=axes[2, 1], yrange=(-500,2000),
                  slope_line_alpha=.2, supervised=True, verbose=True)
 
-    plot_stratpd(X, y, 'longitude', 'price', ax=axes[3, 0], yrange=(-500,500),
+    partdep.plot_stratpd(X, y, 'longitude', 'price', ax=axes[3, 0], yrange=(-500,500),
                  slope_line_alpha=.2, supervised=False)
-    plot_stratpd(X, y, 'longitude', 'price', ax=axes[3, 1], yrange=(-500,500),
+    partdep.plot_stratpd(X, y, 'longitude', 'price', ax=axes[3, 1], yrange=(-500,500),
                  slope_line_alpha=.2, supervised=True)
 
     axes[0, 0].set_title("Unsupervised")
@@ -529,15 +523,15 @@ def weather():
     np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
     TUNE_RF = False
-    df_raw = toy_weather_data()
+    df_raw = support.toy_weather_data()
     df = df_raw.copy()
 
-    df_string_to_cat(df)
+    support.df_string_to_cat(df)
     names = np.unique(df['state'])
     catnames = OrderedDict()
     for i,v in enumerate(names):
         catnames[i+1] = v
-    df_cat_to_catcode(df)
+    support.df_cat_to_catcode(df)
 
     X = df.drop('temperature', axis=1)
     y = df['temperature']
@@ -545,7 +539,7 @@ def weather():
     # cats = np.insert(cats, 0, None) # prepend a None for catcode 0
 
     if TUNE_RF:
-        rf, bestparams = tune_RF(X, y)
+        rf, bestparams = support.tune_RF(X, y)
         # RF best: {'max_features': 0.9, 'min_samples_leaf': 5, 'n_estimators': 150}
         # validation R^2 0.9500072628270099
     else:
@@ -574,7 +568,7 @@ def weather():
     savefig(f"dayofyear_vs_temp")
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    plot_stratpd(X, y, 'dayofyear', 'temperature', ax=ax,
+    partdep.plot_stratpd(X, y, 'dayofyear', 'temperature', ax=ax,
                  show_x_counts=False,
                  yrange=(-10, 10),
                  pdp_marker_size=2, slope_line_alpha=.5, n_trials=1)
@@ -584,7 +578,7 @@ def weather():
     plt.close()
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    plot_catstratpd(X, y, 'state', 'temperature', catnames=catnames,
+    partdep.plot_catstratpd(X, y, 'state', 'temperature', catnames=catnames,
                     show_x_counts=False,
                     # min_samples_leaf=30,
                     min_y_shifted_to_zero=True,
@@ -633,7 +627,7 @@ def meta_weather():
     nyears = 5
     years = []
     for y in range(1980, 1980 + nyears):
-        df_ = toy_weather_data()
+        df_ = support.toy_weather_data()
         df_['year'] = y
         years.append(df_)
 
@@ -650,7 +644,7 @@ def meta_weather():
     X = df.drop('temperature', axis=1)
     y = df['temperature']
 
-    plot_catstratpd_gridsearch(X, y, 'state', 'temp',
+    partdep.plot_catstratpd_gridsearch(X, y, 'state', 'temp',
                                min_samples_leaf_values=[2, 5, 20, 40, 60],
                                catnames=catnames,
                                yrange=(-5,60),
@@ -658,7 +652,7 @@ def meta_weather():
                                )
     savefig(f"state_temp_meta")
 
-    plot_stratpd_gridsearch(X, y, 'dayofyear', 'temp',
+    partdep.plot_stratpd_gridsearch(X, y, 'dayofyear', 'temp',
                             show_slope_lines=True,
                             min_samples_leaf_values=[2,5,10,20,30],
                             yrange=(-10,10),
@@ -669,12 +663,12 @@ def meta_weather():
 def weight():
     np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    X, y, df_raw, eqn = toy_weight_data(2000)
+    X, y, df_raw, eqn = support.toy_weight_data(2000)
 
     TUNE_RF = False
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    plot_stratpd(X, y, 'education', 'weight', ax=ax,
+    partdep.plot_stratpd(X, y, 'education', 'weight', ax=ax,
                  show_x_counts=False,
                  pdp_marker_size=5,
                  yrange=(-12, 0.05), slope_line_alpha=.1, show_ylabel=True)
@@ -685,7 +679,7 @@ def weight():
     savefig(f"education_vs_weight_stratpd")
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
-    plot_stratpd(X, y, 'height', 'weight', ax=ax,
+    partdep.plot_stratpd(X, y, 'height', 'weight', ax=ax,
                  pdp_marker_size=.2,
                  show_x_counts=False,
                  yrange=(0, 160), show_ylabel=False)
@@ -695,7 +689,7 @@ def weight():
     savefig(f"height_vs_weight_stratpd")
 
     fig, ax = plt.subplots(1, 1, figsize=(1.3,2))
-    plot_catstratpd(X, y, 'sex', 'weight', ax=ax,
+    partdep.plot_catstratpd(X, y, 'sex', 'weight', ax=ax,
                     show_x_counts=False,
                     catnames={0:'M',1:'F'},
                     yrange=(-1, 35),
@@ -704,7 +698,7 @@ def weight():
     savefig(f"sex_vs_weight_stratpd")
 
     fig, ax = plt.subplots(1, 1, figsize=(1.5,1.8))
-    plot_catstratpd(X, y, 'pregnant', 'weight', ax=ax,
+    partdep.plot_catstratpd(X, y, 'pregnant', 'weight', ax=ax,
                     show_x_counts=False,
                     catnames={0:False, 1:True},
                     yrange=(-1, 45),
@@ -713,7 +707,7 @@ def weight():
     savefig(f"pregnant_vs_weight_stratpd")
 
     if TUNE_RF:
-        rf, bestparams = tune_RF(X, y)
+        rf, bestparams = support.tune_RF(X, y)
         # RF best: {'max_features': 0.9, 'min_samples_leaf': 1, 'n_estimators': 200}
         # validation R^2 0.9996343699640691
     else:
@@ -767,15 +761,15 @@ def shap_pregnant():
     np.random.seed(1)  # pick seed for reproducible article images
     n = 2000
     shap_test_size = 300
-    X, y, df_raw, eqn = toy_weight_data(n=n)
+    X, y, df_raw, eqn = support.toy_weight_data(n=n)
     df = df_raw.copy()
-    df_string_to_cat(df)
-    df_cat_to_catcode(df)
+    support.df_string_to_cat(df)
+    support.df_cat_to_catcode(df)
     df['pregnant'] = df['pregnant'].astype(int)
     X = df.drop('weight', axis=1)
     y = df['weight']
 
-    # parameters from tune_RF() called in weight()
+    # parameters from support.tune_RF() called in weight()
     rf = RandomForestRegressor(n_estimators=200, min_samples_leaf=1,
                                max_features=0.9,
                                oob_score=True)
@@ -813,13 +807,13 @@ def shap_weight(feature_perturbation, twin=False):
     shap_test_size = 2000
     X, y, df_raw, eqn = toy_weight_data(n=n)
     df = df_raw.copy()
-    df_string_to_cat(df)
-    df_cat_to_catcode(df)
+    support.df_string_to_cat(df)
+    support.df_cat_to_catcode(df)
     df['pregnant'] = df['pregnant'].astype(int)
     X = df.drop('weight', axis=1)
     y = df['weight']
 
-    # parameters from tune_RF() called in weight()
+    # parameters from support.tune_RF() called in weight()
     rf = RandomForestRegressor(n_estimators=200, min_samples_leaf=1,
                                max_features=0.9,
                                oob_score=True)
@@ -911,7 +905,7 @@ def saledayofweek():
     n = 10_000
     shap_test_size = 1000
     TUNE_RF = False
-    X, y = load_bulldozer(n=n)
+    X, y = support.load_bulldozer(n=n)
 
     avgprice = pd.concat([X,y], axis=1).groupby('saledayofweek')[['SalePrice']].mean()
     avgprice = avgprice.reset_index()['SalePrice']
@@ -933,7 +927,7 @@ def saledayofweek():
     savefig(f"bulldozer_saledayofweek_marginal")
 
     if TUNE_RF:
-        rf, _ = tune_RF(X, y)
+        rf, _ = support.tune_RF(X, y)
         # RF best: {'max_features': 0.9, 'min_samples_leaf': 1, 'n_estimators': 150}
         # validation R^2 0.8001628465688546
     else:
@@ -969,7 +963,7 @@ def saledayofweek():
     savefig(f"bulldozer_saledayofweek_shap")
 
     fig, ax = plt.subplots(1, 1, figsize=figsize2)
-    plot_catstratpd(X, y, colname='saledayofweek', targetname='SalePrice',
+    partdep.plot_catstratpd(X, y, colname='saledayofweek', targetname='SalePrice',
                     catnames={0:'M',1:'T',2:'W',3:'R',4:'F',5:'S',6:'S'},
                  n_trials=1,
                  bootstrap=True,
@@ -1021,7 +1015,7 @@ def productsize():
     savefig(f"bulldozer_ProductSize_marginal")
 
     if TUNE_RF:
-        rf, _ = tune_RF(X, y)
+        rf, _ = support.tune_RF(X, y)
         # RF best: {'max_features': 0.9, 'min_samples_leaf': 1, 'n_estimators': 150}
         # validation R^2 0.8001628465688546
     else:
@@ -1056,7 +1050,7 @@ def productsize():
     savefig(f"bulldozer_ProductSize_shap")
 
     fig, ax = plt.subplots(1, 1, figsize=figsize2)
-    plot_stratpd(X, y, colname='ProductSize', targetname='SalePrice',
+    partdep.plot_stratpd(X, y, colname='ProductSize', targetname='SalePrice',
                  n_trials=10,
                  bootstrap=True,
                  show_slope_lines=False,
@@ -1090,7 +1084,7 @@ def saledayofyear():
     n = 10_000
     shap_test_size = 1000
     TUNE_RF = False
-    X, y = load_bulldozer(n=n)
+    X, y = support.load_bulldozer(n=n)
 
     fig, ax = plt.subplots(1, 1, figsize=figsize2)
     ax.scatter(X['saledayofyear'], y, s=3, alpha=.1, c='#1E88E5')
@@ -1107,7 +1101,7 @@ def saledayofyear():
     savefig(f"bulldozer_saledayofyear_marginal")
 
     if TUNE_RF:
-        rf, _ = tune_RF(X, y)
+        rf, _ = support.tune_RF(X, y)
         # RF best: {'max_features': 0.9, 'min_samples_leaf': 1, 'n_estimators': 150}
         # validation R^2 0.8001628465688546
     else:
@@ -1143,7 +1137,7 @@ def saledayofyear():
     savefig(f"bulldozer_saledayofyear_shap")
 
     fig, ax = plt.subplots(1, 1, figsize=figsize2)
-    plot_stratpd(X, y, colname='saledayofyear', targetname='SalePrice',
+    partdep.plot_stratpd(X, y, colname='saledayofyear', targetname='SalePrice',
                  n_trials=10,
                  bootstrap=True,
                  show_all_pdp=False,
@@ -1185,7 +1179,7 @@ def yearmade():
     y = df['SalePrice']
 
     if TUNE_RF:
-        rf, _ = tune_RF(X, y)
+        rf, _ = support.tune_RF(X, y)
         # RF best: {'max_features': 0.9, 'min_samples_leaf': 1, 'n_estimators': 150}
         # validation R^2 0.8001628465688546
     else:
@@ -1235,7 +1229,7 @@ def yearmade():
     savefig(f"bulldozer_YearMade_shap")
 
     fig, ax = plt.subplots(1, 1, figsize=figsize2)
-    plot_stratpd(X, y, colname='YearMade', targetname='SalePrice',
+    partdep.plot_stratpd(X, y, colname='YearMade', targetname='SalePrice',
                  n_trials=10,
                  bootstrap=True,
                  show_slope_lines=False,
@@ -1279,7 +1273,7 @@ def MachineHours():
     y = df['SalePrice']
 
     if TUNE_RF:
-        rf, _ = tune_RF(X, y)
+        rf, _ = support.tune_RF(X, y)
         # RF best: {'max_features': 0.9, 'min_samples_leaf': 1, 'n_estimators': 150}
         # validation R^2 0.8001628465688546
     else:
@@ -1331,7 +1325,7 @@ def MachineHours():
 
     # STRATPD
     fig, ax = plt.subplots(1, 1, figsize=figsize2)
-    plot_stratpd(X, y, colname='MachineHours', targetname='SalePrice',
+    partdep.plot_stratpd(X, y, colname='MachineHours', targetname='SalePrice',
                  n_trials=10,
                  bootstrap=True,
                  show_all_pdp=False,
@@ -1371,10 +1365,10 @@ def MachineHours():
 def unsup_yearmade():
     np.random.seed(1)  # pick seed for reproducible article images
     n = 10_000
-    X, y = load_bulldozer(n=n)
+    X, y = support.load_bulldozer(n=n)
 
     fig, ax = plt.subplots(1, 1, figsize=figsize2)
-    plot_stratpd(X, y, colname='YearMade', targetname='SalePrice',
+    partdep.plot_stratpd(X, y, colname='YearMade', targetname='SalePrice',
                  n_trials=1,
                  bootstrap=True,
                  show_slope_lines=False,
@@ -1396,27 +1390,27 @@ def unsup_yearmade():
 def unsup_weight():
     np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    X, y, df_raw, eqn = toy_weight_data(2000)
+    X, y, df_raw, eqn = support.toy_weight_data(2000)
     df = df_raw.copy()
-    catencoders = df_string_to_cat(df)
-    df_cat_to_catcode(df)
+    catencoders = support.df_string_to_cat(df)
+    support.df_cat_to_catcode(df)
     df['pregnant'] = df['pregnant'].astype(int)
     X = df.drop('weight', axis=1)
     y = df['weight']
 
     fig, axes = plt.subplots(2, 2, figsize=(4, 4))
-    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 0],
+    partdep.plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 0],
                  show_x_counts=False,
                  yrange=(-13, 0), slope_line_alpha=.1, supervised=False)
-    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 1],
+    partdep.plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 1],
                  show_x_counts=False,
                  yrange=(-13, 0), slope_line_alpha=.1, supervised=True)
 
-    plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 0],
+    partdep.plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 0],
                     show_x_counts=False,
                     catnames=df_raw['pregnant'].unique(),
                     yrange=(-5, 45))
-    plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 1],
+    partdep.plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 1],
                     show_x_counts=False,
                     catnames=df_raw['pregnant'].unique(),
                     yrange=(-5, 45))
@@ -1434,10 +1428,10 @@ def unsup_weight():
 def weight_ntrees():
     np.random.seed(1)  # pick seed for reproducible article images
     print(f"----------- {inspect.stack()[0][3]} -----------")
-    X, y, df_raw, eqn = toy_weight_data(1000)
+    X, y, df_raw, eqn = support.toy_weight_data(1000)
     df = df_raw.copy()
-    catencoders = df_string_to_cat(df)
-    df_cat_to_catcode(df)
+    catencoders = support.df_string_to_cat(df)
+    support.df_cat_to_catcode(df)
     df['pregnant'] = df['pregnant'].astype(int)
     X = df.drop('weight', axis=1)
     y = df['weight']
@@ -1452,36 +1446,36 @@ def weight_ntrees():
     for i in range(0, 4):
         axes[0, i].set_title(f"{trees[i]} trees")
 
-    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 0],
+    partdep.plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 0],
                  min_samples_leaf=5,
                  yrange=(-12, 0), slope_line_alpha=.1, pdp_marker_size=10, show_ylabel=True,
                  n_trees=1, max_features=1.0, bootstrap=False)
-    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 1],
+    partdep.plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 1],
                  min_samples_leaf=5,
                  yrange=(-12, 0), slope_line_alpha=.1, pdp_marker_size=10, show_ylabel=False,
                  n_trees=5, max_features='auto', bootstrap=True)
-    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 2],
+    partdep.plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 2],
                  min_samples_leaf=5,
                  yrange=(-12, 0), slope_line_alpha=.08, pdp_marker_size=10, show_ylabel=False,
                  n_trees=10, max_features='auto', bootstrap=True)
-    plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 3],
+    partdep.plot_stratpd(X, y, 'education', 'weight', ax=axes[0, 3],
                  min_samples_leaf=5,
                  yrange=(-12, 0), slope_line_alpha=.05, pdp_marker_size=10, show_ylabel=False,
                  n_trees=30, max_features='auto', bootstrap=True)
 
-    plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 0],
+    partdep.plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 0],
                     catnames={0:False, 1:True}, show_ylabel=True,
                     yrange=(0, 35),
                     n_trees=1, max_features=1.0, bootstrap=False)
-    plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 1],
+    partdep.plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 1],
                     catnames={0:False, 1:True}, show_ylabel=False,
                     yrange=(0, 35),
                     n_trees=5, max_features='auto', bootstrap=True)
-    plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 2],
+    partdep.plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 2],
                     catnames={0:False, 1:True}, show_ylabel=False,
                     yrange=(0, 35),
                     n_trees=10, max_features='auto', bootstrap=True)
-    plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 3],
+    partdep.plot_catstratpd(X, y, 'pregnant', 'weight', ax=axes[1, 3],
                     catnames={0:False, 1:True}, show_ylabel=False,
                     yrange=(0, 35),
                     n_trees=30, max_features='auto', bootstrap=True)
@@ -1495,19 +1489,19 @@ def meta_weight():
     print(f"----------- {inspect.stack()[0][3]} -----------")
     X, y, df_raw, eqn = toy_weight_data(1000)
     df = df_raw.copy()
-    catencoders = df_string_to_cat(df)
-    df_cat_to_catcode(df)
+    catencoders = support.df_string_to_cat(df)
+    support.df_cat_to_catcode(df)
     df['pregnant'] = df['pregnant'].astype(int)
     X = df.drop('weight', axis=1)
     y = df['weight']
 
-    plot_stratpd_gridsearch(X, y, colname='education', targetname='weight',
+    partdep.plot_stratpd_gridsearch(X, y, colname='education', targetname='weight',
                             show_slope_lines=True,
                             xrange=(10,18),
                             yrange=(-12,0))
     savefig("education_weight_meta")
 
-    plot_stratpd_gridsearch(X, y, colname='height', targetname='weight', yrange=(0,150),
+    partdep.plot_stratpd_gridsearch(X, y, colname='height', targetname='weight', yrange=(0,150),
                             show_slope_lines=True)
     savefig("height_weight_meta")
 
@@ -1537,7 +1531,7 @@ def noise():
         df = noisy_poly_data(n=n, sd=sd)
         X = df.drop('y', axis=1)
         y = df['y']
-        plot_stratpd(X, y, 'x1', 'y',
+        partdep.plot_stratpd(X, y, 'x1', 'y',
                      show_ylabel=False,
                      pdp_marker_size=1,
                      show_x_counts=False,
@@ -1575,7 +1569,7 @@ def meta_noise():
                 show_xlabel = False
             print(f"------------------- noise {sd}, SIZE {s} --------------------")
             if col > 1: axes[row, col].get_yaxis().set_visible(False)
-            plot_stratpd(X, y, 'x1', 'y', ax=axes[row, col],
+            partdep.plot_stratpd(X, y, 'x1', 'y', ax=axes[row, col],
                          show_x_counts=False,
                          min_samples_leaf=s,
                          yrange=(-3.5, .5),
@@ -1642,7 +1636,7 @@ def bigX():
     X = df.drop('y', axis=1)
     y = df['y']
 
-    # plot_stratpd_gridsearch(X, y, 'x2', 'y',
+    # partdep.plot_stratpd_gridsearch(X, y, 'x2', 'y',
     #                         min_samples_leaf_values=[2,5,10,20,30],
     #                         #                            nbins_values=[1,3,5,6,10],
     #                         yrange=(-4,4))
@@ -1662,12 +1656,12 @@ def bigX():
     # random plot doesn't mean that x2's net effect is nonzero. We are trying to
     # strip away x1/x3's effect upon y. When we do, x2 has no effect on y.
     # Ask what is net effect at every x2? 0.
-    plot_stratpd(X, y, 'x2', 'y', ax=axes[0, 0], yrange=(-4, 4),
+    partdep.plot_stratpd(X, y, 'x2', 'y', ax=axes[0, 0], yrange=(-4, 4),
                  min_samples_leaf=5,
                  pdp_marker_size=2)
 
     # Partial deriv wrt x3 of 1_x3>=0 is 0 everywhere so result must be 0
-    plot_stratpd(X, y, 'x3', 'y', ax=axes[1, 0], yrange=(-4, 4),
+    partdep.plot_stratpd(X, y, 'x3', 'y', ax=axes[1, 0], yrange=(-4, 4),
                  min_samples_leaf=5,
                  pdp_marker_size=2)
 
@@ -1715,7 +1709,7 @@ def unsup_boston():
     axes[2].set_title("Supervised StratPD")
     axes[3].set_title("FPD/ICE")
 
-    plot_stratpd(X, y, 'AGE', 'MEDV', ax=axes[1], yrange=(-20, 20),
+    partdep.plot_stratpd(X, y, 'AGE', 'MEDV', ax=axes[1], yrange=(-20, 20),
                  n_trees=20,
                  bootstrap=True,
                  # min_samples_leaf=10,
@@ -1723,7 +1717,7 @@ def unsup_boston():
                  supervised=False, show_ylabel=False,
                  verbose=True,
                  slope_line_alpha=.1)
-    plot_stratpd(X, y, 'AGE', 'MEDV', ax=axes[2], yrange=(-20, 20),
+    partdep.plot_stratpd(X, y, 'AGE', 'MEDV', ax=axes[2], yrange=(-20, 20),
                  min_samples_leaf=5,
                  n_trees=1,
                  supervised=True, show_ylabel=False)
@@ -1789,10 +1783,10 @@ def cars():
 
     lm_plot(X, y, 'weight', 'mpg', ax=axes[1, 0])
 
-    plot_stratpd(X, y, 'horsepower', 'mpg', ax=axes[0, 1],
+    partdep.plot_stratpd(X, y, 'horsepower', 'mpg', ax=axes[0, 1],
                  min_samples_leaf=10,
                  xrange=(45, 235), yrange=(-20, 20), show_ylabel=False)
-    plot_stratpd(X, y, 'weight', 'mpg', ax=axes[1, 1],
+    partdep.plot_stratpd(X, y, 'weight', 'mpg', ax=axes[1, 1],
                  min_samples_leaf=10,
                  xrange=(1600, 5200), yrange=(-20, 20), show_ylabel=False)
 
@@ -1836,7 +1830,7 @@ def meta_cars():
     X = df_cars[['horsepower', 'weight']]
     y = df_cars['mpg']
 
-    plot_stratpd_gridsearch(X, y, colname='horsepower', targetname='mpg',
+    partdep.plot_stratpd_gridsearch(X, y, colname='horsepower', targetname='mpg',
                             show_slope_lines=True,
                             min_samples_leaf_values=[2,5,10,20,30],
                             nbins_values=[1,2,3,4,5],
@@ -1844,7 +1838,7 @@ def meta_cars():
 
     savefig("horsepower_meta")
 
-    plot_stratpd_gridsearch(X, y, colname='weight', targetname='mpg',
+    partdep.plot_stratpd_gridsearch(X, y, colname='weight', targetname='mpg',
                             show_slope_lines=True,
                             min_samples_leaf_values=[2,5,10,20,30],
                             nbins_values=[1,2,3,4,5],
@@ -1910,7 +1904,7 @@ def multi_joint_distr():
             axes[i, j].set_xlim(0, 15)
 
     pdpx, pdpy, ignored = \
-        plot_stratpd(X, y, 'x1', 'y', ax=axes[1, 0], xrange=(0, 13),
+        partdep.plot_stratpd(X, y, 'x1', 'y', ax=axes[1, 0], xrange=(0, 13),
                      min_samples_leaf=min_samples_leaf,
                      yrange=yrange, show_xlabel=False, show_ylabel=True)
 
@@ -1920,7 +1914,7 @@ def multi_joint_distr():
     axes[1, 0].text(1, 10, f"Slope={r.coef_[0]:.2f}")
 
     pdpx, pdpy, ignored = \
-        plot_stratpd(X, y, 'x2', 'y', ax=axes[1, 1], xrange=(0, 13),
+        partdep.plot_stratpd(X, y, 'x2', 'y', ax=axes[1, 1], xrange=(0, 13),
                      # show_dx_line=True,
                      min_samples_leaf=min_samples_leaf,
                      yrange=yrange, show_xlabel=False, show_ylabel=False)
@@ -1929,7 +1923,7 @@ def multi_joint_distr():
     axes[1, 1].text(1, 10, f"Slope={r.coef_[0]:.2f}")
 
     pdpx, pdpy, ignored = \
-        plot_stratpd(X, y, 'x3', 'y', ax=axes[1, 2], xrange=(0, 13),
+        partdep.plot_stratpd(X, y, 'x3', 'y', ax=axes[1, 2], xrange=(0, 13),
                      # show_dx_line=True,
                      min_samples_leaf=min_samples_leaf,
                      yrange=yrange, show_xlabel=False, show_ylabel=False)
@@ -1938,7 +1932,7 @@ def multi_joint_distr():
     axes[1, 2].text(1, 10, f"Slope={r.coef_[0]:.2f}")
 
     pdpx, pdpy, ignored = \
-        plot_stratpd(X, y, 'x4', 'y', ax=axes[1, 3], xrange=(0, 13),
+        partdep.plot_stratpd(X, y, 'x4', 'y', ax=axes[1, 3], xrange=(0, 13),
                      # show_dx_line=True,
                      min_samples_leaf=min_samples_leaf,
                      yrange=yrange, show_xlabel=False, show_ylabel=False)
@@ -2005,7 +1999,7 @@ def multi_joint_distr():
 def interactions():
     np.random.seed(1)  # pick seed for reproducible article images
     n = 2000
-    df = synthetic_interaction_data(n)
+    df = support.synthetic_interaction_data(n)
 
     X, y = df[['x1', 'x2', 'x3']].copy(), df['y'].copy()
     X1 = X.iloc[:, 0]
@@ -2117,13 +2111,13 @@ def interactions():
     x3_patch = mpatches.Patch(color=x3_color, label='$x_3$')
     axes[2].legend(handles=[x1_patch,x2_patch,x3_patch], fontsize=12)
 
-    plot_stratpd(X, y, "x1", "y", ax=axes[3], pdp_marker_size=1,
+    partdep.plot_stratpd(X, y, "x1", "y", ax=axes[3], pdp_marker_size=1,
                  pdp_marker_color=x1_color,
                  show_x_counts=False, n_trials=1, show_slope_lines=False)
-    plot_stratpd(X, y, "x2", "y", ax=axes[3], pdp_marker_size=1,
+    partdep.plot_stratpd(X, y, "x2", "y", ax=axes[3], pdp_marker_size=1,
                  pdp_marker_color=x2_color,
                  show_x_counts=False, n_trials=1, show_slope_lines=False)
-    plot_stratpd(X, y, "x3", "y", ax=axes[3], pdp_marker_size=1,
+    partdep.plot_stratpd(X, y, "x3", "y", ax=axes[3], pdp_marker_size=1,
                  pdp_marker_color=x3_color,
                  show_x_counts=False, n_trials=1, show_slope_lines=False)
     axes[3].set_xticks([0,2,4,6,8,10])
@@ -2402,21 +2396,20 @@ if __name__ == '__main__':
     interactions()
     yearmade()
     rent()
-    rent_ntrees()
     weight()
-    shap_pregnant()
-    shap_weight(feature_perturbation='tree_path_dependent', twin=True) # more biased but faster
-    shap_weight(feature_perturbation='interventional', twin=True)      # takes 04:45 minutes
+    # shap_pregnant()
+    # shap_weight(feature_perturbation='tree_path_dependent', twin=True) # more biased but faster
+    # shap_weight(feature_perturbation='interventional', twin=True)      # takes 04:45 minutes
     weather()
     noise()
 
     # Invoke R to generate csv files then load with python to plot
 
-    gen_ale_plot_data_in_R()
-
-    ale_MachineHours()
-    ale_yearmade()
-    ale_height()
-    ale_pregnant()
-    ale_state()
-    ale_productsize()
+    # gen_ale_plot_data_in_R()
+    #
+    # ale_MachineHours()
+    # ale_yearmade()
+    # ale_height()
+    # ale_pregnant()
+    # ale_state()
+    # ale_productsize()

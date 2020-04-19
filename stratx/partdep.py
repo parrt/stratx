@@ -63,7 +63,7 @@ def leaf_samples(rf, X_not_col:np.ndarray) -> Sequence:
 def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
                        min_slopes_per_x=5,
                        parallel_jit=True,
-                       n_trees=1, min_samples_leaf=10, bootstrap=False, max_features=1.0,
+                       n_trees=1, min_samples_leaf=15, rf_bootstrap=False, max_features=1.0,
                        supervised=True,
                        verbose=False):
     """
@@ -104,7 +104,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
     if supervised:
         rf = RandomForestRegressor(n_estimators=n_trees,
                                    min_samples_leaf=min_samples_leaf,
-                                   bootstrap=bootstrap,
+                                   bootstrap=rf_bootstrap,
                                    max_features=max_features)
         rf.fit(X_not_col, y)
         if verbose:
@@ -118,7 +118,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
         X_synth, y_synth = conjure_twoclass(X)
         rf = RandomForestClassifier(n_estimators=n_trees,
                                     min_samples_leaf=min_samples_leaf,
-                                    bootstrap=bootstrap,
+                                    bootstrap=rf_bootstrap,
                                     max_features=max_features,
                                     oob_score=False)
         rf.fit(X_synth.drop(colname, axis=1), y_synth)
@@ -130,7 +130,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
               f"{len(rf.estimators_)} trees, {len(leaves)} total leaves")
 
     leaf_xranges, leaf_slopes, ignored = \
-        collect_discrete_slopes(rf, X, y, colname)
+        collect_discrete_slopes(rf, X, y, colname) # if ignored, won't have entries in leaf_* results
 
     # print('leaf_xranges', leaf_xranges)
     # print('leaf_slopes', leaf_slopes)
@@ -185,9 +185,10 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  min_slopes_per_x=5,
                  n_trials=1,
                  n_trees=1,
-                 min_samples_leaf=10,
-                 bootstrap=False, # used for both RF and n_trials>1 sampling
+                 min_samples_leaf=15,
+                 bootstrap=True,
                  subsample_size=.75,
+                 rf_bootstrap=False,
                  max_features=1.0,
                  supervised=True,
                  ax=None,
@@ -214,7 +215,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
                  pdp_line_color='black',
                  pdp_marker_color='black',
                  pdp_marker_cmap='coolwarm',
-                 impact_fill_color='#FFE091',
+                 impact_fill_color='#FEF5DC',
                  impact_pdp_color='#D73028',
                  impact_marker_size=3,
                  fontname='Arial',
@@ -241,10 +242,10 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
     :param targetname: for plotting purposes, will what is the y axis label?
 
     :param n_trials:  How many times should we run the stratpd algorithm and get PD
-                      curves, using bootstrapped or subsample sets? Default is 10.
+                      curves, using bootstrapped or subsample sets? Default is 1.
 
     :param min_samples_leaf Key hyper parameter to the stratification
-                            process. The default is 10 and usually
+                            process. The default is 15 and usually
                             works out pretty well.  It controls the
                             minimum number of observations in each
                             decision tree leaf used to stratify X other than colname.
@@ -304,6 +305,8 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
 
     all_pdpx = []
     all_pdpy = []
+    impacts = []
+    importances = []
     n = len(X)
     ignored = 0
     for i in range(n_trials):
@@ -320,13 +323,16 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
             partial_dependence(X=X_, y=y_, colname=colname,
                                min_slopes_per_x=min_slopes_per_x,
                                n_trees=n_trees, min_samples_leaf=min_samples_leaf,
-                               bootstrap=bootstrap, max_features=max_features,
+                               rf_bootstrap=rf_bootstrap, max_features=max_features,
                                supervised=supervised,
                                verbose=verbose)
         ignored += ignored_
         # print("ignored", ignored_, "pdpy", pdpy)
         all_pdpx.append(pdpx)
         all_pdpy.append(pdpy)
+        impact, importance = featimp.compute_importance(X[colname], pdpx, pdpy)
+        impacts.append(impact)
+        importances.append(importance)
 
     ignored /= n_trials # average number of x values ignored across trials
 
@@ -388,9 +394,6 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
     else:
         ax.set_ylim(min_y, max_y)
 
-    X_col = X[colname]
-    _, pdpx_counts = np.unique(X_col[np.isin(X_col, pdpx)], return_counts=True)
-
     leave_room_scaler = 1.3
     x_width = max(pdpx) - min(pdpx) + 1
     count_bar_width = x_width / len(pdpx)
@@ -398,6 +401,8 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         count_bar_width = x_width * 0.002 # don't make them so skinny they're invisible
     # print(f"x_width={x_width:.2f}, count_bar_width={count_bar_width}")
     if show_x_counts:
+        X_col = X[colname]
+        _, pdpx_counts = np.unique(X_col[np.isin(X_col, pdpx)], return_counts=True)
         ax2 = ax.twinx()
         # scale y axis so the max count height is 10% of overall chart
         ax2.set_ylim(0, max(pdpx_counts) * 1/barchart_size)
@@ -405,7 +410,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         ax2.yaxis.set_major_locator(plt.FixedLocator([0, max(pdpx_counts)]))
         ax2.bar(x=pdpx, height=pdpx_counts, width=count_bar_width,
                 facecolor=barchar_color, align='center', alpha=barchar_alpha)
-        ax2.set_ylabel(f"$x$ point count", labelpad=-12, fontsize=label_fontsize,
+        ax2.set_ylabel(f"PD $x$ point count\nignored={ignored:.0f}", labelpad=-18, fontsize=label_fontsize,
                        fontstretch='extra-condensed',
                        fontname=fontname)
         # shift other y axis down barchart_size to make room
@@ -463,8 +468,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
     if show_xlabel:
         xl = colname
         if show_impact:
-            impact, importance = featimp.compute_importance(X_col, pdpx, pdpy)
-            xl += f" (Impact {impact:.2f}, importance {importance:.2f})"
+            xl += f" (Impact {np.mean(impact):.2f}, importance {np.mean(importance):.2f})"
         ax.set_xlabel(xl, fontsize=label_fontsize, fontname=fontname)
     if show_ylabel:
         ax.set_ylabel(targetname, fontsize=label_fontsize, fontname=fontname)
@@ -869,11 +873,11 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
 
 def cat_partial_dependence(X, y,
                            colname,  # X[colname] expected to be numeric codes
-                           max_catcode=None, # if we're bootstrapping, might see diff max's so normalize to one max
+                           max_catcode=None,  # if we're bootstrapping, might see diff max's so normalize to one max
                            n_trees=1,
                            min_samples_leaf=5,
                            max_features=1.0,
-                           bootstrap=False,
+                           rf_bootstrap=False,
                            supervised=True,
                            verbose=False):
     X_not_col = X.drop(colname, axis=1).values
@@ -885,7 +889,7 @@ def cat_partial_dependence(X, y,
     if supervised:
         rf = RandomForestRegressor(n_estimators=n_trees,
                                    min_samples_leaf=min_samples_leaf,
-                                   bootstrap = bootstrap,
+                                   bootstrap = rf_bootstrap,
                                    max_features = max_features,
                                    oob_score=False)
         rf.fit(X_not_col, y)
@@ -895,8 +899,8 @@ def cat_partial_dependence(X, y,
         print("USING UNSUPERVISED MODE")
         X_synth, y_synth = conjure_twoclass(X)
         rf = RandomForestClassifier(n_estimators=n_trees,
-                                    min_samples_leaf=min_samples_leaf,# * 2, # there are 2x as many samples (X,X') so must double leaf size
-                                    bootstrap=bootstrap,
+                                    min_samples_leaf=min_samples_leaf,  # * 2, # there are 2x as many samples (X,X') so must double leaf size
+                                    bootstrap=rf_bootstrap,
                                     max_features=max_features,
                                     oob_score=False)
         rf.fit(X_synth.drop(colname,axis=1), y_synth)
@@ -1062,14 +1066,16 @@ def plot_catstratpd(X, y,
                     catnames=None,
                     n_trials=1,
                     subsample_size = .75,
-                    bootstrap=False,
+                    bootstrap=True,
                     ax=None,
                     n_trees=1,
+                    rf_bootstrap=False,
                     min_samples_leaf=5,
                     max_features=1.0,
                     yrange=None,
                     title=None,
                     show_x_counts=True,
+                    show_all_pdp=True,
                     pdp_marker_size=6,
                     pdp_marker_alpha=.6,
                     pdp_color='#A5D9B5',
@@ -1080,7 +1086,7 @@ def plot_catstratpd(X, y,
                     barchar_alpha=0.9,
                     ticklabel_fontsize=10,
                     min_y_shifted_to_zero=False,
-                    leftmost_shifted_to_zero=True, # either this or min_y_shifted_to_zero can be true
+                    leftmost_shifted_to_zero=False, # either this or min_y_shifted_to_zero can be true
                     # easier to read if values are relative to 0 (usually); do this for high cardinality cat vars
                     show_xlabel=True,
                     show_xticks=True,
@@ -1107,10 +1113,10 @@ def plot_catstratpd(X, y,
     :param catnames: dict or array mapping catcode to catname, used for plotting x axis
 
     :param n_trials:  How many times should we run the catstratpd algorithm and get PD
-                      curves, using bootstrapped or subsample sets? Default is 10.
+                      curves, using bootstrapped or subsample sets? Default is 1.
 
     :param min_samples_leaf Key hyper parameter to the stratification
-                            process. The default is 10 and usually
+                            process. The default is 5 and usually
                             works out pretty well.  It controls the
                             minimum number of observations in each
                             decision tree leaf used to stratify X other than colname.
@@ -1139,11 +1145,11 @@ def plot_catstratpd(X, y,
     X_col = X[colname]
     n = len(X_col)
 
+    ''' replaced with np.nanmean
     def avg_pd_catvalues(all_avg_per_cat):
+        """For each unique catcode, sum and count avg_per_cat values found among trials"""
         m = np.zeros(shape=(max_catcode+1,))
         c = np.zeros(shape=(max_catcode+1,), dtype=int)
-
-        # For each unique catcode, sum and count avg_per_cat values found among trials
         for i in range(n_trials):
             avg_per_cat = all_avg_per_cat[i]
             catcodes = np.where(~np.isnan(avg_per_cat))[0]
@@ -1155,8 +1161,10 @@ def plot_catstratpd(X, y,
             m[code] /= c[code]
         m = np.where(c==0, np.nan, m) # cats w/o values should be nan, not 0
         return m
+    '''
 
     impacts = []
+    importances = []
     all_avg_per_cat = []
     ignored = 0
     merge_ignored = 0
@@ -1177,9 +1185,11 @@ def plot_catstratpd(X, y,
                                    n_trees=n_trees,
                                    min_samples_leaf=min_samples_leaf,
                                    max_features=max_features,
-                                   bootstrap=False,
+                                   rf_bootstrap=rf_bootstrap,
                                    verbose=verbose)
-        impacts.append(np.nanmean(np.abs(avg_per_cat)))
+        impact, importance = featimp.cat_compute_importance(avg_per_cat, count_per_cat)
+        impacts.append(impact)
+        importances.append(importance)
         ignored += ignored_
         merge_ignored += merge_ignored_
         all_avg_per_cat.append( avg_per_cat )
@@ -1193,7 +1203,9 @@ def plot_catstratpd(X, y,
     ignored /= n_trials # average number of x values ignored across trials
     merge_ignored /= n_trials # average number of x values ignored across trials
 
-    combined_avg_per_cat = avg_pd_catvalues(all_avg_per_cat)
+    # average down the matrix of all_avg_per_cat across trials to get average per cat
+    # combined_avg_per_cat = avg_pd_catvalues(all_avg_per_cat)
+    combined_avg_per_cat = np.nanmean(all_avg_per_cat, axis=0)
     # print("mean(pdpy)", np.nanmean(combined_avg_per_cat))
 
     impact_order = np.argsort(impacts)
@@ -1213,9 +1225,10 @@ def plot_catstratpd(X, y,
             max_y = np.nanmax(avg_per_cat)
 
     # Show a dot for each cat in all trials
-    for i in range(1,n_trials): # only do if > 1 trial
-        ax.plot(range(len(uniq_catcodes)), all_avg_per_cat[i][uniq_catcodes], '.', c=mpl.colors.rgb2hex(colors[impact_order[i]]),
-                markersize=pdp_marker_size, alpha=pdp_marker_alpha)
+    if show_all_pdp and n_trials>1:
+        for i in range(1,n_trials): # only do if > 1 trial
+            ax.plot(range(len(uniq_catcodes)), all_avg_per_cat[i][uniq_catcodes], '.', c=mpl.colors.rgb2hex(colors[impact_order[i]]),
+                    markersize=pdp_marker_size, alpha=pdp_marker_alpha)
 
     '''
     # Show avg line
@@ -1256,7 +1269,7 @@ def plot_catstratpd(X, y,
         ax2.yaxis.set_major_locator(plt.FixedLocator([0, max(cat_counts)]))
         ax2.bar(x=range(len(uniq_catcodes)), height=cat_counts, width=count_bar_width,
                 facecolor='#BABABA', align='center', alpha=barchar_alpha)
-        ax2.set_ylabel(f"$x$ point count", labelpad=-12, fontsize=label_fontsize,
+        ax2.set_ylabel(f"PD $x$ point count\nignored={ignored:.0f}, {merge_ignored:.0f}", labelpad=-12, fontsize=label_fontsize,
                        fontstretch='extra-condensed',
                        fontname=fontname)
         # shift other y axis down barchart_size to make room
@@ -1297,7 +1310,7 @@ def plot_catstratpd(X, y,
     if show_xlabel:
         label = colname
         if show_impact:
-            label += f" (Impact {np.mean(impacts):.1f})"
+            label += f" (Impact {np.mean(impacts):.2f}, importance {np.mean(importances):.2f})"
         ax.set_xlabel(label, fontsize=label_fontsize, fontname=fontname)
     if show_ylabel:
         ax.set_ylabel(targetname, fontsize=label_fontsize, fontname=fontname)

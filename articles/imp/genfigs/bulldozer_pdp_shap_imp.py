@@ -11,7 +11,8 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 backing = shap.sample(X_test, 100)
 to_explain = X_test.sample(300)
 
-rf = RandomForestRegressor(n_estimators=40)
+tuned_params = models[("bulldozer", "RF")]
+rf = RandomForestRegressor(**tuned_params, n_jobs=-1)
 rf.fit(X_train, y_train)
 print("R^2 test",rf.score(X_test,y_test))
 
