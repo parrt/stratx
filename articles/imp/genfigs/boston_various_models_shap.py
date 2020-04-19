@@ -78,19 +78,21 @@ m_I = shap_importances(b, X, X, n_shap)
 b_score = b.score(X, y)
 print("XGBRegressor", b_score, mean_absolute_error(y, b.predict(X)))
 
-tuned_params = models[("boston", "SVM")]
-s = svm.SVR(**tuned_params)
-X_ = StandardScaler().fit_transform(X)
-X_ = pd.DataFrame(X_, columns=X.columns)
-s.fit(X_, y)
-svm_score = s.score(X_, y)
-print("svm_score", svm_score)
-svm_shap_I = shap_importances(s, X_, X_, n_shap=n_shap)
-"""
-Takes 13 minutes for all records
-100%|██████████| 506/506 [13:30<00:00,  1.60s/it]
-SHAP time for 506 test records using SVR = 810.1s
-"""
+DO_SVM = True
+if DO_SVM:
+    tuned_params = models[("boston", "SVM")]
+    s = svm.SVR(**tuned_params)
+    X_ = StandardScaler().fit_transform(X)
+    X_ = pd.DataFrame(X_, columns=X.columns)
+    s.fit(X_, y)
+    svm_score = s.score(X_, y)
+    print("svm_score", svm_score)
+    svm_shap_I = shap_importances(s, X_, X_, n_shap=n_shap)
+    """
+    Takes 13 minutes for all records
+    100%|██████████| 506/506 [13:30<00:00,  1.60s/it]
+    SHAP time for 506 test records using SVR = 810.1s
+    """
 
 plot_importances(ols_shap_I.iloc[:8], ax=axes[0], imp_range=(0,.4), width=2.5, xlabel='(a)')
 axes[0].set_title(f"OLS train $R^2$={lm_score:.2f}")
@@ -98,8 +100,9 @@ plot_importances(rf_I.iloc[:8], ax=axes[1], imp_range=(0,.4), width=2.5, xlabel=
 axes[1].set_title(f"RF train $R^2$={rf_score:.2f}")
 plot_importances(m_I.iloc[:8], ax=axes[2], imp_range=(0,.4), width=2.5, xlabel='(c)')
 axes[2].set_title(f"XGBoost train $R^2$={b_score:.2f}")
-plot_importances(svm_shap_I.iloc[:8], ax=axes[3], imp_range=(0,.4), width=2.5, xlabel='(d)')
-axes[3].set_title(f"SVM train $R^2$={svm_score:.2f}")
+if DO_SVM:
+    plot_importances(svm_shap_I.iloc[:8], ax=axes[3], imp_range=(0,.4), width=2.5, xlabel='(d)')
+    axes[3].set_title(f"SVM train $R^2$={svm_score:.2f}")
 
 plt.suptitle(f"SHAP importances for Boston dataset: {n:,d} records, {n_shap} SHAP test records")
 plt.tight_layout()

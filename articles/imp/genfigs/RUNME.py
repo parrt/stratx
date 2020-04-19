@@ -18,8 +18,6 @@ import bulldozer_YearMade_pdp
 import bulldozer_YearMade_pdp_shap
 import bulldozer_pdp_shap_imp
 import compare_friedman_shap_stratimpact
-import rent_pdp_shap_imp
-import bulldozer_pdp_shap_imp
 
 import flights_top
 import rent_top
