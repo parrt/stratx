@@ -70,41 +70,40 @@ pd.set_option('display.width', 300)
 # Very small impact on scores.
 
 models = {
-    ("boston", "RF"):{'max_features': 0.5, 'min_samples_leaf': 1, 'n_estimators': 80},
+    ("boston", "RF"):{'max_features': 0.7, 'min_samples_leaf': 1, 'n_estimators': 80},
     ("boston", "GBM"):{'learning_rate': 0.15, 'max_depth': 3, 'n_estimators': 100},
     ("boston", "SVM"):{'C': 5000, 'gamma': 0.001, 'kernel': 'rbf'},
     ("flights", "RF"):{'max_features': 0.9, 'min_samples_leaf': 1, 'n_estimators': 80},
-    ("flights", "GBM"):{'learning_rate': 0.2, 'max_depth': 6, 'n_estimators': 100},
+    ("flights", "GBM"):{'learning_rate': 0.2, 'max_depth': 6, 'n_estimators': 125},
     ("bulldozer", "RF"):{'max_features': 0.9, 'min_samples_leaf': 1, 'n_estimators': 80},
-    ("bulldozer", "GBM"):{'learning_rate': 0.2, 'max_depth': 8, 'n_estimators': 100},
+    ("bulldozer", "GBM"):{'learning_rate': 0.2, 'max_depth': 8, 'n_estimators': 125},
     ("rent", "RF"):{'max_features': 0.3, 'min_samples_leaf': 1, 'n_estimators': 80},
-    ("rent", "GBM"):{'learning_rate': 0.2, 'max_depth': 9, 'n_estimators': 100},
+    ("rent", "GBM"):{'learning_rate': 0.2, 'max_depth': 8, 'n_estimators': 125},
 }
 
 valscores = {
-    ("boston", "RF"):0.6686571173409532,
+    ("boston", "RF"):0.6653261726001916,
     ("boston", "GBM"):0.6876583572051903,
     ("boston", "SVM"):0.7014652575387574,
-    ("flights", "RF"):0.7466871286645599,
-    ("flights", "GBM"):0.8285358262297152,
-    ("bulldozer", "RF"):0.8532942777695387,
-    ("bulldozer", "GBM"):0.8755231689492822,
-    ("rent", "RF"):0.8480527800606038,
-    ("rent", "GBM"):0.8470623951646141,
+    ("flights", "RF"):0.7424391912665617,
+    ("flights", "GBM"):0.8362525953312375,
+    ("bulldozer", "RF"):0.8531941730578031,
+    ("bulldozer", "GBM"):0.8780620472630506,
+    ("rent", "RF"):0.8471435873236036,
+    ("rent", "GBM"):0.8485109100239315,
 }
 
 trnscores = {
-    ("boston", "RF"):0.9837105973451798,
+    ("boston", "RF"):0.9809997045641013,
     ("boston", "GBM"):0.9825632873392053,
     ("boston", "SVM"):0.8591641343478678,
     ("flights", "RF"):0.9657629058097076,
-    ("flights", "GBM"):0.9771471818436606,
+    ("flights", "GBM"):0.9837533382815874,
     ("bulldozer", "RF"):0.9808035893998547,
-    ("bulldozer", "GBM"):0.9559587416679752,
+    ("bulldozer", "GBM"):0.963651880574555,
     ("rent", "RF"):0.9789323191668672,
-    ("rent", "GBM"):0.9538255747205425,
+    ("rent", "GBM"):0.9450333391857276,
 }
-
 
 pairs = [
     ("boston", "RF"),
@@ -954,7 +953,7 @@ def load_rent(n:int=None, clean_prices=True):
 
 
 def tune_RF(X, y, verbose=0):
-    tuning_parameters = {'n_estimators': [40, 50, 80],# 125, 150, 200],
+    tuning_parameters = {'n_estimators': [30, 40, 50, 80],# 125, 150, 200],
                         'min_samples_leaf': [1, 3, 5, 7],
                         'max_features': [.1, .3, .5, .7, .9]}
     grid = GridSearchCV(
@@ -977,9 +976,10 @@ def tune_RF(X, y, verbose=0):
 
 
 def tune_XGBoost(X, y, verbose=0):
-    tuning_parameters = {'n_estimators': [100], #[300, 400, 450, 500, 600, 1000],
+    # for these data sets we don't get much boost using many more trees
+    tuning_parameters = {'n_estimators': [50, 100, 125], #[300, 400, 450, 500, 600, 1000],
                         'learning_rate': [0.05, 0.08, 0.1, 0.15, 0.2],
-                        'max_depth': [3, 4, 5, 6, 7, 8, 9]}
+                        'max_depth': [3, 4, 5, 6, 7, 8]}
     grid = GridSearchCV(
         xgb.XGBRegressor(),
         tuning_parameters,
