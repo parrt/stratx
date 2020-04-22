@@ -108,8 +108,10 @@ In this paper, we contribute methods for computing partial dependence curves, fo
 
 \section{Introduction}
 
+\cut{
 \todo{Indicate that we use a specific random seed for reproducibility.
 Also, do multiple trials for the noise example as the last right edge graph does vary quite a bit.}
+}
 
 Partial dependence, the isolated effect of a specific variable or variables on the response variable, $y$, is important to researchers and practitioners in many disparate fields such as medicine, business, and the social sciences. For example, in medicine, researchers are interested in the relationship between an individual's demographics or clinical features and their susceptibility to illness. Business analysts at a car manufacturer might need to know how changes in their supply chain affect defect rates. Climate scientists are interested in how different atmospheric carbon levels affect temperature.
 
@@ -249,7 +251,7 @@ $\Ex[ \phi_j(\hat{f},x) | {\bf X}_j = z] = FPD_j(x) - \bar{y}$ if features indep
 % ------------------------------------------------------------------------------------------------------------------------------------
 \section{Experimental results}\label{sec:experiments} 
 
-In this section, we demonstrate experimentally that \spd{} and \cspd{} compute accurate partial dependence curves for synthetic data and plausible results for a real data set. Experiments also provide evidence that existing model-based techniques can provide meaningfully-biased curves. We begin by comparing the partial dependence curves from popular techniques on synthetic data with complex interactions.\footnote{All simulations in this section were run on a 4.0 Ghz 32G RAM machine running OS X 10.13.6 with SHAP 0.34, scikit-learn 0.21.3, XGBoost 0.90, TensorFlow 2.1.0, and Python 3.7.4; ALEPlot 1.1 and R 3.6.3.}
+In this section, we demonstrate experimentally that \spd{} and \cspd{} compute accurate partial dependence curves for synthetic data and plausible results for a real data set. Experiments also provide evidence that existing model-based techniques can provide meaningfully-biased curves. We begin by comparing the partial dependence curves from popular techniques on synthetic data with complex interactions.\footnote{All simulations in this section were run on a 4.0 Ghz 32G RAM machine running OS X 10.13.6 with SHAP 0.34, scikit-learn 0.21.3, XGBoost 0.90, TensorFlow 2.1.0, and Python 3.7.4; ALEPlot 1.1 and R 3.6.3. A single random seed was used across simulations for graph reproducibility purposes.}
 
 \begin{figure}[!htbp]
 \begin{center}
@@ -385,7 +387,7 @@ As a second example, consider the curves for feature {\tt\small ProductSize} in 
 \begin{figure}[!htbp]
 \begin{center}
 \includegraphics[scale=.45]{images/timing.pdf}\vspace{-3mm}
-\caption{\small Time to compute partial dependence curve for up to 30,000 observations for 40 numerical and 11 categorical variables timing blah. $p=20$, bulldozer $p=14$, and flight $p=17$. The Numba just-in-time compiler is used to improve performance, but timing does not include compilation; users do experience this ``warm-up'' time.}
+\caption{\small Time to compute partial dependence curve for up to 30,000 observations for 40 numerical and 11 categorical variables. $p=20$, bulldozer $p=14$, and flight $p=17$. The Numba just-in-time compiler is used to improve performance, but timing does not include compilation; users do experience this ``warm-up'' time.}
 \label{fig:timing}
 \end{center}
 \end{figure}
