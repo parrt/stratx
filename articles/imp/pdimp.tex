@@ -37,7 +37,8 @@
 \DeclareMathOperator{\Ex}{\mathbb{E}}
 
 %\newcommand{\Imp}{\mathbf{I}}
-\newcommand{\Imp}{\text{Impact}}
+\newcommand{\Imp}{\text{StratImpact}}
+\newcommand{\Impo}{\text{StratImport}}
 
 \newcommand{\simp}{\fontfamily{cmr}\textsc{\small StratImpact}}
 \newcommand{\spd}{\fontfamily{cmr}\textsc{\small StratPD}}
@@ -113,9 +114,9 @@ Among data analysis techniques, feature importance is one of the most widely app
 
 While some feature importance approaches work directly on the data, such as minimal-redundancy-maximal-relevance (mRMR) by \cite{mRMR}, almost all algorithms used in practice rank features by interrogating a fitted model provided by the user (e.g., permutation importance by \citealt{RF}, drop column importance, and SHAP by \citealt{shap}), or even interrogating subsidiary models to analyze such fitted models (e.g., LIME by \citealt{lime}). It is accepted as self-evident that identifying the most predictive features for a model is best done through interrogation of that  model, but this is not always the case.  For example, when asked to identify the single most important feature of a real dataset \citep{bulldozer} for a random forest (RF), the features selected by model-based techniques get twice the validation error of the nonparametric technique proposed in this paper; see \figref{fig:topk}(c). Still, model interrogation is generally effective in practice for feature importance purposes.
 
-Feature importance should not, however, be interpreted as feature impact for several reasons. First, predictive features do not always coincide with impactful features; e.g., models unable to capture complex nonlinear feature-response relationships rank such features as unimportant, even if they have large impacts on the response. Next, practitioners must develop models accurate enough to yield meaningful feature importances, but there is no definition of ``accurate enough.'' Finally, it is possible to get very different feature importances (and hence impacts) running the same algorithm on the same data, just by choosing a different model. This is despite the fact that true feature impacts are relationships that exist in the data, with or without a model.
+Feature importance should not, however, be interpreted as feature impact for several reasons. First, predictive features do not always coincide with impactful features; e.g., models unable to capture complex nonlinear feature-response relationships rank such features as unimportant, even if they have large impacts on the response. Next, practitioners must develop models accurate enough to yield meaningful feature importances, but there is no definition of ``accurate enough.'' Finally, it is possible to get very different feature importances (and hence impacts) running the same algorithm on the same data, just by choosing a different model. This is despite the fact that feature impacts are relationships that exist in the data, with or without a model.
 
-Consider the feature importance charts in \figref{fig:diff-models} derived from four different models on the same, well-known Boston toy data set, as computed by SHAP that has recently emerged as a leader in feature importance. The linear model (a) struggles to capture the relationship between features and response variable (training $R^2$=0.74), so those importances are less trustworthy.  In contrast, the RF (b), boosted trees (c), and support vector machine (d) models capture the relationship in the training records (all 506) with decent fidelity, but SHAP derives meaningfully different feature importances from each model. The differences arise because feature impact is distorted by the lens' of the models (yielding importances). The differences might be appropriate for model feature selection but makes it unclear which ranking, if any, gives the  feature impacts. 
+Consider the feature importance charts in \figref{fig:diff-models} derived from four different models on the same, well-known Boston toy data set, as computed by SHAP. The linear model (a) struggles to capture the relationship between features and response variable (training $R^2$=0.74), so those importances are less trustworthy.  In contrast, the (b) RF, (c) boosted trees, and (d) support vector machine models capture the relationship in the training records (all 506) with reasonable fidelity. The problem is that SHAP derives meaningfully different feature importances from each model. The differences arise because feature impact is distorted by the lens' of the models (yielding importances). The differences might be appropriate for model feature selection but it is unclear which results, if any, gives the feature impacts. 
 
 \begin{figure}[htbp]
 \begin{center}
@@ -129,7 +130,11 @@ Unfortunately, practitioners routinely conflate model-based feature importance w
 
 In this paper, we address this deficiency by contributing (1) a straightforward mathematical formula as an ideal for computing feature impact, and related importance, that does not require predictions from a fitted model and (2) an efficient implementation called \simp{} that yields plausible feature impacts. By not requiring predictions from a model, we also make feature impact methods more accessible to the vast  community of business analysts and scientists that lack the expertise to choose, tune, and evaluate models. To assess \simp{} quality, we use importance as a proxy to show that it is competitive on real data with existing importance techniques, as measured by cross-validation errors on models trained using the top $k$ feature importances.  
 
-We measure impact simply as the area under the partial dependence (PD) curve because PDs (ideally) isolate the effect of a single variable on the response. \cite{pdvim} previously used model-based PD curves for feature importance, defining importance as PD standard deviation. The PD approach opens up the possibility of computing importance using any partial dependence method, such as Friedman's original definition (\citealt{PDP}) and ALE (\citealt{ALE}). SHAP also fits into this perspective since the average SHAP value at any single feature value forms a point on a mean-centered partial dependence curve. In contrast to \cite{pdvim}, we use the nonparametric \spd{} (\citealt{stratpd}) that estimates partial dependences without predictions from a fitted model, which allows us to compute feature impact not just feature importance. Our prototype is currently limited to regression, but a similar approach should work for classification. The software is available via Python package {\tt stratx} with source at {\tt github.com/parrt/stratx}. 
+We measure feature impact as a function of its partial dependence (PD) curve, as \cite{pdvim} did, because PDs (ideally) isolate the effect of a single variable on the response. In contrast to \cite{pdvim}, we use a nonparametric method called \spd{} (\citealt{stratpd}) to estimate partial dependences without predictions from a fitted model, which allows us to compute feature impact not just feature importance. \cite{pdvim} defined importance as PD standard deviation, whereas, we use the area under the PD curve because it is less sensitive to curve outliers.
+
+The PD approach is flexible in that it opens up the possibility of computing impact and importance using any partial dependence method, such as Friedman's original definition (\citealt{PDP}) and ALE (\citealt{ALE}). SHAP also fits into this perspective since the average SHAP value at any single feature value forms a point on a mean-centered partial dependence curve. Our prototype is currently limited to regression, but a similar approach should work for classification. The software is available via Python package {\tt stratx} with source at {\tt github.com/parrt/stratx}. 
+
+
 
 We begin by giving definitions of feature impact and importance in \secref{sec:def}, then survey existing nonparametric and model-dependent techniques in \secref{sec:existing}. \secref{sec:experiments} assesses the quality of \simp{} importance values by examining how well they ranks model features in terms of prediction accuracy. We finish in \secref{sec:discussion} with a discussion of the proposed technique's effectiveness and potential future work.
 
@@ -139,13 +144,15 @@ We begin by giving definitions of feature impact and importance in \secref{sec:d
 
 In special circumstances, we know the precise impact of each feature $x_j$. Assume we are given training data pair ($\bf X, y$) where ${\bf X} = [x^{(1)}, \ldots, x^{(n)}]$ is an $n \times p$ matrix whose $p$ columns represent observed features and ${\bf y}$ is the $n \times 1$ vector of responses.  If a data set is generated using a linear function, $y = \beta_0 + \sum_{j=1}^p \beta_j x_j$, then coefficient $\beta_j$ corresponds exactly to the impact of $x_j$.  $\beta_j$ is the impact on $y$ for a unit change in $x_j$, holding all other features constant.
 
+\todo{this is all in stratpd paper}
+
 To hold features constant for any smooth generator function, we can take the partial derivatives of $y$ with respect to each feature $x_j$. For any smooth function $f:\mathbb{R}^{p} \rightarrow \mathbb{R}$ that precisely maps each $\xi$ to $y^{(i)}$, ${y^{(i)}} = f(\xi)$, the partial derivative of $y$ with respect to $x_j$ gives the change in $y$ holding all other variables constant; e.g., for linear functions, $\frac{\partial y}{\partial x_j}=\beta_j$. Integrating the partial derivative then gives the {\em partial dependence}  of $y$ on $x_j$, the isolated contribution of $x_j$ to $y$. But, rather than relying on a fitted model as is typical, this idealistic definition of partial dependence relies on the partial derivative of a known function that generated the data set.
 
 ~\\
-\noindent {\bf Definition 1} The {\em ideal partial dependence} of $y$ on feature $x_j$ for smooth generator function $f:\mathbb{R}^{p} \rightarrow \mathbb{R}$ evaluated at $x_j = z$ is the cumulative sum up to $z$:\todo{mimic paper 1}
+\noindent {\bf Definition 1} The {\em ideal partial dependence} of $y$ on feature $x_j$ for continuous and smooth generator function $f:\mathbb{R}^{p} \rightarrow \mathbb{R}$ evaluated at $x_j = z$ is the cumulative sum up to $z$:
 
 \begin{equation}\label{eq:pd}
-\text{\it PD}_j(z) = \int_{min(x_j)}^z \frac{\partial y}{\partial x_j} dx_j
+\text{\it PD}_j(x_j = z) = \int_{min(x_j)}^z \frac{\partial f}{\partial x_j} dx_j
 \end{equation}
 
 $\text{\it PD}_j(z)$ is the value contributed to $y$ by $x_j$ at $x_j = z$ and $\text{\it PD}_j(min(x_j))=0$. The advantages of this partial dependence definition are that it does not depend on predictions from a fitted model and is insensitive to collinear or otherwise codependent features, unlike the Friedman's original definition that he points out is less accurate for codependent data sets. We will denote Friedman's as $\text{\it FPD}_j$ to distinguish it from this ideal, $\text{\it PD}_j$.
@@ -208,7 +215,7 @@ The definition of impact in \eqnref{eq:Epd2a} assumes that each $x_j$ value is e
 \noindent {\bf Definition 3} The {\em nonparametric feature importance} of $x_j$ is the ratio of $x_j$'s expected partial dependence value to the total of all expected values, when all $x_j$ variables are normalized to the same fixed range:
 
 \begin{equation}\label{eq:Epd2b}
-\text{Importance}_j = \frac{\Ex[|\text{\it PD}_j|]}{\sum_{k=1}^p \Ex[|\text{\it PD}_k|]}
+\Impo_j = \frac{\Ex[|\text{\it PD}_j|]}{\sum_{k=1}^p \Ex[|\text{\it PD}_k|]}
 \end{equation}
 
 \noindent where:
@@ -286,6 +293,8 @@ That begs the question of whether averaging the magnitude of a simple FPD curve 
 \label{fig:fpd_imp}
 \end{center}
 \end{figure}
+
+\todo{For classification...NN specific. Another related technique that integrates over partial derivatives to measure $x_j$ effects is called Integrated Gradients (IG) from \citet{intgrad}. Given a single input vector, $\bf x$, to a deep learning network, IG integrates over the loss function gradient at points along the straight-line path from a baseline vector, $\bf x'$, to $\bf x$. IG can be seen as computing the partial dependence of the  model output, $\hat{f}$, on the $x_j$ values in ${\bf x}$.}
 
 Deriving feature importances from partial dependences was previously proposed by \cite{pdvim} (with an R package called {\tt vip}), but they defined $x_j$'s importance as ${\it PD}_j$'s ``flatness'' rather than the area under the ideal ${\it PD}_j$ curve as we have in \eqref{eq:pd}. To measure flatness, they suggest standard deviation for numerical variables and category level range divided by four for categorical variables (as an estimate of standard deviation).  Because standard deviation measures the average squared-difference from the average response, {\tt vip} would likely be sensitive to partial dependence curve spikes, unlike the area under the curve.  Any technique that computes partial dependence curves, directly or indirectly, fits neatly into {\tt vip} or the ``area under the PD curve'' framework described in this paper. FPD, ALE, SHAP, and \spd{} are four such techniques.
 
