@@ -36,11 +36,11 @@
 %\newcommand{\Ex}{\mathop{\mathbb{E}}}
 \DeclareMathOperator{\Ex}{\mathbb{E}}
 
-%\newcommand{\Imp}{\mathbf{I}}
-\newcommand{\Imp}{\text{StratImpact}}
-\newcommand{\Impo}{\text{StratImport}}
+%\newcommand{\Imp}{\text{StratImpact}}
+%\newcommand{\Impo}{\text{StratImport}}
 
 \newcommand{\simp}{\fontfamily{cmr}\textsc{\small StratImpact}}
+\newcommand{\simpo}{\fontfamily{cmr}\textsc{\small StratImport}}
 \newcommand{\spd}{\fontfamily{cmr}\textsc{\small StratPD}}
 \newcommand{\cspd}{\fontfamily{cmr}\textsc{\small CatStratPD}}
 \newcommand{\xnc}{$x_{\overline{c}}$}
@@ -93,6 +93,7 @@ feature importance, business insights, medical insights, partial dependence, mod
 \label{sec:intro}
 
 \todo{
+check \simp vs \simpo
 add how we tuned RF, other models. What is $R^2$?
 
 we use all X,y
@@ -149,10 +150,10 @@ To go from the partial dependence of $x_j$ to feature impact, we compute the are
 \noindent {\bf Definition 1} The {\em nonparametric feature impact} of $x_j$ is the ratio of the average magnitude of $x_j$'s idealized partial dependence to the total for all variables, when all $x_j$ variables are normalized to the same range:
 
 \begin{equation}\label{eq:Epd2a}
-\Imp_j = \frac{\overline{|\text{\it PD}_j|}}{\sum_{k=1}^p \overline{|\text{\it PD}_k|}}
+\simp_j = \frac{\overline{|\text{\it PD}_j|}}{\sum_{k=1}^p \overline{|\text{\it PD}_k|}}
 \end{equation}
 
-\noindent For example, consider quadratic equation $y = x_1^2 + x_2 + 100$ as a generator of data in $[0,3]$. The partial derivatives are ${\partial y}/{\partial x_1} = 2 x_1$ and ${\partial y}/{\partial x_2} = 1$, giving $\text{\it PD}_1 = x_1^2$ and $\text{\it PD}_2 = x_2$. $\overline{|\text{\it PD}_1|}$ is then 9.0, the average magnitude of $x_1^2$ in $[0,3]$, and $\overline{|\text{\it PD}_2|}$ is 4.5, the average magnitude of $x_2$ in $[0,3]$, as depicted in \figref{fig:quad-area}(a). That is the same result obtained by integrating under the partial dependence curves:  $\int_0^3 x_1^2 dx_1 = \frac{x_1^3}{3} \big |_0^3 = 9$ and $\int_0^3 x_2^2 dx_2 = \frac{x_2^2}{2} \big |_0^3 = 4.5$.   Therefore, $x_1$ has twice the impact as $x_2$ for data generated in that interval, giving $\Imp_1 = 0.\overline{66}$ and $\Imp_2 = 0.\overline{33}$.
+\noindent For example, consider quadratic equation $y = x_1^2 + x_2 + 100$ as a generator of data in $[0,3]$. The partial derivatives are ${\partial y}/{\partial x_1} = 2 x_1$ and ${\partial y}/{\partial x_2} = 1$, giving $\text{\it PD}_1 = x_1^2$ and $\text{\it PD}_2 = x_2$. $\overline{|\text{\it PD}_1|}$ is then 9.0, the average magnitude of $x_1^2$ in $[0,3]$, and $\overline{|\text{\it PD}_2|}$ is 4.5, the average magnitude of $x_2$ in $[0,3]$, as depicted in \figref{fig:quad-area}(a). That is the same result obtained by integrating under the partial dependence curves:  $\int_0^3 x_1^2 dx_1 = \frac{x_1^3}{3} \big |_0^3 = 9$ and $\int_0^3 x_2^2 dx_2 = \frac{x_2^2}{2} \big |_0^3 = 4.5$.   Therefore, $x_1$ has twice the impact as $x_2$ for data generated in that interval, giving $\simp_1 = 0.\overline{66}$ and $\simp_2 = 0.\overline{33}$.
 
 
 \begin{figure}
@@ -161,7 +162,7 @@ To go from the partial dependence of $x_j$ to feature impact, we compute the are
     \centering
 \includegraphics[scale=0.57]{images/quadratic-auc.pdf}
 \vspace{-1mm}
-\subcaption{\small  The area under $x_1$ and $x_2$ PD curves represent $\Imp_1$, $\Imp_2$ for $y = x_1^2 + x_2 + 100$ in range $[0,3]$. Note the difference between the area straddling the mean and the area under the partial dependence curve.}
+\subcaption{\small  The area under $x_1$ and $x_2$ PD curves represent $\simp_1$, $\simp_2$ for $y = x_1^2 + x_2 + 100$ in range $[0,3]$. Note the difference between the area straddling the mean and the area under the partial dependence curve.}
 \label{fig:quad-area}
 \end{subfigure}%
 \hfill
@@ -175,13 +176,13 @@ To go from the partial dependence of $x_j$ to feature impact, we compute the are
 
 Intuitively, the impact of $x_j$ is how much, on average, the values of $x_j$ are expected to push $y$ away from zero. We deliberately chose this  definition instead of measuring how much $x_j$ pushes $y$ away from the average response, $\overline{y}$, as SHAP does. The impact of $x_1$ on $y = x_1^2+x_2+100$ is $x_1^2$, not $|\overline{y} - x_1^2|$.  \figref{fig:quad-area} illustrates how the area under the $x_1^2$ and $x_2$ PD curves differ from the area straddling the means. The area under-the-curve ratio of $x_1$-to-$x_2$ is 2-to-1 (9/4.5), whereas the ratio of the area straddling the mean has roughly a 3-to-1 ratio (6.95/2.26). We believe that a 2-to-1 ratio better represents feature impact than 3-to-1.
 
-The partial dependence curve represents how $x_j$ effects $y$, but does not take into consideration the distribution of $x_j$.  Consider the \simp{} curve and $x_j$ histogram in \figref{fig:yearmade} for feature {\tt\small YearMade} from the bulldozer auction data set \citep{bulldozer}. The colored curves represent ten bootstraps from the same training set and the black dots give the average curve. (\spd{} has an optional hyper parameter, {\tt\small ntrials}, that controls the number of bootstraps; the default is 1.) Knowing that increases in bulldozer age continue to reduce price is useful from a business perspective, but new bulldozers will represent the bulk of any model validation set.  Because model feature selection is assessed using  validation error, feature selection is sensitive to the distribution of $x_j$. That means that feature importance should take into consideration the distribution of $x_j$, leading to an importance definition based upon expected value rather than average:
+The partial dependence curve represents how $x_j$ effects $y$, but does not take into consideration the distribution of $x_j$.  Consider the \simp{} curve and $x_j$ histogram in \figref{fig:yearmade} for feature {\tt\small YearMade} from the bulldozer auction data set \citep{bulldozer}. The colored curves represent ten bootstraps from the same training set and the black dots give the average curve. (\spd{} has an optional hyper parameter, {\tt\small ntrials}, that controls the number of bootstraps; the default is currently 1.) Knowing that increases in bulldozer age continue to reduce price is useful from a business perspective, but new bulldozers will represent the bulk of any model validation set.  Because model feature selection is assessed using  validation error, feature selection is sensitive to the distribution of $x_j$. That means that feature importance should take into consideration the distribution of $x_j$, leading to an importance definition based upon expected value rather than average:
 
 ~\\
 \noindent {\bf Definition 3} The {\em nonparametric feature importance} of $x_j$ is the ratio of $x_j$'s expected partial dependence magnitude to the total of all expected values, when all $x_j$ variables are normalized to the same fixed range:
 
 \begin{equation}\label{eq:Epd2b}
-\Impo_j = \frac{\Ex[|\text{\it PD}_j|]}{\sum_{k=1}^p \Ex[|\text{\it PD}_k|]}
+\simpo_j = \frac{\Ex[|\text{\it PD}_j|]}{\sum_{k=1}^p \Ex[|\text{\it PD}_k|]}
 \end{equation}
 
 \noindent Let $P(x_j = z)$ be the probability that $x_j=z$ and $\{x_j^{(i)}\}_{i \in 1..n}$ be the set of unique $x_j$, then:
@@ -265,7 +266,7 @@ Deriving feature importances from partial dependences as \spd{} does was previou
 \citet{intgrad} introduced a technique (called ``Integrated Gradients'' or IG) for deep learning classifiers that can also be seen as a kind of partial dependence. To attribute a classifier prediction to the elements of an input vector, $\bf x$, IG integrates over the gradient of the model output function at points along the straight-line path from a baseline vector, $\bf x'$, to $\bf x$. IG estimates the integral by averaging the gradient computed at $m$ points and multiplying by the difference between ${\bf x}'_j$ and ${\bf x}_j$:
 
 \begin{equation}
-\text{IntegratedGradient}_j({\bf x},{\bf x'}) = (x_j - x'_j) \times \frac{1}{m} \sum_{k=1}^{m} \frac{\partial f({\bf x}' + \frac{k}{m}({\bf x}-{\bf x}'))}{\partial x_j}
+\text{IntegratedGradient}_j(\hat{f}, {\bf x},{\bf x'}) = (x_j - x'_j) \times \frac{1}{m} \sum_{k=1}^{m} \frac{\partial \hat{f}({\bf x}' + \frac{k}{m}({\bf x}-{\bf x}'))}{\partial x_j}
 \end{equation}
 
 \noindent  Because IG integrates the partial derivative like ALE and \spd, that equation can be interpreted as the $x_j$ partial dependence curve evaluated at $\bf x$ weighted by the range in $x_j$ space. Alternatively, the average gradient within an $x_j$ range times the range of $x_j$ is equivalent to the area under the $x_j$ gradient curve in that range (by the mean value theorem of integrals). In that sense, \cite{intgrad} is also similar to \simp, except that we integrate the gradient twice, once to get the partial dependence curve and a second time to get the area under the partial dependence curve.
@@ -274,11 +275,11 @@ Deriving feature importances from partial dependences as \spd{} does was previou
 
 \section{Experimental results}\label{sec:experiments}
 
-Assessing the quality of feature impact and importance is challenging because, even with domain expertise, humans are unreliable estimators (which is why we need data analysis algorithms in the first place).  The simplest approach is to examine impacts and importances computed from synthetic data for which the answer is clear.  For real data sets, we can train a predictive model on the most impactful or most important $k$ features, as identified by the methods of interests, and then compare model prediction errors. (\citealt{mRMR} and \citealt{tsanas} also used this approach.) The method that accurately identifies the most impactful features without getting confused by codependent features, should yield lower prediction errors for a given $k$. 
+Assessing the quality of feature impact and importance is challenging because, even with domain expertise, humans are unreliable estimators (which is why we need data analysis algorithms in the first place).  The simplest approach is to examine impacts and importances computed from synthetic data for which the answer is clear.  For real data sets, we can train a predictive model on the most impactful or most important $k$ features, as identified by the methods of interests, and then compare model prediction errors. (\citealt{mRMR} and \citealt{tsanas} also used this approach.) The method that accurately identifies the most impactful features without getting confused by codependent features, should yield lower prediction errors for a given $k$.  
 
-In this section, we present the results of several experiments using the toy Boston data set and three real data sets, NYC rent prices \citep{rent}, bulldozer auction sales \citep{bulldozer}, and flight delays \citep{flights}. We begin with a baseline comparison of \simp{}'s importance metric to two simple model-free methods using the top-$k$ ranked features, then compare \simp{} to permutation importance and SHAP. We finish up by examining \simp's efficiency on the Kaggle data sets.
+In this section, we present the results of several experiments using the toy Boston data set and three real data sets, NYC rent prices \citep{rent}, bulldozer auction sales \citep{bulldozer}, and flight delays \citep{flights}. (Rent has $p=20$, bulldozer $p=14$, and flight $p=17$.) We will draw $n$=25,000 samples from each data set population, except for Boston which only has 506 records. Each point on an error curve represents the 5-fold cross-validation mean absolute error (MAE) for a given model, feature ranking, and data set. Models used to measure top-$k$ errors were tuned with 5-fold cross-validation grid search across a variety of hyper parameters.
 
-Our first experiment is to compare the feature rankings recommended by \simp{} to PCA's ranking (``loads'' associated with the first component) and to Spearman's R coefficients computed between each $x_j$ and the response variable, $y$. \figref{fig:baseline} shows mean absolute error  (MAE) versus the number of features using an RF model with 40 trees trained using the various top-$k$ feature rankings. Surprisingly, Spearman's R does a good job for all but the bulldozer data set. PCA is the opposite, performing well on bulldozer but poorly on the others. \simp{} is competitive with or surpasses these baseline techniques.  Rankings from ordinary least squares (OLS) regression coefficients, divided by their standard error, are included as a common reference curve on this and the following graphs. 
+We begin with a baseline comparison of \simpo{} to principal component analysis' (PCA) ranking (``loads'' associated with the first component) and to Spearman's R coefficients computed between each $x_j$ and the response variable, $y$.  \figref{fig:baseline} shows the MAE curve for an RF model trained using the top-$k$ features as ranked by PCA and Spearman. Surprisingly, Spearman's R does a good job for all but the bulldozer data set, but PCA performed poorly on all four data sets. \simp{} is competitive with or surpasses these baseline techniques. \figref{fig:baseline} also shows the error curve for the features ranked by ordinary least squares (OLS); a feature's score is its $\beta$ coefficient divided by its standard error. (OLS is not applicable to the bulldozer data set because it has many high-cardinality categorical explanatory variables, which would create tens of thousands of dummy variables.) OLS curves are included as a common reference curve on subsequent graphs.
 
 \begin{figure}
 \centering
@@ -309,7 +310,9 @@ Our first experiment is to compare the feature rankings recommended by \simp{} t
 \label{fig:baseline}
 \end{figure}
 
-Next, in \figref{fig:topk}, we compare \simp{}'s rankings to those of OLS, RF-based permutation importance, and SHAP interrogating OLS and RF models. MAE error curves were generated with an RF model trained on the top-$k$ features recommended by each technique, using $n$=25,000 records sampled from the total data set population with an 80/20 train/validation split. (Boston only has 506  total records.) RF SHAP and RF permutation importances have a distinct advantage here because they use the same kind of model (RF) for both feature ranking and top-$k$ error curves. Moreover, the model-based methods were all able to select features using the validation set, the same validation set used to compute error curves. \todo{nope, no we do 5-fold CV} In contrast, \simp{} cannot use predictions from a fitted model, by design, and we restricted \simp{} to examining just the training data, without access to the validation data, to see how it fared. \todo{now it uses all X,y}
+Next, in \figref{fig:topk}, we compare \simpo{}'s rankings to those of OLS, RF-based permutation importance, and SHAP interrogating OLS and RF models. OLS and \simpo{} analyzed the entire $({\bf X},{\bf y})$ data set, but RF-based permutation importance and RF-based SHAP trained on 80\% then ranked features ranked using the remaining 20\% as validation sets. RF-based SHAP and permutation importance have a distinct advantage here because they use the same kind of model (RF) for both feature ranking and then for computing top-$k$ error curves. Also, by selecting features using the validation set, RF-based rankings should have an advantage in terms of generality. 
+
+The error curves for \simpo, RF SHAP, and permutation importance are roughly the same for Boston and flight. For bulldozer, \simpo's error curve suggests it selected the most important feature wisely: high-cardinality categorical {\tt ModelID}, followed by {\tt YearMade}. RF permutation importance chose {\tt ProductSize} followed by {\tt ModelID} and RF SHAP chose {\tt ProductSize} followed by {\tt YearMade}. For rent, \simpo, RF SHAP, and permutation importance selected {\tt bedrooms} as the most important feature and so their error curves at $k=1$ are the same. As a second feature, RF SHAP and permutation importance selected {\tt bathrooms}, whereas, \simpo{} selected {\tt brooklynheights}, which is the L1 distance from the apartment to that neighborhood. By incorporating location into the model at $k=2$, \simpo's error curve drops more quickly than for the other rankings. 
 
 \begin{figure}
 \centering
@@ -340,9 +343,9 @@ Next, in \figref{fig:topk}, we compare \simp{}'s rankings to those of OLS, RF-ba
 \label{fig:topk}
 \end{figure}
 
-Despite these handicaps, \figref{fig:topk} shows that \simp{}'s feature importances are competitive with the rankings from the other methods  applied to the four data sets.   The exception is that the \simp{} bulldozer error curve starts out higher than RF SHAP and RF permutation importance. This is because \simp{} chooses feature {\tt YearMade} as the single most important feature, whereas the RF-based techniques choose ordinal feature {\tt ProductSize}. The \simp{} bulldozer error curve then quickly converges with the RF-based curves.  Depending on the subset drawn from the various overall data set populations, the recommended rankings and error curves can shift.
-
-The feature rankings derived from OLS perform poorly for the first few features, but then merge with the error curves from the RF-based feature rankings.  While the features were chosen by interrogating a linear model, the error curves are generated using predictions from a (stronger) RF model. Once the RF integrates sufficient numbers of features with reasonable importance, prediction error curves become more similar.  In other words, although the order might not be the best, even a linear model can provide good estimates of the top few most  predictive features. The error curve derived from the OLS SHAP feature rankings differs from the OLS curve because the OLS coefficients are divided by the standard error. Without normalizing OLS coefficients with their variances, the OLS and OLS SHAP curves merge.
+An interesting story here is the feature rankings derived from OLS.
+ 
+The feature rankings derived from OLS do well for Boston and flight data sets, and performs similarly to RF SHAP and permutation importance.  While the features were chosen by interrogating a linear model, the error curves are generated using predictions from a (stronger) RF model. Once the RF integrates sufficient numbers of features with reasonable importance, prediction error curves become more similar.  In other words, although the order might not be the best, even a linear model can provide good estimates of the top few most  predictive features. The error curve derived from the OLS SHAP feature rankings differs from the OLS curve because the OLS coefficients are divided by the standard error. Without normalizing OLS coefficients with their variances, the OLS and OLS SHAP curves merge.
 
 \figref{fig:topk-impact} shows that the plain impact, area under the partial dependence curve unweighted by $x_j$ density, can also work well.  In the bulldozer case, for example, the first impact-ranked \simp{} feature is much better than the first \simp{} importance-ranked feature, as shown in \figref{fig:topk}(c) and \figref{fig:topk-impact}(c). (\simp{} selects the high-cardinality categorical variable {\tt ModelID}.) In fact, this impact feature yields half the MAE of all the other methods' top features. On the other hand, using impact instead of importance for the flight data set leads to a poor second rank feature choice; compare \figref{fig:topk}(b) and \figref{fig:topk-impact}(b).
 
@@ -447,7 +450,7 @@ Performance is important for practitioners so it is worthwhile analyzing \simp{}
 {\tt\small bulldozer} & 14 & 2 & 0.2s & 3.1s & 10.8s & 21.5s & {\small $0.125 n + 0.020 n^2$} & {\small 0.9997}\\
 {\tt\small rent} & 20 & 0 & 0.3s & 4.0s & 8.9s & 13.3s & {\small $0.435 n + 0.001 n^2$} & {\small 0.9991}\\
 \end{tabular}
-\caption{\small  Execution time for subsets of size 1,000 to 30,000 for rent, bulldozer, flight data sets.  There are a total of 40 numerical and 11 categorical variables: $p=20$, bulldozer $p=14$, and flight $p=17$. 
+\caption{\small  Execution time for subsets of size 1,000 to 30,000 for rent, bulldozer, flight data sets.  There are a total of 40 numerical and 11 categorical variables: rent $p=20$, bulldozer $p=14$, and flight $p=17$. 
 Rent has no categorical variables and exhibits linear performance, whereas categorical variables introduce mildly quadratic behavior. Final two columns describe how data fits to quadratic equations. Time does not include Numba just-in-time compiler warm-up, but users do experience this warm-up time.}
 \label{fig:timing}
 \end{figure}
