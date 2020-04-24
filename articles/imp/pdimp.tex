@@ -175,7 +175,7 @@ To go from the partial dependence of $x_j$ to feature impact, we compute the are
 
 Intuitively, the impact of $x_j$ is how much, on average, the values of $x_j$ are expected to push $y$ away from zero. We deliberately chose this  definition instead of measuring how much $x_j$ pushes $y$ away from the average response, $\overline{y}$, as SHAP does. The impact of $x_1$ on $y = x_1^2+x_2+100$ is $x_1^2$, not $|\overline{y} - x_1^2|$.  \figref{fig:quad-area} illustrates how the area under the $x_1^2$ and $x_2$ PD curves differ from the area straddling the means. The area under-the-curve ratio of $x_1$-to-$x_2$ is 2-to-1 (9/4.5), whereas the ratio of the area straddling the mean has roughly a 3-to-1 ratio (6.95/2.26). We believe that a 2-to-1 ratio better represents feature impact than 3-to-1.
 
-The partial dependence curve represents how $x_j$ effects $y$, but does not take into consideration the distribution of $x_j$.  Consider the \simp{} curve and $x_j$ histogram in \figref{fig:yearmade} for feature {\tt\small YearMade} from the bulldozer auction data set \citep{bulldozer}. The colored curves represent ten bootstraps from the same training set and the black dots give the average curve. Knowing that increases in bulldozer age continue to reduce price is useful from a business perspective, but new bulldozers will represent the bulk of any model validation set.  Because model feature selection is assessed using  validation error, feature selection is sensitive to the distribution of $x_j$. That means that feature importance should take into consideration the distribution of $x_j$, leading to an importance definition based upon expected value rather than average:
+The partial dependence curve represents how $x_j$ effects $y$, but does not take into consideration the distribution of $x_j$.  Consider the \simp{} curve and $x_j$ histogram in \figref{fig:yearmade} for feature {\tt\small YearMade} from the bulldozer auction data set \citep{bulldozer}. The colored curves represent ten bootstraps from the same training set and the black dots give the average curve. (\spd{} has an optional hyper parameter, {\tt\small ntrials}, that controls the number of bootstraps; the default is 1.) Knowing that increases in bulldozer age continue to reduce price is useful from a business perspective, but new bulldozers will represent the bulk of any model validation set.  Because model feature selection is assessed using  validation error, feature selection is sensitive to the distribution of $x_j$. That means that feature importance should take into consideration the distribution of $x_j$, leading to an importance definition based upon expected value rather than average:
 
 ~\\
 \noindent {\bf Definition 3} The {\em nonparametric feature importance} of $x_j$ is the ratio of $x_j$'s expected partial dependence magnitude to the total of all expected values, when all $x_j$ variables are normalized to the same fixed range:
@@ -190,6 +190,7 @@ The partial dependence curve represents how $x_j$ effects $y$, but does not take
 \begin{equation}\label{eq:Epd2c}
 \Ex[|\text{\it PD}_j|] = \sum_{z \in \{x_j^{(i)}\}_{i \in 1..n}} |\text{\it PD}_j(x_j = z)| \times P(x_j=z)
 \end{equation}
+
 
 \section{Existing methods}\label{sec:existing}
 
@@ -264,7 +265,7 @@ Deriving feature importances from partial dependences as \spd{} does was previou
 \citet{intgrad} introduced a technique (called ``Integrated Gradients'' or IG) for deep learning classifiers that can also be seen as a kind of partial dependence. To attribute a classifier prediction to the elements of an input vector, $\bf x$, IG integrates over the gradient of the model output function at points along the straight-line path from a baseline vector, $\bf x'$, to $\bf x$. IG estimates the integral by averaging the gradient computed at $m$ points and multiplying by the difference between ${\bf x}'_j$ and ${\bf x}_j$:
 
 \begin{equation}
-\text{IntegratedGradient}_j = (x_j - x'_j) \times \frac{1}{m} \sum_{k=1}^{m} \frac{\partial f({\bf x}' + \frac{k}{m}({\bf x}-{\bf x}'))}{\partial x_j}
+\text{IntegratedGradient}_j({\bf x},{\bf x'}) = (x_j - x'_j) \times \frac{1}{m} \sum_{k=1}^{m} \frac{\partial f({\bf x}' + \frac{k}{m}({\bf x}-{\bf x}'))}{\partial x_j}
 \end{equation}
 
 \noindent  Because IG integrates the partial derivative like ALE and \spd, that equation can be interpreted as the $x_j$ partial dependence curve evaluated at $\bf x$ weighted by the range in $x_j$ space. Alternatively, the average gradient within an $x_j$ range times the range of $x_j$ is equivalent to the area under the $x_j$ gradient curve in that range (by the mean value theorem of integrals). In that sense, \cite{intgrad} is also similar to \simp, except that we integrate the gradient twice, once to get the partial dependence curve and a second time to get the area under the partial dependence curve.
