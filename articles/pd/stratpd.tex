@@ -108,8 +108,6 @@ In this paper, we contribute methods for computing partial dependence curves, fo
 
 \section{Introduction}
 
-\todo{Fix integrated Gradient so that it is an area under the derivative of F not loss function}
-
 Partial dependence, the isolated effect of a specific variable or variables on the response variable, $y$, is important to researchers and practitioners in many disparate fields such as medicine, business, and the social sciences. For example, in medicine, researchers are interested in the relationship between an individual's demographics or clinical features and their susceptibility to illness. Business analysts at a car manufacturer might need to know how changes in their supply chain affect defect rates. Climate scientists are interested in how different atmospheric carbon levels affect temperature.
 
 For an explanatory matrix, $\bf X$, with a single (column) variable, $x_1$, a plot of the $y$ against $x_1$ visualizes the marginal effect of feature $x_1$ on $y$ exactly. Given two or more features, one can similarly plot the marginal effects of each feature separately, however, the analysis is complicated by the interactions of the variables.   Variable interactions and codependencies between features result in marginal plots that do not isolate the specific contribution of a feature of interest to the response. For example, a marginal plot of sex (male/female) against body weight would likely show that, on average, men are heavier than women. While true, men are also taller than women on average, which likely accounts for most of the difference in average weight. It is unlikely that two ``identical'' people, differing only in sex, would be appreciably different in weight.  
