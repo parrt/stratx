@@ -323,9 +323,8 @@ def test_top_features(dataset,
                       kfold_indexes,
                       top_features_range=None,
                       metric=mean_absolute_error,
-                      model='RF',
-                      catcolnames=set()):
-    # Compute top-k curves for all techniques, including both import and impact
+                      model='RF'):
+    # Compute k-k curves for all techniques, including both import and impact
     if top_features_range is None:
         top_features_range = (1, X.shape[1])
 
@@ -338,22 +337,24 @@ def test_top_features(dataset,
 
     print(f"test_top_features {dataset} using {technique_names} and {model}")
 
+    feature_sets = []
+    for name in technique_names:
+        I = all_importances[name]
+        if I is not None:
+            top_features = list(I.index.values)
+            print(f"Top {name} features:", top_features[:8])
+            feature_sets.append(top_features)
+
     topscores = []
     topstddevs = []
-    for top in range(top_features_range[0], top_features_range[1] + 1):
+    for k in range(top_features_range[0], top_features_range[1] + 1):
         results = []
         stddevs = []
-        # Get list of top features as ranked by various techniques
-        feature_sets = []
-        for technique_name,I in all_importances.items():
-            if I is not None:
-                top_features = I.iloc[:top, 0]
-                feature_sets.append(top_features.index.values)
         for technique_name, features in zip(technique_names, feature_sets):
             # print(f"Train with {features} from {technique_name}")
             # Train RF model with top-k features
             # Do 5-fold cross validation using original full X, y passed in to this method
-            scores = cv_features(dataset, kfold_indexes, X, y, features, metric=metric, model=model)
+            scores = cv_features(dataset, kfold_indexes, X, y, features[:k], metric=metric, model=model)
             results.append(np.mean(scores))
             stddevs.append(np.std(scores))
             # print(f"{technique_name} valid R^2 {s:.3f}")
@@ -361,10 +362,10 @@ def test_top_features(dataset,
         topstddevs.append( stddevs )
 
         # avg = [f"{round(m,2):9.3f}" for m in np.mean(all, axis=0)]
-        # print(f"Avg top-{top} valid {metric.__name__} {', '.join(avg)}")
+        # print(f"Avg k-{k} valid {metric.__name__} {', '.join(avg)}")
 
     R = pd.DataFrame(data=topscores, columns=technique_names)
-    R.index = [f"top-{top}" for top in range(top_features_range[0], top_features_range[1] + 1)]
+    R.index = [f"k-{top}" for top in range(top_features_range[0], top_features_range[1] + 1)]
     return R
 
 
@@ -424,15 +425,20 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),
     # Do OLS special cases for rent and boston
 
     main_techniques = ['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImport']
-    if dataset=='rent': # purely numerical features
+    if dataset!='bulldozer': # purely numerical features or only important features are numerical
         R = test_top_features(dataset,
                               X, y,
                               imps,
                               kfold_indexes,
                               top_features_range=(1,8),
                               metric=mean_absolute_error,
-                              model="OLS",
-                              catcolnames=catcolnames)
+                              model="OLS")
+        if dataset=='rent':
+            yrange=(500,1200)
+        elif dataset=='boston':
+            yrange=(2,6.5)
+        else:
+            yrange=(10,25)
 
         R_ = R[main_techniques]
         plot_topk(R_, k=8, title=f"OLS {title}",
@@ -443,36 +449,59 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),
                   ticklabel_fontsize=10,
                   # legend_location='lower left',
                   legend_location='upper right',
-                  yrange=(500,1200),
+                  yrange=yrange,
                   figsize=figsize)
         plt.tight_layout()
         plt.savefig(f"../images/{dataset}-topk-OLS-Importance.pdf", bbox_inches="tight", pad_inches=0)
         plt.show()
 
-    if dataset=='boston': # purely numerical features
-        R = test_top_features(dataset,
-                              X, y,
-                              imps,
-                              kfold_indexes,
-                              top_features_range=(1,8),
-                              metric=mean_absolute_error,
-                              model="OLS",
-                              catcolnames=catcolnames)
-
-        R_ = R[main_techniques]
-        plot_topk(R_, k=8, title=f"{model} {title}",
-                  ylabel=f"5-fold CV MAE ({yunits})",
-                  xlabel=f"Top $k$ feature $Importance$",
-                  title_fontsize=14,
-                  label_fontsize=14,
-                  ticklabel_fontsize=10,
-                  # legend_location='lower left',
-                  legend_location='upper right',
-                  yrange=(2,6.5),
-                  figsize=figsize)
-        plt.tight_layout()
-        plt.savefig(f"../images/{dataset}-topk-OLS-Importance.pdf", bbox_inches="tight", pad_inches=0)
-        plt.show()
+    # if dataset=='rent': # purely numerical features
+    #     R = test_top_features(dataset,
+    #                           X, y,
+    #                           imps,
+    #                           kfold_indexes,
+    #                           top_features_range=(1,8),
+    #                           metric=mean_absolute_error,
+    #                           model="OLS")
+    #
+    #     R_ = R[main_techniques]
+    #     plot_topk(R_, k=8, title=f"OLS {title}",
+    #               ylabel=f"5-fold CV MAE ({yunits})",
+    #               xlabel=f"Top $k$ feature $Importance$",
+    #               title_fontsize=14,
+    #               label_fontsize=14,
+    #               ticklabel_fontsize=10,
+    #               # legend_location='lower left',
+    #               legend_location='upper right',
+    #               yrange=(500,1200),
+    #               figsize=figsize)
+    #     plt.tight_layout()
+    #     plt.savefig(f"../images/{dataset}-topk-OLS-Importance.pdf", bbox_inches="tight", pad_inches=0)
+    #     plt.show()
+    #
+    # if dataset=='boston': # purely numerical features
+    #     R = test_top_features(dataset,
+    #                           X, y,
+    #                           imps,
+    #                           kfold_indexes,
+    #                           top_features_range=(1,8),
+    #                           metric=mean_absolute_error,
+    #                           model="OLS")
+    #
+    #     R_ = R[main_techniques]
+    #     plot_topk(R_, k=8, title=f"{model} {title}",
+    #               ylabel=f"5-fold CV MAE ({yunits})",
+    #               xlabel=f"Top $k$ feature $Importance$",
+    #               title_fontsize=14,
+    #               label_fontsize=14,
+    #               ticklabel_fontsize=10,
+    #               # legend_location='lower left',
+    #               legend_location='upper right',
+    #               yrange=(2,6.5),
+    #               figsize=figsize)
+    #     plt.tight_layout()
+    #     plt.savefig(f"../images/{dataset}-topk-OLS-Importance.pdf", bbox_inches="tight", pad_inches=0)
+    #     plt.show()
 
 
 def topk_for_one_model(dataset, model, X, y, imps, catcolnames, figsize, kfold_indexes, title,
@@ -484,9 +513,8 @@ def topk_for_one_model(dataset, model, X, y, imps, catcolnames, figsize, kfold_i
                           kfold_indexes,
                           top_features_range=(1, 8),
                           metric=mean_absolute_error,
-                          model=model,
-                          catcolnames=catcolnames)
-    # print(R)
+                          model=model)
+    print(f"TOP-k {model} CURVES\n",R)
 
     # OK, so now we have curves for {model} with importance, impact from StratImpact; save these
 
@@ -507,11 +535,10 @@ def topk_for_one_model(dataset, model, X, y, imps, catcolnames, figsize, kfold_i
     if dataset=='bulldozer':
         plotimp(sortby='Importance', techniques=['RF SHAP', "RF perm", 'StratImport'])
         plotimp(sortby='Impact',     techniques=['RF SHAP', "RF perm", 'StratImpact'])
-        plotimp(sortby='baseline',   techniques=['Spearman', 'PCA', 'StratImport'])
     else:
         plotimp(sortby='Importance', techniques=['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImport'])
         plotimp(sortby='Impact',     techniques=['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact'])
-        plotimp(sortby='baseline',   techniques=['Spearman', 'PCA', 'OLS', 'StratImport'])
+    plotimp(sortby='baseline',   techniques=['Spearman', 'PCA', 'StratImport'])
 
 
 def best_single_feature(X, y, dataset, kfolds=5, model='RF'):
@@ -599,7 +626,7 @@ def get_multiple_imps(dataset,
         perm_I = rfpimp.importances(rf, X_test, y_test) # permutation; drop in test accuracy
         print("RF perm\n",perm_I)
 
-    if "StratImpact" in include or "StratImport" in include:
+    if "StratImpact" in include:
         # RF SHAP and RF perm get to look at the test data to decide which features
         # are more predictive and useful for generality's sake
         # So, we get to look at all data as well, not just training data
@@ -618,7 +645,7 @@ def get_multiple_imps(dataset,
                                      min_slopes_per_x=min_slopes_per_x,
                                      supervised=supervised,
                                      normalize=normalize,
-                                     drop_high_stddev=1.9 if drop_high_variance_features else 9999)
+                                     drop_high_stddev=2.0 if drop_high_variance_features else 9999)
         print("OURS\n",ours_I)
 
     if "PDP" in include:
@@ -641,10 +668,13 @@ def get_multiple_imps(dataset,
 
     # Put both orders for Strat approach into same imps dictionary
     I = featimp.Isortby(ours_I, 'Importance')
-    d['StratImport'] = pd.DataFrame(I['Impact'])
+    d['StratImport'] = pd.DataFrame(I['Importance'])
 
     I = featimp.Isortby(ours_I, 'Impact')
     d['StratImpact'] = pd.DataFrame(I['Impact'])
+
+    print(d['StratImport'])
+    print(d['StratImpact'])
     return d
 
 

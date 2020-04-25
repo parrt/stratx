@@ -49,7 +49,7 @@ def importances(X: pd.DataFrame,
                 min_slopes_per_x=5,   # ignore pdp y values derived from too few slopes (usually at edges); for smallerData sets, drop this to five or so
                 min_samples_leaf=15,
                 cat_min_samples_leaf=5,
-                drop_high_stddev=1.9,
+                drop_high_stddev=2.0,
                 bootstrap=True, # boostrap by default, don't subsample
                 subsample_size=.75,
                 normalize=True,  # make imp values 0..1
@@ -152,7 +152,7 @@ def importances(X: pd.DataFrame,
     return I
 
 
-def Isortby(I, sortby, stddev_threshold=1.9, ascending=False):
+def Isortby(I, sortby, stddev_threshold=2.0, ascending=False):
     I = I.copy()
     I['stable'] = True
     if sortby+" sigma" in I.columns.values and stddev_threshold > 0:
