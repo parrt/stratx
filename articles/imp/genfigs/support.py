@@ -438,7 +438,7 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),
         elif dataset=='boston':
             yrange=(2,6.5)
         else:
-            yrange=(10,25)
+            yrange=(15,30)
 
         R_ = R[main_techniques]
         plot_topk(R_, k=8, title=f"OLS {title}",

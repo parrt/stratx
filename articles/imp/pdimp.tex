@@ -93,7 +93,8 @@ feature importance, business insights, medical insights, partial dependence, mod
 \label{sec:intro}
 
 \todo{
-check \simp vs \simpo
+check \simp vs \simpo is confusing
+
 Check, what is $R^2$?
 
 threshold $2\sigma$ for \simp{} features
@@ -416,7 +417,7 @@ Features that are predictive in one model are not necessarily predictive in anot
 \label{fig:topk-gbm}
 \end{figure}
 
-To check feature exportation to a very different model, we computed error curves for the Boston, flight, and rent data sets using OLS regressors, as shown in \figref{fig:OLS}, again using the \simpo{}, OLS-derived, and RF-derived rankings.  The error curves derived from OLS model predictions are all higher than those from RFs, as expected, but feature rankings from all technique export with roughly the same predictive power. Rankings from OLS SHAP have higher error curves across RF, GBM, and OLS models.
+To check feature exportation to a very different model, we computed error curves for the Boston, flight, and rent data sets using OLS regressors, as shown in \figref{fig:OLS}, again using the \simpo{}, OLS-derived, and RF-derived rankings.  The error curves derived from OLS model predictions are all higher than those from RFs, as expected, but feature rankings from all technique export reasonably well, with the exception of \simpo's rankings for flight. As with exporting to a GBM, the error curve flattens out after $k=5$. Rankings from OLS SHAP have higher error curves across RF, GBM, and OLS models.
 
 \begin{figure}[htbp]
 \begin{center}
@@ -516,21 +517,30 @@ flight has 5,819,080 records.
 
 \section{Discussion and future work}\label{sec:discussion}
 
-In this paper, we propose a nonparametric approach for measuring feature $x_j$'s true impact upon the response variable, $y$, based upon an ideal mathematical definition of impact that is the area under $x_j$'s partial dependence curve. By weighting $x_j$'s partial dependence curve with $x_j$'s density, we also arrive at a mathematical definition of feature importance.  In contrast, most existing techniques and research focus on model feature selection, through a plurality of feature importance definitions.   The exception is SHAP, which provides a mathematical definition of feature impact, though based upon predictions from a fitted model, rather than directly from the data.
+In this paper, we propose a nonparametric approach for measuring feature $x_j$'s impact upon the response variable, $y$, based upon a mathematical definition of impact: the area under $x_j$'s ideal partial dependence curve. By weighting $x_j$'s ideal partial dependence curve with $x_j$'s density, we also arrive at a mathematical definition of feature importance.  Most existing techniques and research focus on model feature selection, very often through the predictions of a fitted model, $\hat{f}$, rather than directly from the data.  
+
+Our goal is not to claim these existing feature selection techniques fail in practice; they very often work well. Instead, our goal is to bring attention to the fact that feature importance is not the same as feature impact, because of potential distortions peering through $\hat{f}$.
+ 
+
+Existing feature selection techniques generally work well in practice. 
+
+
+
+These techniques often work very well in practice and our goal is not
+
+% through a plurality of feature importance definitions. The exception is SHAP, which provides a mathematical definition of feature impact, though based upon predictions from a fitted model, $\hat{f}$, rather than directly from the data.
 
 The focus on feature selection is understandable because practitioners commonly incorporate feature selection into the model development cycle in an effort to simplify models. For this purpose, though, only relative feature ranks matter, not the specific importance values {\em per se}.  For example, permutation importance  computes model prediction accuracy differences from the full baseline model, which are related to but not the same as feature impacts. Many (model-free) techniques, such as mRMR, provide just a ranking, without specific importance values.
 
-Obtaining feature importance through impact is valid because the most impactful features should be the most predictive in a variety of models, but the opposite is not the case.   Interpreting importances as feature impacts is inappropriate because predictive features does not always coincide with impactful features.  The same importance technique applied to the same data can get very different feature importances, depending on the model, which calls into question their validity as impact values.  Feature impacts, and hence business and medical insights,  in our view should be derived directly from the data, not through the lens of a model.
+Obtaining feature importance through impact is valid because the most impactful features should be the most predictive in a variety of models, but the opposite is not the case.   Interpreting importances as feature impacts is inappropriate because predictive features does not always coincide with impactful features.  The same importance technique applied to the same data can get very different feature importances, depending on the model, which calls into question their accuracy as impact values.  Feature impacts, and hence business and medical insights,  in our view should be derived directly from the data, not through the lens of a model.
 
-To assess the quality of \simp's feature impacts, we compared \simp's recommended feature importance rankings to those of other techniques, as a proxy, in the previous section. Despite not having access to predictions from a fitted model nor the 20\% validation set, \simp{} feature rankings are competitive for three real data sets. We conclude that \simp{} is a promising approach for obtaining feature impacts.  
+To assess the quality of \simp's feature impacts, we compared \simp's recommended feature importance rankings to those of other techniques, as a proxy. Despite not having access to predictions from a fitted model, \simp{} feature rankings are competitive with other techniques on Boston and three real data sets.  \figref{fig:topk}(c) illustrates a case where \simpo's most important feature yields half the error rate of the top features recommended by the other methods.  One would expect model-based techniques to easily identify the single most important model feature, or at least more readily than an approach not using model predictions.  Even if such results are rare, misidentifying this top feature indicates that there is room for improvement in the feature importance research area. 
 
-As for model feature selection, the bulldozer error curves in \figref{fig:topk-impact}(c) illustrate a case where \simp{} (ranked by impact not importance) gets half the error rate of the top features recommended by the other methods.  One would expect model-based techniques to easily identify the single most important model feature, or at least more readily than an approach not using model predictions.  (\simp{} recommends the high-cardinality categorical variable {\tt ModelID}, whereas RF-based permutation importance and SHAP recommend ordinal {\tt ProductSize}.)  Even if such results are rare, misidentifying the single most important feature indicates that there is room for improvement in the feature importance research area. 
-
-It is also interesting to note that simple expedients like ranking features by Spearman's R coefficient between $x_j$ and $y$ or simple techniques like permutation importance perform well, at least for the first eight important features in our experiments. (We did not perform experiments on the least important features.) Also note that the error curves for SHAP and permutation importance generally mirror each other for the first eight features.  Both techniques introduce potentially nonsensical records to avoid retraining models, but this does not appear to affect their ability to rank features for feature selection purposes.
+It is also interesting that simple expedients like ranking features by Spearman's R coefficient between $x_j$ and $y$ or simple techniques like permutation importance perform well, at least for the first eight important features in our experiments. (We did not perform experiments on the least important features.) Also the error curves for SHAP and permutation importance generally mirror each other for the first eight features.  Both techniques introduce potentially nonsensical records to avoid retraining models, but this does not appear to affect their ability to rank features for feature selection purposes.
 
 \todo{ interrogating OLS to get rankings then using a more powerful model is worth exploring.}
 
-The \simp{} approach relies on accurate partial dependences for both numerical and categorical variables, and considerable effort has gone into refining the current partial dependence algorithms. Extensive simulation has shown, however, that partial dependences computed using the stratification approach are highly sensitive to partial derivatives computed for the left edge of any $x_j$'s range. The partial dependence curve is the cumulative sum of the partial derivatives and so any changes at the left edge affect the entire curve.  This presents a problem when there are few samples with $x_j$ values in that range, as shown in the histogram of \figref{fig:yearmade}. (We introduced a hyper-parameter called {\tt\small min\_slopes\_per\_x\_values} to ignore any partial derivatives estimated with too few records, which improved the accuracy and stability of the partial dependence estimates.)  Any improvement in partial dependence curves would be useful in their own right and particularly helpful for \simp.    Another key area of improvement would be partial dependences for classification data sets, since \simp{} cannot compute impacts for classifiers until such partial dependences are available.
+The \simp{} approach relies on accurate partial dependences for both numerical and categorical variables, and considerable effort has gone into refining the current partial dependence algorithms.  Any improvement in partial dependence curves would be useful in their own right and particularly helpful for \simp.   Another key area of improvement would be partial dependences for classification data sets, since \simp{} cannot compute impacts for classifiers until such partial dependences are available.
 
 \cut{
 \begin{figure}
