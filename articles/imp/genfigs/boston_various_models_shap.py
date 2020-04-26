@@ -1,6 +1,6 @@
 
 from stratx.featimp import importances, plot_importances
-from support import shap_importances, models
+from support import shap_importances, models, load_dataset
 
 import numpy as np
 import pandas as pd
@@ -21,24 +21,28 @@ from sklearn.model_selection import GridSearchCV
 import xgboost as xgb
 from sklearn import svm
 
-np.random.seed(44) # choose a seed that demonstrates diff RF/GBM importances
+np.random.seed(1) # choose a seed that demonstrates diff RF/GBM importances
 
-boston = load_boston()
-X = pd.DataFrame(boston.data, columns=boston.feature_names)
-y = pd.Series(boston.target)
+# boston = load_boston()
+# X = pd.DataFrame(boston.data, columns=boston.feature_names)
+# y = pd.Series(boston.target)
+
+X, y, X_train, X_test, y_train, y_test = load_dataset("boston", "MEDV")
 
 n = X.shape[0]
-n_shap=len(X)
+n_shap=len(X_test) # test all
 
 fig, axes = plt.subplots(1,4,figsize=(10,2.5))
 
 lm = LinearRegression()
-X_ = StandardScaler().fit_transform(X)
-X_ = pd.DataFrame(X_, columns=X.columns)
-lm.fit(X_, y)
-lm_score = lm.score(X_,y)
-print("OLS", lm_score, mean_absolute_error(y, lm.predict(X_)))
-ols_shap_I = shap_importances(lm, X_, X_, n_shap=n_shap)  # fast enough so use all data
+X_train_ = StandardScaler().fit_transform(X_train)
+X_train_ = pd.DataFrame(X_train_, columns=X.columns)
+X_test_ = StandardScaler().fit_transform(X_test)
+X_test_ = pd.DataFrame(X_test_, columns=X.columns)
+lm.fit(X_train_, y_train)
+lm_score = lm.score(X_test_,y_test)
+print("OLS validation R^2", lm_score)
+ols_shap_I = shap_importances(lm, X_train_, X_test_, n_shap=n_shap)  # fast enough so use all data
 print(ols_shap_I)
 
 """
@@ -64,42 +68,40 @@ rf_I.reset_index().to_feather("/tmp/t.feather")
 
 tuned_params = models[("boston", "RF")]
 rf = RandomForestRegressor(**tuned_params, oob_score=True, n_jobs=-1)
-rf.fit(X, y)
-rf_I = shap_importances(rf, X, X, n_shap)
-rf_score = rf.score(X, y)
-print("RF", rf_score, rf.oob_score_, mean_absolute_error(y, rf.predict(X)))
+rf.fit(X_train, y_train)
+rf_score = rf.score(X_test,y_test)
+rf_I = shap_importances(rf, X, X_test, n_shap)
+print("RF valid, OOB", rf_score, ",", rf.oob_score_)
 
 tuned_params = models[("boston", "GBM")]
 b = xgb.XGBRegressor(**tuned_params, n_jobs=-1)
-b.fit(X, y)
-xgb_score = b.score(X, y)
-print("XGB training R^2", xgb_score)
-m_I = shap_importances(b, X, X, n_shap)
-b_score = b.score(X, y)
-print("XGBRegressor", b_score, mean_absolute_error(y, b.predict(X)))
+b.fit(X_train, y_train)
+xgb_score = b.score(X_test,y_test)
+print("XGB valid R^2", xgb_score)
+m_I = shap_importances(b, X, X_test, n_shap)
 
 DO_SVM = True
 if DO_SVM:
     tuned_params = models[("boston", "SVM")]
     s = svm.SVR(**tuned_params)
-    X_ = StandardScaler().fit_transform(X)
-    X_ = pd.DataFrame(X_, columns=X.columns)
-    s.fit(X_, y)
-    svm_score = s.score(X_, y)
+    s.fit(X_train_, y_train)
+    svm_score = s.score(X_test_, y_test)
     print("svm_score", svm_score)
-    svm_shap_I = shap_importances(s, X_, X_, n_shap=n_shap)
+    svm_shap_I = shap_importances(s, X_train_, X_test_, n_shap=n_shap)
     """
     Takes 13 minutes for all records
     100%|██████████| 506/506 [13:30<00:00,  1.60s/it]
     SHAP time for 506 test records using SVR = 810.1s
+    100%|██████████| 101/101 [01:35<00:00,  1.05it/s]
+    SHAP time for 101 test records using SVR = 95.9s
     """
 
 plot_importances(ols_shap_I.iloc[:8], ax=axes[0], imp_range=(0,.4), width=2.5, xlabel='(a)')
-axes[0].set_title(f"OLS train $R^2$={lm_score:.2f}")
+axes[0].set_title(f"OLS valid $R^2$={lm_score:.2f}")
 plot_importances(rf_I.iloc[:8], ax=axes[1], imp_range=(0,.4), width=2.5, xlabel='(b)')
-axes[1].set_title(f"RF train $R^2$={rf_score:.2f}")
+axes[1].set_title(f"RF valid $R^2$={rf_score:.2f}")
 plot_importances(m_I.iloc[:8], ax=axes[2], imp_range=(0,.4), width=2.5, xlabel='(c)')
-axes[2].set_title(f"XGBoost train $R^2$={b_score:.2f}")
+axes[2].set_title(f"XGBoost valid $R^2$={xgb_score:.2f}")
 if DO_SVM:
     plot_importances(svm_shap_I.iloc[:8], ax=axes[3], imp_range=(0,.4), width=2.5, xlabel='(d)')
     axes[3].set_title(f"SVM train $R^2$={svm_score:.2f}")

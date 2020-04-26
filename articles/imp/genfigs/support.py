@@ -215,12 +215,12 @@ def shap_importances(model, X_train, X_test, n_shap, normalize=True, sort=True):
         shap_values = explainer.shap_values(X_test, check_additivity=False)
     elif isinstance(model, Lasso) or isinstance(model, LinearRegression):
         explainer = shap.LinearExplainer(model,
-                                         X_train,
+                                         shap.sample(X_train, 100),
                                          feature_perturbation='interventional')
         shap_values = explainer.shap_values(X_test)
     else:
         # gotta use really small sample; verrry slow
-        explainer = shap.KernelExplainer(model.predict, X_train.sample(frac=.1))
+        explainer = shap.KernelExplainer(model.predict, shap.sample(X_train, 100))
         shap_values = explainer.shap_values(X_test, nsamples='auto')
     shapimp = np.mean(np.abs(shap_values), axis=0)
     stop = timer()

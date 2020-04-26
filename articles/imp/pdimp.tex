@@ -147,34 +147,34 @@ To hold features constant for any smooth and continuous generator function $f:\m
 
 Using partial derivatives to isolate the effect of variables on the response was used prior to \spd{} by ALE and \cite{intgrad}. The key distinction is that  \spd{} integrates over the derivative of the generator function, ${\partial f}/{\partial x_j}$, estimated from the raw training data, whereas, previous techniques integrated over the derivative of model $\hat{f}$ that estimates $f$: ${\partial \hat{f}}/{\partial x_j}$. While there are advantages to using models, such as their ability to smooth over noise, properly choosing and tuning a machine learning model presents a barrier to large user communities, such as business analysts, scientists, and medical researchers. Further, without potential distortions from a model, \spd{} supports the measurement of impact, not just importance.
 
-To go from the partial dependence of $x_j$ to feature impact, we assume that the larger the area under the magnitude of $x_j$'s curve, the larger the impact on $y$:
-
-\[
-\Imp_j = \int_{min({\bf X}_j)}^{max({\bf X}_j)} |PD_j(x_j)| dx_j
-\]
-
-\noindent In practice, we approximate the integral with Riemann sums of rectangular regions:
-
-\[
-\Imp_j = \sum_{x_j \in \{{\bf X}_j\}} |PD_j(x_j)| \Delta x_j
-\]
-
-\noindent  where $\{{\bf X}_j\}$ is the set of unique ${\bf X}_j$ values ($\{{\bf X}_j^{(i)}\}_{i=1..n}$) and $n_j$ is the number of unique ${\bf X}_j$. The usual definition of region width, $\Delta x_j = {(max({\bf X}_j) - min({\bf X}_j))}/{n_j}$, is inappropriate in this case because $PD_j$ often has large gaps in $x_j$ space and impact units would include $x_j$'s units (e.g., $rent \times bedrooms$ or $rent \times hasparking$). That would make impact scores incomparable across features. By defining $\Delta x_j = 1/n_j$, the fraction of unique ${\bf X}_j$ values covered by one $PD_j$ value, widths are not skewed by empty $x_j$ gaps and units become those of $y$. That reduces $x_j$'s impact to simply the average magnitude of $PD_j$:
-
-\[
-\Imp_j = \sum_{x_j \in \{{\bf X}_j\}} |PD_j(x_j)| \times \frac{1}{n_j} = \overline{|PD_j|}
-\]
-
-\noindent Normalizing that value from units of $y$ to [0..1] brings us to our definition of impact.
-
-\cut{
-By the mean-value theorem of integrals, the area under continuous function $g(x)$ in interval $[a,b]$ is $\int_{a}^{b} g(x) dx = \overline{g(x)}(b-a)$, but the $b-a$ term drops out if we normalize all variables to the same range, such as $[0,1]$. (For comparison purposes between variables, the actual area is not important.). The impact of $x_j$ is then just the average magnitude of $\text{\it PD}_j(x_j)$:}
+To go from the partial dependence of $x_j$ to feature impact, we assume that the larger the ``mass'' under $x_j$'s partial dependence curve, the larger $x_j$'s impact on $y$.
 
 ~\\
-\noindent {\bf Definition 1} The {\em nonparametric feature impact} of $x_j$ is the ratio of the average magnitude of $x_j$'s idealized partial dependence to the total for all variables:
+\noindent {\bf Definition 1} The (unnormalized) {\em nonparametric feature impact} of $x_j$ is the area under the magnitude of $x_j$'s idealized partial dependence:
+
+\begin{equation}
+\Imp_j = \int_{min({\bf X}_j)}^{max({\bf X}_j)} |PD_j(x_j)| dx_j
+\end{equation}
+
+\noindent In practice, we approximate the integral with a Riemann sum of rectangular regions:
+
+\begin{equation}
+\Imp_j \approx \sum_{x_j \in \{{\bf X}_j\}} |PD_j(x_j)| \Delta x_j
+\end{equation}
+
+\noindent  where $\{{\bf X}_j\}$ is the set of unique ${\bf X}_j$ values ($\{{\bf X}_j^{(i)}\}_{i=1..n}$) and $n_j$ is the number of unique ${\bf X}_j$. The usual definition of region width, $\Delta x_j = {(max({\bf X}_j) - min({\bf X}_j))}/{n_j}$, is inappropriate in this case because $PD_j$ often has large gaps in $x_j$ space and impact units would include $x_j$'s units (e.g., $rent \times bedrooms$ or $rent \times hasparking$). That would make impact scores incomparable across features. By defining $\Delta x_j = 1/n_j$, the fraction of unique ${\bf X}_j$ values covered by one $PD_j$ value, widths are not skewed by empty $x_j$ gaps and impact units become those of $y$. That reduces $x_j$'s impact estimate to the average magnitude of $PD_j$:
+
+\[
+\Imp_j \approx  \sum_{x_j \in \{{\bf X}_j\}} |PD_j(x_j)| \times \frac{1}{n_j} = \overline{|PD_j|}
+\]
+
+\noindent Dividing an impact by the sum of all impacts, converts impact units from $y$ to [0..1]:
+
+~\\
+\noindent {\bf Definition 2} The {\em normalized nonparametric feature impact} of $x_j$ is the ratio of the average magnitude of $x_j$'s idealized partial dependence to the total for all variables:
 
 \begin{equation}\label{eq:Epd2a}
-\Imp_j = \frac{\overline{|\text{\it PD}_j|}}{\sum_{k=1}^p \overline{|\text{\it PD}_k|}}
+\Imp_j^{*} = \frac{\overline{|\text{\it PD}_j|}}{\sum_{k=1}^p \overline{|\text{\it PD}_k|}}
 \end{equation}
 
 \noindent For example, consider quadratic equation $y = x_1^2 + x_2 + 100$ as a generator of data in $[0,3]$. The partial derivatives are ${\partial y}/{\partial x_1} = 2 x_1$ and ${\partial y}/{\partial x_2} = 1$, giving $\text{\it PD}_1 = x_1^2$ and $\text{\it PD}_2 = x_2$. $\overline{|\text{\it PD}_1|}$ is then 9.0, the average magnitude of $x_1^2$ in $[0,3]$, and $\overline{|\text{\it PD}_2|}$ is 4.5, the average magnitude of $x_2$ in $[0,3]$, as depicted in \figref{fig:quad-area}(a). That is the same result obtained by integrating under the partial dependence curves:  $\int_0^3 x_1^2 dx_1 = \frac{x_1^3}{3} \big |_0^3 = 9$ and $\int_0^3 x_2^2 dx_2 = \frac{x_2^2}{2} \big |_0^3 = 4.5$.   Therefore, $x_1$ has twice the impact as $x_2$ for data generated in that interval, giving $\simp_1 = 0.\overline{66}$ and $\simp_2 = 0.\overline{33}$.
@@ -203,10 +203,10 @@ Intuitively, the impact of $x_j$ is how much, on average, the values of $x_j$ ar
 The partial dependence curve represents how $x_j$ effects $y$, but does not take into consideration the distribution of $x_j$.  Consider the \simp{} curve and $x_j$ histogram in \figref{fig:yearmade} for feature {\tt\small YearMade} from the bulldozer auction data set \citep{bulldozer}. The colored curves represent ten bootstraps from the same training set and the black dots give the average curve. (\spd{} has an optional hyper parameter, {\tt\small ntrials}, that controls the number of bootstraps; the default is currently 1.) Knowing that increases in bulldozer age continue to reduce price is useful from a business perspective, but new bulldozers will represent the bulk of any model validation set.  Because model feature selection is assessed using  validation error, feature selection is sensitive to the distribution of $x_j$. That means that feature importance should take into consideration the distribution of $x_j$, leading to an importance definition based upon expected value rather than average:
 
 ~\\
-\noindent {\bf Definition 3} The {\em nonparametric feature importance} of $x_j$ is the ratio of $x_j$'s expected partial dependence magnitude to the total of all expected values, when all $x_j$ variables are normalized to the same fixed range:
+\noindent {\bf Definition 3} The {\em normalized nonparametric feature importance} of $x_j$ is the ratio of $x_j$'s expected partial dependence magnitude to the total of all expected values, when all $x_j$ variables are normalized to the same fixed range:
 
 \begin{equation}\label{eq:Epd2b}
-\Impo_j = \frac{\Ex[|\text{\it PD}_j|]}{\sum_{k=1}^p \Ex[|\text{\it PD}_k|]}
+\Impo_j^{*} = \frac{\Ex[|\text{\it PD}_j|]}{\sum_{k=1}^p \Ex[|\text{\it PD}_k|]}
 \end{equation}
 
 \noindent Let $P(x_j = z)$ be the probability that $x_j=z$ and $\{x_j^{(i)}\}_{i \in 1..n}$ be the set of unique $x_j$, then:
@@ -216,17 +216,7 @@ The partial dependence curve represents how $x_j$ effects $y$, but does not take
 \Ex[|\text{\it PD}_j|] = \sum_{z \in \{x_j^{(i)}\}_{i \in 1..n}} |\text{\it PD}_j(x_j = z)| \times P(x_j=z)
 \end{equation}
 
-\todo{categorical impact is also expected value.}
-
-These definitions of impact and importance for numerical features also work for categorical explanatory features. In either case, impact is the average $PD_j$ magnitude and importance is the expected value of $PD_j$'s magnitude. Because there are $n$ (finite) values for each feature, the range of $x_j$ does not affect impact or importance. Each $x_j$ has the same number of values pushing $y$ above or below zero.
-
-In practice, we do simply this since $n$ is same and we can normalize all $X_j$ to same range w/o loss of generality
-
-numerical np.mean(np.abs(pdpy))
-
-cat: np.nanmean(abs avg per cat)
-
-
+These definitions of \Imp{} and \Impo{} also apply to categorical explanatory features encoded as unique integers because the mean operation is insensitive to element order; this prevents any assumption about order for nominal categoricals.  For example, consider categorical feature $x_{zipcode}$ and numerical feature $x_{bedrooms}$ from an apartment rent data set.  The unnormalized \Imp{} score for both is just the average magnitude of the associated partial dependence curve, using \spd{} for $x_{bedrooms}$  and \cspd{} for $x_{zipcode}$ (the category equivalent of \spd{} from the {\tt stratx} package).
 
 \section{Existing methods}\label{sec:existing}
 
