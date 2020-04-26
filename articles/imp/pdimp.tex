@@ -36,11 +36,11 @@
 %\newcommand{\Ex}{\mathop{\mathbb{E}}}
 \DeclareMathOperator{\Ex}{\mathbb{E}}
 
-%\newcommand{\Imp}{\text{StratImpact}}
-%\newcommand{\Impo}{\text{StratImport}}
-
+\newcommand{\Imp}{\fontfamily{cmr}\textsc{Impact}}
+\newcommand{\Impo}{\fontfamily{cmr}\textsc{Import}}
 \newcommand{\simp}{\fontfamily{cmr}\textsc{\small StratImpact}}
-\newcommand{\simpo}{\fontfamily{cmr}\textsc{\small StratImport}}
+%\newcommand{\Impo}{\fontfamily{cmr}\textsc{\small StratImport}}
+
 \newcommand{\spd}{\fontfamily{cmr}\textsc{\small StratPD}}
 \newcommand{\cspd}{\fontfamily{cmr}\textsc{\small CatStratPD}}
 \newcommand{\xnc}{$x_{\overline{c}}$}
@@ -93,7 +93,7 @@ feature importance, business insights, medical insights, partial dependence, mod
 \label{sec:intro}
 
 \todo{
-check \simp vs \simpo is confusing
+check \simp vs \Impo is confusing
 
 Check, what is $R^2$?
 
@@ -139,21 +139,42 @@ We begin by giving definitions of feature impact and importance in \secref{sec:d
 
 In special circumstances, we know the precise impact of each feature $x_j$. Assume we are given training data pair ($\bf X, y$) where ${\bf X} = [x^{(1)}, \ldots, x^{(n)}]$ is an $n \times p$ matrix whose $p$ columns represent observed features and ${\bf y}$ is the $n \times 1$ vector of responses.  If a data set is generated using a linear function, $y = \beta_0 + \sum_{j=1}^p \beta_j x_j$, then coefficient $\beta_j$ corresponds  to the impact of $x_j$.  $\beta_j$ is the impact on $y$ for a unit change in feature $x_j$, holding other features constant.
 
-To hold features constant for any smooth and continuous generator function $f:\mathbb{R}^{p} \rightarrow \mathbb{R}$ that precisely maps each $\xi$ to $y^{(i)}$, ${y^{(i)}} = f(\xi)$, we can take the partial derivatives of $f$ with respect to each feature $x_j$; e.g., for linear functions, ${\partial y}/{\partial x_j}=\beta_j$. Integrating the partial derivative then gives the {\em idealized partial dependence} (\citealt{stratpd}) of $y$ on $x_j$, the isolated contribution of $x_j = z$ to $y$:
+To hold features constant for any smooth and continuous generator function $f:\mathbb{R}^{p} \rightarrow \mathbb{R}$ that precisely maps each $\xi$ to $y^{(i)}$, ${y^{(i)}} = f(\xi)$, we can take the partial derivatives of $f$ with respect to each feature $x_j$; e.g., for linear functions, ${\partial y}/{\partial x_j}=\beta_j$. Integrating the partial derivative then gives the {\em idealized partial dependence} (\citealt{stratpd}) of $y$ on $x_j$, the isolated contribution of $x_j$ at $z$ to $y$:
 
 \begin{equation}\label{eq:pd}
 \text{\it PD}_j(x_j = z) = \int_{min(x_j)}^z \frac{\partial f}{\partial x_j} dx_j
 \end{equation}
 
-Using partial derivatives to isolate the effect of variables on the response was used prior to \spd{} by ALE and \cite{intgrad}. The key distinction is that  \spd{} integrates over the derivative of the generator function, ${\partial f}/{\partial x_j}$, estimated from the raw training data, whereas, other techniques integrate over the derivative of model $\hat{f}$ that estimates $f$: ${\partial \hat{f}}/{\partial x_j}$. While there are advantages to using models, such as their ability to smooth over noise, properly choosing and tuning a machine learning model presents a barrier to large user communities, such as business analysts, scientists, and medical researchers. Further, without potential distortions from a model, \spd{} supports the measurement of impact, not just importance.
+Using partial derivatives to isolate the effect of variables on the response was used prior to \spd{} by ALE and \cite{intgrad}. The key distinction is that  \spd{} integrates over the derivative of the generator function, ${\partial f}/{\partial x_j}$, estimated from the raw training data, whereas, previous techniques integrated over the derivative of model $\hat{f}$ that estimates $f$: ${\partial \hat{f}}/{\partial x_j}$. While there are advantages to using models, such as their ability to smooth over noise, properly choosing and tuning a machine learning model presents a barrier to large user communities, such as business analysts, scientists, and medical researchers. Further, without potential distortions from a model, \spd{} supports the measurement of impact, not just importance.
 
-To go from the partial dependence of $x_j$ to feature impact, we compute the area under the absolute value of $x_j$'s partial dependence curve. The larger the area under the curve, the larger the impact on $y$.   By the mean-value theorem of integrals, the area under continuous function $g(x)$ in interval $[a,b]$ is $\int_{a}^{b} g(x) dx = \overline{g(x)}(b-a)$, but the $b-a$ term drops out if we normalize all variables to the same range, such as $[0,1]$. (For comparison purposes between variables, the actual area is not important.). The impact of $x_j$ is then just the average magnitude of $\text{\it PD}_j(x_j)$:
+To go from the partial dependence of $x_j$ to feature impact, we assume that the larger the area under the magnitude of $x_j$'s curve, the larger the impact on $y$:
+
+\[
+\Imp_j = \int_{min({\bf X}_j)}^{max({\bf X}_j)} |PD_j(x_j)| dx_j
+\]
+
+\noindent In practice, we approximate the integral with Riemann sums of rectangular regions:
+
+\[
+\Imp_j = \sum_{x_j \in \{{\bf X}_j\}} |PD_j(x_j)| \Delta x_j
+\]
+
+\noindent  where $\{{\bf X}_j\}$ is the set of unique ${\bf X}_j$ values ($\{{\bf X}_j^{(i)}\}_{i=1..n}$) and $n_j$ is the number of unique ${\bf X}_j$. The usual definition of region width, $\Delta x_j = {(max({\bf X}_j) - min({\bf X}_j))}/{n_j}$, is inappropriate in this case because $PD_j$ often has large gaps in $x_j$ space and impact units would include $x_j$'s units (e.g., $rent \times bedrooms$ or $rent \times hasparking$). That would make impact scores incomparable across features. By defining $\Delta x_j = 1/n_j$, the fraction of unique ${\bf X}_j$ values covered by one $PD_j$ value, widths are not skewed by empty $x_j$ gaps and units become those of $y$. That reduces $x_j$'s impact to simply the average magnitude of $PD_j$:
+
+\[
+\Imp_j = \sum_{x_j \in \{{\bf X}_j\}} |PD_j(x_j)| \times \frac{1}{n_j} = \overline{|PD_j|}
+\]
+
+\noindent Normalizing that value from units of $y$ to [0..1] brings us to our definition of impact.
+
+\cut{
+By the mean-value theorem of integrals, the area under continuous function $g(x)$ in interval $[a,b]$ is $\int_{a}^{b} g(x) dx = \overline{g(x)}(b-a)$, but the $b-a$ term drops out if we normalize all variables to the same range, such as $[0,1]$. (For comparison purposes between variables, the actual area is not important.). The impact of $x_j$ is then just the average magnitude of $\text{\it PD}_j(x_j)$:}
 
 ~\\
-\noindent {\bf Definition 1} The {\em nonparametric feature impact} of $x_j$ is the ratio of the average magnitude of $x_j$'s idealized partial dependence to the total for all variables, when all $x_j$ variables are normalized to the same range:
+\noindent {\bf Definition 1} The {\em nonparametric feature impact} of $x_j$ is the ratio of the average magnitude of $x_j$'s idealized partial dependence to the total for all variables:
 
 \begin{equation}\label{eq:Epd2a}
-\simp_j = \frac{\overline{|\text{\it PD}_j|}}{\sum_{k=1}^p \overline{|\text{\it PD}_k|}}
+\Imp_j = \frac{\overline{|\text{\it PD}_j|}}{\sum_{k=1}^p \overline{|\text{\it PD}_k|}}
 \end{equation}
 
 \noindent For example, consider quadratic equation $y = x_1^2 + x_2 + 100$ as a generator of data in $[0,3]$. The partial derivatives are ${\partial y}/{\partial x_1} = 2 x_1$ and ${\partial y}/{\partial x_2} = 1$, giving $\text{\it PD}_1 = x_1^2$ and $\text{\it PD}_2 = x_2$. $\overline{|\text{\it PD}_1|}$ is then 9.0, the average magnitude of $x_1^2$ in $[0,3]$, and $\overline{|\text{\it PD}_2|}$ is 4.5, the average magnitude of $x_2$ in $[0,3]$, as depicted in \figref{fig:quad-area}(a). That is the same result obtained by integrating under the partial dependence curves:  $\int_0^3 x_1^2 dx_1 = \frac{x_1^3}{3} \big |_0^3 = 9$ and $\int_0^3 x_2^2 dx_2 = \frac{x_2^2}{2} \big |_0^3 = 4.5$.   Therefore, $x_1$ has twice the impact as $x_2$ for data generated in that interval, giving $\simp_1 = 0.\overline{66}$ and $\simp_2 = 0.\overline{33}$.
@@ -185,7 +206,7 @@ The partial dependence curve represents how $x_j$ effects $y$, but does not take
 \noindent {\bf Definition 3} The {\em nonparametric feature importance} of $x_j$ is the ratio of $x_j$'s expected partial dependence magnitude to the total of all expected values, when all $x_j$ variables are normalized to the same fixed range:
 
 \begin{equation}\label{eq:Epd2b}
-\simpo_j = \frac{\Ex[|\text{\it PD}_j|]}{\sum_{k=1}^p \Ex[|\text{\it PD}_k|]}
+\Impo_j = \frac{\Ex[|\text{\it PD}_j|]}{\sum_{k=1}^p \Ex[|\text{\it PD}_k|]}
 \end{equation}
 
 \noindent Let $P(x_j = z)$ be the probability that $x_j=z$ and $\{x_j^{(i)}\}_{i \in 1..n}$ be the set of unique $x_j$, then:
@@ -294,12 +315,12 @@ Assessing the quality of feature impact and importance is challenging because, e
 In this section, we present the results of several experiments using the toy Boston data set and three real data sets, NYC rent prices \citep{rent}, bulldozer auction sales \citep{bulldozer}, and flight delays \citep{flights}. (Rent has $p=20$, bulldozer $p=14$, and flight $p=17$.) We draw $n$=25,000 samples from each data set population, except for Boston which only has 506 records. Each point on an error curve represents the 5-fold cross-validation mean absolute error (MAE) for a given model, feature ranking, and data set. All models used to rank features or measure top-$k$ errors were tuned with 5-fold cross-validation grid search across a variety of hyper parameters using all $n$ records.\footnote{
 The entire \simp{} code base is available at {\tt\small https://github.com/parrt/stratx} and running {\tt\small articles/imp/genfigs/RUNME.py} will regenerate all figures in this paper, after downloading the three Kaggle data sets.  Simulations were run on a 4.0 Ghz 32G RAM machine running OS X 10.13.6 with SHAP 0.35, scikit-learn 0.21.3, XGBoost 0.90, and Python 3.7.4. A single random seed was set for each simulation to get reproducible graphs.}
 
-We begin with a baseline comparison of \simpo{} to principal component analysis' (PCA) ranking (``loads'' associated with the first component) and to Spearman's R coefficients computed between each $x_j$ and the response variable, $y$.  \figref{fig:baseline} shows the MAE curve for an RF model trained using the top-$k$ features as ranked by PCA, Spearman, and \simpo. Spearman's R does a good job for all but the bulldozer data set, while PCA performs poorly on all four data sets. \simpo{} is competitive with or surpasses these baseline techniques. 
+We begin with a baseline comparison of \Impo{} to principal component analysis' (PCA) ranking (``loads'' associated with the first component) and to Spearman's R coefficients computed between each $x_j$ and the response variable, $y$.  \figref{fig:baseline} shows the MAE curve for an RF model trained using the top-$k$ features as ranked by PCA, Spearman, and \Impo. Spearman's R does a good job for all but the bulldozer data set, while PCA performs poorly on all four data sets. \Impo{} is competitive with or surpasses these baseline techniques. 
 
 \cut{
 \figref{fig:baseline} also shows the error curve for the features ranked by ordinary least squares (OLS); a feature's score is its $\beta$ coefficient divided by its standard error. (OLS is not applicable to the bulldozer data set because it has many high-cardinality categorical explanatory variables, which would create tens of thousands of dummy variables.) 
 
-OLS curves are similar to \simpo's except for rent in \figref{fig:baseline}(d) and are included as a common reference curve on subsequent graphs.
+OLS curves are similar to \Impo's except for rent in \figref{fig:baseline}(d) and are included as a common reference curve on subsequent graphs.
 }
 
 \begin{figure}
@@ -327,13 +348,13 @@ OLS curves are similar to \simpo's except for rent in \figref{fig:baseline}(d) a
 \includegraphics[scale=0.45]{images/rent-topk-RF-baseline.pdf}
 \subcaption{}
 \end{subfigure} 
-\caption{\small {\bf RF MAE curves from \underline{baseline} rankings} computed using RF models trained on boston, flight, bulldozer, and rent data sets. Error curves represent 5-fold cross validation using the top-$k$ features as ranked by Spearman's R, PCA ``loads'' associated with the first component, and \simpo{}.}
+\caption{\small {\bf RF MAE curves from \underline{baseline} rankings} computed using RF models trained on boston, flight, bulldozer, and rent data sets. Error curves represent 5-fold cross validation using the top-$k$ features as ranked by Spearman's R, PCA ``loads'' associated with the first component, and \Impo{}.}
 \label{fig:baseline}
 \end{figure}
 
-Next, in \figref{fig:topk}, we compare \simpo{}'s rankings to those of ordinary least squares (OLS), RF-based permutation importance, and SHAP interrogating OLS and RF models. A feature's OLS ranking score is its $\beta$ coefficient divided by its standard error. (OLS is not applicable to the bulldozer data set because it has many high-cardinality categorical explanatory variables, which would create tens of thousands of dummy variables.) OLS and \simpo{} analyzed all $n$ records for each data set, but RF-based permutation importance and RF-based SHAP trained on 80\% then ranked features using the remaining 20\% as validation sets. RF-based SHAP and permutation importance have a distinct advantage here because they use the same kind of model (RF) for both feature ranking and then for computing top-$k$ error curves. Also, by selecting features using the validation set, RF-based rankings should have an advantage in terms of generality. 
+Next, in \figref{fig:topk}, we compare \Impo{}'s rankings to those of ordinary least squares (OLS), RF-based permutation importance, and SHAP interrogating OLS and RF models. A feature's OLS ranking score is its $\beta$ coefficient divided by its standard error. (OLS is not applicable to the bulldozer data set because it has many high-cardinality categorical explanatory variables, which would create tens of thousands of dummy variables.) OLS and \Impo{} analyzed all $n$ records for each data set, but RF-based permutation importance and RF-based SHAP trained on 80\% then ranked features using the remaining 20\% as validation sets. RF-based SHAP and permutation importance have a distinct advantage here because they use the same kind of model (RF) for both feature ranking and then for computing top-$k$ error curves. Also, by selecting features using the validation set, RF-based rankings should have an advantage in terms of generality. 
 
-The error curves for \simpo, RF SHAP, and permutation importance are roughly the same for Boston in \figref{fig:topk}(a) and flight in \figref{fig:topk}(b). For bulldozer in \figref{fig:topk}(c), \simpo's error curve suggests it selected a more predictive feature than RF SHAP or RF permutation importance: high-cardinality categorical {\tt ModelID}  followed by {\tt YearMade}. RF permutation importance chose {\tt ProductSize} as most important followed by {\tt ModelID} and RF SHAP chose {\tt ProductSize} followed by {\tt YearMade}. For rent in \figref{fig:topk}(d), \simpo, RF SHAP, and permutation importance selected {\tt bedrooms} as the most important feature and so their error curves at $k=1$ are the same. As a second feature, RF SHAP and permutation importance selected {\tt bathrooms}, whereas, \simpo{} selected {\tt brooklynheights}, which is the L1 distance from the apartment to that neighborhood. By incorporating location into the model at $k=2$, \simpo's error curve drops more quickly than for the other rankings. 
+The error curves for \Impo, RF SHAP, and permutation importance are roughly the same for Boston in \figref{fig:topk}(a) and flight in \figref{fig:topk}(b). For bulldozer in \figref{fig:topk}(c), \Impo's error curve suggests it selected a more predictive feature than RF SHAP or RF permutation importance: high-cardinality categorical {\tt ModelID}  followed by {\tt YearMade}. RF permutation importance chose {\tt ProductSize} as most important followed by {\tt ModelID} and RF SHAP chose {\tt ProductSize} followed by {\tt YearMade}. For rent in \figref{fig:topk}(d), \Impo, RF SHAP, and permutation importance selected {\tt bedrooms} as the most important feature and so their error curves at $k=1$ are the same. As a second feature, RF SHAP and permutation importance selected {\tt bathrooms}, whereas, \Impo{} selected {\tt brooklynheights}, which is the L1 distance from the apartment to that neighborhood. By incorporating location into the model at $k=2$, \Impo's error curve drops more quickly than for the other rankings. 
 
 \begin{figure}
 \centering
@@ -397,7 +418,7 @@ An interesting story here is the feature rankings derived from OLS. For Boston, 
 \label{fig:topk-impact}
 \end{figure}
 
-Features that are predictive in one model are not necessarily predictive in another model.  To determine how well the feature rankings from the various methods ``export'' to other models, we trained gradient boosting machines (GBM) on the OLS-based, RF-based, and \simpo{} feature rankings.  \figref{fig:topk-gbm} shows that the \simpo{} error curves generated using GBM models are similar to those resulting from RF models, except for the flight delay curve, which does not improve much after feature $k=5$, while the other feature rankings do improve. 
+Features that are predictive in one model are not necessarily predictive in another model.  To determine how well the feature rankings from the various methods ``export'' to other models, we trained gradient boosting machines (GBM) on the OLS-based, RF-based, and \Impo{} feature rankings.  \figref{fig:topk-gbm} shows that the \Impo{} error curves generated using GBM models are similar to those resulting from RF models, except for the flight delay curve, which does not improve much after feature $k=5$, while the other feature rankings do improve. 
 
 \begin{figure}
 \centering
@@ -428,7 +449,7 @@ Features that are predictive in one model are not necessarily predictive in anot
 \label{fig:topk-gbm}
 \end{figure}
 
-To check feature exportation to a very different model, we computed error curves for the Boston, flight, and rent data sets using OLS regressors, as shown in \figref{fig:OLS}, again using the \simpo{}, OLS-derived, and RF-derived rankings.  The error curves derived from OLS model predictions are all higher than those from RFs, as expected, but feature rankings from all technique export reasonably well, with the exception of \simpo's rankings for flight. As with exporting to a GBM, the error curve flattens out after $k=5$. Rankings from OLS SHAP have higher error curves across RF, GBM, and OLS models.
+To check feature exportation to a very different model, we computed error curves for the Boston, flight, and rent data sets using OLS regressors, as shown in \figref{fig:OLS}, again using the \Impo{}, OLS-derived, and RF-derived rankings.  The error curves derived from OLS model predictions are all higher than those from RFs, as expected, but feature rankings from all technique export reasonably well, with the exception of \Impo's rankings for flight. As with exporting to a GBM, the error curve flattens out after $k=5$. Rankings from OLS SHAP have higher error curves across RF, GBM, and OLS models.
 
 \begin{figure}[htbp]
 \begin{center}
@@ -545,7 +566,7 @@ The focus on feature selection is understandable because practitioners commonly 
 
 Obtaining feature importance through impact is valid because the most impactful features should be the most predictive in a variety of models, but the opposite is not the case.   Interpreting importances as feature impacts is inappropriate because predictive features does not always coincide with impactful features.  The same importance technique applied to the same data can get very different feature importances, depending on the model, which calls into question their accuracy as impact values.  Feature impacts, and hence business and medical insights,  in our view should be derived directly from the data, not through the lens of a model.
 
-To assess the quality of \simp's feature impacts, we compared \simp's recommended feature importance rankings to those of other techniques, as a proxy. Despite not having access to predictions from a fitted model, \simp{} feature rankings are competitive with other techniques on Boston and three real data sets.  \figref{fig:topk}(c) illustrates a case where \simpo's most important feature yields half the error rate of the top features recommended by the other methods.  One would expect model-based techniques to easily identify the single most important model feature, or at least more readily than an approach not using model predictions.  Even if such results are rare, misidentifying this top feature indicates that there is room for improvement in the feature importance research area. 
+To assess the quality of \simp's feature impacts, we compared \simp's recommended feature importance rankings to those of other techniques, as a proxy. Despite not having access to predictions from a fitted model, \simp{} feature rankings are competitive with other techniques on Boston and three real data sets.  \figref{fig:topk}(c) illustrates a case where \Impo's most important feature yields half the error rate of the top features recommended by the other methods.  One would expect model-based techniques to easily identify the single most important model feature, or at least more readily than an approach not using model predictions.  Even if such results are rare, misidentifying this top feature indicates that there is room for improvement in the feature importance research area. 
 
 It is also interesting that simple expedients like ranking features by Spearman's R coefficient between $x_j$ and $y$ or simple techniques like permutation importance perform well, at least for the first eight important features in our experiments. (We did not perform experiments on the least important features.) Also the error curves for SHAP and permutation importance generally mirror each other for the first eight features.  Both techniques introduce potentially nonsensical records to avoid retraining models, but this does not appear to affect their ability to rank features for feature selection purposes.
 
