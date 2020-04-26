@@ -2,9 +2,11 @@ import support
 import stratx.featimp as featimp
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 np.random.seed(1)
 
+# run test on ALL data in rent
 X, y = support.load_rent(n=50_000)
 print(X.shape)
 

@@ -177,7 +177,7 @@ To go from the partial dependence of $x_j$ to feature impact, we compute the are
 \end{subfigure}
 \end{figure}
 
-Intuitively, the impact of $x_j$ is how much, on average, the values of $x_j$ are expected to push $y$ away from zero. We deliberately chose this  definition instead of measuring how much $x_j$ pushes $y$ away from the average response, $\overline{y}$, as SHAP does. The impact of $x_1$ on $y = x_1^2+x_2+100$ is $x_1^2$, not $|\overline{y} - x_1^2|$.  \figref{fig:quad-area} illustrates how the area under the $x_1^2$ and $x_2$ PD curves differ from the area straddling the means. The area under-the-curve ratio of $x_1$-to-$x_2$ is 2-to-1 (9/4.5), whereas the ratio of the area straddling the mean has roughly a 3-to-1 ratio (6.95/2.26). We believe that a 2-to-1 ratio better represents feature impact than 3-to-1.
+Intuitively, the impact of $x_j$ is how much, on average, the values of $x_j$ are expected to push $y$ away from a zero baseline. We deliberately chose this  definition instead of measuring how much $x_j$ pushes $y$ away from the average response, $\overline{y}$, as SHAP does. The impact of $x_1$ on $y = x_1^2+x_2+100$ is $x_1^2$, not $|\overline{y} - x_1^2|$.  \figref{fig:quad-area} illustrates how the area under the $x_1^2$ and $x_2$ PD curves differ from the area straddling the means. The area under-the-curve ratio of $x_1$-to-$x_2$ is 2-to-1 (9/4.5), whereas the ratio of the area straddling the mean has roughly a 3-to-1 ratio (6.95/2.26). We believe that a 2-to-1 ratio better represents feature impact than 3-to-1.
 
 The partial dependence curve represents how $x_j$ effects $y$, but does not take into consideration the distribution of $x_j$.  Consider the \simp{} curve and $x_j$ histogram in \figref{fig:yearmade} for feature {\tt\small YearMade} from the bulldozer auction data set \citep{bulldozer}. The colored curves represent ten bootstraps from the same training set and the black dots give the average curve. (\spd{} has an optional hyper parameter, {\tt\small ntrials}, that controls the number of bootstraps; the default is currently 1.) Knowing that increases in bulldozer age continue to reduce price is useful from a business perspective, but new bulldozers will represent the bulk of any model validation set.  Because model feature selection is assessed using  validation error, feature selection is sensitive to the distribution of $x_j$. That means that feature importance should take into consideration the distribution of $x_j$, leading to an importance definition based upon expected value rather than average:
 
@@ -194,6 +194,17 @@ The partial dependence curve represents how $x_j$ effects $y$, but does not take
 \begin{equation}\label{eq:Epd2c}
 \Ex[|\text{\it PD}_j|] = \sum_{z \in \{x_j^{(i)}\}_{i \in 1..n}} |\text{\it PD}_j(x_j = z)| \times P(x_j=z)
 \end{equation}
+
+\todo{categorical impact is also expected value.}
+
+These definitions of impact and importance for numerical features also work for categorical explanatory features. In either case, impact is the average $PD_j$ magnitude and importance is the expected value of $PD_j$'s magnitude. Because there are $n$ (finite) values for each feature, the range of $x_j$ does not affect impact or importance. Each $x_j$ has the same number of values pushing $y$ above or below zero.
+
+In practice, we do simply this since $n$ is same and we can normalize all $X_j$ to same range w/o loss of generality
+
+numerical np.mean(np.abs(pdpy))
+
+cat: np.nanmean(abs avg per cat)
+
 
 
 \section{Existing methods}\label{sec:existing}
@@ -264,7 +275,7 @@ That begs the question of whether measuring the area under a simple mean-centere
 
 Moving on to the second theme, which defines importance in terms of model parameters, there are two common methods. The first operates on linear models and divides $\beta$ coefficients by their standard errors and and the second examines the decision nodes in tree-based methods. The most well-known is ``mean drop in impurity'' (also called ``gini drop'') by \cite{CART}, but there are a number of variations, such as the technique for gradient boosting machine (GBM) described by \cite{PDP}. For regression trees, $x_j$ importance is the average drop in $y$ impurity for all nodes testing $x_j$, weighted by the fraction of test samples that reach those nodes. Such importance measures are known to be biased towards continuous or high cardinality explanatory variables (see \citealt{permbias} and \citealt{RFunbiased}).
 
-Deriving feature importances from partial dependences as \spd{} does was previously proposed by \cite{pdvim} (with an R package called {\tt vip}), but they defined $x_j$'s importance as ${\it PD}_j$'s ``flatness'' rather than the area under the ideal ${\it PD}_j$ curve as we have in \eqref{eq:pd}. To measure flatness, they suggest standard deviation for numerical variables and category level range divided by four for categorical variables (as an estimate of standard deviation).  Because standard deviation measures the average squared-difference from the average response, {\tt vip} would likely be sensitive to partial dependence curve spikes, unlike the area under the curve.  Any technique that computes partial dependence curves, directly or indirectly, fits neatly into {\tt vip} or the ``area under the PD curve'' framework described in this paper. FPD, ALE, SHAP, and \spd{} are four such techniques.
+Deriving feature importances from partial dependences as \spd{} does was previously proposed by \cite{pdvim} (with an R package called {\tt vip}), but they defined $x_j$'s importance as ${\it PD}_j$'s ``flatness'' rather than the area under the ideal ${\it PD}_j$ curve as we have in \eqref{eq:pd}. To measure flatness, they suggest standard deviation for numerical variables and category level range divided by four for categorical variables (as an estimate of standard deviation).  Because standard deviation measures the average squared-difference from the average response, {\tt vip} would likely be sensitive to partial dependence curve spikes, unlike the area under the curve.  Any technique that computes partial dependence curves, directly or indirectly, fits neatly into {\tt vip} or the ``area under the PD curve'' framework described in this paper. FPD, ALE, SHAP, and \spd{} are four such techniques. \todo{they do diff from $\bar{y}$ not 0.}
 
 \citet{intgrad} introduced a technique (called ``Integrated Gradients'' or IG) for deep learning classifiers that can also be seen as a kind of partial dependence. To attribute a classifier prediction to the elements of an input vector, $\bf x$, IG integrates over the gradient of the model output function at points along the straight-line path from a baseline vector, $\bf x'$, to $\bf x$. IG estimates the integral by averaging the gradient computed at $m$ points and multiplying by the difference between ${\bf x}'_j$ and ${\bf x}_j$:
 

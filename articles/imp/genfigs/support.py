@@ -70,39 +70,39 @@ pd.set_option('display.width', 300)
 # Very small impact on scores.
 
 models = {
-    ("boston", "RF"):{'max_features': 0.7, 'min_samples_leaf': 1, 'n_estimators': 80},
-    ("boston", "GBM"):{'learning_rate': 0.15, 'max_depth': 3, 'n_estimators': 100},
-    ("boston", "SVM"):{'C': 5000, 'gamma': 0.001, 'kernel': 'rbf'},
-    ("flights", "RF"):{'max_features': 0.9, 'min_samples_leaf': 1, 'n_estimators': 80},
-    ("flights", "GBM"):{'learning_rate': 0.2, 'max_depth': 6, 'n_estimators': 125},
-    ("bulldozer", "RF"):{'max_features': 0.9, 'min_samples_leaf': 1, 'n_estimators': 80},
-    ("bulldozer", "GBM"):{'learning_rate': 0.2, 'max_depth': 8, 'n_estimators': 125},
-    ("rent", "RF"):{'max_features': 0.3, 'min_samples_leaf': 1, 'n_estimators': 80},
-    ("rent", "GBM"):{'learning_rate': 0.2, 'max_depth': 8, 'n_estimators': 125},
+    ("boston", "RF"):{'max_features': 0.5, 'min_samples_leaf': 1, 'n_estimators': 125},
+    ("boston", "GBM"):{'learning_rate': 0.08, 'max_depth': 5, 'n_estimators': 125},
+    ("boston", "SVM"):{'C': 5000, 'gamma': 0.01, 'kernel': 'rbf'},
+    ("flights", "RF"):{'max_features': 0.9, 'min_samples_leaf': 1, 'n_estimators': 150},
+    ("flights", "GBM"):{'learning_rate': 0.15, 'max_depth': 5, 'n_estimators': 300},
+    ("bulldozer", "RF"):{'max_features': 0.9, 'min_samples_leaf': 1, 'n_estimators': 150},
+    ("bulldozer", "GBM"):{'learning_rate': 0.2, 'max_depth': 6, 'n_estimators': 300},
+    ("rent", "RF"):{'max_features': 0.3, 'min_samples_leaf': 1, 'n_estimators': 150},
+    ("rent", "GBM"):{'learning_rate': 0.15, 'max_depth': 8, 'n_estimators': 300},
 }
 
 valscores = {
-    ("boston", "RF"):0.6653261726001916,
-    ("boston", "GBM"):0.6876583572051903,
-    ("boston", "SVM"):0.7014652575387574,
-    ("flights", "RF"):0.7424391912665617,
-    ("flights", "GBM"):0.8362525953312375,
-    ("bulldozer", "RF"):0.8531941730578031,
-    ("bulldozer", "GBM"):0.8780620472630506,
-    ("rent", "RF"):0.8471435873236036,
-    ("rent", "GBM"):0.8485109100239315,
+    ("boston", "RF"):0.856519266005153,
+    ("boston", "GBM"):0.868056221039585,
+    ("boston", "SVM"):0.8343629038412331,
+    ("flights", "RF"):0.7028457737934841,
+    ("flights", "GBM"):0.8126057415992978,
+    ("bulldozer", "RF"):0.8420184784544134,
+    ("bulldozer", "GBM"):0.8736748179201128,
+    ("rent", "RF"):0.8382309546554223,
+    ("rent", "GBM"):0.8442431273765862,
 }
 
 trnscores = {
-    ("boston", "RF"):0.9809997045641013,
-    ("boston", "GBM"):0.9825632873392053,
-    ("boston", "SVM"):0.8591641343478678,
-    ("flights", "RF"):0.9657629058097076,
-    ("flights", "GBM"):0.9837533382815874,
-    ("bulldozer", "RF"):0.9808035893998547,
-    ("bulldozer", "GBM"):0.963651880574555,
-    ("rent", "RF"):0.9789323191668672,
-    ("rent", "GBM"):0.9450333391857276,
+    ("boston", "RF"):0.9825246077935933,
+    ("boston", "GBM"):0.994336518612878,
+    ("boston", "SVM"):0.9505130826031901,
+    ("flights", "RF"):0.955548646849625,
+    ("flights", "GBM"):0.9881243175358493,
+    ("bulldozer", "RF"):0.9795046871298032,
+    ("bulldozer", "GBM"):0.9575068348928771,
+    ("rent", "RF"):0.9785130266916385,
+    ("rent", "GBM"):0.9724591756843246,
 }
 
 pairs = [
@@ -301,6 +301,40 @@ def cv_features(dataset, kfold_indexes, X, y, features, metric, model):
     return np.array(scores)
 
 
+def validate_features(dataset,
+                      X_train, y_train, X_test, y_test,
+                      features, metric, model):
+    scores = []
+    if model != 'OLS':
+        tuned_params = models[(dataset, model)]
+    if model=='RF':
+        m = RandomForestRegressor(**tuned_params, n_jobs=-1)
+        m.fit(X_train[features], y_train)
+        y_pred = m.predict(X_test[features])
+        s = metric(y_test, y_pred)
+    elif model == 'SVM':
+        m = svm.SVR(**tuned_params)
+        m.fit(X_train[features], y_train)
+        y_pred = m.predict(X_test[features])
+        s = metric(y_test, y_pred)
+    elif model == 'GBM':
+        m = xgb.XGBRegressor(**tuned_params, n_jobs=-1)
+        m.fit(X_train[features], y_train)
+        y_pred = m.predict(X_test[features])
+        s = metric(y_test, y_pred)
+    elif model == 'OLS':
+        # no need to normalize for prediction purposes
+        m = LinearRegression()
+        m.fit(X_train[features], y_train)
+        y_pred = m.predict(X_test[features])
+        s = metric(y_test, y_pred)
+    else:
+        raise ValueError(model+" is not valid model")
+    scores.append(s)
+
+    return np.array(scores)
+
+
 def todummies(X, features, catcolnames):
     df = pd.DataFrame(X, columns=features)
     converted = set()
@@ -319,8 +353,8 @@ def todummies(X, features, catcolnames):
 
 def test_top_features(dataset,
                       X, y,
+                      X_train, y_train, X_test, y_test,
                       all_importances,
-                      kfold_indexes,
                       top_features_range=None,
                       metric=mean_absolute_error,
                       model='RF'):
@@ -352,9 +386,10 @@ def test_top_features(dataset,
         stddevs = []
         for technique_name, features in zip(technique_names, feature_sets):
             # print(f"Train with {features} from {technique_name}")
-            # Train RF model with top-k features
-            # Do 5-fold cross validation using original full X, y passed in to this method
-            scores = cv_features(dataset, kfold_indexes, X, y, features[:k], metric=metric, model=model)
+            # Train model with top-k features
+            scores = validate_features(dataset,
+                                       X_train, y_train, X_test, y_test,
+                                       features[:k], metric=metric, model=model)
             results.append(np.mean(scores))
             stddevs.append(np.std(scores))
             # print(f"{technique_name} valid R^2 {s:.3f}")
@@ -369,19 +404,32 @@ def test_top_features(dataset,
     return R
 
 
-def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),
+def gen_topk_figs(n_trials,dataset,targetname,title,yunits,catcolnames=set(),
                   drop_high_variance_features=True,
                   yrange=None,figsize=(3.5, 3.0),
                   min_slopes_per_x=5,
                   cat_min_samples_leaf=5,
                   min_samples_leaf=15):
     test_size = .2  # Some techniques use validation set to pick best features
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
+    #X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
     # use same set of folds for all techniques
-    kf = KFold(n_splits=kfolds, shuffle=True)
-    kfold_indexes = list(kf.split(X))
+    # kf = KFold(n_splits=kfolds, shuffle=True)
+    # kfold_indexes = list(kf.split(X))
 
     # get all importances
+
+    # df_train = pd.read_csv(f'{datadir}/{dataset}-train.csv')
+    # df_test = pd.read_csv(f'{datadir}/{dataset}-test.csv')
+    #
+    # X_train = df_train.drop(targetname, axis=1)
+    # X_test = df_test.drop(targetname, axis=1)
+    # y_train = df_train[targetname]
+    # y_test = df_test[targetname]
+    #
+    # X = pd.concat([X_train, X_test], axis=0)
+    # y = pd.concat([y_train, y_test], axis=0)
+    #
+    X, y, X_train, X_test, y_train, y_test = load_dataset(dataset, targetname)
 
     imps = get_multiple_imps(dataset,
                              X, y,
@@ -390,7 +438,6 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),
                              normalize=True,
                              catcolnames=catcolnames,
                              n_shap=300,
-                             n_estimators=40,
                              min_slopes_per_x=min_slopes_per_x,
                              stratpd_cat_min_samples_leaf=cat_min_samples_leaf,
                              stratpd_min_samples_leaf=min_samples_leaf,
@@ -413,14 +460,22 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),
     plt.close()
 
     model = "RF"
-    topk_for_one_model(dataset, model, X, y, imps, catcolnames, figsize,
-                       kfold_indexes, title,
-                       yrange, yunits)
+    topk_for_one_model(dataset, model, X, y,
+                       X_train, y_train, X_test, y_test,
+                       imps,
+                       figsize,
+                       title,
+                       yrange,
+                       yunits)
 
     model = "GBM"
-    topk_for_one_model(dataset, model, X, y, imps, catcolnames, figsize,
-                       kfold_indexes, title,
-                       yrange, yunits)
+    topk_for_one_model(dataset, model, X, y,
+                       X_train, y_train, X_test, y_test,
+                       imps,
+                       figsize,
+                       title,
+                       yrange,
+                       yunits)
 
     # Do OLS special cases for rent and boston
 
@@ -428,8 +483,8 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),
     if dataset!='bulldozer': # purely numerical features or only important features are numerical
         R = test_top_features(dataset,
                               X, y,
+                              X_train, y_train, X_test, y_test,
                               imps,
-                              kfold_indexes,
                               top_features_range=(1,8),
                               metric=mean_absolute_error,
                               model="OLS")
@@ -455,62 +510,17 @@ def gen_topk_figs(X,y,kfolds,n_trials,dataset,title,yunits,catcolnames=set(),
         plt.savefig(f"../images/{dataset}-topk-OLS-Importance.pdf", bbox_inches="tight", pad_inches=0)
         plt.show()
 
-    # if dataset=='rent': # purely numerical features
-    #     R = test_top_features(dataset,
-    #                           X, y,
-    #                           imps,
-    #                           kfold_indexes,
-    #                           top_features_range=(1,8),
-    #                           metric=mean_absolute_error,
-    #                           model="OLS")
-    #
-    #     R_ = R[main_techniques]
-    #     plot_topk(R_, k=8, title=f"OLS {title}",
-    #               ylabel=f"5-fold CV MAE ({yunits})",
-    #               xlabel=f"Top $k$ feature $Importance$",
-    #               title_fontsize=14,
-    #               label_fontsize=14,
-    #               ticklabel_fontsize=10,
-    #               # legend_location='lower left',
-    #               legend_location='upper right',
-    #               yrange=(500,1200),
-    #               figsize=figsize)
-    #     plt.tight_layout()
-    #     plt.savefig(f"../images/{dataset}-topk-OLS-Importance.pdf", bbox_inches="tight", pad_inches=0)
-    #     plt.show()
-    #
-    # if dataset=='boston': # purely numerical features
-    #     R = test_top_features(dataset,
-    #                           X, y,
-    #                           imps,
-    #                           kfold_indexes,
-    #                           top_features_range=(1,8),
-    #                           metric=mean_absolute_error,
-    #                           model="OLS")
-    #
-    #     R_ = R[main_techniques]
-    #     plot_topk(R_, k=8, title=f"{model} {title}",
-    #               ylabel=f"5-fold CV MAE ({yunits})",
-    #               xlabel=f"Top $k$ feature $Importance$",
-    #               title_fontsize=14,
-    #               label_fontsize=14,
-    #               ticklabel_fontsize=10,
-    #               # legend_location='lower left',
-    #               legend_location='upper right',
-    #               yrange=(2,6.5),
-    #               figsize=figsize)
-    #     plt.tight_layout()
-    #     plt.savefig(f"../images/{dataset}-topk-OLS-Importance.pdf", bbox_inches="tight", pad_inches=0)
-    #     plt.show()
 
-
-def topk_for_one_model(dataset, model, X, y, imps, catcolnames, figsize, kfold_indexes, title,
+def topk_for_one_model(dataset, model,
+                       X, y,
+                       X_train, y_train, X_test, y_test,
+                       imps, figsize, title,
                        yrange, yunits):
     # GET ALL TOP-K CURVES
     R = test_top_features(dataset,
                           X, y,
+                          X_train, y_train, X_test, y_test,
                           imps,
-                          kfold_indexes,
                           top_features_range=(1, 8),
                           metric=mean_absolute_error,
                           model=model)
@@ -561,7 +571,9 @@ def best_single_feature(X, y, dataset, kfolds=5, model='RF'):
 
 
 def get_multiple_imps(dataset,
-                      X, y, X_train, y_train, X_test, y_test, n_shap=300, n_estimators=50,
+                      X, y,
+                      X_train, y_train, X_test, y_test,
+                      n_shap=300,
                       drop_high_variance_features=True,
                       sortby='Importance',
                       stratpd_min_samples_leaf=15,
@@ -585,9 +597,6 @@ def get_multiple_imps(dataset,
     if dataset=='bulldozer':
         include.remove('OLS')
         include.remove('OLS SHAP')
-
-    X_train = pd.DataFrame(X_train, columns=X.columns)
-    X_test = pd.DataFrame(X_test, columns=X.columns)
 
     if 'Spearman' in include:
         spear_I = spearmans_importances(X, y)
@@ -841,6 +850,21 @@ def toy_weight_data(n):
     return X, y, df, eqn
 
 
+def load_dataset(dataset, targetname):
+    df_train = pd.read_csv(f'{datadir}/{dataset}-train.csv')
+    df_test = pd.read_csv(f'{datadir}/{dataset}-test.csv')
+
+    X_train = df_train.drop(targetname, axis=1)
+    X_test = df_test.drop(targetname, axis=1)
+    y_train = df_train[targetname]
+    y_test = df_test[targetname]
+
+    X = pd.concat([X_train, X_test], axis=0)
+    y = pd.concat([y_train, y_test], axis=0)
+
+    return X, y, X_train, X_test, y_train, y_test
+
+
 def load_bulldozer(n):
     global datadir
     if not os.path.exists(datadir):
@@ -983,9 +1007,9 @@ def load_rent(n:int=None, clean_prices=True):
 
 
 def tune_RF(X, y, verbose=0):
-    tuning_parameters = {'n_estimators': [30, 40, 50, 80],# 125, 150, 200],
+    tuning_parameters = {'n_estimators': [30, 40, 50, 80, 125, 150],
                         'min_samples_leaf': [1, 3, 5, 7],
-                        'max_features': [.1, .3, .5, .7, .9]}
+                        'max_features': [.3, .5, .7, .9]}
     grid = GridSearchCV(
         RandomForestRegressor(),
         tuning_parameters,
@@ -1007,7 +1031,7 @@ def tune_RF(X, y, verbose=0):
 
 def tune_XGBoost(X, y, verbose=0):
     # for these data sets we don't get much boost using many more trees
-    tuning_parameters = {'n_estimators': [50, 100, 125], #[300, 400, 450, 500, 600, 1000],
+    tuning_parameters = {'n_estimators': [50, 100, 125, 150, 200, 300], #[300, 400, 450, 500, 600, 1000],
                         'learning_rate': [0.05, 0.08, 0.1, 0.15, 0.2],
                         'max_depth': [3, 4, 5, 6, 7, 8]}
     grid = GridSearchCV(
@@ -1050,27 +1074,21 @@ def tune_SVM(X, y, verbose=0):
     return s, grid.best_params_, grid.best_score_
 
 
-def tune_all(n = 25_000, pairs_to_tune=list(models.keys()), verbose=1):
+def tune_all(pairs_to_tune=list(models.keys()), verbose=1):
+    "Find hyper parameters for all models / datasets using training data only"
     data = {}
 
-    np.random.seed(1)
-    boston = load_boston()
-    X = pd.DataFrame(boston.data, columns=boston.feature_names)
-    y = pd.Series(boston.target)
-    data['boston'] = (X,y)
+    X, y, X_train, X_test, y_train, y_test = load_dataset("boston", "MEDV")
+    data['boston'] = (X_train,y_train)
 
-    np.random.seed(1)
-    X, y, _ = load_flights(n=n)
-    data['flights'] = (X,y)
+    X, y, X_train, X_test, y_train, y_test = load_dataset("flights", "ARRIVAL_DELAY")
+    data['flights'] = (X_train,y_train)
 
-    np.random.seed(1)
-    X, y = load_bulldozer(n=n)
-    data['bulldozer'] = (X,y)
+    X, y, X_train, X_test, y_train, y_test = load_dataset("bulldozer", "SalePrice")
+    data['bulldozer'] = (X_train,y_train)
 
-    np.random.seed(1)
-    X, y = load_rent(n=n)
-    np.random.seed(1)
-    data['rent'] = (X,y)
+    X, y, X_train, X_test, y_train, y_test = load_dataset("rent", "price")
+    data['rent'] = (X_train,y_train)
 
     for dataset, modelname in pairs_to_tune:
         print(dataset, modelname)
@@ -1113,5 +1131,5 @@ if __name__ == '__main__':
     #     ("rent", "GBM")
     # ]
     #
-    tune_all(n=25_000, pairs_to_tune=pairs, verbose=1)
+    tune_all(pairs_to_tune=pairs, verbose=1)
 

@@ -1,7 +1,8 @@
 import os
 
-# generate CSV read by R code
-import gencsv
+# generate CSV read by support code to guarantee separate train/valid sets
+# and that they are the same across tuning, testing, etc...
+import gen_valid_sets
 
 # uncomment to re-tune models for all data sets;
 # otherwise support.models dict defaults are used
