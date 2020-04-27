@@ -13,11 +13,11 @@ import gen_valid_sets
 import boston_various_models_shap
 import bulldozer_YearMade_pdp
 import bulldozer_YearMade_pdp_shap
-import bulldozer_pdp_shap_imp
+import bulldozer_fdp_shap_imp
 import compare_friedman_shap_stratimpact
 
 import flights_top
 import rent_top
 import rent_stability
-import rent_pdp_shap_imp
+import rent_fdp_shap_imp
 import bulldozer_top

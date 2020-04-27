@@ -92,8 +92,8 @@ if DO_SVM:
     Takes 13 minutes for all records
     100%|██████████| 506/506 [13:30<00:00,  1.60s/it]
     SHAP time for 506 test records using SVR = 810.1s
-    100%|██████████| 101/101 [01:35<00:00,  1.05it/s]
-    SHAP time for 101 test records using SVR = 95.9s
+    100%|██████████| 101/101 [04:00<00:00,  2.38s/it]  (using 100 background set)
+    SHAP time for 101 test records using SVR = 240.0s
     """
 
 plot_importances(ols_shap_I.iloc[:8], ax=axes[0], imp_range=(0,.4), width=2.5, xlabel='(a)')

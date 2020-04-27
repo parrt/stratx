@@ -3,11 +3,7 @@ from stratx.featimp import *
 
 np.random.seed(1)
 
-n = 25_000
-
-X, y = load_bulldozer(n)
-
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+X, y, X_train, X_test, y_train, y_test = load_dataset("bulldozer", "SalePrice")
 backing = shap.sample(X_test, 100)
 to_explain = X_test.sample(300)
 
@@ -29,9 +25,9 @@ fig, axes = plt.subplots(1,2,figsize=(6,2.7))
 plot_importances(pdp_I[0:8], ax=axes[0], imp_range=(0,.4))
 # plot_importances(shap_I1, ax=axes[1], imp_range=(0,.4))
 plot_importances(shap_I2[0:8], ax=axes[1], imp_range=(0,.4))
-axes[0].set_xlabel("(c) Friedman $\overline{|FPD_j|}$ importance")
+axes[0].set_xlabel("(c) $\overline{|FPD_j-\overline{y}|}$ importance")
 # axes[1].set_xlabel("(b) SHAP $j$ importance")
-axes[1].set_xlabel("(d) SHAP $j$ importance\n(interventional)")
+axes[1].set_xlabel("(d) SHAP $x_j$ importance\n(interventional)")
 #plt.suptitle(f"NYC rent feature importance rankings", fontsize=10)
 plt.tight_layout()
 plt.suptitle("Bulldozer FPD vs SHAP", fontsize=10)

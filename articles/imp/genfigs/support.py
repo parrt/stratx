@@ -410,27 +410,9 @@ def gen_topk_figs(n_trials,dataset,targetname,title,yunits,catcolnames=set(),
                   min_slopes_per_x=5,
                   cat_min_samples_leaf=5,
                   min_samples_leaf=15):
-    test_size = .2  # Some techniques use validation set to pick best features
-    #X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
-    # use same set of folds for all techniques
-    # kf = KFold(n_splits=kfolds, shuffle=True)
-    # kfold_indexes = list(kf.split(X))
-
-    # get all importances
-
-    # df_train = pd.read_csv(f'{datadir}/{dataset}-train.csv')
-    # df_test = pd.read_csv(f'{datadir}/{dataset}-test.csv')
-    #
-    # X_train = df_train.drop(targetname, axis=1)
-    # X_test = df_test.drop(targetname, axis=1)
-    # y_train = df_train[targetname]
-    # y_test = df_test[targetname]
-    #
-    # X = pd.concat([X_train, X_test], axis=0)
-    # y = pd.concat([y_train, y_test], axis=0)
-    #
     X, y, X_train, X_test, y_train, y_test = load_dataset(dataset, targetname)
 
+    # get all importances
     imps = get_multiple_imps(dataset,
                              X, y,
                              X_train, y_train, X_test, y_test,
