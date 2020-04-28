@@ -1310,7 +1310,7 @@ def plot_catstratpd(X, y,
     if show_xlabel:
         label = colname
         if show_impact:
-            label += f" (Impact {np.mean(impacts):.2f}, importance {np.mean(importances):.2f})"
+            label += f" (Impact {np.nanmean(np.abs(combined_avg_per_cat)):.2f})"
         ax.set_xlabel(label, fontsize=label_fontsize, fontname=fontname)
     if show_ylabel:
         ax.set_ylabel(targetname, fontsize=label_fontsize, fontname=fontname)
