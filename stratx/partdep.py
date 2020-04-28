@@ -1205,7 +1205,10 @@ def plot_catstratpd(X, y,
 
     # average down the matrix of all_avg_per_cat across trials to get average per cat
     # combined_avg_per_cat = avg_pd_catvalues(all_avg_per_cat)
-    combined_avg_per_cat = np.nanmean(all_avg_per_cat, axis=0)
+    if n_trials>1:
+        combined_avg_per_cat = np.nanmean(all_avg_per_cat, axis=0)
+    else:
+        combined_avg_per_cat = all_avg_per_cat.flatten()
     # print("mean(pdpy)", np.nanmean(combined_avg_per_cat))
 
     impact_order = np.argsort(impacts)
