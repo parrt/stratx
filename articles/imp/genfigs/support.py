@@ -70,7 +70,7 @@ pd.set_option('display.width', 300)
 # Very small impact on scores.
 
 models = {
-    ("boston", "RF"):{'max_features': 0.5, 'min_samples_leaf': 1, 'n_estimators': 125},
+    ("boston", "RF"):{'max_features': 0.3, 'min_samples_leaf': 1, 'n_estimators': 50},
     ("boston", "GBM"):{'learning_rate': 0.08, 'max_depth': 5, 'n_estimators': 125},
     ("boston", "SVM"):{'C': 5000, 'gamma': 0.01, 'kernel': 'rbf'},
     ("flights", "RF"):{'max_features': 0.9, 'min_samples_leaf': 1, 'n_estimators': 150},
@@ -82,26 +82,26 @@ models = {
 }
 
 valscores = {
-    ("boston", "RF"):0.856519266005153,
+    ("boston", "RF"):0.8524839021366245,
     ("boston", "GBM"):0.868056221039585,
     ("boston", "SVM"):0.8343629038412331,
-    ("flights", "RF"):0.7028457737934841,
+    ("flights", "RF"):0.6996854100797656,
     ("flights", "GBM"):0.8126057415992978,
-    ("bulldozer", "RF"):0.8420184784544134,
+    ("bulldozer", "RF"):0.8415443958294924,
     ("bulldozer", "GBM"):0.8736748179201128,
-    ("rent", "RF"):0.8382309546554223,
+    ("rent", "RF"):0.8386738332860667,
     ("rent", "GBM"):0.8442431273765862,
 }
 
 trnscores = {
-    ("boston", "RF"):0.9825246077935933,
+    ("boston", "RF"):0.9796947830295442,
     ("boston", "GBM"):0.994336518612878,
     ("boston", "SVM"):0.9505130826031901,
-    ("flights", "RF"):0.955548646849625,
+    ("flights", "RF"):0.9569964782958992,
     ("flights", "GBM"):0.9881243175358493,
-    ("bulldozer", "RF"):0.9795046871298032,
+    ("bulldozer", "RF"):0.9796298222236438,
     ("bulldozer", "GBM"):0.9575068348928771,
-    ("rent", "RF"):0.9785130266916385,
+    ("rent", "RF"):0.9783017566388595,
     ("rent", "GBM"):0.9724591756843246,
 }
 
