@@ -6,17 +6,22 @@ from sklearn.linear_model import Ridge
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
 
-forcerun = True
-warmedup = False
+forcerun = False
+warmedup = True
 
-def get_timing(dataset, X, y, catcolnames=set(), cat_min_samples_leaf=5, max_size = 30_000):
+def get_timing(dataset, X, y, catcolnames=set(),
+               min_samples_leaf=20, # same across all simulations
+               cat_min_samples_leaf=10,
+               max_size = 30_000):
     sizes = np.arange(1000, max_size+1, 1000)
     times = []
     for n in sizes:
         X_ = X[:n]
         y_ = y[:n]
         start = timer()
-        I = importances(X_, y_, catcolnames=catcolnames, cat_min_samples_leaf=cat_min_samples_leaf)
+        I = importances(X_, y_, catcolnames=catcolnames,
+                        min_samples_leaf=min_samples_leaf,
+                        cat_min_samples_leaf=cat_min_samples_leaf)
         stop = timer()
         print(f"{dataset} time for {n} records = {(stop - start):.1f}s")
         times.append(stop-start)
@@ -63,8 +68,8 @@ def bulldozer(max_size=30_000):
 
 
 def flight(max_size=30_000):
-    if not forcerun and os.path.exists(f"data/flight-timing.csv"):
-        return pd.read_csv(f"data/flight-timing.csv")
+    if not forcerun and os.path.exists(f"data/flights-timing.csv"):
+        return pd.read_csv(f"data/flights-timing.csv")
 
     jit_warmup()
     X, y, _ = load_flights(n=max_size)
@@ -74,7 +79,6 @@ def flight(max_size=30_000):
                                    'DESTINATION_AIRPORT',
                                    'FLIGHT_NUMBER',
                                    'DAY_OF_WEEK'},
-                      cat_min_samples_leaf=2,
                       max_size=max_size)
 
 
@@ -147,7 +151,7 @@ figsize = (3.5, 3.0)
 fig, ax = plt.subplots(1,1,figsize=figsize)
 
 ax.plot(R_flight['size'], R_flight['time'], '-',
-        markersize=5, label="flights", lw=lw*2, c='#FEAE61')
+        markersize=5, label="flights", lw=lw, c='#FEAE61')
 ax.plot(R_rent['size'], R_rent['time'], '-',
         markersize=5, label="rent", lw=lw, c='#A40227')
 ax.plot(R_bulldozer['size'], R_bulldozer['time'], '-',
@@ -155,7 +159,7 @@ ax.plot(R_bulldozer['size'], R_bulldozer['time'], '-',
 
 plt.legend(loc="upper left")
 
-ax.set_ylim(0,120)
+ax.set_ylim(0,45)
 ax.set_xlabel(f"Sample size $n$ ($10^3$ samples)")
 ax.set_ylabel("Time (sec)")
 

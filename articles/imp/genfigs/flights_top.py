@@ -10,6 +10,6 @@ gen_topk_figs(n_trials=1,dataset="flights",targetname='ARRIVAL_DELAY',
                            'FLIGHT_NUMBER',
                            'DAY_OF_WEEK'},
               min_samples_leaf=20,
-              cat_min_samples_leaf=2,  # reduce as there are lots of other cat vars
+              cat_min_samples_leaf=10,
               yrange=(0,30), yunits="min")
 

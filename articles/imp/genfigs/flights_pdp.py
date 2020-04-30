@@ -35,32 +35,25 @@ print(f"Avg arrival delay {y.mean()}")
 # plt.ylabel("ARRIVAL_DELAY")
 # plt.show()
 
-
 I = importances(X, y,
                 catcolnames={'AIRLINE',
                              'ORIGIN_AIRPORT',
                              'DESTINATION_AIRPORT',
                              'FLIGHT_NUMBER',
                              'DAY_OF_WEEK'},
-                n_trials=5,
-                # normalize=False,
-
-                # bootstrap=True,
-                # bootstrap=False,
-                # subsample_size=.7,
-
-                # n_jobs=1,
-                min_samples_leaf=15,
-                cat_min_samples_leaf=2
+                normalize=False,
+                n_trials=1,
+                min_samples_leaf=20,
+                cat_min_samples_leaf=5
                 )
 print(I)
 exit()
 
 col = 'ORIGIN_AIRPORT'
-col = 'FLIGHT_NUMBER'
 col = 'SCHEDULED_DEPARTURE'
 col = 'TAXI_OUT'
 col = 'DEPARTURE_TIME'
+col = 'FLIGHT_NUMBER'
 
 # plot_stratpd(X, y, colname=col, targetname='delay',
 #              show_slope_lines=False,
@@ -72,28 +65,45 @@ col = 'DEPARTURE_TIME'
 #              )
 # plt.show()
 
-plot_stratpd_gridsearch(X, y, colname=col, targetname='delay',
-             show_slope_lines=False,
-             min_samples_leaf_values=(15,20,30),
-             # min_slopes_per_x_values=(5,10,15,20),
-             # min_samples_leaf=10,
-             n_trials=10,
-             show_impact=True,
-             show_x_counts=True,
-             # min_slopes_per_x=1
-             )
-plt.show()
+# plot_stratpd_gridsearch(X, y, colname=col, targetname='delay',
+#              show_slope_lines=False,
+#              min_samples_leaf_values=(15,20,30),
+#              # min_slopes_per_x_values=(5,10,15,20),
+#              # min_samples_leaf=10,
+#              n_trials=10,
+#              show_impact=True,
+#              show_x_counts=True,
+#              # min_slopes_per_x=1
+#              )
+# plt.show()
 
-# col = 'FLIGHT_NUMBER'
-# plot_catstratpd(X, y, colname=col, targetname='delay',
-#                 leftmost_shifted_to_zero=False,
-#                 min_y_shifted_to_zero=False,
-#                 min_samples_leaf=2,
-#                 n_trials=10,
-#                 show_xticks=False,
-#                 show_all_pdp=False,
-#                 show_impact=True,
-#                 yrange=(-150,150))
+df_test = pd.read_csv(f'data/flights-test.csv')
+X = df_test.drop('ARRIVAL_DELAY', axis=1)
+y = df_test['ARRIVAL_DELAY']
+print(f"Avg arrival delay {y.mean()}, sigma={np.std(y)}")
+
+for i in range(10):
+    np.random.seed(i)
+
+    col = 'DESTINATION_AIRPORT'
+    uniq_catcodes, avg_per_cat, ignored, merge_ignored = \
+        plot_catstratpd(X, y, colname=col, targetname='delay',
+                        leftmost_shifted_to_zero=False,
+                        min_y_shifted_to_zero=False,
+                        min_samples_leaf=5,
+                        n_trials=1,
+                        show_xticks=False,
+                        show_all_pdp=False,
+                        show_impact=True,
+                        yrange=(-50,450),
+                        figsize=(20,10))
+
+    abs_avg = np.abs(avg_per_cat)
+    a, b = np.nanmin(avg_per_cat), np.nanmax(avg_per_cat)
+    m = np.nanmean(abs_avg)
+    straddle_mean = np.nanmean(np.abs(avg_per_cat - np.nanmean(avg_per_cat)))
+    print(f"mean {np.nanmean(avg_per_cat):6.1f}, abs mean {m:5.1f}, {straddle_mean :5.1f}, range {a:5.1f}..{b:5.1f} = {(b - a):5.1f}")
+
 # plt.tight_layout()
 # plt.savefig(f"/Users/parrt/Desktop/flight-{col}.pdf", pad_inches=0)
 # plt.show()

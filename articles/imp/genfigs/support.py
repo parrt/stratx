@@ -409,7 +409,8 @@ def gen_topk_figs(n_trials,dataset,targetname,title,yunits,catcolnames=set(),
                   yrange=None,figsize=(3.5, 3.0),
                   min_slopes_per_x=5,
                   cat_min_samples_leaf=5,
-                  min_samples_leaf=15):
+                  min_samples_leaf=15,
+                  normalize=True):
     X, y, X_train, X_test, y_train, y_test = load_dataset(dataset, targetname)
 
     # get all importances
@@ -417,13 +418,13 @@ def gen_topk_figs(n_trials,dataset,targetname,title,yunits,catcolnames=set(),
                              X, y,
                              X_train, y_train, X_test, y_test,
                              drop_high_variance_features=drop_high_variance_features,
-                             normalize=True,
                              catcolnames=catcolnames,
                              n_shap=300,
                              min_slopes_per_x=min_slopes_per_x,
                              stratpd_cat_min_samples_leaf=cat_min_samples_leaf,
                              stratpd_min_samples_leaf=min_samples_leaf,
                              imp_n_trials=n_trials,
+                             normalize=normalize
                              )
 
     w = 4.5 if dataset == 'flights' else 3
@@ -459,7 +460,7 @@ def gen_topk_figs(n_trials,dataset,targetname,title,yunits,catcolnames=set(),
                        yrange,
                        yunits)
 
-    # Do OLS special cases for rent and boston
+    # Do OLS special cases for rent, flight, and boston
 
     main_techniques = ['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImport']
     if dataset!='bulldozer': # purely numerical features or only important features are numerical
@@ -470,12 +471,12 @@ def gen_topk_figs(n_trials,dataset,targetname,title,yunits,catcolnames=set(),
                               top_features_range=(1,8),
                               metric=mean_absolute_error,
                               model="OLS")
-        if dataset=='rent':
-            yrange=(500,1200)
-        elif dataset=='boston':
-            yrange=(2,6.5)
-        else:
-            yrange=(15,30)
+        # if dataset=='rent':
+        #     yrange=(500,1200)
+        # elif dataset=='boston':
+        #     yrange=(2,6.5)
+        # else:
+        #     yrange=(15,30)
 
         R_ = R[main_techniques]
         plot_topk(R_, k=8, title=f"OLS {title}",
@@ -485,7 +486,8 @@ def gen_topk_figs(n_trials,dataset,targetname,title,yunits,catcolnames=set(),
                   label_fontsize=14,
                   ticklabel_fontsize=10,
                   # legend_location='lower left',
-                  legend_location='upper right',
+                  # legend_location='upper right',
+                  legend_location=None,
                   yrange=yrange,
                   figsize=figsize)
         plt.tight_layout()
@@ -510,7 +512,9 @@ def topk_for_one_model(dataset, model,
 
     # OK, so now we have curves for {model} with importance, impact from StratImpact; save these
 
-    def plotimp(sortby, techniques):
+    def plotimp(sortby, techniques, technique_set_name=None):
+        if technique_set_name is None:
+            technique_set_name = sortby
         plot_topk(R[techniques], k=8, title=f"{model} {title}",
                   ylabel=f"5-fold CV MAE ({yunits})",
                   xlabel=f"Top $k$ feature ${sortby}$",
@@ -520,7 +524,7 @@ def topk_for_one_model(dataset, model,
                   yrange=yrange,
                   figsize=figsize)
         plt.tight_layout()
-        plt.savefig(f"../images/{dataset}-topk-{model}-{sortby}.pdf", bbox_inches="tight",
+        plt.savefig(f"../images/{dataset}-topk-{model}-{technique_set_name}.pdf", bbox_inches="tight",
                     pad_inches=0)
         plt.show()
 
@@ -530,7 +534,8 @@ def topk_for_one_model(dataset, model,
     else:
         plotimp(sortby='Importance', techniques=['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImport'])
         plotimp(sortby='Impact',     techniques=['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImpact'])
-    plotimp(sortby='baseline',   techniques=['Spearman', 'PCA', 'StratImport'])
+    plotimp(sortby='Importance',     techniques=['Spearman', 'PCA', 'StratImport'],
+            technique_set_name='baseline')
 
 
 def best_single_feature(X, y, dataset, kfolds=5, model='RF'):
@@ -708,7 +713,8 @@ def plot_topk(R, ax=None, k=None,
         ax.plot(feature_counts, R[technique][:k], fmt, lw=lw, label=technique,
                 c=color, alpha=.9, markersize=ms, fillstyle='none')
 
-    plt.legend(loc=legend_location)  # usually it's out of the way
+    if legend_location is not None:
+        plt.legend(loc=legend_location)  # usually it's out of the way
 
     if xlabel is None:
         ax.set_xlabel("Top $k$ most important features", fontsize=label_fontsize,

@@ -21,21 +21,26 @@ np.set_printoptions(precision=2, suppress=True, linewidth=300, threshold=2000)
 
 np.random.seed(1)
 
-n = 20_000
-X, y = support.load_bulldozer(n)
+# n = 25_000
+# X, y = support.load_bulldozer(n)
+X, y, X_train, X_test, y_train, y_test = support.load_dataset("bulldozer", "SalePrice")
+
 
 I = importances(X, y,
-                n_trials=5,
-                # normalize=False,
-
+                n_trials=1,
+                normalize=True,
+                drop_high_stddev=2.0,
                 bootstrap=True,
                 # bootstrap=False,
                 # subsample_size=.7,
 
-                min_samples_leaf=15,
+                min_samples_leaf=20,
                 cat_min_samples_leaf=5,
                 catcolnames={'AC', 'ModelID', 'auctioneerID'}
                 )
+
+# I['ImportanceNorm'] = I['Importance'] / np.sum(I['Importance'])
+# I['ImpactNorm']     = I['Impact'] / np.sum(I['Impact'])
 print(I)
 
 # pdpx, pdpy, ignored = \
@@ -72,19 +77,19 @@ print(I)
 # X_['ModelID'] = X_['ModelID'].sample(frac=1.0, replace=False)
 
 # uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored = \
-#     plot_catstratpd(X, y, colname='ModelID', targetname='SalePrice',
-#                     # min_samples_leaf=2,
-#                     n_trials=10,
+#     plot_catstratpd(X, y, colname='FLIGHT_NUMBER', targetname='SalePrice',
+#                     n_trials=1,
+#                     min_samples_leaf=2,
 #                     show_xticks=False,
 #                     show_impact=True,
-#                     min_y_shifted_to_zero=False,
+#                     min_y_shifted_to_zero=True,
 #                     figsize=(20,5),
 #                     yrange=(-150_000, 150_000),
 #                     verbose=False)
 # plt.title(f"n={n}, ignored = {ignored}, merge_ignored = {merge_ignored}")
 # print("ignored",ignored, f"merge_ignored = {merge_ignored}")
 # plt.tight_layout()
-# plt.savefig(f"/Users/parrt/Desktop/james-ModelID-50k.pdf", pad_inches=0)
+# plt.savefig(f"/Users/parrt/Desktop/james-FLIGHT_NUMBER.pdf", pad_inches=0)
 # # plt.savefig(f"/Users/parrt/Desktop/james-ModelID-10k-shuffled-x-not-y.pdf", pad_inches=0)
 # # plt.savefig(f"/Users/parrt/Desktop/james-ModelID-10k-shuffled.pdf", pad_inches=0)
 # plt.show()

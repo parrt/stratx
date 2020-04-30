@@ -1,152 +1,87 @@
 from support import *
-from stratx.featimp import *
+from stratx.partdep import *
 
-figsize = (3.5, 3.0)
-use_oob=False
-metric = mean_absolute_error
-n = 25_000
-
-X, y = load_rent(n=n)
-print(X.shape)
-
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-
-# pdp_I = pdp_importances(X_train.copy(), y_train.copy(), numx=300)
-# print("PDP\n",pdp_I)
-
-rf = RandomForestRegressor(n_estimators=40)
-rf.fit(X, y)
-# TODO: try w/o interventional
-explainer = shap.TreeExplainer(rf
-                               , data=shap.sample(X_train, 300)
-                               , feature_perturbation='interventional'
-                               # , feature_perturbation='tree_path_dependent'
-                               )
-shap_values = explainer.shap_values(X_test.sample(300), check_additivity=False)
-shapmeans = np.mean(shap_values, axis=0)
-ranges = np.max(shap_values, axis=0) - np.min(shap_values, axis=0)
-print(ranges)
-print(shapmeans)
-print(shapmeans / ranges)
-shapimp = np.mean(np.abs(shap_values), axis=0)
-total_imp = np.sum(shapimp)
-normalized_shap = shapimp / total_imp
-
-# print("SHAP", normalized_shap)
-shapI = pd.DataFrame(data={'Feature': X_test.columns, 'Importance': normalized_shap})
-shapI = shapI.set_index('Feature')
-shapI = shapI.sort_values('Importance', ascending=False)
-print("SHAP\n",shapI)
-
-fig, axes = plt.subplots(1,2)
-plot_importances(pdp_I, ax=axes[0], imp_range=(0,.4))
-plot_importances(shapI, ax=axes[1], imp_range=(0,.4))
-axes[0].set_xlabel("(a) RF $\overline{|PDP_j|}$ importance")
-axes[1].set_xlabel("(b) RF SHAP $j$ importance")
-plt.suptitle(f"NYC rent feature importance rankings", fontsize=10)
-plt.tight_layout()
-plt.savefig(f"/Users/parrt/Desktop/rent-pdp-vs-shap.pdf", pad_inches=0)
-
-plt.show()
-
-#
-# X_train = StandardScaler().fit_transform(X_train)
-# X_test = StandardScaler().fit_transform(X_test)
-# X_train = pd.DataFrame(X_train, columns=X.columns)
-# X_test = pd.DataFrame(X_test, columns=X.columns)
-#
-# lm = LinearRegression()#normalize=True)
-# lm.fit(X_train,y_train)
-#
-# OLS_I,_ = linear_model_importance(lm, X_train, y_train)
-# print("OLS I\n",OLS_I)
-#
-# I = importances(X_train, y_train, min_slopes_per_x = 15)
-# print("OURS\n",I)
-#
-# kf = KFold(n_splits=5)
-# kfold_indexes = list(kf.split(X))
-# for i in range(len(X.columns)):
-#     columns = X.columns[0:i+1]
-#     scores = cv_features(kfold_indexes, X, y, columns,
-#                          metric=mean_absolute_error,
-#                          model="OLS")
-#     print(columns, scores, np.mean(scores))
-#
-# print(mean_absolute_error(y_test, lm.predict(X_test)))
+np.set_printoptions(precision=2, suppress=True, linewidth=300, threshold=2000)
 
 
+def toy_weather_data(n = 1000, p=50, n_outliers=None):
+    """
+    For each state, create a (fictional) ramp of data from day 1 to 365 so mean is not
+    0, as we'd get from a sinusoid.
+    """
+    def noise(state): return np.random.normal(-5, 5, sum(df['state'] == state))
 
-# X, y, _ = load_flights(n=n)
-# print(X.shape)
+    df_avgs = pd.read_csv("../../../testing/state_avgtemp.csv")
+    avgtemp = df_avgs['avgtemp']
 
-#
-# I = importances(X, y, n_trials = 1,
-#                 cat_min_samples_leaf=5,
-#                 min_slopes_per_x=15,
-#                 catcolnames={'AIRLINE',
-#                              'ORIGIN_AIRPORT',
-#                              'DESTINATION_AIRPORT',
-#                              'FLIGHT_NUMBER',
-#                              'DAY_OF_WEEK'}
-#                 )
-# print(I)
-# plot_importances(I, imp_range=(0,.4), width=4)
-# plt.show()
-#
-# colname='bedrooms'
-# colname='bathrooms'
-# colname='astoria'
-# colname='UpperEast'
+    df = pd.DataFrame()
+    df['dayofyear'] = np.random.randint(1, 365 + 1, size=n)
+    df['state'] = np.random.randint(0, p, size=n) # get only p states
+    df['temp'] = .1 * df['dayofyear'] + avgtemp.iloc[df['state']].values
 
-# plot_stratpd(X, y, colname=colname, targetname='price',
-#              min_slopes_per_x=15,
-#              n_trials=5,
-#              show_slope_lines=False,
-#              show_impact=False,
-#              figsize=(3.8,3.2)
-#              )
-# plt.tight_layout()
-# plt.savefig(f"/Users/parrt/Desktop/rent-{colname}.pdf", pad_inches=0)
-# plt.show()
+    if n_outliers>0:
+        # bump up or down some y to create outliers
+        outliers_idx = np.random.randint(0, len(df), size=n_outliers)
+        outliers_vals = np.random.normal(loc=0, scale=15, size=n_outliers)
+        df.iloc[outliers_idx, 2] += outliers_vals
 
-# X, y = load_bulldozer()
-# print(X.shape)
+    avgtemp = df_avgs.iloc[np.unique(df['state'])]['avgtemp']
+    print("avg of states' avg temps:", np.mean(avgtemp))
+    true_impact = np.mean(avgtemp) - np.min(avgtemp)
+    print("avg of states' avg temps minus min:", true_impact)
 
-# Most recent timeseries data is more relevant so get big recent chunk
-# then we can sample from that to get n
-# X = X.iloc[-50_000:]
-# y = y.iloc[-50_000:]
-#
-# I = importances(X, y, n_trials = 1,
-#                 cat_min_samples_leaf=5,
-#                 min_slopes_per_x=15,
-#                 catcolnames={'AC',
-#                              'ModelID'}
-#                 )
-# print(I)
-# plot_importances(I, imp_range=(0,.4), width=4)
-# plt.show()
+    X = df.drop('temp', axis=1)
+    y = df['temp']
+    return X, y, df_avgs['state'].values, df_avgs.iloc[0:p], true_impact
 
-# trials=20
-# colname = "YearMade"
-# min_samples_leaf=10
-# min_slopes_per_x=5
-#
-# idxs = resample(range(50_000), n_samples=n, replace=False)
-# X, y = X.iloc[idxs], y.iloc[idxs]  # get sample from last part of time range
-#
-# # we have a sample now
-# for i in range(trials):
-#     print(i)
-#     # idxs = resample(range(n), n_samples=n, replace=True) # bootstrap
-#     idxs = resample(range(n), n_samples=int(n*2/3), replace=False) # subset
-#     X_, y_ = X.iloc[idxs], y.iloc[idxs]
-#
-#     I = importances(X_, y_,
-#                     catcolnames={'AC', 'ModelID'},
-#                     n_trials=5,
-#                     min_samples_leaf=5,
-#                     # min_slopes_per_x=5
-#                     )
-#     print(I[0:10])
+
+def viz_weather(n, p, min_samples_leaf, n_outliers=0, seed=None, show_truth=True):
+    if seed is not None:
+        save_state = np.random.get_state()
+        np.random.seed(seed)
+
+    X, y, catnames, avgtemps, true_impact = \
+        toy_weather_data(n=n, p=p, n_outliers=n_outliers)
+    y_bar = np.mean(y)
+    print("overall mean(y)", y_bar)
+
+    #title = f"n={n}\nstd(mean(abs(y)))={std_imp:.3f}\nmin_samples_leaf={min_samples_leaf}\nmin_slopes_per_x={min_slopes_per_x}", fontsize=9
+
+    fig,ax = plt.subplots(1,1, figsize=(10,3))
+    uniq_catcodes, avg_per_cat, ignored, merge_ignored = \
+        plot_catstratpd(X, y, colname='state', targetname="temp",
+                        catnames=catnames,
+                        n_trials=1,
+                        min_samples_leaf=min_samples_leaf,
+                        show_x_counts=False,
+                        ticklabel_fontsize=6,
+                        pdp_marker_size=10,
+                        yrange=(-20,50),
+                        # min_y_shifted_to_zero=False,
+                        min_y_shifted_to_zero=True,
+                        ax=ax,
+                        verbose=False,
+                        # title=
+                        )
+    for i,(state,t) in enumerate(zip(catnames,avgtemps['avgtemp'].values)):
+        ax.text(i,45,f"{t:.1f}", horizontalalignment="center", fontsize=9)
+        # catnames[i] += f"\n{t:.1f}"
+
+    print("ignored", ignored, "merge_ignored", merge_ignored)
+    if seed is not None:
+        np.random.set_state(save_state)
+
+    computed_impact = featimp.avg_all_pairs_abs_delta(avg_per_cat)
+    title = f"strat ignored={ignored}, merge ignored = {merge_ignored}\nimpact={computed_impact:.1f}, true_impact={true_impact:.1f}"
+    plt.title(title)
+    plt.tight_layout()
+    plt.show()
+
+# viz_weather(1000, p=30, min_samples_leaf=5, seed=1, n_outliers=0)
+# viz_weather(1000, p=30, min_samples_leaf=3, seed=1, n_outliers=0)
+# viz_weather(1000, p=30, min_samples_leaf=2, seed=1, n_outliers=0)
+
+viz_weather(1000, p=30, min_samples_leaf=15, seed=1, n_outliers=10)
+viz_weather(1000, p=30, min_samples_leaf=15, seed=2, n_outliers=10)
+viz_weather(1000, p=30, min_samples_leaf=15, seed=3, n_outliers=10)
+viz_weather(1000, p=30, min_samples_leaf=15, seed=4, n_outliers=10)
