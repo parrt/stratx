@@ -236,26 +236,26 @@ def viz_weather(n, p, min_samples_leaf, n_outliers=0, seed=None, show_truth=True
     else:
         compare(caller_fname)
 
-def viz_clean_weather_n100_p4_minleaf5():
-    viz_weather(100, 4, 5, seed=222)
+def viz_clean_weather_n1000_p4_minleaf5():
+    viz_weather(1000, 4, 5, seed=222)
 
-def viz_clean_weather_n100_p10_minleaf5():
-    viz_weather(100, 10, 5, seed=222)
+def viz_clean_weather_n1000_p10_minleaf5():
+    viz_weather(1000, 10, 5, seed=222)
 
-def viz_clean_weather_n100_p20_minleaf5():
-    viz_weather(100, 20, 5, seed=222)
+def viz_clean_weather_n1000_p20_minleaf5():
+    viz_weather(1000, 20, 5, seed=222)
 
-def viz_clean_weather_n100_p5_minleaf5():
-    viz_weather(100, 5, 5, seed=222)
+def viz_clean_weather_n1000_p5_minleaf5():
+    viz_weather(1000, 5, 5, seed=222)
 
-def viz_clean_weather_n100_p20_minleaf10():
-    viz_weather(100, 20, 10, seed=222)
+def viz_clean_weather_n1000_p20_minleaf10():
+    viz_weather(1000, 20, 10, seed=222)
 
-def viz_outlier8_weather_n100_p10_minleaf5():
-    viz_weather(100, 10, 8, n_outliers=5, seed=222)
+def viz_outlier8_weather_n1000_p10_minleaf5():
+    viz_weather(n=1000, p=10, min_samples_leaf=5, n_outliers=8, seed=222)
 
-def viz_outlier8_weather_n100_p17_minleaf5(): # play
-    viz_weather(100, 17, 5, seed=222)
+def viz_outlier100_weather_n1000_p17_minleaf5(): # play
+    viz_weather(n=1000, p=17, min_samples_leaf=5, n_outliers=100, seed=222)
 
 
 viz_clean_synth_uniform_n1000_xrange10_minleaf2()
@@ -265,10 +265,11 @@ viz_clean_synth_uniform_n1000_xrange100_minleaf2()
 viz_clean_synth_gauss_n1000_xrange25_minleaf2()
 viz_clean_synth_gauss_n3000_xrange10_minleaf2()
 viz_clean_synth_gauss_n1000_xrange100_minleaf10()
-viz_clean_weather_n100_p4_minleaf5()
-viz_clean_weather_n100_p10_minleaf5()
-viz_outlier8_weather_n100_p17_minleaf5()
-viz_clean_weather_n100_p20_minleaf10()
-viz_clean_weather_n100_p5_minleaf5()
-viz_clean_weather_n100_p20_minleaf5()
-viz_outlier8_weather_n100_p10_minleaf5()
+
+viz_clean_weather_n1000_p4_minleaf5()
+viz_clean_weather_n1000_p10_minleaf5()
+viz_clean_weather_n1000_p20_minleaf10()
+viz_clean_weather_n1000_p5_minleaf5()
+viz_clean_weather_n1000_p20_minleaf5()
+viz_outlier8_weather_n1000_p10_minleaf5()
+viz_outlier100_weather_n1000_p17_minleaf5()
