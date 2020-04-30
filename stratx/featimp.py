@@ -281,17 +281,41 @@ def compute_importance(X_col, pdpx, pdpy):
 
 
 def cat_compute_importance(avg_per_cat, count_per_cat):
-    # weight each cat value by how many were used to create it
-    abs_avg_per_cat = np.abs(avg_per_cat)
-    # above_threshold = np.where(count_per_cat>20)[0]
-    # weighted_avg_abs_pdp = np.nansum(abs_avg_per_cat[above_threshold] * count_per_cat[above_threshold]) / np.sum(count_per_cat[above_threshold])
-    weighted_avg_abs_pdp = np.nansum(abs_avg_per_cat * count_per_cat) / np.sum(count_per_cat)
-
     # do unweighted
-    # some cats have NaN, such as 0th which is often for "missing values"
+    impact = avg_all_pairs_abs_delta(avg_per_cat)
+
+    # weight impact of each cat value by how many were used to create it
+    # Note: some cats have NaN, such as 0th which is often for "missing values"
     # depending on label encoding scheme.
-    avg_abs_pdp = np.nanmean(abs_avg_per_cat)
-    return avg_abs_pdp, weighted_avg_abs_pdp
+    weighted_avg_abs_pdp = np.nansum(impact * count_per_cat) / np.sum(count_per_cat)
+
+    return impact, weighted_avg_abs_pdp
+
+
+def avg_all_pairs_abs_delta(avg_per_cat):
+    """
+    Impact for a categorical variable x_j is the average magnitude of change of
+    PD_j from category level A to level B, for all possible pairs A,B. NaN entries
+    indicate we have no data for that category and so these are ignored.
+
+    Mathematically, we are filling an upper triangular matrix by putting the raw
+    avg_per_cat as first row, then shifting that vector by k=1, 2, 3, ... to get
+    the other rows of the matrix. Then, we take the nanmean of the upper triangular
+    part. The lower triangular part is the negative of the upper and the diagonal is 0
+
+    See test_avg_all_pairs_abs_delta.py for unit tests.
+    """
+    # first find catcodes (same as index into avg_per_cat). Find all non-NaN
+    catcodes = np.where(~np.isnan(avg_per_cat))[0]
+    all_pairwise_deltas = []
+    for k in catcodes:
+        # Shift cat k to 0 to find relative bump up/down to others;
+        # Since not all cats are present, some of these are still NaN
+        rel_to_k = avg_per_cat - avg_per_cat[k]
+        all_pairwise_deltas.extend(rel_to_k[k+1:])
+        # print(rel_to_k[k+1:])
+    # print(len(avg_per_cat), len(all_pairwise_deltas))
+    return np.nanmean(np.abs(all_pairwise_deltas))
 
 
 def importances_pvalues(X: pd.DataFrame,
