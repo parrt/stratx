@@ -819,7 +819,8 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
     The columns are the y avg value changes per cat found in a single leaf as
     they differ from the reference cat y average. Each row represents a category level. E.g.,
 
-    row           leaf0       leaf1
+    row
+    cat           leaf0       leaf1
      0       166.430176  186.796956
      1       219.590349  176.448626
 
@@ -851,18 +852,24 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
             refcats[leaf_i] = -1 # cat codes are assumed to be positive integers
             continue
 
-        # Use random cat code as refcat
-        idx_of_random_cat_in_leaf = np.random.randint(0, len(uniq_leaf_cats), size=1)
+        # Use any cat code as refcat; same "shape" of delta vec regardless of which we
+        # pick. The vector is shifted/up or down but cat y's all still have the same relative
+        # delta y. Might as well just pick the first one. Previously, I picked a random
+        # reference category but that is unnecessary. We will shift this vector during
+        # the merge operation so which we pick here doesn't matter.  Picking a
+        # random category in common for merging does matter as we are less likely to pick
+        # a category with an outlier delta y, presuming outliers are rare.
+        idx_of_random_cat_in_leaf = 0
         refcats[leaf_i] = uniq_leaf_cats[idx_of_random_cat_in_leaf]
         delta_y_per_cat = avg_y_per_cat - avg_y_per_cat[idx_of_random_cat_in_leaf]
         # print("delta_y_per_cat",delta_y_per_cat)
 
         # Store into leaf i vector just those deltas we have data for
-        # leave cats w/o representation as nan
+        # leave cats w/o representation as nan (uses index to figure out which rows to alter)
         leaf_deltas[uniq_leaf_cats, leaf_i] = delta_y_per_cat
         leaf_counts[uniq_leaf_cats, leaf_i] = count_leaf_cats
 
-    # refcat[i]=-1 for all leaves i we ignored so remove those and return
+    # refcat[i]=-1 for all leaves we ignored so remove those and return
     # See unit test test_catwise_leaves:test_two_leaves_with_2nd_ignored()
     keep_leaves_idxs = np.where(refcats>=0)[0]
     leaf_deltas = leaf_deltas[:,keep_leaves_idxs]
@@ -950,6 +957,14 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose=Fal
     comparable to catavg. We can now do a weighted average of catavg and v,
     paying careful attention of NaN.
 
+    The reason to pick a random category for merging is that we don't want to pick
+    a category that has an outlier noisy delta y. If the true is delta y, but we
+    see delta y + epsilon then we are adding epsilon to all of the other category
+    delta y when we shift.  If outliers are rare, then randomly selecting a category
+    gives us less of a chance of selecting that category.  In experiments,
+    choosing, for example, simply the lowest category code in common, is not nearly
+    as good for squashing outliers.
+
     It's possible that more than a single value within a leaf_deltas vector is 0.
     I.e., the reference category value is always 0 in the vector, but there might be
     another category whose value was the same y, giving a 0 relative value.
@@ -1029,7 +1044,7 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose=Fal
             # pick random category in intersection to use as common refcat
             ix = np.random.choice(intersection_idx, size=1)[0]
 
-            # Merge column j inWowto catavg vector
+            # Merge column j into catavg vector
             shifted_v = v - v[ix]                       # make ix the reference cat in common
             relative_to_value = catavg[ix]              # corresponding value in catavg
             adjusted_v = shifted_v + relative_to_value  # adjust so v is mergeable with catavg
@@ -1140,7 +1155,6 @@ def plot_catstratpd(X, y,
             fig, ax = plt.subplots(1, 1)
 
     uniq_catcodes = np.unique(X[colname])
-    max_catcode = max(uniq_catcodes)
 
     X_col = X[colname]
     n = len(X_col)
@@ -1422,7 +1436,12 @@ def compress_catcodes(X, catcolnames, inplace=False):
 
 
 def nanavg_vectors(a, b, wa=1.0, wb=1.0):
-    "Add two vectors a+b but support nan+x==x and nan+nan=nan"
+    """
+    Add two vectors a+b but support nan+x==x and nan+nan=nan
+    np.nanmean works to get nan+nan=nan, but for weighted avg
+    we need to divide by wa+wb after using nansum. nansum gives
+    0 not nan it seems when adding nan+nan. Do it the hard way.
+    """
     a_nan = np.isnan(a)
     b_nan = np.isnan(b)
     c = a*wa + b*wb               # weighted average where both are non-nan

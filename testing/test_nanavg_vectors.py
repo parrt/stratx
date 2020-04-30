@@ -56,11 +56,25 @@ def test_a_missing_value():
     expected = np.array([0,1,2])
     np.testing.assert_array_equal(c, expected)
 
+def test_a_missing_value_weighted():
+    a = np.array([2.1,np.nan,4])
+    b = np.array([9,1,7])
+    c = nanavg_vectors(a, b, 5, 3)
+    expected = np.array([4.6875,1,5.125])
+    np.testing.assert_array_equal(c, expected)
+
 def test_b_missing_value():
     a = np.array([0,1,2])
     b = np.array([0,np.nan,2])
     c = nanavg_vectors(a, b)
     expected = np.array([0,1,2])
+    np.testing.assert_array_equal(c, expected)
+
+def test_b_missing_value_weighted():
+    a = np.array([2.1,1,4])
+    b = np.array([9,np.nan,7])
+    c = nanavg_vectors(a, b, 5, 3)
+    expected = np.array([4.6875,1,5.125])
     np.testing.assert_array_equal(c, expected)
 
 def test_both_missing_values():
@@ -69,4 +83,12 @@ def test_both_missing_values():
     c = nanavg_vectors(a, b)
     expected = np.array([6,1,2])
     np.testing.assert_array_equal(c, expected)
+
+def test_nan_and_nan():
+    a = np.array([6,np.nan,1])
+    b = np.array([6,np.nan,2])
+    c = nanavg_vectors(a, b)
+    expected = np.array([6,np.nan,1.5])
+    np.testing.assert_array_equal(c, expected)
+
 
