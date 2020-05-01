@@ -281,18 +281,44 @@ def compute_importance(X_col, pdpx, pdpy):
 
 
 def cat_compute_importance(avg_per_cat, count_per_cat):
+    # weight each cat value by how many were used to create it
+    abs_avg_per_cat = np.abs(avg_per_cat)
+    # above_threshold = np.where(count_per_cat>20)[0]
+    # weighted_avg_abs_pdp = np.nansum(abs_avg_per_cat[above_threshold] * count_per_cat[above_threshold]) / np.sum(count_per_cat[above_threshold])
+    weighted_avg_abs_pdp = np.nansum(abs_avg_per_cat * count_per_cat) / np.sum(count_per_cat)
+
     # do unweighted
-    impact = avg_all_pairs_abs_delta(avg_per_cat)
-
-    # weight impact of each cat value by how many were used to create it
-    # Note: some cats have NaN, such as 0th which is often for "missing values"
+    # some cats have NaN, such as 0th which is often for "missing values"
     # depending on label encoding scheme.
-    weighted_avg_abs_pdp = np.nansum(impact * count_per_cat) / np.sum(count_per_cat)
+    avg_abs_pdp = np.nanmean(abs_avg_per_cat)
+    return avg_abs_pdp, weighted_avg_abs_pdp
 
-    return impact, weighted_avg_abs_pdp
 
+def new_cat_compute_importance(avg_per_cat, count_per_cat):
+    all_pairwise_deltas = all_pairs_deltas(avg_per_cat)
+    impact = np.nanmean(np.abs(all_pairwise_deltas))
 
-def avg_all_pairs_abs_delta(avg_per_cat):
+    cat_density_weight = count_per_cat / np.max(count_per_cat)
+    all_pairwise_deltas = all_pairs_deltas(avg_per_cat * cat_density_weight)
+    importance = np.nanmean(np.abs(all_pairwise_deltas))
+
+    # # do unweighted
+    # impact = avg_all_pairs_abs_delta(avg_per_cat)
+    # prob_cat = count_per_cat / np.sum(count_per_cat)
+    # importance = avg_all_pairs_abs_delta(avg_per_cat * prob_cat)
+    #
+    # # weight impact of each cat value by how many were used to create it
+    # # Note: some cats have NaN, such as 0th which is often for "missing values"
+    # # depending on label encoding scheme.
+    # weighted_avg_abs_pdp = np.nansum(impact * count_per_cat) / np.sum(count_per_cat)
+
+    return impact, importance
+
+# def avg_all_pairs_abs_delta(avg_per_cat):
+#     all_pairwise_deltas = all_pairs_deltas(avg_per_cat)
+#     return np.mean(np.abs(all_pairwise_deltas))
+
+def all_pairs_deltas(avg_per_cat):
     """
     Impact for a categorical variable x_j is the average magnitude of change of
     PD_j from category level A to level B, for all possible pairs A,B. NaN entries
@@ -314,8 +340,7 @@ def avg_all_pairs_abs_delta(avg_per_cat):
         rel_to_k = avg_per_cat - avg_per_cat[k]
         all_pairwise_deltas.extend(rel_to_k[k+1:])
         # print(rel_to_k[k+1:])
-    # print(len(avg_per_cat), len(all_pairwise_deltas))
-    return np.nanmean(np.abs(all_pairwise_deltas))
+    return all_pairwise_deltas
 
 
 def importances_pvalues(X: pd.DataFrame,
