@@ -130,6 +130,13 @@ def load_flights(n):
     df_string_to_cat(df_flights)
     df_cat_to_catcode(df_flights)
 
+    df_flights['AIRLINE'] = df_flights['AIRLINE'].astype(int)
+    df_flights['ORIGIN_AIRPORT'] = df_flights['ORIGIN_AIRPORT'].astype(int)
+    df_flights['DESTINATION_AIRPORT'] = df_flights['DESTINATION_AIRPORT'].astype(int)
+    df_flights['FLIGHT_NUMBER'] = df_flights['FLIGHT_NUMBER'].astype(int)
+    df_flights['DAY_OF_WEEK'] = df_flights['DAY_OF_WEEK'].astype(int)
+    df_flights['TAIL_NUMBER'] = df_flights['TAIL_NUMBER'].astype(int)
+
     X, y = df_flights.drop('ARRIVAL_DELAY', axis=1), df_flights['ARRIVAL_DELAY']
 
     return X, y, df_flights

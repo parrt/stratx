@@ -6,7 +6,7 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
 from stratx.partdep import cat_partial_dependence, partial_dependence
 
-forcerun = True
+forcerun = False
 warmedup = False
 # warmedup = True
 
@@ -85,6 +85,7 @@ def flight(max_size=30_000):
                                    'ORIGIN_AIRPORT',
                                    'DESTINATION_AIRPORT',
                                    'FLIGHT_NUMBER',
+                                   'TAIL_NUMBER',
                                    'DAY_OF_WEEK'},
                       max_size=max_size)
 
@@ -125,8 +126,8 @@ for colname in R_flight.drop('size', axis=1).columns:
                                 'ORIGIN_AIRPORT',
                                 'DESTINATION_AIRPORT',
                                 'FLIGHT_NUMBER',
-                                'DAY_OF_WEEK',
-                                'TAIL_NUMBER'} else axes[0]
+                                'TAIL_NUMBER',
+                                'DAY_OF_WEEK'} else axes[0]
     ax.plot(R_flight['size'], R_flight[colname], '-',
             markersize=5, label=colname, lw=lw * 2)#, c='#FEAE61')
 

@@ -64,7 +64,7 @@
 \title{Partial Dependence through Stratification}
 
 % for Springer Verlag
-\author{Terence Parr \and James D. Wilson}
+\author{Terence Parr \and James D. Wilson*}
 \institute{Terence Parr \at
   University of San Francisco\\
   \email{{\tt parrt@cs.usfca.edu}}
@@ -376,6 +376,16 @@ bulldozer shape (362781, 14) records, 5 cats
 \section{Conclusion and future work}
 
 In this paper, we contribute a method for computing partial dependence curves, for both numerical and categorical explanatory variables, that does not use  predictions from a fitted model.   Working directly from the data  makes partial dependences accessible to business analysts and scientists not qualified to choose, tune, and assess machine learning models.  For experts, it can  provide hints about the relationships in the data to help guide their choice of model. Our experiments show that \spd{} and \cspd{} are fast enough for practical use and correctly identify partial dependences for synthetic data and give plausible curves on real data sets. \spd{} relies on two important hyper parameters (with broadly applicable defaults) but model-based techniques should include the hyper parameters of the required fitted model for a fair comparison.  Our goal here is not to  argue  that model-based techniques are not useful. Rather, we are pointing out potential issues and hoping to open a new line of nonparametric inquiry that experiments have shown to be applicable in situations and accurate in cases where model-based techniques are not. An obvious next goal for this approach is a version for classifiers and to extend the technique to two variables, paralleling ALE's second order derivative approach. 
+
+\section{Compliance with Ethical Standards}
+
+\noindent {\bf Funding}
+
+\noindent This study was partially funded by NSF (DMS--1830547).\\
+
+\noindent {\bf Conflict of Interest}
+
+\noindent The authors declare that they have no conflict of interest.
 
 {\bibliography{stratpd}}
 
