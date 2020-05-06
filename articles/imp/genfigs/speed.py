@@ -78,6 +78,7 @@ def flight(max_size=30_000):
                                    'ORIGIN_AIRPORT',
                                    'DESTINATION_AIRPORT',
                                    'FLIGHT_NUMBER',
+                                   'TAIL_NUMBER',
                                    'DAY_OF_WEEK'},
                       max_size=max_size)
 
@@ -125,13 +126,13 @@ re_s, re_eqn = fitcurve("rent", x, y, order=2)
 print(r"\begin{tabular}{r r r r r r r r r}")
 print(r"{\bf dataset} & $p$ & catvars & {\small $n$=1,000} & {\small 10,000} & {\small 20,000} & {\small 30,000} & time versus $n$~~ & $R^2$\\")
 print(r"\hline")
-print(r"{\tt\small flight} & 17 & 5", end=' & ')
+print(r"{\tt\small flight} & 17 & 6", end=' & ')
 print(f"{R_flight[R_flight['size']==1.0]['time'].values[0]:.1f}s", end=' & ')
 print(f"{R_flight[R_flight['size']==10.0]['time'].values[0]:.1f}s", end=' & ')
 print(f"{R_flight[R_flight['size']==20.0]['time'].values[0]:.1f}s", end=' & ')
 print(f"{R_flight[R_flight['size']==30.0]['time'].values[0]:.1f}s", end=' & ')
 print(f"{{\\small {fl_eqn}}} & {{\\small {fl_s:.4f}}}\\\\")
-print(r"{\tt\small bulldozer} & 14 & 2", end=' & ')
+print(r"{\tt\small bulldozer} & 14 & 3", end=' & ')
 print(f"{R_bulldozer[R_bulldozer['size']==1.0]['time'].values[0]:.1f}s", end=' & ')
 print(f"{R_bulldozer[R_bulldozer['size']==10.0]['time'].values[0]:.1f}s", end=' & ')
 print(f"{R_bulldozer[R_bulldozer['size']==20.0]['time'].values[0]:.1f}s", end=' & ')

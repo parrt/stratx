@@ -891,6 +891,8 @@ def cat_partial_dependence(X, y,
     X_col = X[colname].values
     if (X_col<0).any():
         raise ValueError(f"Category codes must be > 0 in column {colname}")
+    if X_col.dtype!=int:
+        raise ValueError(f"Category codes must be integers in column {colname}")
     if max_catcode is None:
         max_catcode = np.max(X_col)
     if supervised:
@@ -1223,6 +1225,7 @@ def plot_catstratpd(X, y,
         combined_avg_per_cat = np.nanmean(all_avg_per_cat, axis=0)
     else:
         combined_avg_per_cat = all_avg_per_cat.flatten()
+    # print("start of combined_avg_per_cat =", combined_avg_per_cat[uniq_catcodes][0:20])
     # print("mean(pdpy)", np.nanmean(combined_avg_per_cat))
 
     impact_order = np.argsort(impacts)
