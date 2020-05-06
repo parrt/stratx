@@ -891,8 +891,8 @@ def cat_partial_dependence(X, y,
     X_col = X[colname].values
     if (X_col<0).any():
         raise ValueError(f"Category codes must be > 0 in column {colname}")
-    if X_col.dtype!=int:
-        raise ValueError(f"Category codes must be integers in column {colname}")
+    if not np.issubdtype(X_col.dtype, np.integer):
+        raise ValueError(f"Category codes must be integers in column {colname} but is {X_col.dtype}")
     if max_catcode is None:
         max_catcode = np.max(X_col)
     if supervised:
