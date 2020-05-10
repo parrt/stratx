@@ -40,50 +40,53 @@ import matplotlib.pyplot as plt
 
 from numpy import nan
 
+# TODO: BROKEN
+
 def test_binary():
     a = np.array([4,2])
-    b = featimp.avg_all_pairs_abs_delta(a)
-    expected = np.abs(4-2)
+    b = featimp.all_pairs_delta(a)
+    expected = np.array([4-2,2-4])
     np.testing.assert_array_equal(b, expected)
 
 def test_binary_zero():
     a = np.array([0,2])
-    b = featimp.avg_all_pairs_abs_delta(a)
-    expected = np.abs(0-2)
+    b = featimp.all_pairs_delta(a)
+    expected = np.array([0-2,2-0])
     np.testing.assert_array_equal(b, expected)
 
 def test_binary_zero_reversed():
     a = np.array([2,0])
-    b = featimp.avg_all_pairs_abs_delta(a)
-    expected = np.abs(2-0)
+    b = featimp.all_pairs_delta(a)
+    expected = np.array([2-0,0-2])
     np.testing.assert_array_equal(b, expected)
 
 def test_3():
     a = np.array([0,1,2])
-    b = featimp.avg_all_pairs_abs_delta(a)
-    expected = np.nanmean(np.abs([0-1,0-2,1-2]))
+    b = featimp.all_pairs_delta(a)
+    expected = np.array([-1.5, 0, 1.5])
     np.testing.assert_array_equal(b, expected)
 
 def test_3_reversed():
     a = np.array([2,1,0])
-    b = featimp.avg_all_pairs_abs_delta(a)
-    expected = np.nanmean(np.abs([2-1,2-0,1-0]))
+    b = featimp.all_pairs_delta(a)
+    expected = np.array([1.5, 0, -1.5])
     np.testing.assert_array_equal(b, expected)
 
 def test_4_reversed():
     a = np.array([1,2,3,4])
-    b = featimp.avg_all_pairs_abs_delta(a)
-    expected = np.nanmean(np.abs([1-2,1-3,1-4,2-3,2-4,3-4]))
-    np.testing.assert_array_equal(b, expected)
+    b = featimp.all_pairs_delta(a)
+    expected = np.array([-2, -2/3, 2/3, 2])
+    np.testing.assert_array_equal(b, expected, verbose=True)
 
 def test_2_nan_ignored():
     a = np.array([nan,1,nan,0])
-    b = featimp.avg_all_pairs_abs_delta(a)
-    expected = np.nanmean(np.abs([1-0]))
+    b = featimp.all_pairs_delta(a)
+    expected = np.array([nan,  1, nan, -1])
     np.testing.assert_array_equal(b, expected)
 
 def test_4_nan_ignored():
     a = np.array([1,nan,nan,nan,3,nan,5,nan,7,nan])
-    b = featimp.avg_all_pairs_abs_delta(a)
-    expected = np.nanmean(np.abs([1-3,1-5,1-7,3-5,3-7,5-7]))
+    b = featimp.all_pairs_delta(a)
+    expected = np.array([-4, nan, nan, nan, -4/3,  nan,
+                          4/3, nan, 4, nan])
     np.testing.assert_array_equal(b, expected)
