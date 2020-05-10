@@ -29,8 +29,6 @@ from sklearn.ensemble import RandomForestRegressor
 
 from stratx.partdep import *
 
-# WARNING: I don't think these are working
-
 def slopes(X, y, colname, min_samples_leaf=10):
     rf = RandomForestRegressor(n_estimators=1,
                                min_samples_leaf=min_samples_leaf,
@@ -40,81 +38,90 @@ def slopes(X, y, colname, min_samples_leaf=10):
     return collect_discrete_slopes(rf, X, y, colname)
 
 
-def check(data, expected, colname, min_samples_leaf=10):
-    """
-    @param data: the X,y data, with y as last column
-    @param expected: the left/right xranges and last column is slope
-    """
-    columns = [f'x{i}' for i in range(1,np.array(data).shape[1])]+['y']
-    df = pd.DataFrame(data=data, columns=columns)
-    df['y'] = sum(df[x] for x in columns)
-    X = df.drop('y', axis=1)
-    y = df['y']
+def check(X, y, colname, expected_xranges, expected_slopes, expected_ignored=0, min_samples_leaf=15):
     leaf_xranges, leaf_slopes, ignored = \
         slopes(X, y, colname=colname, min_samples_leaf=min_samples_leaf)
 
-    expected = np.array(expected)
-    expected_xranges = expected[:,0:1+1]
-    expected_slopes = expected[:,2]
+    # print(leaf_xranges, leaf_slopes, ignored)
 
-    print(leaf_xranges)
-    print(leaf_slopes)
+    assert ignored==expected_ignored, f"Expected ignored {expected_ignored} got {ignored}"
     assert len(leaf_xranges)==len(expected_slopes), f"Expected ranges {expected_xranges}"
     assert np.isclose(leaf_xranges, np.array(expected_xranges)).all(), f"Expected ranges {expected_xranges} got {leaf_xranges}"
     assert len(leaf_slopes)==len(expected_slopes), f"Expected slopes {expected_slopes}"
     assert np.isclose(leaf_slopes, np.array(expected_slopes)).all(), f"Expected slopes {expected_slopes} got {leaf_slopes}"
 
-    # print(X.sort_values('x1').iloc[:8, :])
-    # s = pd.DataFrame()
-    # s['left'] = leaf_xranges[:, 0]
-    # s['right'] = leaf_xranges[:, 1]
-    # s['slope'] = leaf_slopes
-    # print(s.head(10))
+
+def test_2_discrete_records_positive_slope():
+    """
+       x1  x2  y
+    0   1   4  4
+    1   2   5  7
+    """
+    data = {"x1":[1, 2], "x2":[4, 5], "y":[4, 7]}
+    df = pd.DataFrame.from_dict(data)
+    # print(df)
+
+    X = df.drop('y', axis=1)
+    y = df['y']
+
+    expected_xranges = [[1, 2]]
+    expected_slopes = [3]
+    check(X, y, 'x1', expected_xranges, expected_slopes)
+
+def test_unsupported_ignored():
+    """
+       x1  x2  y
+    0   1   5  4
+    1   2   5  7
+    """
+    data = {"x1":[1, 2], "x2":[5, 5], "y":[4, 7]}
+    df = pd.DataFrame.from_dict(data)
+    # print(df)
+
+    X = df.drop('y', axis=1)
+    y = df['y']
+
+    expected_xranges = []
+    expected_slopes = []
+    check(X, y, 'x2', expected_xranges, expected_slopes, expected_ignored=2)
 
 
-def test_2_discrete_records():
-    data = [[1, 2],
-            [1, 3]]
-    expected = [[2, 3, 1]]
-    check(data, expected, colname='x2')
+def test_2_discrete_records_negative_slope():
+    """
+       x1  x2  y
+    0   1   4  7
+    1   2   5  4
+    """
+    data = {"x1":[1, 2], "x2":[4, 5], "y":[7, 4]}
+    df = pd.DataFrame.from_dict(data)
+    # print(df)
 
+    X = df.drop('y', axis=1)
+    y = df['y']
 
-def test_1_record_edge_case():
-    data = [[1, 2]]
-    expected = []
-    check(data, expected, colname='x2')
+    expected_xranges = [[1, 2]]
+    expected_slopes = [-3]
+    check(X, y, 'x1', expected_xranges, expected_slopes)
 
+def test_sim_2cat_problem():
+    """
+       x1  x2  y
+    0   1   5  0
+    1   2   5  30
+    """
+    data = {"x1":[1, 2], "x2":[5, 5], "y":[0, 30]}
+    df = pd.DataFrame.from_dict(data)
+    # print(df)
 
-def test_random_floating_point_all_in_one_leaf():
-    data = \
-        [[0.008386, 3.724396, 0.123684],
-         [0.012942, 8.592633, 0.973965],
-         [0.048403, 4.945038, 0.373470],
-         [0.072278, 6.022741, 0.767953],
-         [0.080743, 6.678219, 0.375508],
-         [0.109459, 8.365492, 0.801016],
-         [0.110229, 1.457290, 0.541546],
-         [0.115092, 0.806182, 0.972837]]
-    expected = \
-        [[0.806182, 1.45729,  0.99253119],
-         [1.45729,  3.724396, 0.95507797],
-         [3.724396, 4.945038, 1.03278357],
-         [4.945038, 6.022741, 1.0221536],
-         [6.022741, 6.678219, 1.01291424],
-         [6.678219, 8.365492, 1.01701918],
-         [8.365492, 8.592633, 0.57507892]]
-    # Put all into one leaf
-    check(data, expected, colname='x2', min_samples_leaf=10)
+    X = df.drop('y', axis=1)
+    y = df['y']
 
+    expected_xranges = np.array([[1, 2]])
+    expected_slopes = np.array([30])
+    check(X, y, 'x1', expected_xranges, expected_slopes)
 
-def test_random_floating_point_in_2_leaves():
-    data = \
-        [[0.008386, 3.724396, 0.123684],
-         [0.012942, 8.592633, 0.973965],
-         [0.048403, 4.945038, 0.373470],
-         [0.072278, 6.022741, 0.767953]]
-    expected = \
-        [[3.724396, 8.592633, 1.17559478],
-         [4.945038, 6.022741, 1.38819415]]
-    # Put all into one leaf
-    check(data, expected, colname='x2', min_samples_leaf=2)
+    real_uniq_x = np.unique(X['x1'])
+    slope_at_x, slope_counts_at_x = \
+        avg_slopes_at_x_jit(real_uniq_x, expected_xranges, expected_slopes)
+
+    print(slope_at_x, slope_counts_at_x)

@@ -283,8 +283,6 @@ def compute_importance(X_col, pdpx, pdpy):
 def cat_compute_importance(avg_per_cat, count_per_cat):
     # weight each cat value by how many were used to create it
     abs_avg_per_cat = np.abs(avg_per_cat)
-    # above_threshold = np.where(count_per_cat>20)[0]
-    # weighted_avg_abs_pdp = np.nansum(abs_avg_per_cat[above_threshold] * count_per_cat[above_threshold]) / np.sum(count_per_cat[above_threshold])
     weighted_avg_abs_pdp = np.nansum(abs_avg_per_cat * count_per_cat) / np.sum(count_per_cat)
 
     # do unweighted
@@ -294,12 +292,40 @@ def cat_compute_importance(avg_per_cat, count_per_cat):
     return avg_abs_pdp, weighted_avg_abs_pdp
 
 
+def all_pairs_delta(avg_per_cat):
+    """
+    For a vector containing the average delta per category found
+    by merging deltas found across regions, compute the average drop/rise in y
+    if we move from all other categories. If we are talking about US state temperatures,
+    and leave on an airplane from a random state, what is expected bump or drop
+    in temperature when arriving in, say, AZ?  That is the average change in y temp from
+    all other states to AZ.
+
+    Return array of deltas has same size as arg avg_per_cat.
+    """
+    avg_pairwise_delta = np.full_like(avg_per_cat, fill_value=np.nan, dtype=float)
+    # first find catcodes (same as index into avg_per_cat). Find all non-NaN
+    catcodes = np.where(~np.isnan(avg_per_cat))[0]
+    ncodes = len(catcodes)  # how many codes have usable data?
+    #     avg_pairwise_delta = []
+    for i, k in enumerate(catcodes):
+        # Shift cat k to 0 to find relative bump up/down to others;
+        rel_to_k = avg_per_cat - avg_per_cat[k]
+        # Since not all cats are present, some of these are still NaN;
+        # don't count those nor cat k to itself
+        avg_delta_away_from_k = np.nansum(rel_to_k) / (ncodes - 1)
+        avg_delta_to_k = -avg_delta_away_from_k
+        #         print("to code",k,rel_to_k, avg_delta_to_k)
+        avg_pairwise_delta[k] = avg_delta_to_k
+    return avg_pairwise_delta
+
+
 def new_cat_compute_importance(avg_per_cat, count_per_cat):
-    all_pairwise_deltas = all_pairs_deltas(avg_per_cat)
+    all_pairwise_deltas = all_pairs_deltas_foo(avg_per_cat)
     impact = np.nanmean(np.abs(all_pairwise_deltas))
 
     cat_density_weight = count_per_cat / np.max(count_per_cat)
-    all_pairwise_deltas = all_pairs_deltas(avg_per_cat * cat_density_weight)
+    all_pairwise_deltas = all_pairs_deltas_foo(avg_per_cat * cat_density_weight)
     importance = np.nanmean(np.abs(all_pairwise_deltas))
 
     # # do unweighted
@@ -318,7 +344,7 @@ def new_cat_compute_importance(avg_per_cat, count_per_cat):
 #     all_pairwise_deltas = all_pairs_deltas(avg_per_cat)
 #     return np.mean(np.abs(all_pairwise_deltas))
 
-def all_pairs_deltas(avg_per_cat):
+def all_pairs_deltas_foo(avg_per_cat):
     """
     Impact for a categorical variable x_j is the average magnitude of change of
     PD_j from category level A to level B, for all possible pairs A,B. NaN entries
@@ -329,7 +355,7 @@ def all_pairs_deltas(avg_per_cat):
     the other rows of the matrix. Then, we take the nanmean of the upper triangular
     part. The lower triangular part is the negative of the upper and the diagonal is 0
 
-    See test_avg_all_pairs_abs_delta.py for unit tests.
+    See test_all_pairs_delta.py for unit tests.
     """
     # first find catcodes (same as index into avg_per_cat). Find all non-NaN
     catcodes = np.where(~np.isnan(avg_per_cat))[0]

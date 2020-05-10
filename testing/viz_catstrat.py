@@ -175,8 +175,8 @@ def viz_clean_synth_gauss(n,p,max_x,min_samples_leaf, seed=None):
 def viz_clean_synth_gauss_n1000_xrange25_minleaf2():
     viz_clean_synth_gauss(1000,2,25,2, seed=222)
 
-def viz_clean_synth_gauss_n100_xrange12_minleaf2():
-    viz_clean_synth_gauss(100,2,12,2, seed=222)
+def viz_clean_synth_gauss_n100_xrange12_minleaf5():
+    viz_clean_synth_gauss(100,2,12,5, seed=222)
 
 def viz_clean_synth_gauss_n20_xrange10_minleaf5():
     viz_clean_synth_gauss(20,2,10,5, seed=222)
@@ -254,12 +254,12 @@ def viz_clean_weather_n1000_p20_minleaf10():
 def viz_outlier8_weather_n1000_p10_minleaf5():
     viz_weather(n=1000, p=10, min_samples_leaf=5, n_outliers=8, seed=222)
 
-def viz_outlier100_weather_n1000_p17_minleaf5(): # play
-    viz_weather(n=1000, p=17, min_samples_leaf=5, n_outliers=100, seed=222)
+def viz_outlier100_weather_n1000_p17_minleaf10(): # play
+    viz_weather(n=1000, p=17, min_samples_leaf=10, n_outliers=100, seed=222)
 
 
 viz_clean_synth_uniform_n1000_xrange10_minleaf2()
-viz_clean_synth_gauss_n100_xrange12_minleaf2()
+viz_clean_synth_gauss_n100_xrange12_minleaf5()
 viz_clean_synth_gauss_n20_xrange10_minleaf5()
 viz_clean_synth_uniform_n1000_xrange100_minleaf2()
 viz_clean_synth_gauss_n1000_xrange25_minleaf2()
@@ -272,4 +272,4 @@ viz_clean_weather_n1000_p20_minleaf10()
 viz_clean_weather_n1000_p5_minleaf5()
 viz_clean_weather_n1000_p20_minleaf5()
 viz_outlier8_weather_n1000_p10_minleaf5()
-viz_outlier100_weather_n1000_p17_minleaf5()
+viz_outlier100_weather_n1000_p17_minleaf10()

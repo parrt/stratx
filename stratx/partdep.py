@@ -142,13 +142,12 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
     #print("uniq x =", len(real_uniq_x), "slopes.shape =", leaf_slopes.shape, "x ranges.shape", leaf_xranges.shape)
     if parallel_jit:
         slope_at_x, slope_counts_at_x = \
-            avg_values_at_x_jit(real_uniq_x, leaf_xranges, leaf_slopes)
+            avg_slopes_at_x_jit(real_uniq_x, leaf_xranges, leaf_slopes)
     else:
         slope_at_x, slope_counts_at_x = \
-            avg_values_at_x_nonparallel_jit(real_uniq_x, leaf_xranges, leaf_slopes)
+            avg_slopes_at_x_nonparallel_jit(real_uniq_x, leaf_xranges, leaf_slopes)
 
     # Drop any nan slopes; implies we have no reliable data for that range
-    # Last slope is nan since no data after last x value so that will get dropped too
     # Also cut out any pdp x for which we don't have enough support (num slopes avg'd together)
     # Make sure to drop slope_counts_at_x, uniq_x values too :)
     # print("slope counts", np.unique(slope_counts_at_x, return_counts=True))
@@ -159,24 +158,27 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
     idx = notnan_idx & relevant_slopes
     slope_at_x = slope_at_x[idx]
     slope_counts_at_x = slope_counts_at_x[idx]
-    pdpx = real_uniq_x[idx]
+
+    # Last slope is nan since no data after last x value; we don't know where to go
+    # from the last value, but we can get there from the derivative at the previous point.
+    # Considerable ordinal variable size, 1 or 2.  There is only one derivative,
+    # from 1 to 2, but we must include both 1 and 2 in pdpx, otherwise there is only one
+    # value to plot. Since everything starts at zero, all binary or ordinal variables
+    # would show just a single point in the partial dependence curve. To resolve,
+    # we add the final point back in after filtering everything for NaN. Earlier,
+    # I was compensating for this missing final value by arbitrarily stripping the
+    # last slope with "dydx = slope_at_x[:-1]", but that was a mistake! All ordinal
+    # variables like product size and bedrooms had a missing final value!
+    final_real_x = real_uniq_x[-1]
+    pdpx = np.concatenate([real_uniq_x[idx], [final_real_x]])
 
     # Integrate the partial derivative estimate in slope_at_x across pdpx to get dependence
-    dx = np.diff(pdpx) # we lose a value here
-    dydx = slope_at_x[:-1] # ignore last point as dx is always one smaller
+    dx = np.diff(pdpx) # for n pdpx values, there are n-1 dx values
+    dydx = slope_at_x  # for n y values, there is also only n-1 slope values
 
-    '''
-    # Weight slopes by mass ratio at each x location for which we have a slope
-    # Mass ratio is (count at x)/(max count at x) giving 0..1
-    if len(pdpx)>1:
-        _, pdpx_counts = np.unique(X_col[np.isin(X_col, pdpx)], return_counts=True)
-        x_counts = [np.sum(X_col == x) for x in pdpx]
-        weighted_dydx = dydx * x_counts[:-1]/np.max(x_counts[:-1])
-    '''
-
-    y_deltas = dydx * dx   # change in y from dx[i] to dx[i+1]
-    pdpy = np.cumsum(y_deltas)                    # we lose one value from np.diff(pdpx)
-    pdpy = np.concatenate([np.array([0]), pdpy])  # add back the 0 we lost
+    y_deltas = dydx * dx                          # get change in y from dx[i] to dx[i+1]
+    pdpy = np.cumsum(y_deltas)                    # y_deltas has one less value than num x values
+    pdpy = np.concatenate([np.array([0]), pdpy])  # align with x values; our PDP y always starts from zero
 
     return leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored
 
@@ -489,25 +491,53 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
     return pdpx, pdpy, ignored
 
 
-@jit(nopython=True)
-def discrete_xc_space(x: np.ndarray, y: np.ndarray):
+def finite_differences(x: np.ndarray, y: np.ndarray):
     """
-    Use the unique x values within a leaf to dynamically compute the "bins,"
-    rather then using a fixed nbins hyper parameter. Group the leaf x,y by x
-    and collect the average y.  The unique x and y averages are the new x and y pairs.
-    The slope for each x is:
+    Use the unique x values within a leaf to compute finite differences. Given, n unique
+    x values return n-1 derivative estimates. We start by grouping the leaf x,y by x
+    and then collect the average y. The unique x and y averages are the new x and y pairs.
+
+    The slope for each x is the forward discrete difference:
 
         (y_{i+1} - y_i) / (x_{i+1} - x_i)
+
+    At right edge, there is no following x value so we could use backward difference:
+
+        (y_i - y_{i-1}) / (x_{i+1} - x_i)
+
+    But we don't use that last value as there's nothing to plot pass last value; slope
+    at last value therefore is worthless.
+
+    I experimented with the center difference using a secant method:
+
+        (y_{i+1} - y_{i-1}) / (x_{i+1} - x_{i-1})
+
+    which is Method A from Veldman, A.E.P., Rinzema, K. Playing with nonuniform grids.
+    J Eng Math 26, 119–130 (1992).  https://doi.org/10.1007/BF00043231
+    https://www.rug.nl/research/portal/files/3332271/1992JEngMathVeldman.pdf
+
+    The np.gradient() function uses Method B from Veldman and Rinzema but that one seems
+    to give much worse derivatives for sparse data.  In the end, forward difference seemed
+    to get the best approximation for synthetic data, particularly sparse data. Since
+    it is simplest, I went with it.
 
     If the ordinal/ints are exactly one unit part, then it's just y_{i+1} - y_i. If
     they are not consecutive, we do not ignore isolated x_i as it ignores too much data.
     E.g., if x is [1,3,4] and y is [9,8,10] then the x=2 coordinate is spanned as part
     of 1 to 3. The two slopes are [(8-9)/(3-1), (10-8)/(4-3)] and bin widths are [2,1].
 
+    For x floating-point numbers that are very close, I noticed that np.unique(x)
+    was treating floating-point numbers different in the 12th decimal point as different.
+    This because the number of problems likely but I didn't notice it until I tried
+    np.gradient(), which found extremely huge derivatives. I fixed that with a hack:
+    x = x.round(decimals=10)
+
     If there is exactly one unique x value in the leaf, the leaf provides no information
     about how X[colname] contributes to changes in y. We have to ignore this leaf.
     """
     ignored = 0
+
+    x = x.round(decimals=10) # numbers that are within 10 decimals are considered the same
 
     # Group by x, take mean of all y with same x value (they come back sorted too)
     uniq_x = np.unique(x)
@@ -518,9 +548,29 @@ def discrete_xc_space(x: np.ndarray, y: np.ndarray):
         ignored += len(x)
         return np.array([[0]],dtype=x.dtype), np.array([0.0]), ignored
 
-    bin_deltas = np.diff(uniq_x)
+    # FORWARD DIFF
+    x_deltas = np.diff(uniq_x)
     y_deltas = np.diff(avg_y)
-    leaf_slopes = y_deltas / bin_deltas  # "rise over run"
+    leaf_slopes = y_deltas / x_deltas  # "rise over run"
+
+    # AVERAGE AROUND CENTER DIFF
+    # At position i, take average of forward slope from y[i-1] to y[i] and
+    # slope from y[i] to y[i+1].
+    # leaf_slopes = [leaf_slopes[0]] + list((leaf_slopes[:-1] + leaf_slopes[1:]) / 2)
+    # leaf_slopes = np.array(leaf_slopes)
+    # dang, doesn't seem to work
+
+    # CENTER DIFF
+    # x_deltas2 = uniq_x[2:] - uniq_x[:-2]  # this is empty if |uniq_x|==2
+    # y_deltas2 = avg_y[2:] - avg_y[:-2]
+    # dydx0 = (avg_y[1] - avg_y[0]) / (uniq_x[1] - uniq_x[0]) # forward diff for i=0
+    # leaf_slopes_ctr = [dydx0] + list(y_deltas2 / x_deltas2)  # "rise over run, stride 2"
+    # leaf_slopes_ctr = np.array(leaf_slopes_ctr)
+
+    # leaf_slopes = np.gradient(avg_y, uniq_x)[:-1] # drop last derivative as we won't use it
+    # print("ctr",list(leaf_slopes_ctr))
+    # print("grd",list(leaf_slopes))
+
     leaf_xranges = np.array(list(zip(uniq_x, uniq_x[1:])))
 
     return leaf_xranges, leaf_slopes, ignored
@@ -566,7 +616,7 @@ def collect_discrete_slopes(rf, X, y, colname):
             continue
 
         leaf_xranges_, leaf_slopes_, ignored_ = \
-            discrete_xc_space(leaf_x, leaf_y)
+            finite_differences(leaf_x, leaf_y)
 
         leaf_slopes.extend(leaf_slopes_)
         leaf_xranges.extend(leaf_xranges_)
@@ -589,12 +639,13 @@ def collect_discrete_slopes(rf, X, y, colname):
 # If using n_jobs=1 all the time for importances, then turn jit=False so this
 # method is not used
 @jit(nopython=True, parallel=True) # use prange not range.
-def avg_values_at_x_jit(uniq_x, leaf_ranges, leaf_slopes):
+def avg_slopes_at_x_jit(uniq_x, leaf_ranges, leaf_slopes):
     """
-    Compute the weighted average of leaf_slopes at each uniq_x.
+    Compute the average of leaf_slopes at each uniq_x.
 
     Value at max(x) is NaN since we have no data beyond that point and so there is
-    no forward difference.
+    no forward difference. If last range is 4..5 then slope at 5 is nan since we
+    don't know where it's going to go from there.
     """
     nx = uniq_x.shape[0]
     nslopes = leaf_slopes.shape[0]
@@ -613,24 +664,24 @@ def avg_values_at_x_jit(uniq_x, leaf_ranges, leaf_slopes):
     # when they have a single unique X[colname] value.
 
     # Compute:
-    #   avg_value_at_x = np.mean(slopes[good], axis=1)  (numba doesn't allow axis arg)
+    #   avg_slope_at_x = np.mean(slopes[good], axis=1)  (numba doesn't allow axis arg)
     #   slope_counts_at_x = nslopes - np.isnan(slopes).sum(axis=1)
-    avg_value_at_x = np.zeros(shape=nx)
+    avg_slope_at_x = np.zeros(shape=nx)
     slope_counts_at_x = np.zeros(shape=nx)
     for i in prange(nx):
         row = slopes[i, :]
         n_nan = np.sum(np.isnan(row))
-        avg_value_at_x[i] = np.nan if n_nan==nslopes else np.nanmean(row)
+        avg_slope_at_x[i] = np.nan if n_nan==nslopes else np.nanmean(row)
         slope_counts_at_x[i] = nslopes - n_nan
 
     # return average slope at each unique x value and how many slopes included in avg at each x
-    return avg_value_at_x, slope_counts_at_x
+    return avg_slope_at_x, slope_counts_at_x
 
 
 # Hideous copying of avg_values_at_x_jit() to get different kinds of jit'ing. This is slower by 20%
 # than other version but can run in parallel with multiprocessing package.
 @jit(nopython=True)
-def avg_values_at_x_nonparallel_jit(uniq_x, leaf_ranges, leaf_slopes):
+def avg_slopes_at_x_nonparallel_jit(uniq_x, leaf_ranges, leaf_slopes):
     """
     Compute the weighted average of leaf_slopes at each uniq_x.
 
@@ -812,9 +863,10 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
 
 def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
     """
-    Return a 2D array with the average y value for each category in each leaf
-    normalized by subtracting the the avg y value for a randomly-chosen
-    reference category from the avg for all categories.
+    Return a 2D array with the average y value for each category in each leaf.
+    Choose the smallest-valued cat code as the reference category (arbitrary)
+    Normalize the y values into deltas by subtracting the avg y value for the
+    reference category from the avg y for all categories.
 
     The columns are the y avg value changes per cat found in a single leaf as
     they differ from the reference cat y average. Each row represents a category level. E.g.,
@@ -834,7 +886,7 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
 
     leaf_deltas = np.full(shape=(max_catcode+1, len(leaves)), fill_value=np.nan)
     leaf_counts = np.zeros(shape=(max_catcode+1, len(leaves)), dtype=int)
-    refcats = np.empty(shape=(len(leaves),), dtype=int)
+    keep_leaf_idxs = np.full(shape=(len(leaves),), fill_value=True, dtype=bool)
 
     ignored = 0
     for leaf_i in range(len(leaves)):
@@ -849,19 +901,16 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
         if len(uniq_leaf_cats) < 2:
             # print(f"ignoring {len(sample)} obs for {len(avg_y_per_cat)} cat(s) in leaf")
             ignored += len(sample)
-            refcats[leaf_i] = -1 # cat codes are assumed to be positive integers
+            keep_leaf_idxs[leaf_i] = False # we ignored this leaf
             continue
 
         # Use any cat code as refcat; same "shape" of delta vec regardless of which we
         # pick. The vector is shifted/up or down but cat y's all still have the same relative
         # delta y. Might as well just pick the first one. Previously, I picked a random
         # reference category but that is unnecessary. We will shift this vector during
-        # the merge operation so which we pick here doesn't matter.  Picking a
-        # random category in common for merging does matter as we are less likely to pick
-        # a category with an outlier delta y, presuming outliers are rare.
-        idx_of_random_cat_in_leaf = 0
-        refcats[leaf_i] = uniq_leaf_cats[idx_of_random_cat_in_leaf]
-        delta_y_per_cat = avg_y_per_cat - avg_y_per_cat[idx_of_random_cat_in_leaf]
+        # the merge operation so which we pick here doesn't matter.
+        idx_of_ref_cat_in_leaf = 0
+        delta_y_per_cat = avg_y_per_cat - avg_y_per_cat[idx_of_ref_cat_in_leaf]
         # print("delta_y_per_cat",delta_y_per_cat)
 
         # Store into leaf i vector just those deltas we have data for
@@ -869,13 +918,10 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
         leaf_deltas[uniq_leaf_cats, leaf_i] = delta_y_per_cat
         leaf_counts[uniq_leaf_cats, leaf_i] = count_leaf_cats
 
-    # refcat[i]=-1 for all leaves we ignored so remove those and return
     # See unit test test_catwise_leaves:test_two_leaves_with_2nd_ignored()
-    keep_leaves_idxs = np.where(refcats>=0)[0]
-    leaf_deltas = leaf_deltas[:,keep_leaves_idxs]
-    leaf_counts = leaf_counts[:,keep_leaves_idxs]
-    refcats = refcats[keep_leaves_idxs]
-    return leaf_deltas, leaf_counts, refcats, ignored
+    leaf_deltas = leaf_deltas[:,keep_leaf_idxs]
+    leaf_counts = leaf_counts[:,keep_leaf_idxs]
+    return leaf_deltas, leaf_counts, ignored
 
 
 def cat_partial_dependence(X, y,
@@ -916,7 +962,7 @@ def cat_partial_dependence(X, y,
 
     rf.fit(X_not_col, y)
 
-    leaf_deltas, leaf_counts, refcats, ignored = \
+    leaf_deltas, leaf_counts, ignored = \
         catwise_leaves(rf, X_not_col, X_col, y.values, max_catcode)
 
     USE_MEAN_Y=False
@@ -929,7 +975,7 @@ def cat_partial_dependence(X, y,
             # slope_counts_at_cat = leaf_histos.shape[1] - np.isnan(leaf_histos).sum(axis=1)
     else:
         avg_per_cat, count_per_cat, merge_ignored = \
-            avg_values_at_cat(leaf_deltas, leaf_counts, refcats, verbose=verbose)
+            avg_values_at_cat(leaf_deltas, leaf_counts, verbose=verbose)
 
     if verbose:
         print(f"CatStratPD Num samples ignored {ignored} for {colname}")
@@ -937,14 +983,13 @@ def cat_partial_dependence(X, y,
     return leaf_deltas, leaf_counts, avg_per_cat, count_per_cat, ignored, merge_ignored
 
 
-def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose=False):
+def avg_values_at_cat(leaf_deltas, leaf_counts, max_iter=3, verbose=False):
     """
     In leaf_deltas, we have information from the leaves indicating how much
     above or below each category was from the reference category of that leaf.
-    The reference category is randomly selected, so the
+    The reference category is arbitrarily selected to be the min cat code, so that
     refcat's relative y value in the leaf will be 0. Categories not mentioned
-    in the leaf, will have NAN values. refcats[leaf] tells us which category
-    is the reference category for leaf.
+    in the leaf, will have NAN values.
 
     The goal is to merge all of the columns in leaf_deltas,
     despite the fact that they do not have the same reference category. We init a
@@ -959,13 +1004,14 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose=Fal
     comparable to catavg. We can now do a weighted average of catavg and v,
     paying careful attention of NaN.
 
-    The reason to pick a random category for merging is that we don't want to pick
-    a category that has an outlier noisy delta y. If the true is delta y, but we
-    see delta y + epsilon then we are adding epsilon to all of the other category
-    delta y when we shift.  If outliers are rare, then randomly selecting a category
-    gives us less of a chance of selecting that category.  In experiments,
-    choosing, for example, simply the lowest category code in common, is not nearly
-    as good for squashing outliers.
+    Previously, I was picking a random category for merging in an effort to reduce the effect
+    of outliers, with the assumption that outliers were rare. Given 5 categories
+    in common between the running average vector and a new vector, randomly picking one
+    means a 1/5 chance of picking the outlier.  Outliers as reference categories shift
+    the outlierness to all other categories. Boooo
+
+    Now, I selected the category in common that has the most evidence: the category
+    associated with the most number of observations.
 
     It's possible that more than a single value within a leaf_deltas vector is 0.
     I.e., the reference category value is always 0 in the vector, but there might be
@@ -975,88 +1021,60 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose=Fal
 
     leaf_deltas
 
-        [[   nan  26.85  -2.47]
-         [-28.67   0.   -30.37]
-         [ 10.3     nan   0.  ]
-         [  4.72  23.99  -6.03]
-         [  0.    21.47 -11.  ]]
+    [[ 0. nan nan]
+     [ 1. nan nan]
+     [nan  0. nan]
+     [nan  3.  0.]
+     [nan  3.  2.]
+     [ 4. nan nan]
+     [ 5. nan nan]]
 
     leaf_counts
 
-        [[0 2 1]
-         [1 1 1]
-         [1 0 2]
-         [1 2 2]
-         [2 3 1]]
-
-    refcats
-
-        [4, 1, 2]
-
-    Init catavg to [7.58  -23.97  10.30   4.72   1.32]
-    work = {1, 2} as catavg is index 0.
-
-    Then we loop until nothing changes, combining columns of leaf_deltas. We have to do
-    weighted average so keep track of the count for each category, catavg_weight, for
-    the running sum in catavg.
-
-     1 : vec to add = [ 26.85   0.00    nan  23.99  21.47 ] - 23.99
-         shifted    = [ 2.86  -23.99    nan   0.00  -2.52 ] + 4.72
-         adjusted   = [ 7.58  -19.27    nan   4.72   2.20 ] * [2 1 0 2 3]
-         prev avg   = [ nan   -28.67  10.30   4.72   0.00 ] * [0 1 1 1 2]
-         new avg    = [ 7.58  -23.97  10.30   4.72   1.32 ]
-
-     2 : vec to add = [ -2.47 -30.37   0.00  -6.03 -11.00 ] - -6.03
-         shifted    = [ 3.56  -24.34   6.03   0.00  -4.97 ] + 4.72
-         adjusted   = [ 8.28  -19.62  10.75   4.72  -0.25 ] * [1 1 2 2 1]
-         prev avg   = [ 7.58  -23.97  10.30   4.72   1.32 ] * [2 2 1 3 5]
-         new avg    = [ 7.81  -22.52  10.60   4.72   1.06 ]
-
-    final cat avgs [ 7.813 -22.520 10.600  4.720  1.058 ]
-
-    So we get a final avg per cat of:  [ 0.  1.  3.  3.  0. nan]
-
-    Choosing random refcat helps avoid focusing on some outliers by accident
-    and after merging same (random) refcat, use random refcat to merge in the loop.
-    even less likely to hit outlier 2x in row.
+    [[1 0 0]
+     [1 0 0]
+     [0 1 0]
+     [0 1 1]
+     [0 1 1]
+     [1 0 0]
+     [1 0 0]]
     """
-    # catavg is the running average vector and starts out as the first column
+    # catavg is the running average vector and starts out as the first column (1st leaf's deltas)
     catavg = leaf_deltas[:,0] # init with first ref category (column)
     catavg_weight = leaf_counts[:,0]
     merge_ignored = 0
-    weight_for_refcats = np.sum(leaf_counts, axis=0)
 
-    work = set(range(1,leaf_deltas.shape[1]))
+    work = set(range(1,leaf_deltas.shape[1])) # all leaf indexes added to work list
     completed = {-1} # init to any nonempty set to enter loop
     iteration = 1
-    # Two passes should be sufficient to merge all possible vectors, but
+    # Three passes should be sufficient to merge all possible vectors, but
     # I'm being paranoid here and allowing it to run until completion or some maximum iterations
     while len(work)>0 and len(completed)>0 and iteration<=max_iter:
         # print(f"PASS {iteration} len(work)", len(work))
         completed = set()
-        for j in work:      # for each refcat, avg in the vectors
-            cat = refcats[j]
+        for j in work:      # for remaining leaf index in work list, avg in the vectors
             v = leaf_deltas[:,j]
-            intersection_idx = np.where(~np.isnan(catavg) & ~np.isnan(v))[0]
+            are_intersecting = ~np.isnan(catavg) & ~np.isnan(v)
+            intersection_idx = np.where(are_intersecting)[0]
 
             # print(intersection_idx)
             if len(intersection_idx)==0: # found something to merge into catavg?
                 continue
 
-            # pick random category in intersection to use as common refcat
-            ix = np.random.choice(intersection_idx, size=1)[0]
+            # cat for merging is the one with most supporting evidence
+            cur_weight  = leaf_counts[:,j]
+            ix = np.argmax(np.where((cur_weight>0) & are_intersecting, cur_weight, 0))
 
             # Merge column j into catavg vector
             shifted_v = v - v[ix]                       # make ix the reference cat in common
             relative_to_value = catavg[ix]              # corresponding value in catavg
             adjusted_v = shifted_v + relative_to_value  # adjust so v is mergeable with catavg
-            cur_weight  = leaf_counts[:,j]
             prev_catavg = catavg                        # track only for verbose/debugging purposes
             catavg = nanavg_vectors(catavg, adjusted_v, catavg_weight, cur_weight)
             # Update weight of running avg to incorporate "mass" from v
             catavg_weight += cur_weight
             if verbose:
-                print(f"{cat:-2d} : vec to add =", parray(v), f"- {v[ix]:.2f}")
+                print(f"{ix:-2d} : vec to add =", parray(v), f"- {v[ix]:.2f}")
                 print("     shifted    =", parray(shifted_v), f"+ {relative_to_value:.2f}")
                 print("     adjusted   =", parray(adjusted_v), "*", cur_weight)
                 print("     prev avg   =", parray(prev_catavg),"*",catavg_weight-cur_weight)
@@ -1069,9 +1087,9 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, refcats, max_iter=3, verbose=Fal
     if len(work)>0:
         #print(f"Left {len(work)} leaves/unique cats in work list")
         # hmm..couldn't merge some vectors; total up the samples we ignored
-        for j in work:
-            merge_ignored += weight_for_refcats[j]
-        if verbose: print(f"cats {refcats[list(work)]} couldn't be merged into running sum; ignored={merge_ignored}")
+        num_obs_per_leaf = np.sum(leaf_counts, axis=0)
+        merge_ignored = np.sum(num_obs_per_leaf[list(work)])
+        if verbose: print(f"cats from {len(work)} leaves couldn't be merged into running avg; ignored={merge_ignored}")
 
     if verbose: print("final cat avgs", parray3(catavg))
     return catavg, catavg_weight, merge_ignored # last one is count of values per cat actually incorporated
@@ -1091,6 +1109,7 @@ def plot_catstratpd(X, y,
                     max_features=1.0,
                     yrange=None,
                     title=None,
+                    show_avg_pairwise_effect=False,  # show avg pairwise drop/bump to get to each cat from all others
                     show_x_counts=True,
                     show_all_pdp=True,
                     pdp_marker_size=6,
@@ -1103,7 +1122,7 @@ def plot_catstratpd(X, y,
                     barchar_alpha=0.9,
                     ticklabel_fontsize=10,
                     min_y_shifted_to_zero=False,
-                    leftmost_shifted_to_zero=False, # either this or min_y_shifted_to_zero can be true
+                    leftmost_shifted_to_zero=False,  # either this or min_y_shifted_to_zero can be true
                     # easier to read if values are relative to 0 (usually); do this for high cardinality cat vars
                     show_xlabel=True,
                     show_xticks=True,
@@ -1155,6 +1174,9 @@ def plot_catstratpd(X, y,
             fig, ax = plt.subplots(1, 1, figsize=figsize)
         else:
             fig, ax = plt.subplots(1, 1)
+
+    if show_avg_pairwise_effect:
+        show_all_pdp = False
 
     uniq_catcodes = np.unique(X[colname])
 
@@ -1211,6 +1233,7 @@ def plot_catstratpd(X, y,
         all_avg_per_cat.append( avg_per_cat )
 
     all_avg_per_cat = np.array(all_avg_per_cat)
+
     if leftmost_shifted_to_zero:
         all_avg_per_cat -= all_avg_per_cat[np.isfinite(all_avg_per_cat)][0]
     if min_y_shifted_to_zero:
@@ -1227,6 +1250,9 @@ def plot_catstratpd(X, y,
         combined_avg_per_cat = all_avg_per_cat.flatten()
     # print("start of combined_avg_per_cat =", combined_avg_per_cat[uniq_catcodes][0:20])
     # print("mean(pdpy)", np.nanmean(combined_avg_per_cat))
+
+    if show_avg_pairwise_effect:
+        combined_avg_per_cat = featimp.all_pairs_delta(combined_avg_per_cat)
 
     impact_order = np.argsort(impacts)
     # print("impacts", impacts)
