@@ -10,7 +10,7 @@ from sympy.simplify.radsimp import fraction_expand
 
 #from support import load_bulldozer
 import support
-from stratx.partdep import plot_stratpd, plot_catstratpd
+from stratx.partdep import plot_stratpd, plot_catstratpd, plot_catstratpd_gridsearch
 from stratx.featimp import importances
 
 import numpy as np
@@ -25,67 +25,70 @@ np.set_printoptions(precision=2, suppress=True, linewidth=300, threshold=2000)
 # X, y = support.load_bulldozer(n)
 X, y, X_train, X_test, y_train, y_test = support.load_dataset("bulldozer", "SalePrice")
 
-df = pd.read_csv("../../pd/bulldozer20k.csv")
-X = df.drop('SalePrice', axis=1)
-y = df['SalePrice']
+X['auctioneerID'] = X['auctioneerID'].astype(np.int64)  # convert to seconds since 1970
 
-#
+# df = pd.read_csv("../../pd/bulldozer20k.csv")
+# X = df.drop('SalePrice', axis=1)
+# y = df['SalePrice']
+
+
 # I = importances(X, y,
-#                 n_trials=1,
-#                 normalize=True,
+#                 n_trials=10,
+#                 normalize=False,
 #                 drop_high_stddev=2.0,
 #                 bootstrap=True,
 #                 # bootstrap=False,
 #                 # subsample_size=.7,
 #
-#                 min_samples_leaf=15,
-#                 cat_min_samples_leaf=10,
+#                 # min_slopes_per_x=20,
+#                 min_samples_leaf=20,
+#                 cat_min_samples_leaf=20,
 #                 catcolnames={'AC', 'ModelID', 'auctioneerID'}
 #                 )
-#
-# # I['ImportanceNorm'] = I['Importance'] / np.sum(I['Importance'])
-# # I['ImpactNorm']     = I['Impact'] / np.sum(I['Impact'])
+
+# I['ImportanceNorm'] = I['Importance'] / np.sum(I['Importance'])
+# I['ImpactNorm']     = I['Impact'] / np.sum(I['Impact'])
 # print(I)
 
-# fig, ax = plt.subplots(1, 1)
-# pdpx, pdpy, ignored = \
-#     plot_stratpd(X, y, colname='ProductSize', targetname='SalePrice',
-#
-#                  # n_trials=1,
-#                  # n_trees=30,
-#                  # bootstrap=True,
-#                  # min_slopes_per_x=5*30,
-#
-#                  n_trials=5,
-#                  bootstrap=True,
-#                  min_slopes_per_x=5,
-#                  min_samples_leaf=15,#200000,
-#
-#                  show_slope_lines=False,#True,
-#                  # show_impact=True,
-#                  figsize=(3.8,3.2),
-#                  show_x_counts=False,
-#                  show_impact_line=False,
-#                  show_impact_dots=False,
-#                  show_all_pdp=False,
-#                  impact_fill_color='#FEF5DC',
-#                  pdp_marker_size=10,
-#                  ax=ax
-#                  # xrange=(1960,2010),
-#                  # yrange=(-1000,45000)
-#                  )
-# # ax.set_xlabel("ProductSize", fontsize=11)
-# # ax.set_xlim(0, 5)
-# # ax.set_ylim(-15000, 50_000)
-#
+fig, ax = plt.subplots(1, 1)
+pdpx, pdpy, ignored = \
+    plot_stratpd(X, y, colname='auctioneerID', targetname='SalePrice',
+
+                 # n_trials=1,
+                 # n_trees=30,
+                 # bootstrap=True,
+                 # min_slopes_per_x=5*30,
+
+                 n_trials=1,
+                 bootstrap=True,
+                 min_slopes_per_x=5,
+                 min_samples_leaf=15,#200000,
+
+                 show_slope_lines=False,#True,
+                 show_impact=True,
+                 figsize=(3.8,3.2),
+                 show_x_counts=True,
+                 show_impact_line=False,
+                 show_impact_dots=False,
+                 show_all_pdp=False,
+                 impact_fill_color='#FEF5DC',
+                 pdp_marker_size=10,
+                 ax=ax
+                 # xrange=(1960,2010),
+                 # yrange=(-1000,45000)
+                 )
+# ax.set_xlabel("ProductSize", fontsize=11)
+# ax.set_xlim(0, 5)
+# ax.set_ylim(-15000, 50_000)
+
 # plt.title("Forward finite diff")
-# # plt.title("Secant center finite diff")
-# # plt.title("Parabolic center finite diff")
-# #plt.title(f"10 trials, min slopes 5\nmin_samples_leaf 10, ignored {ignored}", fontsize=10)
-# # plt.title(f"1 trial, 30 trees, min slopes 5*ntrees, ignored {ignored}", fontsize=10)
-# plt.tight_layout()
-# plt.savefig(f"/Users/parrt/Desktop/james-ProductSize.pdf", pad_inches=0)
-# plt.show()
+# plt.title("Secant center finite diff")
+# plt.title("Parabolic center finite diff")
+#plt.title(f"10 trials, min slopes 5\nmin_samples_leaf 10, ignored {ignored}", fontsize=10)
+# plt.title(f"1 trial, 30 trees, min slopes 5*ntrees, ignored {ignored}", fontsize=10)
+plt.tight_layout()
+plt.savefig(f"/Users/parrt/Desktop/james-ProductSize.pdf", pad_inches=0)
+plt.show()
 
 #
 
@@ -94,9 +97,9 @@ y = df['SalePrice']
 # X_['ModelID'] = X_['ModelID'].sample(frac=1.0, replace=False)
 
 uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored = \
-    plot_catstratpd(X, y, colname='ModelID', targetname='SalePrice',
+    plot_catstratpd(X, y, colname='auctioneerID', targetname='SalePrice',
                     n_trials=1,
-                    min_samples_leaf=5,
+                    min_samples_leaf=15,
                     show_xticks=False,
                     show_impact=True,
                     min_y_shifted_to_zero=True,
@@ -173,15 +176,14 @@ plt.show()
 # print(I)
 
 
-col = 'age'
+col = 'ModelID'
 # col = 'ProductSize'
 
-# y_ = y_.sample(frac=1.0, replace=False)
-# plot_catstratpd_gridsearch(X_, y_, 'ModelID', 'SalePrice',
-#                            min_samples_leaf_values=(5, 8, 10, 15, 20),
-#                            sort=None,
+# plot_catstratpd_gridsearch(X, y, 'ModelID', 'SalePrice',
+#                            min_samples_leaf_values=(2, 5, 10, 15, 20, 30),
 #                            cellwidth=4.5,
-#                            n_trials=3,
+#                            n_trials=1,
+#                            show_impact=True,
 #                            show_xticks=False,
 #                            show_all_cat_deltas=False,
 #                            min_y_shifted_to_zero=False)

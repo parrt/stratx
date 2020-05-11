@@ -102,27 +102,27 @@ def viz_weather(n, p, min_samples_leaf, n_outliers=0, seed=None, show_truth=True
     #title = f"n={n}\nstd(mean(abs(y)))={std_imp:.3f}\nmin_samples_leaf={min_samples_leaf}\nmin_slopes_per_x={min_slopes_per_x}", fontsize=9
     figsize = (2.5, 2)
     fig,ax = plt.subplots(1,1, figsize=figsize)
-    # uniq_catcodes, avg_per_cat, ignored, merge_ignored = \
-    #     plot_catstratpd(X, y, colname='state', targetname="temperature",
-    #                     catnames=catnames,
-    #                     n_trials=1,
-    #                     min_samples_leaf=min_samples_leaf,
-    #                     show_x_counts=False,
-    #                     ticklabel_fontsize=6,
-    #                     pdp_marker_size=10,
-    #                     # yrange=(-35,35),
-    #                     yrange=(0,35),
-    #                     # min_y_shifted_to_zero=False,
-    #                     min_y_shifted_to_zero=True,
-    #                     ax=ax,
-    #                     verbose=False,
-    #                     # title=
-    #                     )
-    # abs_avg_per_cat = np.abs(avg_per_cat)
-    # avg_abs_pdp = np.nanmean(abs_avg_per_cat)
-    # print("avg_abs_pdp", avg_abs_pdp)
-    #
-    # print("ignored", ignored, "merge_ignored", merge_ignored)
+    uniq_catcodes, avg_per_cat, ignored, merge_ignored = \
+        plot_catstratpd(X, y, colname='state', targetname="temperature",
+                        catnames=catnames,
+                        n_trials=1,
+                        min_samples_leaf=min_samples_leaf,
+                        show_x_counts=False,
+                        ticklabel_fontsize=6,
+                        pdp_marker_size=10,
+                        # yrange=(-35,35),
+                        yrange=(0,35),
+                        # min_y_shifted_to_zero=False,
+                        min_y_shifted_to_zero=True,
+                        ax=ax,
+                        verbose=False,
+                        # title=
+                        )
+    abs_avg_per_cat = np.abs(avg_per_cat)
+    avg_abs_pdp = np.nanmean(abs_avg_per_cat)
+    print("avg_abs_pdp", avg_abs_pdp)
+
+    print("ignored", ignored, "merge_ignored", merge_ignored)
 
     plot_stratpd(X, y, colname='state', targetname="temperature",
                  show_x_counts=False,
@@ -141,7 +141,7 @@ def viz_weather(n, p, min_samples_leaf, n_outliers=0, seed=None, show_truth=True
     plt.savefig('/Users/parrt/Desktop/state_vs_temp.png', dpi=200)
     plt.show()
 
-viz_weather(100, p=2, min_samples_leaf=5, seed=1, n_outliers=0)
+viz_weather(100, p=50, min_samples_leaf=5, seed=1, n_outliers=0)
 # viz_weather(1000, p=30, min_samples_leaf=3, seed=1, n_outliers=0)
 # viz_weather(1000, p=30, min_samples_leaf=2, seed=1, n_outliers=0)
 

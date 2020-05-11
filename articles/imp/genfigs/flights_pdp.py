@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 
 np.set_printoptions(precision=2, suppress=True, linewidth=300)#, threshold=1e10)
 
-np.random.seed(1)
+np.random.seed(3)
 
 X, y, X_train, X_test, y_train, y_test = load_dataset("flights", "ARRIVAL_DELAY")
 
@@ -34,7 +34,7 @@ print(f"Avg arrival delay {y.mean()}")
 # plt.xlabel("SCHEDULED_DEPARTURE")
 # plt.ylabel("ARRIVAL_DELAY")
 # plt.show()
-
+#
 I = importances(X, y,
                 catcolnames={'AIRLINE',
                              'ORIGIN_AIRPORT',
@@ -44,7 +44,7 @@ I = importances(X, y,
                              'DAY_OF_WEEK'},
                 normalize=False,
                 n_trials=1,
-                min_samples_leaf=20,
+                min_samples_leaf=15,
                 cat_min_samples_leaf=5
                 )
 print(I)
@@ -83,50 +83,49 @@ X = df_test.drop('ARRIVAL_DELAY', axis=1)
 y = df_test['ARRIVAL_DELAY']
 print(f"Avg arrival delay {y.mean()}, sigma={np.std(y)}")
 
-for i in range(10):
-    np.random.seed(i)
-
-    col = 'DESTINATION_AIRPORT'
-    uniq_catcodes, avg_per_cat, ignored, merge_ignored = \
-        plot_catstratpd(X, y, colname=col, targetname='delay',
-                        leftmost_shifted_to_zero=False,
-                        min_y_shifted_to_zero=False,
-                        min_samples_leaf=5,
-                        n_trials=1,
-                        show_xticks=False,
-                        show_all_pdp=False,
-                        show_impact=True,
-                        yrange=(-50,450),
-                        figsize=(20,10))
-
-    abs_avg = np.abs(avg_per_cat)
-    a, b = np.nanmin(avg_per_cat), np.nanmax(avg_per_cat)
-    m = np.nanmean(abs_avg)
-    straddle_mean = np.nanmean(np.abs(avg_per_cat - np.nanmean(avg_per_cat)))
-    print(f"mean {np.nanmean(avg_per_cat):6.1f}, abs mean {m:5.1f}, {straddle_mean :5.1f}, range {a:5.1f}..{b:5.1f} = {(b - a):5.1f}")
+# for i in range(10):
+#     np.random.seed(i)
+#
+#     col = 'ORIGIN_AIRPORT'
+#     uniq_catcodes, avg_per_cat, ignored, merge_ignored = \
+#         plot_catstratpd(X, y, colname=col, targetname='delay',
+#                         leftmost_shifted_to_zero=False,
+#                         min_y_shifted_to_zero=False,
+#                         min_samples_leaf=5,
+#                         n_trials=1,
+#                         show_xticks=False,
+#                         show_all_pdp=False,
+#                         show_impact=True,
+#                         yrange=(-50,450),
+#                         figsize=(20,10))
+#
+#     abs_avg = np.abs(avg_per_cat)
+#     a, b = np.nanmin(avg_per_cat), np.nanmax(avg_per_cat)
+#     m = np.nanmean(abs_avg)
+#     straddle_mean = np.nanmean(np.abs(avg_per_cat - np.nanmean(avg_per_cat)))
+#     print(f"mean {np.nanmean(avg_per_cat):6.1f}, abs mean {m:5.1f}, {straddle_mean :5.1f}, range {a:5.1f}..{b:5.1f} = {(b - a):5.1f}")
 
 # plt.tight_layout()
 # plt.savefig(f"/Users/parrt/Desktop/flight-{col}.pdf", pad_inches=0)
 # plt.show()
 
-# uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored = \
-#     plot_catstratpd(X, y, 'FLIGHT_NUMBER', 'ARRIVAL_DELAY',
-#                     min_samples_leaf=3,
-#                     sort=None,
-#                     yrange=(-150,150),
-#                     figsize=(20,4),
-#                     n_trials=5,
-#                     min_y_shifted_to_zero=False,
-#                     show_all_deltas=False,
-#                     show_xticks=False,
-#                     show_impact=True,
-#                     verbose=False)
-#
-# print("IGNORED", ignored, "merge ignored", merge_ignored)
-# plt.tight_layout()
-# # plt.savefig(f"/Users/parrt/Desktop/flight-fnum-cat-most_common.pdf", pad_inches=0)
-# plt.savefig(f"/Users/parrt/Desktop/flight-fnum-cat-minleaf3.pdf", pad_inches=0)
-# plt.show()
+colname = 'FLIGHT_NUMBER'
+uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored = \
+    plot_catstratpd(X, y, colname, 'ARRIVAL_DELAY',
+                    min_samples_leaf=5,
+                    # yrange=(-150,150),
+                    figsize=(20,4),
+                    n_trials=1,
+                    min_y_shifted_to_zero=False,
+                    show_xticks=False,
+                    show_impact=True,
+                    verbose=False)
+
+print("IGNORED", ignored, "merge ignored", merge_ignored)
+plt.tight_layout()
+# plt.savefig(f"/Users/parrt/Desktop/flight-fnum-cat-most_common.pdf", pad_inches=0)
+plt.savefig(f"/Users/parrt/Desktop/flight-fnum-cat-minleaf3.pdf", pad_inches=0)
+plt.show()
 
 # plot_stratpd_gridsearch(X, y, 'TAXI_IN', 'ARRIVAL_DELAY',
 #                         min_samples_leaf_values=(3,5,10,15),
