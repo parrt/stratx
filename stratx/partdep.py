@@ -824,6 +824,7 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
                                min_samples_leaf_values=(2, 5, 10, 20, 30),
                                min_y_shifted_to_zero=True,  # easier to read if values are relative to 0 (usually); do this for high cardinality cat vars
                                show_xticks=True,
+                               show_impact=False,
                                show_all_cat_deltas=True,
                                catnames=None,
                                yrange=None,
@@ -832,7 +833,8 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
 
     ncols = len(min_samples_leaf_values)
     fig, axes = plt.subplots(1, ncols + 1,
-                             figsize=((ncols + 1) * cellwidth, cellheight))
+                             figsize=((ncols + 1) * cellwidth, cellheight),
+                             sharey=True)
 
     marginal_catplot_(X, y, colname, targetname, catnames=catnames, ax=axes[0], alpha=0.05,
                       show_xticks=show_xticks)
@@ -851,6 +853,7 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
                                 catnames=catnames,
                                 yrange=yrange,
                                 n_trees=1,
+                                show_impact=show_impact,
                                 show_xticks=show_xticks,
                                 show_ylabel=False,
                                 min_y_shifted_to_zero=min_y_shifted_to_zero)
