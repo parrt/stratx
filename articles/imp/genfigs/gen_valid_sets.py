@@ -1,5 +1,3 @@
-# Code to gen .csv files for use with R
-
 import pandas as pd
 import numpy as np
 from sklearn.datasets import load_boston
