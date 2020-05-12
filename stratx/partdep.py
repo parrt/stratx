@@ -89,7 +89,7 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
 
         slope_at_x      The slope at each non-NaN unique X[colname]
 
-        pdpx            The non-NaN unique X[colname] values
+        pdpx            The non-NaN unique X[colname] values; len(pdpx)<=len(unique(X[colname]))
 
         pdpy            The effect of each non-NaN unique X[colname] on y; effectively
                         the cumulative sum (integration from X[colname] x to z for all
@@ -152,38 +152,43 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
         slope_at_x, slope_counts_at_x = \
             avg_slopes_at_x_nonparallel_jit(real_uniq_x, leaf_xranges, leaf_slopes)
 
-    # Drop any nan slopes; implies we have no reliable data for that range
-    # Also cut out any pdp x for which we don't have enough support (num slopes avg'd together)
-    # Make sure to drop slope_counts_at_x, uniq_x values too :)
-    # print("slope counts", np.unique(slope_counts_at_x, return_counts=True))
     if min_slopes_per_x <= 0:
         min_slopes_per_x = 1 # must have at least one slope value
-    notnan_idx = ~np.isnan(slope_at_x)
-    relevant_slopes = slope_counts_at_x >= min_slopes_per_x
-    idx = notnan_idx & relevant_slopes
-    slope_at_x = slope_at_x[idx]
-    slope_counts_at_x = slope_counts_at_x[idx]
 
-    # Last slope is nan since no data after last x value; we don't know where to go
-    # from the last value, but we can get there from the derivative at the previous point.
-    # Considerable ordinal variable size, 1 or 2.  There is only one derivative,
-    # from 1 to 2, but we must include both 1 and 2 in pdpx, otherwise there is only one
-    # value to plot. Since everything starts at zero, all binary or ordinal variables
-    # would show just a single point in the partial dependence curve. To resolve,
-    # we add the final point back in after filtering everything for NaN. Earlier,
-    # I was compensating for this missing final value by arbitrarily stripping the
-    # last slope with "dydx = slope_at_x[:-1]", but that was a mistake! All ordinal
-    # variables like product size and bedrooms had a missing final value!
-    final_real_x = real_uniq_x[-1]
-    pdpx = np.concatenate([real_uniq_x[idx], [final_real_x]])
+    # Turn any slopes with weak evidence into NaNs but keep same slope_at_x length
+    slope_at_x = np.where(slope_counts_at_x >= min_slopes_per_x, slope_at_x, np.nan)
+
+    pdpx = real_uniq_x
+
+    # At this point, slope_at_x will have at least one nan, but that's okay because
+    # diff and nancumsum will treat them appropriately.  nancumsum treats NaN as 0
+    # so the previous non-NaN value is carried forward until we reach next real value.
+    # Keep in mind that the last slope in slope_at_x is always nan,
+    # since we have no information beyond that. However, we can still produce
+    # a pdpy value for that last position because we have a delta from the
+    # previous position that will get us to the last position.
 
     # Integrate the partial derivative estimate in slope_at_x across pdpx to get dependence
-    dx = np.diff(pdpx) # for n pdpx values, there are n-1 dx values
-    dydx = slope_at_x  # for n y values, there is also only n-1 slope values
+    dx = np.diff(pdpx)      # for n pdpx values, there are n-1 dx values
+    dydx = slope_at_x[:-1]  # for n y values, only n-1 slope values; last slope always nan
 
-    y_deltas = dydx * dx                          # get change in y from dx[i] to dx[i+1]
-    pdpy = np.cumsum(y_deltas)                    # y_deltas has one less value than num x values
+    y_deltas = dydx * dx                          # get change in y from x[i] to x[i+1]
+    pdpy = np.nancumsum(y_deltas)                 # y_deltas has one less value than num x values
     pdpy = np.concatenate([np.array([0]), pdpy])  # align with x values; our PDP y always starts from zero
+
+    # At this point pdpx, pdpy have the same length as real_uniq_x
+
+    # Strip from pdpx,pdpy any positions for which we don't have useful slope info. If we have
+    # slopes = [1, 3, nan] then cumsum will give 3 valid pdpy values. But, if we have
+    # slopes = [1, 3, nan, nan], then there is no pdpy value for last position. nancumsum
+    # carries same y to the right, but we wanna strip last position, in this case.
+    # Detect 2 nans in a row. We don't want the second or any after that until next real value
+    idx_not_adjacent_nans = np.where(~(np.isnan(slope_at_x[1:]) & np.isnan(slope_at_x[:-1])))[0] + 1
+    # Deal with first position. If it's nan, drop it, else keep it
+    if not np.isnan(slope_at_x[0]):
+        idx_not_adjacent_nans = np.concatenate([np.array([0]), idx_not_adjacent_nans])
+    pdpx = pdpx[idx_not_adjacent_nans]
+    pdpy = pdpy[idx_not_adjacent_nans]
 
     return leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored
 
@@ -310,6 +315,8 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
             pdpy[i] = m[x]
         return pdpx, pdpy
 
+    X_col = X[colname].values.round(decimals=10)
+
     all_pdpx = []
     all_pdpy = []
     impacts = []
@@ -337,7 +344,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         # print("ignored", ignored_, "pdpy", pdpy)
         all_pdpx.append(pdpx)
         all_pdpy.append(pdpy)
-        impact, importance = featimp.compute_importance(X[colname], pdpx, pdpy)
+        impact, importance = featimp.compute_importance(X_col, pdpx, pdpy)
         impacts.append(impact)
         importances.append(importance)
 
@@ -365,8 +372,6 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
 
     if show_pdp_line:
         ax.plot(pdpx, pdpy, lw=pdp_line_width, c=pdp_line_color)
-
-    domain = (np.min(X[colname]), np.max(X[colname]))  # ignores any max(x) points as no slope info after that
 
     if len(pdpy)==0:
         raise ValueError("No partial dependence y values, often due to value of min_samples_leaf that is too small or min_slopes_per_x that is too large")
@@ -408,7 +413,6 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         count_bar_width = x_width * 0.002 # don't make them so skinny they're invisible
     # print(f"x_width={x_width:.2f}, count_bar_width={count_bar_width}")
     if show_x_counts:
-        X_col = X[colname]
         _, pdpx_counts = np.unique(X_col[np.isin(X_col, pdpx)], return_counts=True)
         ax2 = ax.twinx()
         # scale y axis so the max count height is 10% of overall chart
