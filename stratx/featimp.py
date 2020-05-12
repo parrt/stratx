@@ -238,6 +238,8 @@ def single_feature_importance(X: pd.DataFrame, y: pd.Series,
                               rf_bootstrap=False, max_features=1.0,
                               verbose=False):
     "Return impact=unweighted avg abs, importance=weighted avg abs"
+    X_col = X[colname].values.round(decimals=10)
+
     # print(f"Start {colname}")
     if colname in catcolnames:
         leaf_deltas, leaf_counts, avg_per_cat, count_per_cat, ignored, merge_ignored = \
@@ -260,7 +262,7 @@ def single_feature_importance(X: pd.DataFrame, y: pd.Series,
                                        verbose=verbose,
                                        parallel_jit=n_jobs == 1,
                                        supervised=supervised)
-        impact, importance = compute_importance(X[colname], pdpx, pdpy)
+        impact, importance = compute_importance(X_col, pdpx, pdpy)
     # print(f"{colname}:{avg_abs_pdp:.3f} mass")
     # print(f"Stop {colname}")
     return impact, importance
