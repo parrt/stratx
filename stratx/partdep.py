@@ -100,7 +100,12 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
                         values.
   """
     X_not_col = X.drop(colname, axis=1).values
-    X_col = X[colname]
+    # For x floating-point numbers that are very close, I noticed that np.unique(x)
+    # was treating floating-point numbers different in the 12th decimal point as different.
+    # This caused a number of problems likely but I didn't notice it until I tried
+    # np.gradient(), which found extremely huge derivatives. I fixed that with a hack:
+    X_col = X[colname].values.round(decimals=10)
+
     if supervised:
         rf = RandomForestRegressor(n_estimators=n_trees,
                                    min_samples_leaf=min_samples_leaf,
@@ -130,12 +135,12 @@ def partial_dependence(X:pd.DataFrame, y:pd.Series, colname:str,
               f"{len(rf.estimators_)} trees, {len(leaves)} total leaves")
 
     leaf_xranges, leaf_slopes, ignored = \
-        collect_discrete_slopes(rf, X, y, colname) # if ignored, won't have entries in leaf_* results
+        collect_discrete_slopes(rf, X_col, X_not_col, y) # if ignored, won't have entries in leaf_* results
 
     # print('leaf_xranges', leaf_xranges)
     # print('leaf_slopes', leaf_slopes)
 
-    real_uniq_x = np.unique(X_col) # comes back sorted
+    real_uniq_x = np.unique(X_col)   # comes back sorted
     if verbose:
         print(f"discrete StratPD num samples ignored {ignored}/{len(X)} for {colname}")
 
@@ -526,18 +531,10 @@ def finite_differences(x: np.ndarray, y: np.ndarray):
     E.g., if x is [1,3,4] and y is [9,8,10] then the x=2 coordinate is spanned as part
     of 1 to 3. The two slopes are [(8-9)/(3-1), (10-8)/(4-3)] and bin widths are [2,1].
 
-    For x floating-point numbers that are very close, I noticed that np.unique(x)
-    was treating floating-point numbers different in the 12th decimal point as different.
-    This because the number of problems likely but I didn't notice it until I tried
-    np.gradient(), which found extremely huge derivatives. I fixed that with a hack:
-    x = x.round(decimals=10)
-
     If there is exactly one unique x value in the leaf, the leaf provides no information
     about how X[colname] contributes to changes in y. We have to ignore this leaf.
     """
     ignored = 0
-
-    x = x.round(decimals=10) # numbers that are within 10 decimals are considered the same
 
     # Group by x, take mean of all y with same x value (they come back sorted too)
     uniq_x = np.unique(x)
@@ -576,7 +573,7 @@ def finite_differences(x: np.ndarray, y: np.ndarray):
     return leaf_xranges, leaf_slopes, ignored
 
 
-def collect_discrete_slopes(rf, X, y, colname):
+def collect_discrete_slopes(rf, X_col, X_not_col, y):
     """
     For each leaf of each tree of the decision tree or RF rf (trained on all features
     except colname), get the leaf samples then isolate the X[colname] values
@@ -595,8 +592,6 @@ def collect_discrete_slopes(rf, X, y, colname):
 
     ignored = 0
 
-    X_col = X[colname].values
-    X_not_col = X.drop(colname, axis=1)
     leaves = leaf_samples(rf, X_not_col)
     y = y.values
 

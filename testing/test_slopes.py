@@ -35,7 +35,7 @@ def slopes(X, y, colname, min_samples_leaf=10):
                                bootstrap=False,
                                max_features=1.0)
     rf.fit(X.drop(colname, axis=1), y)
-    return collect_discrete_slopes(rf, X, y, colname)
+    return collect_discrete_slopes(rf, X[colname], X.drop(colname, axis=1).values, y)
 
 
 def check(X, y, colname, expected_xranges, expected_slopes, expected_ignored=0, min_samples_leaf=15):
