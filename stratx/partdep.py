@@ -866,7 +866,9 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
 def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
     """
     Return a 2D array with the average y value for each category in each leaf.
-    Choose the smallest-valued cat code as the reference category (arbitrary)
+    Choose the cat code of smallest avg y as the reference category. It's arbitrary I
+    think, but we might have to shift things later to measure impact etc... and it's
+    easier for debugging if all deltas are positive (relative to 0).
     Normalize the y values into deltas by subtracting the avg y value for the
     reference category from the avg y for all categories.
 
@@ -906,12 +908,13 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
             keep_leaf_idxs[leaf_i] = False # we ignored this leaf
             continue
 
-        # Use any cat code as refcat; same "shape" of delta vec regardless of which we
+        # Can use any cat code as refcat; same "shape" of delta vec regardless of which we
         # pick. The vector is shifted/up or down but cat y's all still have the same relative
-        # delta y. Might as well just pick the first one. Previously, I picked a random
-        # reference category but that is unnecessary. We will shift this vector during
-        # the merge operation so which we pick here doesn't matter.
-        idx_of_ref_cat_in_leaf = 0
+        # delta y. Might as well just pick the cat of smallest avg y.
+        # Previously, I picked a random# reference category but that is unnecessary.
+        # We will shift this vector during the merge operation so which we pick
+        # here doesn't matter.
+        idx_of_ref_cat_in_leaf = np.nanargmin(avg_y_per_cat)
         delta_y_per_cat = avg_y_per_cat - avg_y_per_cat[idx_of_ref_cat_in_leaf]
         # print("delta_y_per_cat",delta_y_per_cat)
 

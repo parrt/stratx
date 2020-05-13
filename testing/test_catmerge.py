@@ -188,15 +188,15 @@ def test_two_leaves_with_two_refcats():
 def test_two_leaves_with_non_0_and_1_catcodes():
     set_random_seed(999)
     leaf_deltas = np.array([
-        [nan, nan],
-        [nan, nan],
+        [nan,    nan],
+        [nan,    nan],
         [0,      nan],
         [5,      nan],
         [1,      0],
         [2,      3],
-        [nan, 7],
+        [nan,    7],
         [0,      nan],
-        [nan, nan]
+        [nan,    nan]
     ])
     # print("leaf_deltas\n",leaf_deltas)
     leaf_counts = (~np.isnan(leaf_deltas)).astype(int)
@@ -218,8 +218,8 @@ def test_two_leaves_with_disconnected_2nd_leaf():
         [0,      nan],
         [1,      nan],
         [2,      nan],
-        [nan, 0],  # refcat is 3 which has no value in other leaf
-        [nan, 3]
+        [nan,      0],  # refcat is 3 which has no value in other leaf
+        [nan,      3]
     ])
     # print("leaf_deltas\n",leaf_deltas)
     leaf_counts = (~np.isnan(leaf_deltas)).astype(int)
@@ -238,13 +238,13 @@ def test_3_leaves_with_disconnected_2nd_leaf_followed_by_leaf_conn_to_disconnect
     """
     set_random_seed(999)
     leaf_deltas = np.array([
-        [0,      nan, nan],
-        [1,      nan, nan],
-        [nan, 0,      nan],  # refcat is 2 which has no value in prev leaf
-        [nan, 3,      0],    # leaf 3 is connected to leaf 2 but should be ignored
-        [nan, 3,      2],
-        [4, nan, nan],       # we sort by weight so add some to bottom
-        [5, nan, nan],
+        [0,    nan,  nan],
+        [1,    nan,  nan],
+        [nan,    0,  nan],  # refcat is 2 which has no value in prev leaf
+        [nan,    3,    0],  # leaf 3 is connected to leaf 2 but should be ignored
+        [nan,    3,    2],
+        [4,    nan,  nan],
+        [5,    nan,  nan],
     ])
     # print("leaf_deltas\n",leaf_deltas)
     leaf_counts = (~np.isnan(leaf_deltas)).astype(int)
@@ -281,15 +281,15 @@ def test_3_leaves_with_disconnected_2nd_leaf_followed_by_leaf_conn_to_first_leaf
 def test_3_leaves_with_2nd_incorporated_in_pass_2():
     set_random_seed(999)
     leaf_deltas = np.array([
-        [0,      nan, nan],
-        [1,      nan, nan],
-        [nan, 0,      nan],  # refcat is 2 which has no value in prev leaf
-        [nan, 3,      nan],  # leave 3 is connected to leaf 1 don't ignored
-        [nan, 3,        0],  # leaf 2 will appear in pass 2
-        [4,      nan,   9],
-        [5,      nan,   8],
-        [6,      nan, nan],
-        [nan, 4,      nan],
+        [0,   nan, nan],
+        [1,   nan, nan],
+        [nan, 0,   nan],  # refcat is 2 which has no value in prev leaf
+        [nan, 3,   nan],  # leave 3 is connected to leaf 1 don't ignored
+        [nan, 3,     0],  # leaf 2 will appear in pass 2
+        [4,   nan,   9],
+        [5,   nan,   8],
+        [6,   nan, nan],
+        [nan, 4,   nan],
     ])
     # print("leaf_deltas\n",leaf_deltas)
     leaf_counts = (~np.isnan(leaf_deltas)).astype(int)

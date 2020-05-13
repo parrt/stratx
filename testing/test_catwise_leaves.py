@@ -171,12 +171,12 @@ def test_three_leaves_no_overlap():
     print(leaf_deltas, leaf_counts)
     expected_leaf_deltas = np.array([[nan,  nan,  nan],    # cat 0
                                      [nan,  nan,  nan],    # cat 2
-                                     [0,    nan,  nan],    # cat 3
-                                     [-2,   nan,  nan],    # cat 4
+                                     [2,    nan,  nan],    # cat 3
+                                     [0,    nan,  nan],    # cat 4
+                                     [nan,    1,  nan],
                                      [nan,    0,  nan],
-                                     [nan,   -1,  nan],
-                                     [nan,  nan,  0],
-                                     [nan,  nan, -1]])
+                                     [nan,  nan,  1],
+                                     [nan,  nan,  0]])
     expected_leaf_counts = np.array([[0,   0,   0],
                                      [0,   0,   0],
                                      [1,   0,   0],
