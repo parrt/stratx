@@ -868,7 +868,9 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
     Return a 2D array with the average y value for each category in each leaf.
     Choose the cat code of smallest avg y as the reference category. It's arbitrary I
     think, but we might have to shift things later to measure impact etc... and it's
-    easier for debugging if all deltas are positive (relative to 0).
+    easier for debugging if all deltas are positive (relative to 0). Actually, likely
+    have to shift min to 0 after all the merging anyway.
+
     Normalize the y values into deltas by subtracting the avg y value for the
     reference category from the avg y for all categories.
 
