@@ -421,7 +421,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         ax2.yaxis.set_major_locator(plt.FixedLocator([0, max(pdpx_counts)]))
         ax2.bar(x=pdpx, height=pdpx_counts, width=count_bar_width,
                 facecolor=barchar_color, align='center', alpha=barchar_alpha)
-        ax2.set_ylabel(f"PD $x$ point count\nignored={ignored:.0f}", labelpad=-18, fontsize=label_fontsize,
+        ax2.set_ylabel(f"PD $x$ count, ignored={ignored:.0f}", labelpad=-5, fontsize=label_fontsize,
                        fontstretch='extra-condensed',
                        fontname=fontname)
         # shift other y axis down barchart_size to make room
@@ -845,7 +845,7 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
         if yrange is not None:
             axes[col].set_ylim(yrange)
         try:
-            uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored = \
+            uniq_catcodes, combined_avg_per_cat, ignored = \
                 plot_catstratpd(X, y, colname, targetname, ax=axes[col],
                                 n_trials=n_trials,
                                 min_samples_leaf=msl,
@@ -866,13 +866,24 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
 def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
     """
     Return a 2D array with the average y value for each category in each leaf.
-    Choose the cat code of smallest avg y as the reference category. It's arbitrary I
-    think, but we might have to shift things later to measure impact etc... and it's
-    easier for debugging if all deltas are positive (relative to 0). Actually, likely
-    have to shift min to 0 after all the merging anyway.
+    Choose the cat code of smallest avg y as the reference category. I used to think it
+    was arbitrary but now I realize that we have to mimic what StratPD does for
+    numerical variables. By integrating the y deltas, we get back exactly the y
+    values minus the minimum y. E.g., for x=[1,2,3] and y=[7,10,15], StratPD gets
+    dx = [1,1] and dy=[3,5] then cumsum of dy gets [3,8] and we stick 0 on front:
+    pdpy = [0,3,8].  To mimic the same thing with CatStratPD, we simply subtract the
+    minimum for all categories in this leaf. If cats=[1,2,3] and y=[7,10,15], then
+    we subtract 7 from y = [0,3,8] and we arrive at the same answer. For situations
+    where the numerical var PD never skips over a valid x (extrapolating slope), it
+    should give the same answer as categorical var PD. Subtracting the min y also
+    has the benefit that debugging is easier because, within a leaf, all deltas are
+    positive. During merging, we can still get negative deltas as we lineup cats/deltas,
+    but those are true values. We should not shift everything to be positive for
+    the final merged pdpy.
 
     Normalize the y values into deltas by subtracting the avg y value for the
-    reference category from the avg y for all categories.
+    reference category from the avg y for all categories. The reference category is
+    the category of the minimum avg y.
 
     The columns are the y avg value changes per cat found in a single leaf as
     they differ from the reference cat y average. Each row represents a category level. E.g.,
@@ -904,11 +915,9 @@ def catwise_leaves(rf, X_not_col, X_col, y, max_catcode):
         avg_y_per_cat = np.array([leaf_y[leaf_cats==cat].mean() for cat in uniq_leaf_cats])
         # print("uniq_leaf_cats",uniq_leaf_cats,"count_y_per_cat",count_leaf_cats)
 
-        if len(uniq_leaf_cats) < 2:
-            # print(f"ignoring {len(sample)} obs for {len(avg_y_per_cat)} cat(s) in leaf")
-            ignored += len(sample)
-            keep_leaf_idxs[leaf_i] = False # we ignored this leaf
-            continue
+        # if len(uniq_leaf_cats)==1 then we have single cat avg y and its delta is 0
+        # but keep it as we'll treat as isolated group later and add marginal y for
+        # this cat to get partial dependence value.
 
         # Can use any cat code as refcat; same "shape" of delta vec regardless of which we
         # pick. The vector is shifted/up or down but cat y's all still have the same relative
@@ -954,9 +963,6 @@ def cat_partial_dependence(X, y,
                                    bootstrap = rf_bootstrap,
                                    max_features = max_features,
                                    oob_score=False)
-        rf.fit(X_not_col, y)
-        if verbose:
-            print(f"CatStrat Partition RF: dropping {colname} training R^2 {rf.score(X_not_col, y):.2f}")
     else:
         print("USING UNSUPERVISED MODE")
         X_synth, y_synth = conjure_twoclass(X)
@@ -968,61 +974,163 @@ def cat_partial_dependence(X, y,
         rf.fit(X_synth.drop(colname,axis=1), y_synth)
 
     rf.fit(X_not_col, y)
+    if verbose and supervised:
+        print(f"CatStrat Partition RF: dropping {colname} training R^2 {rf.score(X_not_col, y):.2f}")
 
     leaf_deltas, leaf_counts, ignored = \
         catwise_leaves(rf, X_not_col, X_col, y.values, max_catcode)
 
-    USE_MEAN_Y=False
-    if USE_MEAN_Y:
-        count_per_cat = None
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", category=RuntimeWarning)
-            avg_per_cat = np.nanmean(leaf_deltas, axis=1)
-            merge_ignored = 0
-            # slope_counts_at_cat = leaf_histos.shape[1] - np.isnan(leaf_histos).sum(axis=1)
-    else:
-        avg_per_cat, count_per_cat, merge_ignored = \
-            avg_values_at_cat(leaf_deltas, leaf_counts, verbose=verbose)
+    uniq_x = np.unique(X_col)
+    max_catcode = np.max(X_col)
+    # Ignoring other vars, what is average y for all records with same catcode?
+    marginal_avg_y_per_cat = np.full(shape=(max_catcode+1,), fill_value=np.nan)
+    for cat in uniq_x:
+        marginal_avg_y_per_cat[cat] = y[X_col == cat].mean()
+
+    avg_per_cat, count_per_cat = \
+        avg_values_at_cat(leaf_deltas, leaf_counts, marginal_avg_y_per_cat, verbose=verbose)
 
     if verbose:
         print(f"CatStratPD Num samples ignored {ignored} for {colname}")
 
-    return leaf_deltas, leaf_counts, avg_per_cat, count_per_cat, ignored, merge_ignored
+    return leaf_deltas, leaf_counts, avg_per_cat, count_per_cat, ignored
 
 
-def avg_values_at_cat(leaf_deltas, leaf_counts, max_iter=3, verbose=False):
+def avg_values_at_cat(leaf_deltas, leaf_counts,
+                      marginal_avg_y_per_cat=None, # only used if disjoint cat sets exist
+                      max_iter=3, verbose=False):
     """
-    In leaf_deltas, we have information from the leaves indicating how much
-    above or below each category was from the reference category of that leaf.
-    The reference category is arbitrarily selected to be the min cat code, so that
-    refcat's relative y value in the leaf will be 0. Categories not mentioned
-    in the leaf, will have NAN values.
+    Merge the deltas for categories from all of the leaves. If there
+    is at least one category in common, then to groups of deltas can
+    be merged. It's possible, however, that there are multiple
+    disjoint groups of categories with no cats in common. Previously I
+    would just ignore those, but now I realize there could be
+    important groups of categories that don't get included. For
+    example with the bulldozer data set it was common to see the vast
+    majority of categories being ignored. Obviously this dramatically
+    underestimates the impact of a categorical variable.
 
-    The goal is to merge all of the columns in leaf_deltas,
-    despite the fact that they do not have the same reference category. We init a
-    running average vector to be the first column of category deltas. Then we attempt
-    to merge each of the other columns into the running average. We make multiple passes
-    over the columns of leaf_deltas until nothing changes, we hit the maximum number
-    of iterations, or everything has merged.
+    We don't have categories in common between disjoint groups but we
+    can still estimate their relative position, otherwise we'd be
+    forced to start all disjoint groups at zero. If we treat each
+    group as a meta-category, then we can compare the average y for
+    categories in a group. For meta-cats A, B, C with avg y =
+    [100,130,40] then the meta-deltas are [0,30,-60].  The base for
+    the zeros in A, B, C will be 0, 30, -60 so we just add that to all
+    cat deltas in A, B, C.  Note: the y used for mean is not the leaf
+    deltas but y from training set.
 
-    To merge vector v (column j of leaf_deltas) into catavg, select a category,
-    index ix, in common at random.  Subtract v[ix] from v so that ix is v's new
-    reference and v[ix]=0. Add catavg[ix] to the adjusted v so that v is now
-    comparable to catavg. We can now do a weighted average of catavg and v,
-    paying careful attention of NaN.
 
-    Previously, I was picking a random category for merging in an effort to reduce the effect
-    of outliers, with the assumption that outliers were rare. Given 5 categories
-    in common between the running average vector and a new vector, randomly picking one
-    means a 1/5 chance of picking the outlier.  Outliers as reference categories shift
-    the outlierness to all other categories. Boooo
+    This is effectively the marginal delta between those meta-groups,
+    but the fact that they are disjoint means that there were no
+    situations where, all else being equal, the associated leaves had
+    categories in common. While the overall variable might be highly
+    codependent, such as ModelID (with YearMade, MachineHours,...) on
+    bulldozer price, the individual groups WITHIN a variable could be
+    totally independent. Imagine typical construction bulldozers
+    versus the giant earthmovers used in mining.  It's extremely
+    unlikely that stratification would yield groups containing both
+    construction bulldozers and mining bulldozers. That hints that
+    the average difference in price between the two groups would not be
+    biased (too much). Besides, it's the best we can do given we
+    literally have no information about the relative cost of a mining
+    bulldozer and a construction bulldozer. All we can do is compare
+    the average price of a bulldozer in both categories, and use that
+    to shift the two meta-cats relative to each other.
 
-    Now, I selected the category in common that has the most evidence: the category
-    associated with the most number of observations.
+    Rather than a complicated data structure and algorithm to find all
+    disjoint subsets of intersecting categories, it's easier to use the
+    existing algorithm I had already that merged leaves with categories in
+    common.  After merging all possible, there remains a set of leaf
+    indexes indicating what leaves remain to process. So, just call function
+    avg_values_at_cat_one_disjoint_region() repeatedly until the work
+    set comes back as empty. That indicates all leaves have been
+    integrated. The count per category vectors can simply be added
+    together to get the final count per category. The catavg is the
+    running vector average computed in each pass over the leaves. For
+    that, we can add them vectors together to get a single vector
+    (like a set union), but we still need to keep track of the different
+    disjoint category groups. We can do this by collecting a list
+    of cat sets.  Then we compute the average y for those categories
+    for each group. Then update the catavg vector values for each
+    group.
 
-    It's possible that more than a single value within a leaf_deltas vector is 0.
-    I.e., the reference category value is always 0 in the vector, but there might be
-    another category whose value was the same y, giving a 0 relative value.
+    See comment for avg_values_at_cat_one_disjoint_region()
+    """
+    # catavg is the running average vector and starts out as the first column (1st leaf's deltas)
+    catavg = np.full(shape=(leaf_deltas.shape[0],), fill_value=np.nan, dtype=np.float)
+    catgroups = []
+    count_per_cat = np.zeros(shape=(leaf_deltas.shape[0],), dtype=np.int)
+    work = range(0, leaf_deltas.shape[1])  # all leaf indexes added to work list
+    print("START work", work)
+    while len(work)>0:
+        catavg_, count_per_cat_, work = \
+            avg_values_at_cat_one_disjoint_region(work, leaf_counts, leaf_deltas, max_iter, verbose)
+        print("catavg", catavg_)
+        print("count_per_cat", count_per_cat_)
+        print("remaining work",work)
+        catgroup = np.where(count_per_cat_>0)[0]
+        print("catgroup", catgroup)
+        catgroups.append(catgroup)
+        catavg[catgroup] = catavg_[catgroup] # merge disjoint avgs for catgroup into running vector
+        count_per_cat += count_per_cat_
+
+    if len(catgroups)>1: # more than one disjoint set of categories?
+        avgs = []
+        for cats in catgroups:
+            m = np.mean(marginal_avg_y_per_cat[cats])
+            print("cats",cats,"mean",m)
+            avgs.append(m)
+        # Do what StratPD does: all values are relative to left edge
+        relative_group_y = np.array(avgs) - avgs[0]
+        print("group avgs", avgs)
+        print("relative_group_y", relative_group_y)
+        for cats,group_deltay in zip(catgroups, relative_group_y):
+            catavg[cats] += group_deltay
+        print("adjusted catavg", catavg)
+
+    # if verbose: print("final cat avgs", parray3(catavg))
+    return catavg, count_per_cat
+
+
+def avg_values_at_cat_one_disjoint_region(work, leaf_counts, leaf_deltas, max_iter, verbose):
+    """
+    In leaf_deltas, we have information from the leaves indicating how
+    much above or below each category was from the reference category
+    of that leaf.  The reference category was arbitrarily selected but
+    now I realize it must be the cat code associated with the minimum
+    avg cat y.  All deltas within a leaf are therefore positive values
+    and the relative y for the reference category is 0.  Categories
+    not mentioned in the leaf, will have NAN values.
+
+    The goal is to merge all of the columns in leaf_deltas, despite
+    the fact that they do not have the same reference category. We
+    init a running average vector to be the first column of category
+    deltas. Then we attempt to merge each of the other columns into
+    the running average. We make multiple passes over the columns of
+    leaf_deltas until nothing changes, we hit the maximum number of
+    iterations, or everything has merged.
+
+    To merge vector v (column j of leaf_deltas) into catavg, select a
+    category, index ix, in common at random.  Subtract v[ix] from v so
+    that ix is v's new reference and v[ix]=0. Add catavg[ix] to the
+    adjusted v so that v is now comparable to catavg. We can now do a
+    weighted average of catavg and v, paying careful attention of NaN.
+
+    Previously, I was picking a random category for merging in an
+    effort to reduce the effect of outliers, with the assumption that
+    outliers were rare. Given 5 categories in common between the
+    running average vector and a new vector, randomly picking one
+    means a 1/5 chance of picking the outlier.  Outliers as reference
+    categories shift the outlierness to all other categories. Boooo
+
+    Now, I select the category in common that has the most evidence:
+    the category associated with the most number of observations.
+
+    It's possible that more than a single value within a leaf_deltas
+    vector is 0.  I.e., the reference category value is always 0 in
+    the vector, but there might be another category whose value was
+    the same y, giving a 0 relative value.
 
     Example:
 
@@ -1046,60 +1154,51 @@ def avg_values_at_cat(leaf_deltas, leaf_counts, max_iter=3, verbose=False):
      [1 0 0]
      [1 0 0]]
     """
-    # catavg is the running average vector and starts out as the first column (1st leaf's deltas)
-    catavg = leaf_deltas[:,0] # init with first ref category (column)
-    catavg_weight = leaf_counts[:,0]
-    merge_ignored = 0
-
-    work = set(range(1,leaf_deltas.shape[1])) # all leaf indexes added to work list
-    completed = {-1} # init to any nonempty set to enter loop
+    initial_leaf_idx = work[0]
+    work = set(work[1:])
+    catavg = leaf_deltas[:, initial_leaf_idx]  # init with first ref category (column)
+    catavg_weight = leaf_counts[:, initial_leaf_idx]
+    completed = {-1}  # init to any nonempty set to enter loop
     iteration = 1
     # Three passes should be sufficient to merge all possible vectors, but
     # I'm being paranoid here and allowing it to run until completion or some maximum iterations
-    while len(work)>0 and len(completed)>0 and iteration<=max_iter:
+    while len(work) > 0 and len(completed) > 0 and iteration <= max_iter:
         # print(f"PASS {iteration} len(work)", len(work))
         completed = set()
-        for j in work:      # for remaining leaf index in work list, avg in the vectors
-            v = leaf_deltas[:,j]
+        for j in work:  # for remaining leaf index in work list, avg in the vectors
+            v = leaf_deltas[:, j]
             are_intersecting = ~np.isnan(catavg) & ~np.isnan(v)
             intersection_idx = np.where(are_intersecting)[0]
 
             # print(intersection_idx)
-            if len(intersection_idx)==0: # found something to merge into catavg?
+            if len(intersection_idx) == 0:  # found something to merge into catavg?
                 continue
 
             # cat for merging is the one with most supporting evidence
-            cur_weight  = leaf_counts[:,j]
-            ix = np.argmax(np.where((cur_weight>0) & are_intersecting, cur_weight, 0))
+            cur_weight = leaf_counts[:, j]
+            ix = np.argmax(np.where((cur_weight > 0) & are_intersecting, cur_weight, 0))
 
             # Merge column j into catavg vector
-            shifted_v = v - v[ix]                       # make ix the reference cat in common
-            relative_to_value = catavg[ix]              # corresponding value in catavg
+            shifted_v = v - v[ix]  # make ix the reference cat in common
+            relative_to_value = catavg[ix]  # corresponding value in catavg
             adjusted_v = shifted_v + relative_to_value  # adjust so v is mergeable with catavg
-            prev_catavg = catavg                        # track only for verbose/debugging purposes
+            prev_catavg = catavg  # track only for verbose/debugging purposes
             catavg = nanavg_vectors(catavg, adjusted_v, catavg_weight, cur_weight)
             # Update weight of running avg to incorporate "mass" from v
             catavg_weight += cur_weight
             if verbose:
                 print(f"{ix:-2d} : vec to add =", parray(v), f"- {v[ix]:.2f}")
-                print("     shifted    =", parray(shifted_v), f"+ {relative_to_value:.2f}")
+                print("     shifted    =", parray(shifted_v),
+                      f"+ {relative_to_value:.2f}")
                 print("     adjusted   =", parray(adjusted_v), "*", cur_weight)
-                print("     prev avg   =", parray(prev_catavg),"*",catavg_weight-cur_weight)
+                print("     prev avg   =", parray(prev_catavg), "*",
+                      catavg_weight - cur_weight)
                 print("     new avg    =", parray(catavg))
                 print()
             completed.add(j)
         iteration += 1
         work = work - completed
-
-    if len(work)>0:
-        #print(f"Left {len(work)} leaves/unique cats in work list")
-        # hmm..couldn't merge some vectors; total up the samples we ignored
-        num_obs_per_leaf = np.sum(leaf_counts, axis=0)
-        merge_ignored = np.sum(num_obs_per_leaf[list(work)])
-        if verbose: print(f"cats from {len(work)} leaves couldn't be merged into running avg; ignored={merge_ignored}")
-
-    if verbose: print("final cat avgs", parray3(catavg))
-    return catavg, catavg_weight, merge_ignored # last one is count of values per cat actually incorporated
+    return catavg, catavg_weight, list(work)
 
 
 def plot_catstratpd(X, y,
@@ -1212,7 +1311,6 @@ def plot_catstratpd(X, y,
     importances = []
     all_avg_per_cat = []
     ignored = 0
-    merge_ignored = 0
     for i in range(n_trials):
         if n_trials>1:
             if bootstrap:
@@ -1223,7 +1321,7 @@ def plot_catstratpd(X, y,
         else:
             X_, y_ = X, y
 
-        leaf_deltas, leaf_counts, avg_per_cat, count_per_cat, ignored_, merge_ignored_ = \
+        leaf_deltas, leaf_counts, avg_per_cat, count_per_cat, ignored_ = \
             cat_partial_dependence(X_, y_,
                                    max_catcode=np.max(X_col),
                                    colname=colname,
@@ -1236,7 +1334,6 @@ def plot_catstratpd(X, y,
         impacts.append(impact)
         importances.append(importance)
         ignored += ignored_
-        merge_ignored += merge_ignored_
         all_avg_per_cat.append( avg_per_cat )
 
     all_avg_per_cat = np.array(all_avg_per_cat)
@@ -1247,7 +1344,6 @@ def plot_catstratpd(X, y,
         all_avg_per_cat -= np.nanmin(all_avg_per_cat)
 
     ignored /= n_trials # average number of x values ignored across trials
-    merge_ignored /= n_trials # average number of x values ignored across trials
 
     # average down the matrix of all_avg_per_cat across trials to get average per cat
     # combined_avg_per_cat = avg_pd_catvalues(all_avg_per_cat)
@@ -1296,7 +1392,9 @@ def plot_catstratpd(X, y,
     ax.add_collection(lines)
     '''
 
+    # sorted_idx = np.argsort(combined_avg_per_cat[uniq_catcodes])
     barcontainer = ax.bar(x=range(len(uniq_catcodes)),
+                          # height=sorted(combined_avg_per_cat[uniq_catcodes]),
                           height=combined_avg_per_cat[uniq_catcodes],
                           color=pdp_color)
     # Alter appearance of each bar
@@ -1322,7 +1420,7 @@ def plot_catstratpd(X, y,
         ax2.yaxis.set_major_locator(plt.FixedLocator([0, max(cat_counts)]))
         ax2.bar(x=range(len(uniq_catcodes)), height=cat_counts, width=count_bar_width,
                 facecolor='#BABABA', align='center', alpha=barchar_alpha)
-        ax2.set_ylabel(f"PD $x$ point count\nignored={ignored:.0f}, {merge_ignored:.0f}", labelpad=-12, fontsize=label_fontsize,
+        ax2.set_ylabel(f"PD $x$ count, ignored={ignored:.0f}", labelpad=-5, fontsize=label_fontsize,
                        fontstretch='extra-condensed',
                        fontname=fontname)
         # shift other y axis down barchart_size to make room
@@ -1379,7 +1477,7 @@ def plot_catstratpd(X, y,
     ax.spines['left'].set_linewidth(.5)
     ax.spines['bottom'].set_linewidth(.5)
 
-    return uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored
+    return uniq_catcodes, combined_avg_per_cat, ignored
 
 
 def getcats(X, colname, incoming_cats):

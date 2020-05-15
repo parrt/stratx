@@ -18,12 +18,11 @@ def speed_ModelID():
         stratify_cats(X,y,colname="ModelID",min_samples_leaf=min_samples_leaf)
 
     start = timer()
-    _, _, merge_ignored = \
-        avg_values_at_cat(leaf_deltas, leaf_counts, max_iter=10)
+    avg_values_at_cat(leaf_deltas, leaf_counts, max_iter=10)
     stop = timer()
 
     nunique = len(np.unique(X['ModelID']))
-    print(f"n={n}, unique cats {nunique}, min_samples_leaf={min_samples_leaf}, merge_ignored={merge_ignored}: avg_values_at_cat {stop - start:.3f}s")
+    print(f"n={n}, unique cats {nunique}, min_samples_leaf={min_samples_leaf}: avg_values_at_cat {stop - start:.3f}s")
 
 
 if __name__ == '__main__':

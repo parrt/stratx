@@ -112,7 +112,7 @@ def viz_clean_synth_uniform(n,p,max_x,min_samples_leaf, seed=None):
     df, eqn = synthetic_poly_data(n, p=p, max_x=max_x, dtype=int)
     X = df.drop('y', axis=1)
     y = df['y']
-    uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored = \
+    uniq_catcodes, combined_avg_per_cat, ignored = \
         plot_catstratpd(X, y, colname='x1', targetname='y',
                         n_trials=1,
                         min_samples_leaf=min_samples_leaf,
@@ -149,7 +149,7 @@ def viz_clean_synth_gauss(n,p,max_x,min_samples_leaf, seed=None):
     df, eqn = synthetic_poly_data_gaussian(n, p=p, max_x=max_x, dtype=int)
     X = df.drop('y', axis=1)
     y = df['y']
-    uniq_catcodes, avg_per_cat, ignored, merge_ignored = \
+    uniq_catcodes, avg_per_cat, ignored = \
         plot_catstratpd(X, y, colname='x1', targetname='y',
                         n_trials=1,
                         min_samples_leaf=min_samples_leaf,
@@ -164,7 +164,7 @@ def viz_clean_synth_gauss(n,p,max_x,min_samples_leaf, seed=None):
         np.random.set_state(save_state)
 
     caller_fname = traceback.extract_stack(None, 2)[0][2]
-    plt.title(f"{caller_fname}\nstrat ignored={ignored}, merge ignored = {merge_ignored}\nmean(y)={np.mean(y):.1f}")
+    plt.title(f"{caller_fname}\nstrat ignored={ignored}\nmean(y)={np.mean(y):.1f}")
     plt.tight_layout()
     if SAVE_EXPECTED:
         plt.savefig(f"expected/{caller_fname}.png", pad_inches=0, bbox_inches=0, dpi=100)
@@ -202,7 +202,7 @@ def viz_weather(n, p, min_samples_leaf, n_outliers=0, seed=None, show_truth=True
     #title = f"n={n}\nstd(mean(abs(y)))={std_imp:.3f}\nmin_samples_leaf={min_samples_leaf}\nmin_slopes_per_x={min_slopes_per_x}", fontsize=9
 
     fig,ax = plt.subplots(1,1, figsize=(10,3))
-    uniq_catcodes, avg_per_cat, ignored, merge_ignored = \
+    uniq_catcodes, avg_per_cat, ignored = \
         plot_catstratpd(X, y, colname='state', targetname="temp", catnames=catnames,
                         n_trials=1,
                         min_samples_leaf=min_samples_leaf,
@@ -216,7 +216,7 @@ def viz_weather(n, p, min_samples_leaf, n_outliers=0, seed=None, show_truth=True
                         # title=
                         )
 
-    print("ignored", ignored, "merge_ignored", merge_ignored)
+    print("ignored", ignored)
     if seed is not None:
         np.random.set_state(save_state)
 
@@ -227,7 +227,7 @@ def viz_weather(n, p, min_samples_leaf, n_outliers=0, seed=None, show_truth=True
             rel_avgtemp = avgtemps.iloc[cat]['avgtemp'] - np.min(avgtemps['avgtemp'])
             ax.text(xloc, rel_avgtemp, f"{rel_avgtemp :.1f}")
             xloc += 1
-    title = f"strat ignored={ignored}, merge ignored = {merge_ignored}\nmean(y)={np.mean(y):.1f}, true_impact={true_impact:.1f}"
+    title = f"strat ignored={ignored}\nmean(y)={np.mean(y):.1f}, true_impact={true_impact:.1f}"
     caller_fname = traceback.extract_stack(None, 2)[0][2]
     plt.title(f"{caller_fname}\n{title}")
     plt.tight_layout()

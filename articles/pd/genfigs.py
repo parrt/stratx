@@ -2405,11 +2405,11 @@ if __name__ == '__main__':
 
     # Invoke R to generate csv files then load with python to plot
 
-    # gen_ale_plot_data_in_R()
-    #
-    # ale_MachineHours()
-    # ale_yearmade()
-    # ale_height()
-    # ale_pregnant()
-    # ale_state()
-    # ale_productsize()
+    gen_ale_plot_data_in_R()
+
+    ale_MachineHours()
+    ale_yearmade()
+    ale_height()
+    ale_pregnant()
+    ale_state()
+    ale_productsize()

@@ -63,10 +63,6 @@ def check(X, y, colname,
 
 
 def test_binary_one_region():
-    """
-    What happens when we have two disjoint regions in x_j space?
-    Does the 2nd start with 0 again with cumsum?
-    """
     df = pd.DataFrame()
     df['x1'] = [1, 1]
     df['x2'] = [65, 60]
@@ -86,10 +82,6 @@ def test_binary_one_region():
 
 
 def test_one_region():
-    """
-    What happens when we have two disjoint regions in x_j space?
-    Does the 2nd start with 0 again with cumsum?
-    """
     df = pd.DataFrame()
     df['x1'] = [1, 1, 1]
     df['x2'] = [100,101,102]

@@ -132,19 +132,19 @@ def test_two_leaves_with_2nd_ignored():
     np.testing.assert_array_equal(leaves, expected_leaves)
 
     leaf_deltas, leaf_counts, ignored = stratify_cats(X,y,colname="x2", min_samples_leaf=2)
-    expected_leaf_deltas = np.array([[nan],    # cat 0
-                                     [nan],    # 1
-                                     [nan],    # 2
-                                     [0],      # 3
-                                     [1]])     # 4
-    expected_leaf_counts = np.array([[0],
-                                     [0],
-                                     [0],
-                                     [1],
-                                     [1]])
+    expected_leaf_deltas = np.array([[nan, nan],
+                                     [nan, nan],
+                                     [nan, nan],
+                                     [0,   nan],
+                                     [1,     0]])
+    expected_leaf_counts = np.array([[0, 0],
+                                     [0, 0],
+                                     [0, 0],
+                                     [1, 0],
+                                     [1, 2]])
     np.testing.assert_array_almost_equal(leaf_deltas, expected_leaf_deltas, decimal=1)
     np.testing.assert_array_equal(leaf_counts, expected_leaf_counts)
-    assert ignored==2
+    assert ignored==0
 
 
 def test_three_leaves_no_overlap():
