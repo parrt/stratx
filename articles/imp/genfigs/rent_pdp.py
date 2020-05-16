@@ -21,33 +21,30 @@ X, y, X_train, X_test, y_train, y_test = support.load_dataset("rent", 'price')
 # rf.fit(X_train, y_train)
 # print("R^2 test",rf.score(X_test,y_test))
 
-# I = importances(X, y,
-#                 n_trials=1,
-#                 normalize=False,
-#
-#                 bootstrap=True,
-#                 # bootstrap=False,
-#                 # subsample_size=.7,
-#
-#                 min_samples_leaf=15,
-#                 cat_min_samples_leaf=5,
-#                 )
-# print(I)
+I = importances(X, y,
+                n_trials=1,
+                normalize=False,
 
-pdpx, pdpy, ignored = \
-    plot_stratpd(X, y, colname='bathrooms', targetname='price',
-                #yrange=(-500,3500),
-                 n_trials = 1,
-                 pdp_marker_size=3,
-                 min_samples_leaf=15,
-                 min_slopes_per_x=5,
-                 show_impact=True
-                 )
-plt.title("parabolic")
-plt.title("secant")
-plt.title("forward")
-plt.show()
-print("pdpy", list(pdpy))
+                bootstrap=True,
+                # bootstrap=False,
+                # subsample_size=.7,
+
+                min_samples_leaf=15,
+                cat_min_samples_leaf=5,
+                )
+print(I)
+#
+# pdpx, pdpy, ignored = \
+#     plot_stratpd(X, y, colname='longitude', targetname='price',
+#                 #yrange=(-500,3500),
+#                  n_trials = 1,
+#                  pdp_marker_size=3,
+#                  min_samples_leaf=20,
+#                  min_slopes_per_x=20,
+#                  show_impact=True
+#                  )
+# plt.show()
+# print("pdpy", list(pdpy))
 
 # print(pdpx)
 # print("ignored", ignored)

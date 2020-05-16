@@ -25,34 +25,33 @@ np.set_printoptions(precision=2, suppress=True, linewidth=300, threshold=2000)
 # X, y = support.load_bulldozer(n)
 X, y, X_train, X_test, y_train, y_test = support.load_dataset("bulldozer", "SalePrice")
 
-X['auctioneerID'] = X['auctioneerID'].astype(np.int64)  # convert to seconds since 1970
+X['auctioneerID'] = X['auctioneerID'].astype(np.int64)
 
 # df = pd.read_csv("../../pd/bulldozer20k.csv")
 # X = df.drop('SalePrice', axis=1)
 # y = df['SalePrice']
 
 
-# I = importances(X, y,
-#                 n_trials=10,
-#                 normalize=False,
-#                 drop_high_stddev=2.0,
-#                 bootstrap=True,
-#                 # bootstrap=False,
-#                 # subsample_size=.7,
-#
-#                 # min_slopes_per_x=20,
-#                 min_samples_leaf=20,
-#                 cat_min_samples_leaf=20,
-#                 catcolnames={'AC', 'ModelID', 'auctioneerID'}
-#                 )
+I = importances(X, y,
+                n_trials=1,
+                normalize=False,
+                drop_high_stddev=2.0,
+                bootstrap=True,
+                # bootstrap=False,
+                # subsample_size=.7,
 
-# I['ImportanceNorm'] = I['Importance'] / np.sum(I['Importance'])
-# I['ImpactNorm']     = I['Impact'] / np.sum(I['Impact'])
-# print(I)
+                # min_slopes_per_x=20,
+                min_samples_leaf=20,
+                cat_min_samples_leaf=20,
+                catcolnames={'AC', 'ModelID', 'auctioneerID'}
+                )
+
+print(I)
+exit()
 
 fig, ax = plt.subplots(1, 1)
 pdpx, pdpy, ignored = \
-    plot_stratpd(X, y, colname='auctioneerID', targetname='SalePrice',
+    plot_stratpd(X, y, colname='YearMade', targetname='SalePrice',
 
                  # n_trials=1,
                  # n_trees=30,
@@ -62,7 +61,7 @@ pdpx, pdpy, ignored = \
                  n_trials=1,
                  bootstrap=True,
                  min_slopes_per_x=5,
-                 min_samples_leaf=15,#200000,
+                 min_samples_leaf=20,#200000,
 
                  show_slope_lines=False,#True,
                  show_impact=True,
@@ -72,20 +71,14 @@ pdpx, pdpy, ignored = \
                  show_impact_dots=False,
                  show_all_pdp=False,
                  impact_fill_color='#FEF5DC',
-                 pdp_marker_size=10,
+                 pdp_marker_size=3,
                  ax=ax
                  # xrange=(1960,2010),
                  # yrange=(-1000,45000)
                  )
-# ax.set_xlabel("ProductSize", fontsize=11)
 # ax.set_xlim(0, 5)
 # ax.set_ylim(-15000, 50_000)
 
-# plt.title("Forward finite diff")
-# plt.title("Secant center finite diff")
-# plt.title("Parabolic center finite diff")
-#plt.title(f"10 trials, min slopes 5\nmin_samples_leaf 10, ignored {ignored}", fontsize=10)
-# plt.title(f"1 trial, 30 trees, min slopes 5*ntrees, ignored {ignored}", fontsize=10)
 plt.tight_layout()
 plt.savefig(f"/Users/parrt/Desktop/james-ProductSize.pdf", pad_inches=0)
 plt.show()
@@ -96,18 +89,18 @@ plt.show()
 # y_ = y_.sample(frac=1.0, replace=False)
 # X_['ModelID'] = X_['ModelID'].sample(frac=1.0, replace=False)
 
-uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored = \
-    plot_catstratpd(X, y, colname='auctioneerID', targetname='SalePrice',
+uniq_catcodes, combined_avg_per_cat, ignored = \
+    plot_catstratpd(X, y, colname='ModelID', targetname='SalePrice',
                     n_trials=1,
-                    min_samples_leaf=15,
-                    show_xticks=False,
+                    min_samples_leaf=20,
+                    show_unique_cat_xticks=False,
                     show_impact=True,
                     min_y_shifted_to_zero=True,
                     figsize=(5,5),
                     # yrange=(-150_000, 150_000),
                     verbose=False)
-plt.title(f"ignored = {ignored}, merge_ignored = {merge_ignored}")
-print("ignored",ignored, f"merge_ignored = {merge_ignored}")
+plt.title(f"ignored = {ignored}")
+print("ignored",ignored)
 plt.tight_layout()
 plt.savefig(f"/Users/parrt/Desktop/james-ModelID.pdf", pad_inches=0)
 # plt.savefig(f"/Users/parrt/Desktop/james-ModelID-10k-shuffled-x-not-y.pdf", pad_inches=0)

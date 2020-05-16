@@ -853,7 +853,7 @@ def plot_catstratpd_gridsearch(X, y, colname, targetname,
                                 yrange=yrange,
                                 n_trees=1,
                                 show_impact=show_impact,
-                                show_xticks=show_xticks,
+                                show_unique_cat_xticks=show_xticks,
                                 show_ylabel=False,
                                 min_y_shifted_to_zero=min_y_shifted_to_zero)
         except ValueError:
@@ -981,8 +981,8 @@ def cat_partial_dependence(X, y,
         catwise_leaves(rf, X_not_col, X_col, y.values, max_catcode)
 
     uniq_x = np.unique(X_col)
-    max_catcode = np.max(X_col)
     # Ignoring other vars, what is average y for all records with same catcode?
+    # We need if avg_values_at_cat finds disjoint sets
     marginal_avg_y_per_cat = np.full(shape=(max_catcode+1,), fill_value=np.nan)
     for cat in uniq_x:
         marginal_avg_y_per_cat[cat] = y[X_col == cat].mean()
@@ -1062,15 +1062,15 @@ def avg_values_at_cat(leaf_deltas, leaf_counts,
     catgroups = []
     count_per_cat = np.zeros(shape=(leaf_deltas.shape[0],), dtype=np.int)
     work = range(0, leaf_deltas.shape[1])  # all leaf indexes added to work list
-    print("START work", work)
+    # print("START work", work)
     while len(work)>0:
         catavg_, count_per_cat_, work = \
             avg_values_at_cat_one_disjoint_region(work, leaf_counts, leaf_deltas, max_iter, verbose)
-        print("catavg", catavg_)
-        print("count_per_cat", count_per_cat_)
-        print("remaining work",work)
+        # print("catavg", catavg_)
+        # print("count_per_cat", count_per_cat_)
+        # print("remaining work",work)
         catgroup = np.where(count_per_cat_>0)[0]
-        print("catgroup", catgroup)
+        # print("catgroup", catgroup)
         catgroups.append(catgroup)
         catavg[catgroup] = catavg_[catgroup] # merge disjoint avgs for catgroup into running vector
         count_per_cat += count_per_cat_
@@ -1079,15 +1079,15 @@ def avg_values_at_cat(leaf_deltas, leaf_counts,
         avgs = []
         for cats in catgroups:
             m = np.mean(marginal_avg_y_per_cat[cats])
-            print("cats",cats,"mean",m)
+            # print("cats",cats,"mean",m)
             avgs.append(m)
         # Do what StratPD does: all values are relative to left edge
         relative_group_y = np.array(avgs) - avgs[0]
-        print("group avgs", avgs)
-        print("relative_group_y", relative_group_y)
+        # print("group avgs", avgs)
+        # print("relative_group_y", relative_group_y)
         for cats,group_deltay in zip(catgroups, relative_group_y):
             catavg[cats] += group_deltay
-        print("adjusted catavg", catavg)
+        # print("adjusted catavg", catavg)
 
     # if verbose: print("final cat avgs", parray3(catavg))
     return catavg, count_per_cat
@@ -1174,19 +1174,25 @@ def avg_values_at_cat_one_disjoint_region(work, leaf_counts, leaf_deltas, max_it
             if len(intersection_idx) == 0:  # found something to merge into catavg?
                 continue
 
+            # Merge column j into catavg vector
             # cat for merging is the one with most supporting evidence
             cur_weight = leaf_counts[:, j]
-            ix = np.argmax(np.where((cur_weight > 0) & are_intersecting, cur_weight, 0))
 
-            # Merge column j into catavg vector
-            shifted_v = v - v[ix]  # make ix the reference cat in common
-            relative_to_value = catavg[ix]  # corresponding value in catavg
-            adjusted_v = shifted_v + relative_to_value  # adjust so v is mergeable with catavg
+            PICK_MOST_CONF = False
+            if PICK_MOST_CONF:
+                ix = np.argmax(np.where((cur_weight > 0) & are_intersecting, cur_weight, 0))
+                shifted_v = v - v[ix]  # make ix the reference cat in common
+                relative_to_value = catavg[ix]  # corresponding value in catavg
+                adjusted_v = shifted_v + relative_to_value  # adjust so v is mergeable with catavg
+            else:
+                adjusted_v = compute_avg_merge_candidate(catavg, v, intersection_idx)
+
             prev_catavg = catavg  # track only for verbose/debugging purposes
             catavg = nanavg_vectors(catavg, adjusted_v, catavg_weight, cur_weight)
             # Update weight of running avg to incorporate "mass" from v
             catavg_weight += cur_weight
             if verbose:
+                # TODO: broken
                 print(f"{ix:-2d} : vec to add =", parray(v), f"- {v[ix]:.2f}")
                 print("     shifted    =", parray(shifted_v),
                       f"+ {relative_to_value:.2f}")
@@ -1199,6 +1205,29 @@ def avg_values_at_cat_one_disjoint_region(work, leaf_counts, leaf_deltas, max_it
         iteration += 1
         work = work - completed
     return catavg, catavg_weight, list(work)
+
+
+def compute_avg_merge_candidate(catavg, v, intersection_idx):
+    """
+    Given intersecting deltas in catavg and v, compute average delta
+    one could merge into running average.  If one cat is an outlier,
+    picking that really distorts the vector we merge into running
+    average vector. So, effectively merge using all as the ref
+    cat in common by merging in average of all possible refcats.
+
+    When there is no noise in y, the average merge candidate is
+    the same as any single candidate. So, with no noise, we get
+    exact answer; averaging here doesn't cost us anything. It
+    only helps to spread noise across categories.
+    """
+    merge_candidates = []
+    for i in intersection_idx:
+        merge_candidates.append(v - v[i] + catavg[i])
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+        # We get "Mean of empty slice" when all entries are Nan but we want that.
+        v = np.nanmean(merge_candidates, axis=0)
+    return v
 
 
 def plot_catstratpd(X, y,
@@ -1215,7 +1244,6 @@ def plot_catstratpd(X, y,
                     max_features=1.0,
                     yrange=None,
                     title=None,
-                    show_avg_pairwise_effect=False,  # show avg pairwise drop/bump to get to each cat from all others
                     show_x_counts=True,
                     show_all_pdp=True,
                     pdp_marker_size=6,
@@ -1230,11 +1258,14 @@ def plot_catstratpd(X, y,
                     min_y_shifted_to_zero=False,
                     leftmost_shifted_to_zero=False,  # either this or min_y_shifted_to_zero can be true
                     # easier to read if values are relative to 0 (usually); do this for high cardinality cat vars
+                    mean_centered=False,
                     show_xlabel=True,
+                    show_unique_cat_xticks=False,
                     show_xticks=True,
                     show_ylabel=True,
                     show_impact=False,
                     verbose=False,
+                    sort_by_y=False,
                     figsize=(5,3)):
     """
     Plot the partial dependence of categorical variable X[colname] on y.
@@ -1280,9 +1311,6 @@ def plot_catstratpd(X, y,
             fig, ax = plt.subplots(1, 1, figsize=figsize)
         else:
             fig, ax = plt.subplots(1, 1)
-
-    if show_avg_pairwise_effect:
-        show_all_pdp = False
 
     uniq_catcodes = np.unique(X[colname])
 
@@ -1338,11 +1366,6 @@ def plot_catstratpd(X, y,
 
     all_avg_per_cat = np.array(all_avg_per_cat)
 
-    if leftmost_shifted_to_zero:
-        all_avg_per_cat -= all_avg_per_cat[np.isfinite(all_avg_per_cat)][0]
-    if min_y_shifted_to_zero:
-        all_avg_per_cat -= np.nanmin(all_avg_per_cat)
-
     ignored /= n_trials # average number of x values ignored across trials
 
     # average down the matrix of all_avg_per_cat across trials to get average per cat
@@ -1354,8 +1377,12 @@ def plot_catstratpd(X, y,
     # print("start of combined_avg_per_cat =", combined_avg_per_cat[uniq_catcodes][0:20])
     # print("mean(pdpy)", np.nanmean(combined_avg_per_cat))
 
-    if show_avg_pairwise_effect:
-        combined_avg_per_cat = featimp.all_pairs_delta(combined_avg_per_cat)
+    if leftmost_shifted_to_zero:
+        combined_avg_per_cat -= combined_avg_per_cat[np.isfinite(combined_avg_per_cat)][0]
+    if min_y_shifted_to_zero:
+        combined_avg_per_cat -= np.nanmin(combined_avg_per_cat)
+    if mean_centered:
+        combined_avg_per_cat -= np.nanmean(combined_avg_per_cat)
 
     impact_order = np.argsort(impacts)
     # print("impacts", impacts)
@@ -1374,9 +1401,11 @@ def plot_catstratpd(X, y,
             max_y = np.nanmax(avg_per_cat)
 
     # Show a dot for each cat in all trials
+    n_catcodes = len(uniq_catcodes)
+    cat_x = range(n_catcodes)
     if show_all_pdp and n_trials>1:
         for i in range(1,n_trials): # only do if > 1 trial
-            ax.plot(range(len(uniq_catcodes)), all_avg_per_cat[i][uniq_catcodes], '.', c=mpl.colors.rgb2hex(colors[impact_order[i]]),
+            ax.plot(cat_x, all_avg_per_cat[i][uniq_catcodes], '.', c=mpl.colors.rgb2hex(colors[impact_order[i]]),
                     markersize=pdp_marker_size, alpha=pdp_marker_alpha)
 
     '''
@@ -1392,10 +1421,12 @@ def plot_catstratpd(X, y,
     ax.add_collection(lines)
     '''
 
-    # sorted_idx = np.argsort(combined_avg_per_cat[uniq_catcodes])
-    barcontainer = ax.bar(x=range(len(uniq_catcodes)),
-                          # height=sorted(combined_avg_per_cat[uniq_catcodes]),
-                          height=combined_avg_per_cat[uniq_catcodes],
+    cat_heights = combined_avg_per_cat[uniq_catcodes]
+    if sort_by_y and not show_unique_cat_xticks:
+        cat_heights = sorted(cat_heights)
+
+    barcontainer = ax.bar(x=cat_x,
+                          height=cat_heights,
                           color=pdp_color)
     # Alter appearance of each bar
     for rect in barcontainer.patches:
@@ -1418,7 +1449,7 @@ def plot_catstratpd(X, y,
         ax2.set_ylim(0, max(cat_counts) * 1/barchart_size)
         # draw just 0 and max count
         ax2.yaxis.set_major_locator(plt.FixedLocator([0, max(cat_counts)]))
-        ax2.bar(x=range(len(uniq_catcodes)), height=cat_counts, width=count_bar_width,
+        ax2.bar(x=cat_x, height=cat_counts, width=count_bar_width,
                 facecolor='#BABABA', align='center', alpha=barchar_alpha)
         ax2.set_ylabel(f"PD $x$ count, ignored={ignored:.0f}", labelpad=-5, fontsize=label_fontsize,
                        fontstretch='extra-condensed',
@@ -1439,9 +1470,9 @@ def plot_catstratpd(X, y,
     ax.tick_params(axis='both', which='major', labelsize=ticklabel_fontsize)
 
     # leave .8 on either size of graph
-    ax.set_xlim(0-.8,len(uniq_catcodes)-1+0.8)
-    if show_xticks:
-        ax.set_xticks(range(len(uniq_catcodes)))
+    ax.set_xlim(0 - .8, n_catcodes - 1 + 0.8)
+    if show_unique_cat_xticks:
+        ax.set_xticks(cat_x)
         if catnames is not None:
             labels = [catnames[c] for c in uniq_catcodes]
             ax.set_xticklabels(labels)
@@ -1449,7 +1480,7 @@ def plot_catstratpd(X, y,
             ax.set_xticklabels(uniq_catcodes)
         for tick in ax.get_xticklabels():
             tick.set_fontname(fontname)
-    else:
+    elif not show_xticks:
         ax.set_xticks([])
         ax.set_xticklabels([])
 

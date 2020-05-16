@@ -50,6 +50,10 @@ def check(X, y, colname,
 
     print(leaf_deltas, avg_per_cat)
 
+    # Normalize so all 0-based
+    expected_avg_per_cat -= np.nanmin(expected_avg_per_cat)
+    avg_per_cat -= np.nanmin(avg_per_cat)
+
     assert ignored==expected_ignored, f"Expected ignored {expected_ignored} got {ignored}"
     assert len(leaf_deltas)==len(expected_deltas), f"Expected ranges {expected_deltas}"
     np.testing.assert_array_equal(leaf_deltas, expected_deltas, f"Expected deltas {expected_deltas} got {leaf_deltas}")
@@ -208,7 +212,7 @@ def test_sawtooth_derivative_disjoint_regions_bulldozer():
     plt.show()
 
 
-def test_foo2():
+def test_sawtooth_derivative_disjoint_regions_bulldozer_some_negative():
     df = pd.DataFrame()
     df['YearMade'] = [1, 1, 1,  # stratify into 4 groups
                       3, 3, 3,

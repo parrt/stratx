@@ -44,27 +44,17 @@ I = importances(X, y,
                              'DAY_OF_WEEK'},
                 normalize=False,
                 n_trials=1,
-                min_samples_leaf=15,
-                cat_min_samples_leaf=5
+                min_samples_leaf=20,
+                cat_min_samples_leaf=20
                 )
 print(I)
 exit()
+#
+# col = 'ORIGIN_AIRPORT'
+# col = 'SCHEDULED_DEPARTURE'
+# col = 'TAXI_OUT'
+# col = 'FLIGHT_NUMBER'
 
-col = 'ORIGIN_AIRPORT'
-col = 'SCHEDULED_DEPARTURE'
-col = 'TAXI_OUT'
-col = 'DEPARTURE_TIME'
-col = 'FLIGHT_NUMBER'
-
-# plot_stratpd(X, y, colname=col, targetname='delay',
-#              show_slope_lines=False,
-#              min_samples_leaf=30,
-#              n_trials=5,
-#              show_impact=False,
-#              show_x_counts=True,
-#              # min_slopes_per_x=1
-#              )
-# plt.show()
 
 # plot_stratpd_gridsearch(X, y, colname=col, targetname='delay',
 #              show_slope_lines=False,
@@ -78,10 +68,22 @@ col = 'FLIGHT_NUMBER'
 #              )
 # plt.show()
 
-df_test = pd.read_csv(f'data/flights-test.csv')
-X = df_test.drop('ARRIVAL_DELAY', axis=1)
-y = df_test['ARRIVAL_DELAY']
-print(f"Avg arrival delay {y.mean()}, sigma={np.std(y)}")
+# df_test = pd.read_csv(f'data/flights-test.csv')
+# X = df_test.drop('ARRIVAL_DELAY', axis=1)
+# y = df_test['ARRIVAL_DELAY']
+# print(f"Avg arrival delay {y.mean()}, sigma={np.std(y)}")
+
+# col = 'AIR_TIME'
+# plot_stratpd(X, y, colname=col, targetname='delay',
+#                 min_samples_leaf=20,
+#                 n_trials=1,
+#                 show_impact=True,
+#                 show_x_counts=True,
+#                 yrange=(-20, 140)
+#                 # min_slopes_per_x=1
+#                 )
+# plt.show()
+# exit()
 
 # for i in range(10):
 #     np.random.seed(i)
@@ -109,22 +111,28 @@ print(f"Avg arrival delay {y.mean()}, sigma={np.std(y)}")
 # plt.savefig(f"/Users/parrt/Desktop/flight-{col}.pdf", pad_inches=0)
 # plt.show()
 
-colname = 'FLIGHT_NUMBER'
-uniq_catcodes, combined_avg_per_cat, ignored, merge_ignored = \
+# plot_catstratpd_gridsearch(X, y, 'ORIGIN_AIRPORT', 'ARRIVAL_DELAY',
+#                            min_samples_leaf_values=(2, 5, 10, 15, 20, 30, 35, 40),
+#                            show_all_cat_deltas=False, show_impact=True,
+#                            show_xticks=False)
+# plt.show()
+# exit()
+
+colname = 'TAIL_NUMBER'
+uniq_catcodes, combined_avg_per_cat, ignored = \
     plot_catstratpd(X, y, colname, 'ARRIVAL_DELAY',
-                    min_samples_leaf=5,
-                    # yrange=(-150,150),
-                    figsize=(20,4),
+                    min_samples_leaf=2,
+                    yrange=(-125,125),
+                    figsize=(14,4),
                     n_trials=1,
                     min_y_shifted_to_zero=False,
-                    show_xticks=False,
+                    show_unique_cat_xticks=False,
                     show_impact=True,
                     verbose=False)
 
-print("IGNORED", ignored, "merge ignored", merge_ignored)
+print("IGNORED", ignored)
 plt.tight_layout()
 # plt.savefig(f"/Users/parrt/Desktop/flight-fnum-cat-most_common.pdf", pad_inches=0)
-plt.savefig(f"/Users/parrt/Desktop/flight-fnum-cat-minleaf3.pdf", pad_inches=0)
 plt.show()
 
 # plot_stratpd_gridsearch(X, y, 'TAXI_IN', 'ARRIVAL_DELAY',
@@ -198,13 +206,6 @@ plt.show()
 #                              'DAY_OF_WEEK', 'dayofyear'},
 #                 )
 # print(I)
-
-# plot_catstratpd_gridsearch(X, y, 'FLIGHT_NUMBER', 'ARRIVAL_DELAY',
-#                            min_samples_leaf_values=(2, 3, 5),
-#                            show_all_cat_deltas=False, show_impact=True,
-#                            show_xticks=False,
-#                            min_y_shifted_to_zero=False,
-#                            sort=False)
 
 
 
