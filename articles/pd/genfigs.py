@@ -582,6 +582,7 @@ def weather():
                     show_x_counts=False,
                     # min_samples_leaf=30,
                     min_y_shifted_to_zero=True,
+                    show_unique_cat_xticks=True,
                     # alpha=.3,
                     ax=ax,
                     yrange=(-1, 55))
@@ -2397,9 +2398,9 @@ if __name__ == '__main__':
     yearmade()
     rent()
     weight()
-    # shap_pregnant()
-    # shap_weight(feature_perturbation='tree_path_dependent', twin=True) # more biased but faster
-    # shap_weight(feature_perturbation='interventional', twin=True)      # takes 04:45 minutes
+    shap_pregnant()
+    shap_weight(feature_perturbation='tree_path_dependent', twin=True) # more biased but faster
+    shap_weight(feature_perturbation='interventional', twin=True)      # takes 04:45 minutes
     weather()
     noise()
 
