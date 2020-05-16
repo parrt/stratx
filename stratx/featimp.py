@@ -240,9 +240,9 @@ def single_feature_importance(X: pd.DataFrame, y: pd.Series,
     "Return impact=unweighted avg abs, importance=weighted avg abs"
     X_col = X[colname].values.round(decimals=10)
 
-    # print(f"Start {colname}")
+    #print(f"Start {'catvar' if (colname in catcolnames) else 'numerical'} {colname}")
     if colname in catcolnames:
-        leaf_deltas, leaf_counts, avg_per_cat, count_per_cat, ignored, merge_ignored = \
+        leaf_deltas, leaf_counts, avg_per_cat, count_per_cat, ignored = \
             partdep.cat_partial_dependence(X, y, colname=colname,
                                            n_trees=n_trees,
                                            min_samples_leaf=cat_min_samples_leaf,
@@ -263,7 +263,8 @@ def single_feature_importance(X: pd.DataFrame, y: pd.Series,
                                        parallel_jit=n_jobs == 1,
                                        supervised=supervised)
         impact, importance = compute_importance(X_col, pdpx, pdpy)
-    # print(f"{colname}:{avg_abs_pdp:.3f} mass")
+    #print("IGNORED", ignored)
+    #print(f"{colname}:{impact:.3f}, {importance:.3f} mass")
     # print(f"Stop {colname}")
     return impact, importance
 
@@ -283,8 +284,25 @@ def compute_importance(X_col, pdpx, pdpy):
 
 
 def cat_compute_importance(avg_per_cat, count_per_cat):
+    # First mean-center avg_per_cat by mean of avg y per cat not overall y average.
+    # All avg y per cat are just relative to each other; there is no "zero",
+    # which we need in order to compute mean(abs(y)). Can't push min to 0 as then
+    # all values are positive when some clearly pull y down. For example, if
+    # avg_per_cat deltas are [0,1,1,1], then this gives impact=3/4 or, if we had
+    # the equivalent [-1,0,0,0] then impact=-1/4. That's a huge difference. We
+    # need to normalize and best thing is to see how each cat pushes y up or down
+    # from average cat y.
+    #
+    # When min_samples_leaf is big enough to get all samples into a single leaf,
+    # then the mean-centered avg_per_cat should look exactly like mean-centered
+    # marginal plot. I verified and it works on bulldozer.  Seeing all cats
+    # in one leaf means we know exact deltas between categories; more specifically
+    # between avg y at each category. By mean-centering a marginal plot, we take
+    # the same shape down from y-intercept and make it 0. Then they look the same.
+    centered_avg_per_cat = avg_per_cat.copy() - np.nanmean(avg_per_cat)
+
     # weight each cat value by how many were used to create it
-    abs_avg_per_cat = np.abs(avg_per_cat)
+    abs_avg_per_cat = np.abs(centered_avg_per_cat)
     weighted_avg_abs_pdp = np.nansum(abs_avg_per_cat * count_per_cat) / np.sum(count_per_cat)
 
     # do unweighted
@@ -294,6 +312,7 @@ def cat_compute_importance(avg_per_cat, count_per_cat):
     return avg_abs_pdp, weighted_avg_abs_pdp
 
 
+'''
 def all_pairs_delta(avg_per_cat):
     """
     For a vector containing the average delta per category found
@@ -369,7 +388,7 @@ def all_pairs_deltas_foo(avg_per_cat):
         all_pairwise_deltas.extend(rel_to_k[k+1:])
         # print(rel_to_k[k+1:])
     return all_pairwise_deltas
-
+'''
 
 def importances_pvalues(X: pd.DataFrame,
                         y: pd.Series,
