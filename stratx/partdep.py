@@ -421,9 +421,12 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         ax2.yaxis.set_major_locator(plt.FixedLocator([0, max(pdpx_counts)]))
         ax2.bar(x=pdpx, height=pdpx_counts, width=count_bar_width,
                 facecolor=barchar_color, align='center', alpha=barchar_alpha)
-        ax2.set_ylabel(f"$x$ count, ignored={ignored:.0f}", labelpad=-5, fontsize=label_fontsize,
+        ax2.set_ylabel(f"$x$ count, ignored={ignored:.0f}", labelpad=-10, fontsize=label_fontsize,
                        fontstretch='extra-condensed',
-                       fontname=fontname)
+                       fontname=fontname,
+                       horizontalalignment='right',
+                       y=1.0)
+
         # shift other y axis down barchart_size to make room
         if yrange is not None:
             ax.set_ylim(yrange[0] - (yrange[1]-yrange[0]) * barchart_size * leave_room_scaler, yrange[1])
