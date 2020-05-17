@@ -16,6 +16,7 @@
 \usepackage[noline, boxed, linesnumbered, procnumbered, titlenumbered]{algorithm2e}
 \usepackage{caption}
 \usepackage{subcaption}
+\usepackage{sparklines}
 
 \newcommand{\secref}[1]{Section~\ref{#1}}
 \newcommand{\appdxref}[1]{Appendix~\ref{#1}}
@@ -38,6 +39,8 @@
 
 \newcommand{\Imp}{\fontfamily{cmr}\textsc{Impact}}
 \newcommand{\Impo}{\fontfamily{cmr}\textsc{Import}}
+\newcommand{\CImp}{\fontfamily{cmr}\textsc{CatImpact}}
+\newcommand{\CImpo}{\fontfamily{cmr}\textsc{CatImport}}
 \newcommand{\simp}{\fontfamily{cmr}\textsc{\small StratImpact}}
 %\newcommand{\Impo}{\fontfamily{cmr}\textsc{\small StratImport}}
 
@@ -102,7 +105,7 @@ We are back to just training data now.  all tests use 20 and 20 for hyper parame
 
 Among data analysis techniques, feature importance is one of the most widely applied and practitioners use it for two key purposes. First, to select features for predictive models, dropping the least predictive features to simplify and potentially increase the generality of the model. Second, to gain business or medical insights, such as identifying product characteristics valued by customers or treatments contributing to patient recovery.  To distinguish the two use cases, we will refer to feature predictiveness for modeling purposes as {\em importance} (the usual meaning) and the effect of features on business or medical response variables as {\em impact}.
 
-While some feature importance approaches work directly on the data, such as minimal-redundancy-maximal-relevance (mRMR) by \cite{mRMR}, almost all algorithms used in practice rank features by interrogating a fitted model provided by the user.  Examples include permutation importance by \cite{RF}, drop column importance, and SHAP by \cite{shap}; LIME by \cite{lime} interrogates subsidiary models to analyze such fitted models. It is accepted as self-evident that identifying the most predictive features for a model is best done through interrogation of that  model, but this is not always the case.  For example, when asked to identify the single most important feature of a real dataset \citep{bulldozer} for a random forest (RF), the features selected by model-based techniques get twice the validation error of a nonparametric technique proposed in this paper; see \figref{fig:topk-impact}c. Still, model interrogation is generally very effective in practice for feature importance purposes.
+While some feature importance approaches work directly on the data, such as minimal-redundancy-maximal-relevance (mRMR) by \cite{mRMR}, almost all algorithms used in practice rank features by interrogating a fitted model provided by the user.  Examples include permutation importance by \cite{RF}, drop column importance, and SHAP by \cite{shap}; LIME by \cite{lime} interrogates subsidiary models to analyze such fitted models. It is accepted as self-evident that identifying the most predictive features for a model is best done through interrogation of that  model, but this is not always the case.  For example, when asked to identify the single most important feature of a real dataset \citep{bulldozer} for a random forest (RF), the features selected by model-based techniques get twice the validation error of a nonparametric technique proposed in this paper; see \figref{fig:topk}c. Still, model interrogation is generally very effective in practice for feature importance purposes.
 
 Feature importance should not, however, be interpreted as feature impact for several reasons. First, predictive features do not always coincide with impactful features; e.g., models unable to capture complex nonlinear feature-response relationships rank such features as unimportant, even if they have large impacts on the response. Next, practitioners must develop models accurate enough to yield meaningful feature importances, but there is no definition of ``accurate enough.'' Finally, it is possible to get very different feature importances (and hence impacts) running the same algorithm on the same data, just by choosing a different model. This is despite the fact that feature impacts are relationships that exist in the data, with or without a model.
 
@@ -139,6 +142,8 @@ To hold features constant for any smooth and continuous generator function $f:\m
 
 Using partial derivatives to isolate the effect of variables on the response was used prior to \spd{} by ALE (\citealt{ALE}) and {\em Integrated Gradients} (IG) (\citealt{intgrad}). The key distinction is that  \spd{} integrates over the derivative of the generator function, ${\partial f}/{\partial x_j}$, estimated from the raw training data, whereas, previous techniques integrate over the derivative of model $\hat{f}$ that estimates $f$: ${\partial \hat{f}}/{\partial x_j}$. While there are advantages to using models, such as their ability to smooth over noise, properly choosing and tuning a machine learning model presents a barrier to large user communities, such as business analysts, scientists, and medical researchers. Further, without potential distortions from a model, \spd{} supports the measurement of impact, not just importance.
 
+\subsection{Impact and importance for numerical features}
+
 To go from the idealized partial dependence of $x_j$ to feature impact, we assume that the larger the ``mass'' under $x_j$'s partial dependence curve, the larger $x_j$'s impact on $y$.
 
 ~\\
@@ -161,7 +166,7 @@ The usual definition of region width, $\Delta x_j = {(max({\bf X}_j) - min({\bf 
 \Imp_j \approx  \sum_{x_j \in \{{\bf X}_j\}} |PD_j(x_j)| \times \frac{1}{n_j} = \overline{|PD_j|}
 \]
 
-\noindent This formula works for any partial dependence curve, which must be computed by examining output from a fitted model, $\hat{f}$, or by estimating the partial derivative of $f$ directly from the data and then integrating, as \spd{} does. Dividing impact by the sum of all impacts, converts impact units from $y$'s units to [0..1]:
+\noindent This formula works for any partial dependence curve, either by examining output from a fitted model, $\hat{f}$, or by estimating the partial derivative of $f$ directly from the data and then integrating, as \spd{} does. Dividing $x_j$'s impact by the sum of all impacts, converts impact units from $y$'s units to [0..1]:
 
 
 ~\\
@@ -171,7 +176,7 @@ The usual definition of region width, $\Delta x_j = {(max({\bf X}_j) - min({\bf 
 \Imp_j^{*} = \frac{\overline{|\text{\it PD}_j|}}{\sum_{k=1}^p \overline{|\text{\it PD}_k|}}
 \end{equation}
 
-\noindent For example, consider quadratic equation $y = x_1^2 + x_2 + 100$ as a generator of data for $x_1, x_2 \sim U(0,3)$. The symbolic partial derivatives are ${\partial y}/{\partial x_1} = 2 x_1$ and ${\partial y}/{\partial x_2} = 1$, giving $\text{\it PD}_1 = x_1^2$ and $\text{\it PD}_2 = x_2$. $\overline{|\text{\it PD}_1|}$ is then 9.0, the average magnitude of $x_1^2$ in $[0,3]$, and $\overline{|\text{\it PD}_2|}$ is 4.5, the average magnitude of $x_2$ in $[0,3]$, as depicted in \figref{fig:quad-area}. That is the same result obtained by integrating under the partial dependence curves:  $\int_0^3 x_1^2 dx_1 = \frac{x_1^3}{3} \big |_0^3 = 9$ and $\int_0^3 x_2^2 dx_2 = \frac{x_2^2}{2} \big |_0^3 = 4.5$.   Therefore, $x_1$ has twice the impact as $x_2$ for data generated in that interval, giving $\Imp_1 = 0.\overline{66}$ and $\Imp_2 = 0.\overline{33}$.
+\noindent For example, consider quadratic equation $y = x_1^2 + x_2 + 100$ as a generator of data for $x_1, x_2 \sim U(0,3)$. The symbolic partial derivatives are ${\partial y}/{\partial x_1} = 2 x_1$ and ${\partial y}/{\partial x_2} = 1$, giving $\text{\it PD}_1 = x_1^2$ and $\text{\it PD}_2 = x_2$. $\overline{|\text{\it PD}_1|}$ is then 9.0, the average magnitude of $x_1^2$ in $[0,3]$, and $\overline{|\text{\it PD}_2|}$ is 4.5, the average magnitude of $x_2$ in $[0,3]$, as depicted in \figref{fig:quad-area}. That is the same result obtained by integrating under the partial dependence curves:  $\int_0^3 x_1^2 dx_1 = \frac{x_1^3}{3} \big |_0^3 = 9$ and $\int_0^3 x_2^2 dx_2 = \frac{x_2^2}{2} \big |_0^3 = 4.5$.   Therefore, $x_1$ has twice the impact as $x_2$ for data generated in that interval, giving $\Imp_1^{*} = 0.\overline{66}$ and $\Imp_2^{*} = 0.\overline{33}$.
 
 
 \begin{figure}
@@ -187,32 +192,65 @@ The usual definition of region width, $\Delta x_j = {(max({\bf X}_j) - min({\bf 
 \begin{subfigure}{.43\textwidth}
     \centering
 \includegraphics[scale=0.5]{images/bulldozer-YearMade.pdf}\vspace{-1mm}
-\subcaption{\small \simp{} curve for bulldozer {\tt SalePrice} on {\tt YearMade} including the histogram used to weight the partial dependence to obtain feature importances; this plot represents a 20k subsample of 363k. Roughly 0.5\% of samples were stratified into regions with a single {\tt YearMade} value.}
+\subcaption{\small \simp{} curve for bulldozer {\tt SalePrice} on {\tt YearMade} including the histogram used to weight the partial dependence to obtain feature importances. A 20k sample of 363k; \textasciitilde0.5\% of samples stratified into regions with single {\tt YearMade} values.}
 \label{fig:yearmade}
 \end{subfigure}
 \end{figure}
 
 Intuitively, the impact of $x_j$ is how much, on average, the values of $x_j$ are expected to push $y$ away from a zero baseline. We deliberately chose this  definition instead of measuring how much $x_j$ pushes $y$ away from the average response, $\overline{y}$, as SHAP does. The impact of $x_1$ on $y = x_1^2+x_2+100$ is $x_1^2$, not $|\overline{y} - x_1^2|$.  \figref{fig:quad-area} illustrates how the area under the $x_1^2$ and $x_2$ PD curves differ from the area straddling the means. The area under-the-curve ratio of $x_1$-to-$x_2$ is 2-to-1 (9/4.5), whereas the ratio of the area straddling the mean has roughly a 3-to-1 ratio (6.95/2.26). We believe that the area under-the-curve better represents feature impact than the area straddling the mean.
 
-The $PD_j$ curve represents how $x_j$ effects $y$, but does not take into consideration the distribution of $x_j$ in ${\bf X}_j$.  Consider the \spd{} curve and $x_j$ histogram in \figref{fig:yearmade} for feature {\tt\small YearMade} from the bulldozer auction data set \citep{bulldozer}. The colored curves represent ten bootstraps from the same training set and the black dots give the average curve.   From a business perspective, knowing that increases in bulldozer age continue to reduce price is useful, but new bulldozers will represent the bulk of any model validation set.  Because model feature selection is often assessed using  validation error, feature selection is sensitive to the distribution of $x_j$. That means that feature importance should take into consideration the $x_j$'s distribution, leading to an importance definition based upon expected value rather than average:
+The $PD_j$ curve represents how $x_j$ effects $y$, but does not take into consideration the distribution of $x_j$ in ${\bf X}_j$.  Consider the \spd{} curve and $x_j$ histogram in \figref{fig:yearmade} for feature {\tt\small YearMade} from the bulldozer auction data set \citep{bulldozer}. The colored curves represent ten bootstraps from the same training set and the black dots give the average curve.   From a business perspective, knowing that increases in bulldozer age continue to reduce price is useful, but new bulldozers will represent the bulk of any model validation set.  Because model feature selection is often assessed using  validation error, feature selection is sensitive to the distribution of $x_j$. That means that feature importance should take into consideration the $x_j$ distribution, leading to an importance definition based upon expected value rather than average:
 
 ~\\
 \noindent {\bf Definition 3} The {\em normalized nonparametric feature importance} of $x_j$ is the ratio of $x_j$'s expected partial dependence magnitude to the total of all expected values:
 
-\begin{equation}\label{eq:Epd2b}
+\begin{equation}\label{eq:Epd3b}
 \Impo_j^{*} = \frac{\Ex[|\text{\it PD}_j|]}{\sum_{k=1}^p \Ex[|\text{\it PD}_k|]}
 \end{equation}
 
-\noindent Let $P(x_j)$ be the probability of seeing $x_j$ in ${\bf X}_j$, then:
+\noindent Let $P(x_j)$ be the probability of finding an $x_j$ value in ${\bf X}_j$, then:
 
 
-\begin{equation}\label{eq:Epd2c}
+\begin{equation}\label{eq:Epd3c}
 \Ex[|\text{\it PD}_j|] = \sum_{x_j \in \{{\bf X}_j\}} |\text{\it PD}_j(x_j)| \times P(x_j)
 \end{equation}
 
-\todo{ average of all category contributions to all pairs}
+Measuring impact as the average partial dependence magnitude also works for non-ordinal categorical explanatory features encoded as unique integers, with a small modification.  
 
-These definitions of \Imp{} and \Impo{} also apply to categorical explanatory features encoded as unique integers because the mean operation is insensitive to element order; this avoids any assumption about order for nominal categoricals.  For example, consider categorical feature $x_{state}$ and numerical feature $x_{bedrooms}$ from an apartment rent data set.  The non-normalized \Imp{} score for both is just the average magnitude of the associated partial dependence curve, using \spd{} for $x_{bedrooms}$  and \cspd{} for $x_{state}$ (the category equivalent of \spd{} from the {\tt stratx} package).  If, on average, each of 50 US states affected rent price by \$200 and, on average each of five discrete bedroom counts affected rent price by \$200, then $x_{bedrooms}$  and $x_{state}$ would have the same impact.
+\subsection{Impact and importance for categorical features}
+
+Partial dependence curves for numerical features use the leftmost $x_j$ value as the zero reference point, but nominal categorical features have no meaningful order. That implies we can choose any category as the zero reference, which shifts the partial dependence plot up or down, but does not alter the relative $y$ values among the levels. For example, we might see a partial dependence graph for a 4-level categorical feature like \begin{sparkline}{2.5}
+\definecolor{sparkbottomlinecolor}{gray}{0.9}
+\sparkspike 0 0.07
+\sparkspike .33 .65
+\sparkspike .66 .7
+\sparkspike 1 .68
+\end{sparkline} using the leftmost level as the zero reference and \begin{sparkline}{2.5}
+\sparkspike 0 -.68
+\sparkspike .33 .075
+\sparkspike .66 0.15
+\sparkspike 1.0 0.07
+\end{sparkline} using the second level as the zero. The choice of reference category does not hinder human interpretation of the partial dependence plot, but does dramatically affect the impact.  If the max $y$  magnitude were 1.0, then the impacts (average magnitude) for these two variations would be roughly (0+1+1+1)/4 and ($|-1|$+0+0+0)/4, representing a 3x difference (3/4 versus 1/4). Worse, picking a category level whose $y$ is an outlier strongly biases the impact because the outlier pushes up (or down) all category $y$ values by a biased amount.  Instead of picking a specific level as the reference, therefore, we use the partial dependence average value as the reference zero:\\
+
+\noindent {\bf Definition 4} The {\em normalized nonparametric categorical feature impact} of $x_j$ is the ratio of the average magnitude of $x_j$'s mean-centered partial dependence to the total for all variables:
+
+\begin{equation}\label{eq:Cpd4a}
+\CImp_j^{*} = \frac{\overline{|\text{\it PD}_j - \overline{\text{\it PD}_j}|}}{\sum_{k=1}^p \overline{|\text{\it PD}_k - \overline{\text{\it PD}_j}|}}
+\end{equation}
+
+~\\
+
+\noindent The definition of categorical variable importance mirrors the definition for numerical variables that weights impact by $x_j$'s distribution:
+
+~\\
+
+\noindent {\bf Definition 5} The {\em normalized nonparametric categorical feature importance} of $x_j$ is the ratio of $x_j$'s expected mean-centered partial dependence magnitude to the total of all expected values:
+
+\begin{equation}\label{eq:Epd2b}
+\CImpo_j^{*} = \frac{\Ex[|\text{\it PD}_j - \overline{\text{\it PD}_j}|]}{\sum_{k=1}^p \Ex[|\text{\it PD}_k - \overline{\text{\it PD}_j}|]}
+\end{equation}
+
+By choosing $\overline{\text{\it PD}_j}$ as the reference zero, our definitions move closer to SHAP's mean-centered approach, which we disagreed with above, but only out of necessity for categorical variables; we also center on $\overline{\text{\it PD}_j}$ rather than the overall average, $\bar{y}$. With these definitions in mind, we make a more detailed comparison to related work in the next section.
 
 \section{Existing methods}\label{sec:existing}
 

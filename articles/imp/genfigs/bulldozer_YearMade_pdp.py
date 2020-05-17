@@ -28,7 +28,7 @@ plot_stratpd(X_train, y_train, colname='YearMade', targetname='SalePrice',
              show_impact=False,
              pdp_marker_alpha=.7,
              pdp_marker_size=4,
-             figsize=(3.8,3.2)
+             figsize=(3.8,2.9)
              )
 plt.xlim(1965,2010)
 plt.tight_layout()
