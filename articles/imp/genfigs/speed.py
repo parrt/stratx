@@ -10,8 +10,8 @@ forcerun = False
 warmedup = True
 
 def get_timing(dataset, X, y, catcolnames=set(),
-               min_samples_leaf=20, # same across all simulations
-               cat_min_samples_leaf=10,
+               min_samples_leaf=20,       # same across all simulations
+               cat_min_samples_leaf=20,   # same across all simulations
                max_size = 30_000):
     sizes = np.arange(1000, max_size+1, 1000)
     times = []

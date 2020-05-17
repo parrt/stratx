@@ -421,7 +421,7 @@ def plot_stratpd(X:pd.DataFrame, y:pd.Series, colname:str, targetname:str,
         ax2.yaxis.set_major_locator(plt.FixedLocator([0, max(pdpx_counts)]))
         ax2.bar(x=pdpx, height=pdpx_counts, width=count_bar_width,
                 facecolor=barchar_color, align='center', alpha=barchar_alpha)
-        ax2.set_ylabel(f"PD $x$ count, ignored={ignored:.0f}", labelpad=-5, fontsize=label_fontsize,
+        ax2.set_ylabel(f"$x$ count, ignored={ignored:.0f}", labelpad=-5, fontsize=label_fontsize,
                        fontstretch='extra-condensed',
                        fontname=fontname)
         # shift other y axis down barchart_size to make room
@@ -1451,7 +1451,7 @@ def plot_catstratpd(X, y,
         ax2.yaxis.set_major_locator(plt.FixedLocator([0, max(cat_counts)]))
         ax2.bar(x=cat_x, height=cat_counts, width=count_bar_width,
                 facecolor='#BABABA', align='center', alpha=barchar_alpha)
-        ax2.set_ylabel(f"PD $x$ count, ignored={ignored:.0f}", labelpad=-5, fontsize=label_fontsize,
+        ax2.set_ylabel(f"$x$ count, ignored={ignored:.0f}", labelpad=-5, fontsize=label_fontsize,
                        fontstretch='extra-condensed',
                        fontname=fontname)
         # shift other y axis down barchart_size to make room

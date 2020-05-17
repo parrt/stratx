@@ -352,7 +352,6 @@ def todummies(X, features, catcolnames):
 
 
 def test_top_features(dataset,
-                      X, y,
                       X_train, y_train, X_test, y_test,
                       all_importances,
                       top_features_range=None,
@@ -360,7 +359,7 @@ def test_top_features(dataset,
                       model='RF'):
     # Compute k-k curves for all techniques, including both import and impact
     if top_features_range is None:
-        top_features_range = (1, X.shape[1])
+        top_features_range = (1, X_train.shape[1])
 
     technique_names = ['Spearman', 'PCA', 'OLS', 'OLS SHAP', 'RF SHAP', "RF perm",
                        'StratImport', 'StratImpact']
@@ -465,7 +464,6 @@ def gen_topk_figs(n_trials,dataset,targetname,title,yunits,catcolnames=set(),
     main_techniques = ['OLS', 'OLS SHAP', 'RF SHAP', "RF perm", 'StratImport']
     if dataset!='bulldozer': # purely numerical features or only important features are numerical
         R = test_top_features(dataset,
-                              X, y,
                               X_train, y_train, X_test, y_test,
                               imps,
                               top_features_range=(1,8),
@@ -480,14 +478,14 @@ def gen_topk_figs(n_trials,dataset,targetname,title,yunits,catcolnames=set(),
 
         R_ = R[main_techniques]
         plot_topk(R_, k=8, title=f"OLS {title}",
-                  ylabel=f"5-fold CV MAE ({yunits})",
+                  ylabel=f"Validation MAE ({yunits})",
                   xlabel=f"Top $k$ feature $Importance$",
                   title_fontsize=14,
                   label_fontsize=14,
                   ticklabel_fontsize=10,
                   # legend_location='lower left',
                   # legend_location='upper right',
-                  legend_location=None,
+                  legend_location='lower left',
                   yrange=yrange,
                   figsize=figsize)
         plt.tight_layout()
@@ -502,7 +500,6 @@ def topk_for_one_model(dataset, model,
                        yrange, yunits):
     # GET ALL TOP-K CURVES
     R = test_top_features(dataset,
-                          X, y,
                           X_train, y_train, X_test, y_test,
                           imps,
                           top_features_range=(1, 8),
@@ -516,7 +513,7 @@ def topk_for_one_model(dataset, model,
         if technique_set_name is None:
             technique_set_name = sortby
         plot_topk(R[techniques], k=8, title=f"{model} {title}",
-                  ylabel=f"5-fold CV MAE ({yunits})",
+                  ylabel=f"Validation MAE ({yunits})",
                   xlabel=f"Top $k$ feature ${sortby}$",
                   title_fontsize=14,
                   label_fontsize=14,
@@ -626,7 +623,8 @@ def get_multiple_imps(dataset,
         # RF SHAP and RF perm get to look at the test data to decide which features
         # are more predictive and useful for generality's sake
         # So, we get to look at all data as well, not just training data
-        ours_I = featimp.importances(X, y, #X_train, y_train,
+        # Actually we use just training again after fixing featimp measure. (May 17, 2020)
+        ours_I = featimp.importances(X_train, y_train,
                                      verbose=False,
                                      sortby=sortby,
                                      min_samples_leaf=stratpd_min_samples_leaf,
@@ -714,7 +712,11 @@ def plot_topk(R, ax=None, k=None,
                 c=color, alpha=.9, markersize=ms, fillstyle='none')
 
     if legend_location is not None:
-        plt.legend(loc=legend_location)  # usually it's out of the way
+        plt.legend(loc=legend_location,
+                   fontsize=9,
+                   framealpha=.5,
+                   fancybox=True,
+                   labelspacing=.2)
 
     if xlabel is None:
         ax.set_xlabel("Top $k$ most important features", fontsize=label_fontsize,

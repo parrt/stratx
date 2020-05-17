@@ -35,7 +35,8 @@ print(f"Avg arrival delay {y.mean()}")
 # plt.ylabel("ARRIVAL_DELAY")
 # plt.show()
 #
-I = importances(X, y,
+I = importances(#X, y,
+                X_train, y_train,
                 catcolnames={'AIRLINE',
                              'ORIGIN_AIRPORT',
                              'DESTINATION_AIRPORT',

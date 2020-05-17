@@ -11,8 +11,8 @@ X, y = support.load_rent(n=50_000)
 print(X.shape)
 
 I = featimp.importances(X, y, bootstrap=False, n_trials=30,
-                        min_samples_leaf=20, # use same hyper parameters as top-k plots
-                        cat_min_samples_leaf=10,
+                        min_samples_leaf=20,     # use same hyper parameters as top-k plots
+                        cat_min_samples_leaf=20,
                         subsample_size=.75,
                         drop_high_stddev=2.0)
 

@@ -14,7 +14,7 @@ import boston_various_models_shap
 import bulldozer_YearMade_pdp
 import bulldozer_YearMade_pdp_shap
 import bulldozer_fdp_shap_imp
-import compare_friedman_shap_stratimpact
+# import compare_friedman_shap_stratimpact # I have cut this out of paper for now
 
 import flights_top
 import rent_top

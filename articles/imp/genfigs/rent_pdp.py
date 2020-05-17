@@ -29,10 +29,11 @@ I = importances(X, y,
                 # bootstrap=False,
                 # subsample_size=.7,
 
-                min_samples_leaf=15,
-                cat_min_samples_leaf=5,
+                min_samples_leaf=20,
+                cat_min_samples_leaf=20,
                 )
 print(I)
+exit()
 #
 # pdpx, pdpy, ignored = \
 #     plot_stratpd(X, y, colname='longitude', targetname='price',

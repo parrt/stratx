@@ -32,15 +32,11 @@ X['auctioneerID'] = X['auctioneerID'].astype(np.int64)
 # y = df['SalePrice']
 
 
-I = importances(X, y,
+I = importances(#X, y,
+                X_train, y_train,
                 n_trials=1,
                 normalize=False,
                 drop_high_stddev=2.0,
-                bootstrap=True,
-                # bootstrap=False,
-                # subsample_size=.7,
-
-                # min_slopes_per_x=20,
                 min_samples_leaf=20,
                 cat_min_samples_leaf=20,
                 catcolnames={'AC', 'ModelID', 'auctioneerID'}

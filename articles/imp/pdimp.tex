@@ -70,7 +70,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \title{\bf Tech Report:\\
-Nonparametric feature impact and importance}
+Nonparametric Feature Impact and Importance}
 
 \author{Terence Parr \email parrt@cs.usfca.edu
 \addr University of San Francisco\\
@@ -97,8 +97,7 @@ check \simp vs \Impo is confusing
 
 Check, what is $R^2$?
 
-default is one trial, cat min samples leaf=10, samples/leaf=20
-boston: min samples per x = 1
+We are back to just training data now.  all tests use 20 and 20 for hyper parameters. boston too little data; don't filter out anything: min samples per x = 1. one trial
 }
 
 Among data analysis techniques, feature importance is one of the most widely applied and practitioners use it for two key purposes. First, to select features for predictive models, dropping the least predictive features to simplify and potentially increase the generality of the model. Second, to gain business or medical insights, such as identifying product characteristics valued by customers or treatments contributing to patient recovery.  To distinguish the two use cases, we will refer to feature predictiveness for modeling purposes as {\em importance} (the usual meaning) and the effect of features on business or medical response variables as {\em impact}.
@@ -188,7 +187,7 @@ The usual definition of region width, $\Delta x_j = {(max({\bf X}_j) - min({\bf 
 \begin{subfigure}{.43\textwidth}
     \centering
 \includegraphics[scale=0.5]{images/bulldozer-YearMade.pdf}\vspace{-1mm}
-\subcaption{\small \simp{} curve for bulldozer {\tt SalePrice} on {\tt YearMade} including the histogram used to weight the partial dependence to obtain feature importances; this plot represents a 25k subsample of 363k.}
+\subcaption{\small \simp{} curve for bulldozer {\tt SalePrice} on {\tt YearMade} including the histogram used to weight the partial dependence to obtain feature importances; this plot represents a 20k subsample of 363k. Roughly 0.5\% of samples were stratified into regions with a single {\tt YearMade} value.}
 \label{fig:yearmade}
 \end{subfigure}
 \end{figure}
@@ -298,7 +297,7 @@ Deriving feature importances from partial dependences as \spd{} does was previou
 Assessing the quality of feature impact and importance is challenging because, even with domain expertise, humans are unreliable estimators (which is why we need data analysis algorithms in the first place).  The simplest approach is to examine impacts and importances computed from synthetic data for which the answer is known.  For real data sets, we can train a predictive model on the most impactful or most important $k$ features, as identified by the methods of interests, and then compare model prediction errors. (\citealt{mRMR} and \citealt{tsanas} also used this approach.) The method that accurately identifies the most impactful features without getting confused by codependent features, should yield lower prediction errors for a given $k$.  
 
 In this section, we present the results of several experiments using the toy Boston data set and three real data sets, NYC rent prices \citep{rent}, bulldozer auction sales \citep{bulldozer}, and flight delays \citep{flights}. (Rent has $p=20$, bulldozer $p=14$, and flight $p=17$.) We draw $n$=25,000 samples from each data set population, except for Boston which only has 506 records, and split into 80\% training / 20\% validation sets. Each point on an error curve represents the validation set mean absolute error (MAE) for a given model, feature ranking, and data set. All models used to rank features or measure top-$k$ errors were tuned with 5-fold cross-validation grid search across a variety of hyper parameters using just the training records. The same \spd{} and \cspd{} hyper parameters were used across all simulations and datasets.\footnote{
-The entire \simp{} code base is available at {\tt\small https://github.com/parrt/stratx} and running {\tt\small articles/imp/genfigs/RUNME.py} will regenerate all figures in this paper, after downloading the three Kaggle data sets.  Simulations were run on a 4.0 Ghz 32G RAM machine running OS X 10.13.6 with SHAP 0.35, scikit-learn 0.21.3, XGBoost 0.90, and Python 3.7.4. The same random seed of 1 was set for each simulation to get reproducible graphs.}
+The entire \simp{} code base is available at {\tt\small https://github.com/parrt/stratx} and running {\tt\small articles/imp/genfigs/RUNME.py} will regenerate all figures in this paper, after downloading the three Kaggle data sets.  Simulations were run on a 4.0 Ghz 32G RAM machine running OS X 10.13.6 with SHAP 0.35, scikit-learn 0.21.3, XGBoost 0.90, and Python 3.7.4. The same random seed of 1 was set for each simulation for graph reproducibility.}
 
 We begin with a baseline comparison of \Impo{} to principal component analysis' (PCA) ranking (``loads'' associated with the first component) and to Spearman's R coefficients computed between each $x_j$ and the response variable, $y$.  \figref{fig:baseline} shows the MAE curve for an RF model trained using the top-$k$ features as ranked by PCA, Spearman, and \Impo. Spearman's R does a good job for all but the bulldozer data set, while PCA performs poorly on all four data sets. \Impo{} is competitive with or surpasses these baseline techniques. 
 
@@ -337,7 +336,7 @@ OLS curves are similar to \Impo's except for rent in \figref{fig:baseline}d and 
 \label{fig:baseline}
 \end{figure}
 
-Next, in \figref{fig:topk}, we compare \Impo{}'s rankings to those of ordinary least squares (OLS), RF-based permutation importance, and SHAP interrogating OLS and RF models. A feature's OLS ranking score is its $\beta$ coefficient divided by its standard error. (OLS is not applicable to the bulldozer data set because it has many high-cardinality categorical explanatory variables, which would create tens of thousands of dummy variables.) OLS and \Impo{} analyzed all $n$ records for each data set, but RF-based permutation importance and RF-based SHAP trained on 80\% then ranked features using the remaining 20\% as validation sets. RF-based SHAP and permutation importance have a distinct advantage here because they use the same kind of model (RF) for both feature ranking and then for computing top-$k$ error curves.
+Next, in \figref{fig:topk}, we compare \Impo{}'s rankings to those of ordinary least squares (OLS), RF-based permutation importance, and SHAP interrogating OLS and RF models. A feature's OLS ranking score is its $\beta$ coefficient divided by its standard error. (OLS is not applicable to the bulldozer data set because it has many high-cardinality categorical explanatory variables, which would create tens of thousands of dummy variables.) OLS and OLS SHAP analyzed all $n$ records for each data set, but RF-based permutation importance and RF-based SHAP trained on 80\% then used the remaining 20\% validation set to rank features. \Imp{} and \Impo{} analyzed just to the 80\% training data. RF-based SHAP and permutation importance have a distinct advantage here because they use the same kind of model (RF) for both feature ranking and then for computing top-$k$ error curves.
 
 The error curves for \Impo, RF SHAP, and permutation importance are roughly the same for Boston in \figref{fig:topk}a and flight in \figref{fig:topk}b. For bulldozer in \figref{fig:topk}c, \Impo's error curve suggests it selected a less predictive feature than RF SHAP or RF permutation importance for $k=1$: {\tt YearMade}  followed by high-cardinality categorical {\tt ModelID}. RF permutation importance chose {\tt ProductSize} as most important followed by {\tt ModelID} and RF SHAP chose {\tt ProductSize} followed by {\tt YearMade}. For rent in \figref{fig:topk}d, \Impo{} selects {\tt brooklynheights} (L1 distance from the apartment to that neighborhood) as the most predictive feature followed by {\tt bedrooms}.  RF SHAP and permutation importance selected {\tt bedrooms} followed by {\tt bathrooms}.  By incorporating location into the model early, \Impo's error curve drops more quickly than for the other rankings. 
 
@@ -440,7 +439,7 @@ To check feature exportation to a very different model, we computed error curves
 \begin{center}
 \includegraphics[scale=0.5]{images/boston-topk-OLS-Importance.pdf}~~~
 \includegraphics[scale=0.5]{images/flights-topk-OLS-Importance.pdf}~~~\includegraphics[scale=0.5]{images/rent-topk-OLS-Importance.pdf}
-\caption[short]{\small MAE curves as in \figref{fig:topk} except measuring OLS predictions, rather than RF. Markers refer to the same techniques as in \figref{fig:topk-gbm} but were removed to avoid legend overlap.}
+\caption[short]{\small MAE curves as in \figref{fig:topk-gbm} but measuring OLS rather than RF predictions.}
 \label{fig:OLS}
 \end{center}
 \end{figure}
