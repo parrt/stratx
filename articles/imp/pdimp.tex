@@ -310,7 +310,8 @@ That begs the question of whether measuring the area under a simple mean-centere
 
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[scale=0.53]{images/rent-pdp-vs-shap.pdf}\includegraphics[scale=0.53]{images/bulldozer-pdp-vs-shap.pdf}
+\includegraphics[scale=0.53]{images/rent-pdp-vs-shap.pdf}\includegraphics[scale=0.53]{images/bulldozer-pdp-vs-shap.pdf}\\
+\vspace{-3mm}
 \caption[short]{\small  Feature importance ranking of top 8 for rent and bulldozer data sets demonstrating strong similarity between average magnitude of Friedman's partial dependence curves, (a) \& (c), and average magnitude of SHAP values, (b) \& (d). 20,000/5,000 training/validation records were sampled to tune RF model by 5-fold cross validation grid search. Rent validation $R^2 = 0.857$, bulldozer $R^2 = 0.856$. The FPD curve and SHAP values were computed using 300 records from the validation set and SHAP used 100 backing records from the training data.}
 \label{fig:fpd_imp}
 \end{center}
@@ -350,67 +351,101 @@ OLS curves are similar to \Impo's except for rent in \figref{fig:baseline}d and 
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/boston-topk-RF-baseline.pdf}
+\vspace{-7mm}
 \subcaption{}
 \end{subfigure}%
 %\hfill
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/flights-topk-RF-baseline.pdf}
+\vspace{-7mm}
 \subcaption{}
 \end{subfigure}
 %\hfill
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/bulldozer-topk-RF-baseline.pdf}
+\vspace{-7mm}
 \subcaption{}
 \end{subfigure}
 %\hfill
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/rent-topk-RF-baseline.pdf}
+\vspace{-7mm}
 \subcaption{}
 \end{subfigure} 
+\vspace{-3mm}
 \caption{\small {\bf RF MAE curves from \underline{baseline} rankings} computed using RF models trained on boston, flight, bulldozer, and rent data sets. Error curves represent 5-fold cross validation using the top-$k$ features as ranked by Spearman's R, PCA ``loads'' associated with the first component, and \Impo{}.}
 \label{fig:baseline}
 \end{figure}
 
 Next, in \figref{fig:topk}, we compare \Impo{}'s rankings to those of ordinary least squares (OLS), RF-based permutation importance, and SHAP interrogating OLS and RF models. A feature's OLS ranking score is its $\beta$ coefficient divided by its standard error. (OLS is not very useful for the bulldozer data set because there are important label-encoded categorical explanatory variables.) OLS and OLS SHAP analyzed all $n$ records for each data set, but RF-based permutation importance and RF-based SHAP trained on 80\% then used the remaining 20\% validation set to rank features. We deliberately restricted \simp{} to analyzing just the 80\% training data, to see how it would fare. RF-based SHAP and permutation importance, therefore, have two clear advantages: (1) they use the same kind of model (RF) for both feature ranking and for computing top-$k$ error curves and (2) they are able to select features using 100\% of the data, but \simp{} was not.
 
-The error curves for \simp, RF SHAP, and permutation importance are roughly the same for Boston in \figref{fig:topk}a and flight in \figref{fig:topk}b. For bulldozer in \figref{fig:topk}c, \simp's error curve suggests it selected a more predictive feature than RF SHAP or RF permutation importance for $k=1$: {\tt ModelID}  followed by high-cardinality categorical {\tt YearMade}. RF permutation importance chose {\tt ProductSize} as most important followed by {\tt ModelID} and RF SHAP chose {\tt ProductSize} followed by {\tt YearMade}. For the rent data set in \figref{fig:topk}d, \simp{} selects {\tt brooklynheights} (L1 distance from the apartment to that neighborhood) as the most predictive feature followed by {\tt bedrooms}.  RF SHAP and permutation importance selected {\tt bedrooms} followed by {\tt bathrooms}.  The \simp{} curve is very similar to the RF permutation curve. 
-
-\figref{fig:topk-impact} shows that the plain impact, unweighted by $x_j$ density, can also work well for model feature selection purposes.  The impact error curves match the importance error curves closely, indicating that $x_j$ density is not critical for these data sets.
+The error curves for \simp, RF SHAP, and permutation importance are roughly the same for Boston in \figref{fig:topk}a and flight in \figref{fig:topk}b. For bulldozer in \figref{fig:topk}c, \simp's error curve suggests it selected a more predictive feature than RF SHAP or RF permutation importance for $k=1$: {\tt ModelID}  followed by high-cardinality categorical {\tt YearMade}. RF permutation importance chose {\tt ProductSize} as most important followed by {\tt ModelID} and RF SHAP chose {\tt ProductSize} followed by {\tt YearMade}. For the rent data set in \figref{fig:topk}d, \simp{} selects {\tt brooklynheights} (L1 distance from the apartment to that neighborhood) as the most predictive feature followed by {\tt bedrooms}.  RF SHAP and permutation importance selected {\tt bedrooms} followed by {\tt bathrooms}.  The \simp{} curve is very similar to the RF permutation curve.   The second row in \figref{fig:topk} shows that the plain impact, unweighted by $x_j$ density, can also work well for model feature selection purposes.  The impact error curves match the importance error curves closely, indicating that $x_j$ density is not critical for these data sets.
 
 \begin{figure}
 \centering
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/boston-topk-RF-Importance.pdf}
-\subcaption{}
+%\subcaption{}
 \end{subfigure}%
 \hfill
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/flights-topk-RF-Importance.pdf}
-\subcaption{}
+%\subcaption{}
 \end{subfigure}
 \hfill
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/bulldozer-topk-RF-Importance.pdf}
-\subcaption{}
+%\subcaption{}
 \end{subfigure}%
 \hfill
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/rent-topk-RF-Importance.pdf}
+%\subcaption{}
+\end{subfigure}
+
+\vspace{1mm}
+\begin{subfigure}{.245\textwidth}
+    \centering
+\includegraphics[scale=0.45]{images/boston-topk-RF-Impact.pdf}
+\vspace{-7mm}
+\subcaption{}
+\end{subfigure}%
+\hfill
+\begin{subfigure}{.25\textwidth}
+    \centering
+\includegraphics[scale=0.45]{images/flights-topk-RF-Impact.pdf}
+\vspace{-2.5mm}
 \subcaption{}
 \end{subfigure}
-\caption[short]{\small {\bf RF MAE curves from \underline{importance} rankings}. The mean absolute error curves from 40-tree RF models trained on boston, flight, bulldozer, and rent data sets. Error curves represent 5-fold cross validation using the top-$k$ features from the following feature rankings: OLS as in \figref{fig:baseline}, SHAP interrogating OLS, SHAP interrogating 40-tree RF, permutation importance interrogating 40-tree RF, and \simp{}. All methods had access to 80\% training data from $n=25,000$ random sample (Boston has just 506 records).  All methods but \simp{} had access to the 20\% validation set.}
+\hfill
+\begin{subfigure}{.25\textwidth}
+    \centering
+\includegraphics[scale=0.45]{images/bulldozer-topk-RF-Impact.pdf}
+\vspace{-2.5mm}
+\subcaption{}
+\end{subfigure}%
+\hfill
+\begin{subfigure}{.245\textwidth}
+    \centering
+\includegraphics[scale=0.45]{images/rent-topk-RF-Impact.pdf}
+\vspace{-7mm}
+\subcaption{}
+\end{subfigure}
+\vspace{-3mm}
+\caption[short]{\small {\bf RF MAE curves from {\bf importance} rankings on top and {\bf impact} rankings on bottom}. The mean absolute error curves from 40-tree RF models trained on boston, flight, bulldozer, and rent data sets. Error curves represent 5-fold cross validation using the top-$k$ features from the following feature rankings: OLS as in \figref{fig:baseline}, SHAP interrogating OLS, SHAP interrogating 40-tree RF, permutation importance interrogating 40-tree RF, and \simp{}. All methods had access to 80\% training data from $n=25,000$ random sample (Boston has just 506 records).  All methods except \simp{} had access to the 20\% validation set.}
 \label{fig:topk}
 \end{figure}
 
-The OLS-derived feature rankings present an interesting story here (the circular markers). For Boston, flight, and rent, OLS feature rankings give error curves that are fairly similar to those of RF SHAP and RF permutation importance.  Please keep in mind that, while the features were chosen by interrogating a linear model, the error curves were  computed using predictions from a (stronger) RF model.  Perhaps most surprising is that OLS chooses the best single most-predictive feature for both flight and rent data sets, choosing {\tt TAXI\_OUT} and {\tt bathrooms}, respectively; RF SHAP and RF permutation rank {\tt DEPARTURE\_TIME} and {\tt bedrooms} as most predictive. The circle marker representing OLS in \figref{fig:topk}b and \figref{fig:topk}c has the lowest $k=1$ error curve value,  suggesting that, for example, the number of bathrooms is more predictive of rent price than bedrooms in New York. The error curve derived from the OLS SHAP feature rankings differs from the OLS curve because the OLS coefficients are divided by the standard error. An error curve using raw OLS coefficients is the same as OLS SHAP's curve.
+The OLS-derived feature rankings present an interesting story here (the circular markers). For Boston, flight, and rent, OLS feature rankings give error curves that are fairly similar to those of RF SHAP and RF permutation importance.  Please keep in mind that, while the features were chosen by interrogating a linear model, the error curves were  computed using predictions from a (stronger) RF model.  Perhaps most surprising is that OLS chooses the best single most-predictive feature for both flight and rent data sets, choosing {\tt TAXI\_OUT} and {\tt bathrooms}, respectively; RF SHAP and RF permutation rank {\tt DEPARTURE\_TIME} and {\tt bedrooms} as most predictive. The circle markers representing OLS in \figref{fig:topk}b and \figref{fig:topk}d have the lowest $k=1$ error curve value,  suggesting that, for example, the number of bathrooms is more predictive of rent price than bedrooms in New York. The error curve derived from the OLS SHAP feature rankings differs from the OLS curve because the OLS coefficients are divided by the standard error. An error curve using raw OLS coefficients is the same as OLS SHAP's curve.
 
+\cut{
 \begin{figure}
 \centering
 \begin{subfigure}{.245\textwidth}
@@ -439,6 +474,7 @@ The OLS-derived feature rankings present an interesting story here (the circular
 \caption[short]{\small MAE curves as in \figref{fig:topk} except using \simp{} {\em impact} rather than {\em importance}. \todo{merge with previous importance graphs?}}
 \label{fig:topk-impact}
 \end{figure}
+}
 
 Features that are predictive in one model are not necessarily predictive in another model.  To determine how well the feature rankings from the various methods ``export'' to another model, we trained gradient boosting machines (GBM) on the OLS-based, RF-based, and \simp{} feature rankings.  \figref{fig:topk-gbm} shows that the \simp{} error curves generated using GBM models are similar to those resulting from RF models, except for the (c) flight delay curve, which does not improve much after feature $k=5$, while the other feature rankings do improve. 
 
@@ -447,36 +483,42 @@ Features that are predictive in one model are not necessarily predictive in anot
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/boston-topk-GBM-Importance.pdf}
+\vspace{-7mm}
 \subcaption{}
 \end{subfigure}%
 \hfill
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/flights-topk-GBM-Importance.pdf}
+\vspace{-7mm}
 \subcaption{}
 \end{subfigure}
 \hfill
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/bulldozer-topk-GBM-Importance.pdf}
+\vspace{-7mm}
 \subcaption{}
 \end{subfigure}%
 \hfill
 \begin{subfigure}{.245\textwidth}
     \centering
 \includegraphics[scale=0.45]{images/rent-topk-GBM-Importance.pdf}
+\vspace{-7mm}
 \subcaption{}
 \end{subfigure}
-\caption[short]{\small MAE curves as in \figref{fig:topk} except measuring {\tt xgboost} predictions, rather than RF, with learning rate 0.5,  max depth 5, and 100 trees.}
+\vspace{-3mm}
+\caption[short]{\small MAE curves as in \figref{fig:topk} except measuring {\tt xgboost} predictions, rather than RF; hyper parameters were tuned via 5-fold CV.}
 \label{fig:topk-gbm}
 \end{figure}
 
-To check feature exportation to a very different model, we computed error curves for the Boston, flight, and rent data sets using OLS regressors, as shown in \figref{fig:OLS}, again using the \simp, OLS-derived, and RF-derived rankings.  The error curves derived from OLS model predictions are all higher than those from RFs, as expected since OLS is weaker than GBM, but feature rankings from all technique export reasonably well, with the exception of \simp's rankings for rent.  The poor performance could be due to OLS' inability to leverage the \simp{} ranking or could be poor feature ranking on \simp's part.  The former is more likely, given that more sophisticated methods are able to take derive low error curves using \simp's ranking.
+To check feature exportation to a very different model, we computed error curves for the Boston, flight, and rent data sets using OLS regressors, as shown in \figref{fig:OLS}, again using the \simp, OLS-derived, and RF-derived rankings.  The error curves derived from OLS model predictions are all higher than those from RFs, as expected since OLS is weaker than GBM, but feature rankings from all technique export reasonably well, with the exception of \simp's rankings for rent.  The poor performance could be due to OLS' inability to leverage the \simp{} ranking or could be poor feature ranking on \simp's part.  The former is more likely, given that more sophisticated methods get low error curves using \simp's ranking.
 
 \begin{figure}[htbp]
 \begin{center}
 \includegraphics[scale=0.5]{images/boston-topk-OLS-Importance.pdf}~~~
 \includegraphics[scale=0.5]{images/flights-topk-OLS-Importance.pdf}~~~\includegraphics[scale=0.5]{images/rent-topk-OLS-Importance.pdf}
+\vspace{-3mm}
 \caption[short]{\small MAE curves as in \figref{fig:topk-gbm} but measuring OLS rather than RF predictions.}
 \label{fig:OLS}
 \end{center}
@@ -489,13 +531,16 @@ To compute the \simp{} feature rankings described thus far, we set the random se
 \begin{subfigure}{.45\textwidth}
     \centering
 \includegraphics[scale=0.6]{images/rent-stability-importance.pdf}
+\vspace{-2mm}
 \subcaption{\simp{} Rent Importance}
 \end{subfigure}%
 \begin{subfigure}{.45\textwidth}
     \centering
 \includegraphics[scale=0.6]{images/rent-stability-impact.pdf}
+\vspace{-2mm}
 \subcaption{\simp{} Rent Impact}
 \end{subfigure}%
+\vspace{-3mm}
 \captionof{figure}{\small  Average feature importance and impact across 30 trials on the rent data set, with 75\% subsamples from 49k total records.  Error bars show two standard deviations. Red indicates two standard deviations reach zero.}
 \label{fig:stability}
 \end{center}
@@ -512,6 +557,7 @@ Performance is important for practitioners so it is worthwhile analyzing \simp{}
 {\tt\small bulldozer} & 14 & 3 & 0.8s & 3.0s & 11.4s & 24.6s & {\small $-0.063 n + 0.029 n^2$} & {\small 0.9961}\\
 {\tt\small rent} & 20 & 0 & 0.4s & 4.0s & 8.5s & 12.9s & {\small $0.424 n + 0.000 n^2$} & {\small 0.9995}\\
 \end{tabular}
+\vspace{-3mm}
 \caption{\small  Execution time for subsets of size 1,000 to 30,000 for rent, bulldozer, flight data sets.  There are a total of 40 numerical and 9 categorical variables: rent $p=20$, bulldozer $p=14$, and flight $p=17$. 
 Rent has no categorical variables and exhibits linear performance, whereas categorical variables introduce mildly quadratic behavior. Final two columns describe how data fits to quadratic equations. Time does not include Numba just-in-time compiler warm-up, but users do experience this warm-up time.}
 \label{fig:timing}
