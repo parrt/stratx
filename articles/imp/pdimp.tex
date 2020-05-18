@@ -95,14 +95,6 @@ feature importance, business insights, medical insights, partial dependence, mod
 \section{Introduction}
 \label{sec:intro}
 
-\todo{
-check \simp vs \Impo is confusing
-
-Check, what is $R^2$?
-
-We are back to just training data now.  all tests use 20 and 20 for hyper parameters. boston too little data; don't filter out anything: min samples per x = 1. one trial
-}
-
 Among data analysis techniques, feature importance is one of the most widely applied and practitioners use it for two key purposes. First, to select features for predictive models, dropping the least predictive features to simplify and potentially increase the generality of the model. Second, to gain business or medical insights, such as identifying product characteristics valued by customers or treatments contributing to patient recovery.  To distinguish the two use cases, we will refer to feature predictiveness for modeling purposes as {\em importance} (the usual meaning) and the effect of features on business or medical response variables as {\em impact}.
 
 While some feature importance approaches work directly on the data, such as minimal-redundancy-maximal-relevance (mRMR) by \cite{mRMR}, almost all algorithms used in practice rank features by interrogating a fitted model provided by the user.  Examples include permutation importance by \cite{RF}, drop column importance, and SHAP by \cite{shap}; LIME by \cite{lime} interrogates subsidiary models to analyze such fitted models. It is accepted as self-evident that identifying the most predictive features for a model is best done through interrogation of that  model, but this is not always the case.  For example, when asked to identify the single most important feature of a real dataset \citep{bulldozer} for a random forest (RF), the features selected by model-based techniques get twice the validation error of a nonparametric technique proposed in this paper; see \figref{fig:topk}c. Still, model interrogation is generally very effective in practice for feature importance purposes.
@@ -178,23 +170,22 @@ The usual definition of region width, $\Delta x_j = {(max({\bf X}_j) - min({\bf 
 
 \noindent For example, consider quadratic equation $y = x_1^2 + x_2 + 100$ as a generator of data for $x_1, x_2 \sim U(0,3)$. The symbolic partial derivatives are ${\partial y}/{\partial x_1} = 2 x_1$ and ${\partial y}/{\partial x_2} = 1$, giving $\text{\it PD}_1 = x_1^2$ and $\text{\it PD}_2 = x_2$. $\overline{|\text{\it PD}_1|}$ is then 9.0, the average magnitude of $x_1^2$ in $[0,3]$, and $\overline{|\text{\it PD}_2|}$ is 4.5, the average magnitude of $x_2$ in $[0,3]$, as depicted in \figref{fig:quad-area}. That is the same result obtained by integrating under the partial dependence curves:  $\int_0^3 x_1^2 dx_1 = \frac{x_1^3}{3} \big |_0^3 = 9$ and $\int_0^3 x_2^2 dx_2 = \frac{x_2^2}{2} \big |_0^3 = 4.5$.   Therefore, $x_1$ has twice the impact as $x_2$ for data generated in that interval, giving $\Imp_1^{*} = 0.\overline{66}$ and $\Imp_2^{*} = 0.\overline{33}$.
 
-
 \begin{figure}
 \centering
-\begin{subfigure}{.55\textwidth}
-    \centering
+\begin{minipage}{.56\textwidth}
+  \centering
 \includegraphics[scale=0.57]{images/quadratic-auc.pdf}
-\vspace{-1mm}
-\subcaption{\small  The area under $x_1$ and $x_2$ PD curves represent $\simp_1$, $\simp_2$ for $y = x_1^2 + x_2 + 100$ in range $[0,3]$. Note the difference between the area straddling the mean and the area under the partial dependence curve.}
+\vspace{-3mm}
+  \captionof{figure}{\small The area under $x_1$ and $x_2$ PD curves represent $\simp_1$, $\simp_2$ for $y = x_1^2 + x_2 + 100$ in range $[0,3]$. Compare the areas straddling the means and the areas under the partial dependence curves.}
 \label{fig:quad-area}
-\end{subfigure}%
+\end{minipage}
 \hfill
-\begin{subfigure}{.43\textwidth}
-    \centering
-\includegraphics[scale=0.5]{images/bulldozer-YearMade.pdf}\vspace{-1mm}
-\subcaption{\small \simp{} curve for bulldozer {\tt SalePrice} on {\tt YearMade} including the histogram used to weight the partial dependence to obtain feature importances. A 20k sample of 363k; \textasciitilde0.5\% of samples stratified into regions with single {\tt YearMade} values.}
+\begin{minipage}{.41\textwidth}
+  \centering
+\includegraphics[scale=0.5]{images/bulldozer-YearMade.pdf}  \vspace{-3mm}
+\captionof{figure}{\small \simp{} curve for bulldozer {\tt SalePrice} on {\tt YearMade} including the histogram used to weight the partial dependence to obtain feature importances. A 20k sample of 363k; \textasciitilde0.5\% of samples stratified into regions with single {\tt YearMade} values.}
 \label{fig:yearmade}
-\end{subfigure}
+\end{minipage}
 \end{figure}
 
 Intuitively, the impact of $x_j$ is how much, on average, the values of $x_j$ are expected to push $y$ away from a zero baseline. We deliberately chose this  definition instead of measuring how much $x_j$ pushes $y$ away from the average response, $\overline{y}$, as SHAP does. The impact of $x_1$ on $y = x_1^2+x_2+100$ is $x_1^2$, not $|\overline{y} - x_1^2|$.  \figref{fig:quad-area} illustrates how the area under the $x_1^2$ and $x_2$ PD curves differ from the area straddling the means. The area under-the-curve ratio of $x_1$-to-$x_2$ is 2-to-1 (9/4.5), whereas the ratio of the area straddling the mean has roughly a 3-to-1 ratio (6.95/2.26). We believe that the area under-the-curve better represents feature impact than the area straddling the mean.
@@ -336,7 +327,7 @@ Deriving feature importances from partial dependences as \spd{} does was previou
 Assessing the quality of feature impact and importance is challenging because, even with domain expertise, humans are unreliable estimators (which is why we need data analysis algorithms in the first place).  The simplest approach is to examine impacts and importances computed from synthetic data for which the answers are known.  For real data sets, we can train a predictive model on the most impactful or most important $k$ features, as identified by the methods of interests, and then compare model prediction errors. (\citealt{mRMR} and \citealt{tsanas} also used this approach.) The method that accurately identifies the most impactful features without getting confused by codependent features, should yield lower prediction errors for a given $k$.  
 
 In this section, we present the results of several experiments using the toy Boston data set and three real data sets, NYC rent prices \citep{rent}, bulldozer auction sales \citep{bulldozer}, and flight delays \citep{flights}. (Rent has $p=20$, bulldozer $p=14$, and flight $p=17$.) We draw $n$=25,000 samples from each data set population, except for Boston which only has 506 records, and split into 80\% training / 20\% validation sets. Each point on an error curve represents the validation set mean absolute error (MAE) for a given model, feature ranking, and data set. All models used to rank features or measure top-$k$ errors were tuned with 5-fold cross-validation grid search across a variety of hyper parameters using just the training records. (Tuned hyper parameters can be found at the start of file {\tt\small genfigs/support.py} in the repo.) The same \spd{} and \cspd{} hyper parameters were used across all simulations and datasets.\footnote{
-The entire \simp{} code base is available at {\tt\small https://github.com/parrt/stratx} and running {\tt\small articles/imp/genfigs/RUNME.py} will regenerate all figures in this paper, after downloading the three Kaggle data sets.  Simulations were run on a 4.0 Ghz 32G RAM machine running OS X 10.13.6 with SHAP 0.35, scikit-learn 0.21.3, XGBoost 0.90, and Python 3.7.4. The same random seed of 1 was set for each simulation for graph reproducibility.}
+The entire \simp{} code base is available at {\tt\small https://github.com/parrt/stratx} and running {\tt\small articles/imp/genfigs/RUNME.py} will regenerate all figures in this paper, after downloading the three Kaggle data sets.  \spd{} and \cspd{} calls always used {\tt\small min\_samples\_leaf=20}. Simulations were run on a 4.0 Ghz 32G RAM machine running OS X 10.13.6 with SHAP 0.35, scikit-learn 0.21.3, XGBoost 0.90, and Python 3.7.4. The same random seed of 1 was set for each simulation for graph reproducibility.}
 
 We begin with a baseline comparison of \Impo{} to principal component analysis' (PCA) ranking (``loads'' associated with the first component) and to Spearman's R coefficients computed between each $x_j$ and the response variable, $y$.  \figref{fig:baseline} shows the MAE curve for an RF model trained using the top-$k$ features as ranked by PCA, Spearman, and \Impo. Spearman's R does a good job for all but the bulldozer data set, while PCA performs poorly on all four data sets. \Impo{} is competitive with or surpasses these baseline techniques. 
 
@@ -519,31 +510,30 @@ To check feature exportation to a very different model, we computed error curves
 \includegraphics[scale=0.5]{images/boston-topk-OLS-Importance.pdf}~~~
 \includegraphics[scale=0.5]{images/flights-topk-OLS-Importance.pdf}~~~\includegraphics[scale=0.5]{images/rent-topk-OLS-Importance.pdf}
 \vspace{-3mm}
-\caption[short]{\small MAE curves as in \figref{fig:topk-gbm} but measuring OLS rather than RF predictions.}
+\caption{\small MAE curves as in \figref{fig:topk-gbm} but measuring OLS rather than RF predictions.}
 \label{fig:OLS}
 \end{center}
 \end{figure}
 
-To compute the \simp{} feature rankings described thus far, we set the random seed to 1 before each test in order to get reproducible figures.  But, different subsets of the data set can yield very different impacts, depending on the variability of the data set. \simp{} supports multiple trials via bootstrapping or subsampling on the $(\bf X, y)$ data set to get impact and importance standard deviations.  As an example, \figref{fig:stability} shows the  feature rankings of \Imp{} and \Impo{}, averaged from 30 trials using 75\% subsamples selected randomly from the complete 49k records of the rent data set. The error bars show two standard deviations above and below the average (a red error bar indicates it reaches 0 and was sifted to the bottom).  The high variances of the neighborhood features, such as {\tt brooklynheights} and {\tt Evillage}, arise because many distance-to-neighborhood features have similar impacts; selection will depend on vagaries of the subsample.
+To compute the \simp{} feature rankings described thus far, we used a single 80/20 training and validation sample in order to get reproducible figures.  But, different subsets of the data set can yield very different impacts, depending on the variability of the data set. \simp{} supports multiple trials via bootstrapping or subsampling on the $(\bf X, y)$ data set to get impact and importance standard deviations.  As an example, \figref{fig:stability} shows the  feature rankings of \Imp{} and \Impo{}, averaged from 30 trials using 75\% subsamples selected randomly from the complete 49k records of the rent data set. The error bars show two standard deviations above and below the average (a red error bar indicates it reaches 0 and was sifted to the bottom).  The high variances of the neighborhood features, such as {\tt brooklynheights} and {\tt Evillage}, arise because many distance-to-neighborhood features have similar impacts; selection will depend on vagaries of the subsample.
  
 \begin{figure}[htbp]
-\begin{center}
-\begin{subfigure}{.45\textwidth}
+\begin{subfigure}{.49\textwidth}
     \centering
 \includegraphics[scale=0.6]{images/rent-stability-importance.pdf}
 \vspace{-2mm}
 \subcaption{\simp{} Rent Importance}
 \end{subfigure}%
-\begin{subfigure}{.45\textwidth}
+\hfill
+\begin{subfigure}{.49\textwidth}
     \centering
 \includegraphics[scale=0.6]{images/rent-stability-impact.pdf}
 \vspace{-2mm}
 \subcaption{\simp{} Rent Impact}
 \end{subfigure}%
 \vspace{-3mm}
-\captionof{figure}{\small  Average feature importance and impact across 30 trials on the rent data set, with 75\% subsamples from 49k total records.  Error bars show two standard deviations. Red indicates two standard deviations reach zero.}
+\captionof{figure}{\small Average feature importance and impact across 30 trials on the rent data set, with 75\% subsamples from 49k total records.  Error bars show two standard deviations. Red indicates two standard deviations reach zero. \todo{can't figure out why latex makes this fig 10 not 9!!}}
 \label{fig:stability}
-\end{center}
 \end{figure}
 
 Performance is important for practitioners so it is worthwhile analyzing \simp{} time complexity and demonstrating that it operates in a reasonable amount of time.  The cost of computing each $x_j$'s impact is dominated by the cost of computing the partial dependence but includes a pass over the $x_j$ values to compute the mean. Computing the importance costs an extra pass to get a histogram. The upper bound  complexity for both \spd{} and \cspd{} partial dependences is $O(n^2)$ in the worst case, which is  similar to FPD's $O(nm)$ for $n$ records and $m$ curve evaluation points.  In practice, \spd{} typically performs linearly while \cspd{} exhibits mildly quadratic behavior.  The overall worst case behavior for \simp{} is then $O(p n^2)$ to get $p$ impacts and importances.   For comparison purposes, ALE is the most efficient at $O(n)$ per feature and SHAP has the hardest time with efficiency due to the combinatorial problem of feature subsetting. SHAP has model-type-dependent optimizations for linear regression, deep learning, and decision-tree based models, but other models are prohibitively expensive. For example, SHAP applied to a support vector machine trained on a 80\% Boston training set takes 4 minutes to explain the 101 records in the 20\% validation set.
@@ -629,7 +619,7 @@ To assess the quality of \simp's feature impacts, we compared \simp's recommende
 
 An interesting and unanticipated result is that simple expedients, such as ranking features by Spearman's R coefficient or permutation importance perform well, at least for the first eight important features in our experiments. (We did not perform experiments on the least important features.) Also, the error curves for SHAP and permutation importance generally mirror each other for the first eight features.  Both techniques introduce potentially nonsensical records to avoid retraining models, but this does not appear to affect their ability to rank features for feature selection purposes.
 
-The proposed approach relies on accurate partial dependences, and considerable effort has gone into refining the \spd{} and \cspd{} partial dependence algorithms currently used by \simp.  Any improvement in the accuracy of partial dependence curves would be useful in their own right and particularly helpful for \simp.  Our prototype is currently limited to regression until a suitable model-free partial dependence algorithm for classification can be developed.
+The proposed approach relies on accurate partial dependences, and considerable effort has gone into refining the \spd{} and \cspd{} partial dependence algorithms currently used by \simp.  Any improvement in the accuracy of partial dependence curves would be useful in their own right and particularly helpful for \simp.  The current prototype is limited to regression and so, next, we hope to develop suitable model-free partial dependence and impact algorithms for classification.
 
 \cut{
 \begin{figure}

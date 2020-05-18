@@ -9,5 +9,5 @@ support.gen_topk_figs(n_trials=1, dataset="rent",
                       cat_min_samples_leaf=20, # unused. all numerical
                       title="NYC rent prices",
                       yrange=(200, 1100),
-                      normalize=False,
+                      # normalize=False,
                       yunits="$")
