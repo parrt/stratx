@@ -154,12 +154,11 @@ To go from the idealized partial dependence of $x_j$ to feature impact, we assum
 \noindent  where $\{{\bf X}_j\}$ is the set of unique ${\bf X}_j$ values ($\{{\bf X}_j^{(i)}\}_{i=1..n}$) and $n_j$ is the number of unique ${\bf X}_j$. 
 The usual definition of region width, $\Delta x_j = {(max({\bf X}_j) - min({\bf X}_j))}/{n_j}$, is inappropriate in practice because ${\bf X}_j$ often has large gaps in $x_j$ space and impact units would include $x_j$'s units (e.g., $rent \times bedrooms$ or $rent \times hasparking$). That would make impact scores incomparable across features. By defining $\Delta x_j = 1/n_j$, the fraction of unique ${\bf X}_j$ values covered by one $PD_j$ value, widths are not skewed by empty $x_j$ gaps and impact units become those of $y$. That reduces $x_j$'s impact estimate to the average magnitude of $PD_j$:
 
+\noindent This formula works for any partial dependence curve, either by examining output from a fitted model, $\hat{f}$, or by estimating the partial derivative of $f$ directly from the data and then integrating, as \spd{} does. Dividing $x_j$'s impact by the sum of all impacts, converts impact units from $y$'s units to [0..1]:
+
 \[
 \Imp_j \approx  \sum_{x_j \in \{{\bf X}_j\}} |PD_j(x_j)| \times \frac{1}{n_j} = \overline{|PD_j|}
 \]
-
-\noindent This formula works for any partial dependence curve, either by examining output from a fitted model, $\hat{f}$, or by estimating the partial derivative of $f$ directly from the data and then integrating, as \spd{} does. Dividing $x_j$'s impact by the sum of all impacts, converts impact units from $y$'s units to [0..1]:
-
 
 ~\\
 \noindent {\bf Definition 2} The {\em normalized nonparametric feature impact} of $x_j$ is the ratio of the average magnitude of $x_j$'s partial dependence to the total for all variables:
@@ -193,25 +192,33 @@ Intuitively, the impact of $x_j$ is how much, on average, the values of $x_j$ ar
 The $PD_j$ curve represents how $x_j$ effects $y$, but does not take into consideration the distribution of $x_j$ in ${\bf X}_j$.  Consider the \spd{} curve and $x_j$ histogram in \figref{fig:yearmade} for feature {\tt\small YearMade} from the bulldozer auction data set \citep{bulldozer}. The colored curves represent ten bootstraps from the same training set and the black dots give the average curve.   From a business perspective, knowing that increases in bulldozer age continue to reduce price is useful, but new bulldozers will represent the bulk of any model validation set.  Because model feature selection is often assessed using  validation error, feature selection is sensitive to the distribution of $x_j$. This suggests that feature importance should take into consideration the distribution of $x_j$, leading to the following importance definition:
 
 ~\\
-\noindent {\bf Definition 3} The {\em normalized nonparametric feature importance} of $x_j$ is the ratio of $x_j$'s expected partial dependence magnitude to the total of all expected values:
+\noindent {\bf Definition 3} The {\em normalized nonparametric feature importance} of $x_j$ is the ratio of $x_j$'s average partial dependence magnitude, weighted by $x_j$'s distribution, to the total of all weighted averages:
+
+%\begin{equation}\label{eq:Epd3b}
+%\Impo_j^{*} = \frac{\Ex[|\text{\it PD}_j|]}{\sum_{k=1}^p \Ex[|\text{\it PD}_k|]}
+%\end{equation}
 
 \begin{equation}\label{eq:Epd3b}
-\Impo_j^{*} = \frac{\Ex[|\text{\it PD}_j|]}{\sum_{k=1}^p \Ex[|\text{\it PD}_k|]}
+\Impo_j^{*} = \frac{\Impo_j}{\sum_{k=1}^p \Impo_k}
 \end{equation}
 
-\noindent Let $P(x_j)$ be the probability of finding an $x_j$ value in ${\bf X}_j$, then:
-
-\todo{comment out $P(x_j)$ as we might want.}
+\noindent where
 
 \begin{equation}\label{eq:Epd3c}
-\Ex[|\text{\it PD}_j|] = \sum_{x_j \in \{{\bf X}_j\}} |\text{\it PD}_j(x_j)| \times P(x_j)
+\Impo_j \approx \sum_{x_j \in \{{\bf X}_j\}} \frac{n_{x_j}}{n} \times |PD_j(x_j)|
 \end{equation}
+
+\noindent and $n_{x_j}$ is the number of $x_j$ values in ${\bf X}_j$; i.e., $(x_j, n_{x_j})_{x_j \in \{{\bf X}_j\}}$ is the histogram of ${\bf X}_j$.
+
+%\begin{equation}\label{eq:Epd3c}
+%\Ex[|\text{\it PD}_j|] = \sum_{x_j \in \{{\bf X}_j\}} |\text{\it PD}_j(x_j)| \times P(x_j)
+%\end{equation}
 
 Measuring impact as the average partial dependence generalizes to non-ordinal categorical explanatory features encoded as unique integers, with a small modification.  
 
 \subsection{Impact and importance for categorical features}
 
-Partial dependence curves for numerical features use the leftmost $x_j$ value as the zero reference point, but nominal categorical features have no meaningful order. That implies we can choose any category as the zero reference, which shifts the partial dependence plot up or down, but does not alter the relative $y$ values among the levels. For example, we might see a partial dependence graph for a 4-level categorical feature with shape \begin{sparkline}{2.5}
+Partial dependence curves for numerical features use the leftmost $x_j$ value as the zero reference point, but nominal categorical features have no meaningful order. That implies we can choose any category as the zero reference, which shifts the partial dependence plot up or down, but does not alter the relative $y$ values among the category levels. For example, we might see a partial dependence graph for a 4-level categorical feature with shape \begin{sparkline}{2.5}
 \definecolor{sparkbottomlinecolor}{gray}{0.9}
 \sparkspike 0 0.07
 \sparkspike .33 .65
@@ -222,7 +229,7 @@ Partial dependence curves for numerical features use the leftmost $x_j$ value as
 \sparkspike .33 .075
 \sparkspike .66 0.15
 \sparkspike 1.0 0.07
-\end{sparkline} using the second level as the zero. The choice of reference category does not hinder human interpretation of the partial dependence plot, but does dramatically affect the impact.  If the max $y$  magnitude were 1.0, then the impacts (average magnitude) for these two variations would be roughly (0+1+1+1)/4 and ($|-1|$+0+0+0)/4, representing a 3x difference (3/4 versus 1/4). Worse, picking a category level whose $y$ is an outlier strongly biases the impact because the outlier pushes up (or down) all category $y$ values by a biased amount.  Instead of picking a specific level as the reference, therefore, we use the partial dependence average value as the reference zero:\\
+\end{sparkline} using the second level as the zero. The choice of reference category does not hinder human interpretation of the partial dependence plot, but does dramatically affect the impact.  If the max $y$  magnitude were 1.0, then the impacts (average magnitude) for these two variations would be roughly (0+1+1+1)/4 and ($|-1|$+0+0+0)/4, representing a 3x difference (3/4 versus 1/4). Worse, picking a category level whose $y$ is an outlier strongly biases the impact because the outlier pushes up (or down) all category $y$ values by a biased amount.  Instead of picking a specific level as the reference, therefore, we use that feature's partial dependence average value as the reference zero:\\
 
 \noindent {\bf Definition 4} The {\em normalized nonparametric categorical feature impact} of $x_j$ is the ratio of the average magnitude of $x_j$'s mean-centered partial dependence to the total for all variables:
 
@@ -239,10 +246,16 @@ Partial dependence curves for numerical features use the leftmost $x_j$ value as
 \noindent {\bf Definition 5} The {\em normalized nonparametric categorical feature importance} of $x_j$ is the ratio of $x_j$'s expected mean-centered partial dependence magnitude to the total of all:
 
 \begin{equation}\label{eq:Epd2b}
-\CImpo_j^{*} = \frac{\Ex[|\text{\it PD}_j - \overline{\text{\it PD}_j}|]}{\sum_{k=1}^p \Ex[|\text{\it PD}_k - \overline{\text{\it PD}_j}|]}
+\CImpo_j^{*} = \frac{\CImpo_j}{\sum_{k=1}^p \CImpo_k}
 \end{equation}
 
-By choosing $\overline{\text{\it PD}_j}$ as the reference zero, our definitions move closer to SHAP's mean-centered approach, which we disagreed with above, but only out of necessity for categorical variables; we also center on $\overline{\text{\it PD}_j}$ rather than the overall average, $\bar{y}$. With these definitions in mind, we make a more detailed comparison to related work in the next section.
+\noindent where
+
+\begin{equation}\label{eq:Epd2c}
+\CImpo_j \approx \sum_{x_j \in \{{\bf X}_j\}} \frac{n_{x_j}}{n} \times |PD_j(x_j)- \overline{\text{\it PD}_j}|
+\end{equation}
+
+By choosing $\overline{\text{\it PD}_j}$ as the reference zero, our definitions move closer to SHAP's mean-centered approach, which we disagreed with above, but only out of necessity for categorical variables. A key difference is that $\CImpo_j$ centers on $\overline{\text{\it PD}_j}$ rather than the overall average, $\bar{y}$, that includes the effect of all features. With these definitions in mind, we make a more detailed comparison to related work in the next section.
 
 \section{Existing methods}\label{sec:existing}
 
@@ -311,7 +324,7 @@ That begs the question of whether measuring the area under a simple mean-centere
 
 There are two methods used heavily in practice that define importance in terms of model parameters. The first operates on linear models and divides $\beta$ coefficients by their standard errors and the second examines the decision nodes in tree-based methods. The most well-known tree-based method is ``mean drop in impurity'' (also called ``gini drop'') by \cite{CART}, but there are a number of variations, such as the technique for gradient boosting machines (GBMs) described by \cite{PDP}. $x_j$ importance is the average drop in $y$ impurity, entropy (classification) or variance (regression), for all nodes testing $x_j$, weighted by the fraction of test samples that reach those nodes. Such importance measures are known to be biased towards continuous or high cardinality explanatory variables (see \citealt{permbias} and \citealt{RFunbiased}).
 
-Deriving feature importances from partial dependences as \spd{} does was previously proposed by \cite{pdvim} (with an R package called {\tt vip}), but they defined $x_j$'s importance as ${\it PD}_j$'s ``flatness'' rather than the area under the ideal ${\it PD}_j$ curve, as we have in \eqref{eq:pd}.  ({\tt vip} also computes partial dependence curves by measuring changes in model $\hat{f}$, rather than directly from the data as we do.) To measure flatness, they suggest standard deviation for numerical variables and category level range divided by four for categorical variables (as an estimate of standard deviation).  Because standard deviation measures the average squared-difference from the average response, {\tt vip} would likely be more sensitive to partial dependence curve spikes than the area under the curve.  Using the idealized partial dependence, {\tt vip} would measure importance as $\overline{(PD_j - \overline{PD_j})^2}$ akin to SHAP's mass-straddling-the-mean approach, whereas we suggest $\Ex[|PD_j|]$ \todo{fix} (which also takes $P(x_j)$ into account).  Any technique that computes partial dependence curves, directly or indirectly, fits neatly into {\tt vip} or the ``area under the PD curve'' framework described in this paper. FPD, ALE, SHAP, and \spd{} are four such techniques.
+Deriving feature importances from partial dependences as \spd{} does was previously proposed by \cite{pdvim} (with an R package called {\tt vip}), but they defined $x_j$'s importance as ${\it PD}_j$'s ``flatness'' rather than the area under the ideal ${\it PD}_j$ curve, as we have in \eqref{eq:pd}.  ({\tt vip} also computes partial dependence curves by measuring changes in model $\hat{f}$, rather than directly from the data as we do.) To measure flatness, they suggest standard deviation for numerical variables and category level range divided by four for categorical variables (as an estimate of standard deviation).  Because standard deviation measures the average squared-difference from the average response, {\tt vip} would likely be more sensitive to partial dependence curve spikes than the area under the curve.  Using the idealized partial dependence, {\tt vip} would measure importance as $\overline{(PD_j - \overline{PD_j})^2}$ akin to SHAP's mass-straddling-the-mean approach, whereas we suggest the average magnitude weighted by $x_j$'s distribution.  Any technique that computes partial dependence curves, directly or indirectly, fits neatly into {\tt vip} or the ``area under the PD curve'' framework described in this paper. FPD, ALE, SHAP, and \spd{} are four such techniques.
 
 \citet{intgrad} introduced a technique called {\em Integrated Gradients} (IG) for deep learning classifiers that can also be seen as a kind of partial dependence. To attribute a classifier prediction to the elements of an input vector, $\bf x$, IG integrates over the gradient of the model output function at points along the straight-line path from a baseline vector, $\bf x'$, to $\bf x$. IG estimates the integral by averaging the gradient computed at $m$ points and multiplying by the difference between ${\bf x}'_j$ and ${\bf x}_j$:
 
