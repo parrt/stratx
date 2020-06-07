@@ -121,7 +121,7 @@
 \global\let\journalopt\CurrentOption}{%
 \ClassWarning{Springer-SVJour3}{Specified option or subpackage
 "\CurrentOption" not found -}\OptionNotUsed}}
-\ExecuteOptions{a4paper,twoside,10pt,instindent}
+\ExecuteOptions{a4paper,10pt,instindent}
 \ProcessOptions
 %
 \ifx\journalopt\@empty\relax
