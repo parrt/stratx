@@ -120,8 +120,8 @@ def viz_clean_synth_uniform(n,p,max_x,min_samples_leaf, seed=None):
                         show_unique_cat_xticks=True,
                         min_y_shifted_to_zero=True,
                         verbose=False,
-                        figsize=(10, 4)
-                        # yrange=(-1000,1000)
+                        figsize=(10, 4),
+                        yrange=(0,max_x)
                         )
 
     if seed is not None:
@@ -157,7 +157,8 @@ def viz_clean_synth_gauss(n,p,max_x,min_samples_leaf, seed=None):
                         show_unique_cat_xticks=True,
                         min_y_shifted_to_zero=True,
                         verbose=False,
-                        figsize=(10, 4)
+                        figsize=(10, 4),
+                        yrange=(0,max_x)
                         )
 
     if seed is not None:
@@ -212,7 +213,7 @@ def viz_weather(n, p, min_samples_leaf, n_outliers=0, seed=None, show_truth=True
                         yrange=(0,50),
                         min_y_shifted_to_zero=True,
                         ax=ax,
-                        verbose=True,
+                        verbose=False,
                         # title=
                         )
 
