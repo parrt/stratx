@@ -40,7 +40,7 @@ from glob import glob
 
 setup(
     name='stratx',
-    version='0.3',
+    version='0.4', # introduces featimp
     url='https://github.com/parrt/stratx',
     license='MIT',
     py_modules=['stratx'],
