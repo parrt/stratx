@@ -27,7 +27,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from  matplotlib.collections import LineCollection
 import time
-from stratx.partdep import getcats
 
 """
 This code was built just to generate ICE plots for comparison in the paper.

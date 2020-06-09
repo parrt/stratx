@@ -31,7 +31,6 @@ from sklearn.utils import resample
 
 import shap
 
-from stratx.partdep import *
 
 import numpy as np
 import pandas as pd

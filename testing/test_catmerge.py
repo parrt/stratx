@@ -25,13 +25,13 @@ SOFTWARE.
 from sklearn.utils import resample
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import normalize
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from timeit import default_timer as timer
 from sklearn.utils import resample
 
 import shap
 
-from stratx.partdep import *
+from stratx.partdep import leaf_samples, conjure_twoclass, catwise_leaves, avg_values_at_cat
 
 import numpy as np
 import pandas as pd
