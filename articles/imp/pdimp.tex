@@ -161,11 +161,12 @@ To go from the idealized partial dependence of $x_j$ to feature impact, we assum
 \noindent  where $\{{\bf X}_j\}$ is the set of unique ${\bf X}_j$ values ($\{{\bf X}_j^{(i)}\}_{i=1..n}$) and $n_j$ is the number of unique ${\bf X}_j$. 
 The usual definition of region width, $\Delta x_j = {(\max({\bf X}_j) - \min({\bf X}_j))}/{n_j}$, is inappropriate in practice because ${\bf X}_j$ often has large gaps in $x_j$ space and impact units would include $x_j$'s units (e.g., $rent \times bedrooms$ or $rent \times hasparking$). That would make impact scores incomparable across features. By defining $\Delta x_j = 1/n_j$, the fraction of unique ${\bf X}_j$ values covered by one $PD_j$ value, widths are not skewed by empty $x_j$ gaps and impact units become those of $y$. That reduces $x_j$'s impact estimate to the average magnitude of $PD_j$:
 
-\noindent This formula works for any partial dependence curve, either by examining output from a fitted model, $\hat{f}$, or by estimating the partial derivative of $f$ directly from the data and then integrating, as \spd{} does. Dividing $x_j$'s impact by the sum of all impacts, converts impact units from $y$'s units to [0,1]:
-
 \[
 \Imp_j \approx  \sum_{x_j \in \{{\bf X}_j\}} |PD_j(x_j)| \times \frac{1}{n_j} = \overline{|PD_j|}
 \]
+
+
+\noindent This formula works for any partial dependence curve, either by examining output from a fitted model, $\hat{f}$, or by estimating the partial derivative of $f$ directly from the data and then integrating, as \spd{} does. Dividing $x_j$'s impact by the sum of all impacts, converts impact units from $y$'s units to [0,1]:
 
 ~\\
 \noindent {\bf Definition 2} The {\em normalized nonparametric feature impact} of $x_j$ is the ratio of the average magnitude of $x_j$'s partial dependence to the total for all variables:
