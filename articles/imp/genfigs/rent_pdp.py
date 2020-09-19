@@ -1,6 +1,6 @@
 import support
-from stratx.partdep import plot_stratpd, plot_catstratpd,\
-                           plot_catstratpd_gridsearch, plot_stratpd_gridsearch
+from stratx import plot_stratpd, plot_catstratpd, \
+    plot_catstratpd_gridsearch, plot_stratpd_gridsearch
 import matplotlib.pyplot as plt
 from stratx.featimp import importances
 import numpy as np

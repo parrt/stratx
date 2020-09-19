@@ -10,7 +10,7 @@ GREY = '#444443'
 n = 20_000
 shap_test_size = 1000
 
-X, y = load_bulldozer()
+X, y = load_bulldozer(n=50_000)
 
 # Most recent timeseries data is more relevant so get big recent chunk
 # then we can sample from that to get n

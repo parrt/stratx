@@ -40,10 +40,10 @@ from glob import glob
 
 setup(
     name='stratx',
-    version='0.4.1', # introduces featimp
+    version='0.5',
     url='https://github.com/parrt/stratx',
     license='MIT',
-    py_modules=['stratx'],
+    py_modules=['stratx', 'stratx.partdep', 'stratx.featimp', 'stratx.plot'],
     packages=find_packages(),
     python_requires='>=3.6',
     author='Terence Parr',

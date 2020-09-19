@@ -31,7 +31,7 @@ from sklearn.utils import resample
 
 import shap
 
-from stratx.partdep import *
+import stratx.partdep
 
 import numpy as np
 import pandas as pd
@@ -46,7 +46,7 @@ def check(X, y, colname,
           expected_ignored=0,
           min_samples_leaf=15):
     leaf_deltas, leaf_counts, avg_per_cat, count_per_cat, ignored = \
-        cat_partial_dependence(X, y, colname, min_samples_leaf=min_samples_leaf)
+        stratx.partdep.cat_partial_dependence(X, y, colname, min_samples_leaf=min_samples_leaf)
 
     print(leaf_deltas, avg_per_cat)
 
@@ -180,7 +180,7 @@ def test_sawtooth_derivative_disjoint_regions_bulldozer():
     y = df['y']
 
     leaf_deltas, leaf_counts, avg_per_cat, count_per_cat, ignored = \
-        cat_partial_dependence(X, y, "ModelID", min_samples_leaf=3)
+        stratx.partdep.cat_partial_dependence(X, y, "ModelID", min_samples_leaf=3)
 
     expected_deltas = np.array([[nan, nan, nan, nan],
                                 [  2, nan, nan, nan],
@@ -230,7 +230,7 @@ def test_sawtooth_derivative_disjoint_regions_bulldozer_some_negative():
     y = df['y']
 
     leaf_deltas, leaf_counts, avg_per_cat, count_per_cat, ignored = \
-        cat_partial_dependence(X, y, "ModelID", min_samples_leaf=3)
+        stratx.partdep.cat_partial_dependence(X, y, "ModelID", min_samples_leaf=3)
 
     expected_deltas = np.array([[nan, nan, nan, nan],
                                 [  2, nan, nan, nan],
@@ -338,7 +338,7 @@ def random_sawtooth_derivative_disjoint_regions_bulldozer():
     # print("OOB", rf.oob_score_)
 
     leaf_deltas, leaf_counts, avg_per_cat, count_per_cat, ignored = \
-        cat_partial_dependence(X, y, "ModelID", min_samples_leaf=10)
+        stratx.partdep.cat_partial_dependence(X, y, "ModelID", min_samples_leaf=10)
 
     # plot_catstratpd(X, y, colname='ModelID', targetname='SalePrice',
     #                 n_trials=1,

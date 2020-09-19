@@ -1,5 +1,5 @@
 
-from stratx.featimp import importances, plot_importances
+from stratx import importances, plot_importances
 from support import shap_importances, models, load_dataset
 
 import numpy as np

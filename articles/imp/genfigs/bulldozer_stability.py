@@ -1,10 +1,10 @@
 from support import *
 
-from stratx.featimp import *
+from stratx import *
 
 metric = mean_absolute_error
 
-X, y = load_bulldozer()
+X, y = load_bulldozer(n=50_000)
 
 # Most recent timeseries data is more relevant so get big recent chunk
 # then we can sample from that to get n

@@ -27,19 +27,12 @@ import pandas as pd
 
 from sklearn.utils import resample
 
-import matplotlib.pyplot as plt
-from matplotlib.collections import PatchCollection
-from matplotlib.patches import Rectangle
-
-import stratx.partdep as partdep
 import stratx.ice as ice
-
+from stratx.partdep import partial_dependence, cat_partial_dependence
 
 from timeit import default_timer as timer
-from joblib import parallel_backend, Parallel, delayed
-from matplotlib.ticker import FormatStrFormatter
-from os import getpid
-import tempfile
+from joblib import Parallel, delayed
+
 
 def importances(X: pd.DataFrame,
                 y: pd.Series,
@@ -72,7 +65,7 @@ def importances(X: pd.DataFrame,
     print(f"\tbootstrap            {bootstrap}")
     print(f"\tn_trees              {n_trees}")
 
-    X = partdep.compress_catcodes(X, catcolnames)
+    X = compress_catcodes(X, catcolnames)
 
     n,p = X.shape
     impact_trials = np.zeros(shape=(p, n_trials))
@@ -243,25 +236,25 @@ def single_feature_importance(X: pd.DataFrame, y: pd.Series,
     #print(f"Start {'catvar' if (colname in catcolnames) else 'numerical'} {colname}")
     if colname in catcolnames:
         leaf_deltas, leaf_counts, avg_per_cat, count_per_cat, ignored = \
-            partdep.cat_partial_dependence(X, y, colname=colname,
-                                           n_trees=n_trees,
-                                           min_samples_leaf=cat_min_samples_leaf,
-                                           rf_bootstrap=rf_bootstrap,
-                                           max_features=max_features,
-                                           verbose=verbose,
-                                           supervised=supervised)
+            cat_partial_dependence(X, y, colname=colname,
+                                   n_trees=n_trees,
+                                   min_samples_leaf=cat_min_samples_leaf,
+                                   rf_bootstrap=rf_bootstrap,
+                                   max_features=max_features,
+                                   verbose=verbose,
+                                   supervised=supervised)
         impact, importance = cat_compute_importance(avg_per_cat, count_per_cat)
     else:
         leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored = \
-            partdep.partial_dependence(X=X, y=y, colname=colname,
-                                       n_trees=n_trees,
-                                       min_samples_leaf=min_samples_leaf,
-                                       min_slopes_per_x=min_slopes_per_x,
-                                       rf_bootstrap=rf_bootstrap,
-                                       max_features=max_features,
-                                       verbose=verbose,
-                                       parallel_jit=n_jobs == 1,
-                                       supervised=supervised)
+            partial_dependence(X=X, y=y, colname=colname,
+                               n_trees=n_trees,
+                               min_samples_leaf=min_samples_leaf,
+                               min_slopes_per_x=min_slopes_per_x,
+                               rf_bootstrap=rf_bootstrap,
+                               max_features=max_features,
+                               verbose=verbose,
+                               parallel_jit=n_jobs == 1,
+                               supervised=supervised)
         impact, importance = compute_importance(X_col, pdpx, pdpy)
     #print("IGNORED", ignored)
     #print(f"{colname}:{impact:.3f}, {importance:.3f} mass")
@@ -474,204 +467,11 @@ def pdp_importances(model,X,numx=30,normalize=True):
     return I.sort_values('Importance', ascending=False)
 
 
-class ImpViz:
-    """
-    For use with jupyter notebooks, plot_importances returns an instance
-    of this class so we display SVG not PNG.
-    """
-    def __init__(self):
-        tmp = tempfile.gettempdir()
-        self.svgfilename = tmp+"/PimpViz_"+str(getpid())+".svg"
-        plt.tight_layout()
-        plt.savefig(self.svgfilename, bbox_inches='tight', pad_inches=0)
-
-    def _repr_svg_(self):
-        with open(self.svgfilename, "r", encoding='UTF-8') as f:
-            svg = f.read()
-        plt.close()
-        return svg
-
-    def save(self, filename):
-        plt.savefig(filename, bbox_inches='tight', pad_inches=0)
-
-    def view(self):
-        plt.show()
-
-    def close(self):
-        plt.close()
-
-
-def plot_importances(df_importances,
-                     xlabel=None,
-                     sortby: ('Impact', 'Importance') = 'Importance',
-                     highlight_high_stddev=2.0,
-                     yrot=0,
-                     title_fontsize=11,
-                     label_fontsize=10,
-                     fontname="Arial",
-                     width:float=3,  # if no figsize, use this width
-                     height:float=None,
-                     bar_width=13,  # in pixels
-                     bar_spacing = 4,  # in pixels
-                     imp_range=(0, 1.0),
-                     dpi=150,
-                     color='#4574B4',  #'#D9E6F5',
-                     whisker_color='black',  #'#F46C43'
-                     whisker_linewidth = .6,
-                     whisker_barwidth = .1,
-                     bgcolor=None,  # seaborn uses '#F1F8FE'
-                     xtick_precision=2,
-                     title=None,
-                     ax=None):
-    """
-    Given an array or data frame of importances, plot a horizontal bar chart
-    showing the importance values.
-
-    :param df_importances: A data frame with Feature, Importance columns
-    :type df_importances: pd.DataFrame
-    :param width: Figure width in default units (inches I think). Height determined
-                  by number of features.
-    :type width: int
-    :param minheight: Minimum plot height in default matplotlib units (inches?)
-    :type minheight: float
-    :param vscale: Scale vertical plot (default .25) to make it taller
-    :type vscale: float
-    :param label_fontsize: Font size for feature names and importance values
-    :type label_fontsize: int
-    :param yrot: Degrees to rotate feature (Y axis) labels
-    :type yrot: int
-    :param label_fontsize:  The font size for the column names and x ticks
-    :type label_fontsize:  int
-    :param scalefig: Scale width and height of image (widthscale,heightscale)
-    :type scalefig: 2-tuple of floats
-    :param xtick_precision: How many digits after decimal for importance values.
-    :type xtick_precision: int
-    :param xtick_precision: Title of plot; set to None to avoid.
-    :type xtick_precision: string
-    :param ax: Matplotlib "axis" to plot into
-    :return: None
-
-    SAMPLE CODE
-
-    from stratx.featimp import *
-    rf = RandomForestRegressor(n_estimators=100, n_jobs=-1, oob_score=True)
-    X_train, y_train = ..., ...
-    rf.fit(X_train, y_train)
-    imp = importances(rf, X_test, y_test)
-    viz = plot_importances(imp)
-    viz.save('file.svg')
-    viz.save('file.pdf')
-    viz.view() # or just viz in notebook
-    """
-    GREY = '#444443'
-    I = df_importances
-    if isinstance(I, pd.DataFrame):
-        if sortby not in I.columns.values:
-            sortby = 'Importance'
-        I = Isortby(I, sortby, stddev_threshold=highlight_high_stddev, ascending=True) # we plot in reverse order
-
-    n_features = len(I)
-    left_padding = 0.01
-
-    ppi = 72 # matplotlib has this hardcoded. E.g., see https://github.com/matplotlib/matplotlib/blob/40dfc353aa66b93fd0fbc55ca1f51701202c0549/lib/matplotlib/axes/_base.py#L694
-    imp = I[sortby].values
-
-    barcounts = np.array([f.count('\n')+1 for f in I.index])
-    N = np.sum(barcounts)
-
-    ypositions = np.array( range(n_features) )
-
-    if ax is None:
-        if height is None:
-            # we need a bar for each feature and half a bar on bottom + half a bar above
-            # on top then spacing in between N bars (N-1 spaces)
-            height_in_pixels = N * bar_width + 2 * bar_width / 2 + (N-1) * bar_spacing
-            # space_for x axis (labels etc...)
-            fudge = 25
-            if xlabel is not None: fudge += 12
-            if title is not None: fudge += 12
-            fig, ax = plt.subplots(1, 1, figsize=(width, (height_in_pixels + fudge) / ppi), dpi=dpi)
-        else:
-            fig, ax = plt.subplots(1, 1, figsize=(width, height), dpi=dpi)
-
-    ax.spines['top'].set_linewidth(.5)
-    ax.spines['right'].set_linewidth(.5)
-    ax.spines['left'].set_linewidth(.5)
-    ax.spines['bottom'].set_linewidth(.5)
-    ax.spines['top'].set_color('none')
-    ax.spines['right'].set_color('none')
-    ax.spines['left'].set_smart_bounds(True)
-    # ax.spines['bottom'].set_smart_bounds(True)
-    if bgcolor:
-        ax.set_facecolor(bgcolor)
-
-    if title:
-        ax.set_title(title, fontsize=title_fontsize, fontname=fontname, color=GREY, pad=0)
-
-    #ax.invert_yaxis()  # labels read top-to-bottom
-    ax.xaxis.set_major_formatter(FormatStrFormatter(f'%.{xtick_precision}f'))
-    ax.set_xlim(*imp_range)
-    if xlabel is not None:
-        ax.set_xlabel(xlabel)
-
-    ax.tick_params(axis='both', which='major', labelsize=label_fontsize, labelcolor=GREY)
-    ax.set_ylim(-.6, n_features-.5) # leave room for about half a bar below
-    ax.set_yticks(list(ypositions))
-    ax.set_yticklabels(list(I.index.values))
-
-    for tick in ax.get_xticklabels():
-        tick.set_fontname(fontname)
-    for tick in ax.get_yticklabels():
-        tick.set_fontname(fontname)
-
-    # rects = []
-    # for fi,y in zip(imp,ypositions):
-    #     print(fi,y)
-    #     r = Rectangle([0.01, y-.45], fi, .9, color=color)
-    #     rects.append(r)
-
-    # bars = PatchCollection(rects)
-    # ax.add_collection(bars)
-
-    ax.hlines(y=ypositions, xmin=left_padding, xmax=imp + left_padding, color=color,
-              linewidth=bar_width, linestyles='solid')
-
-    if sortby+' sigma' in I.columns:
-        sigmas = I[sortby+' sigma'].values
-        for fi,s,y in zip(imp, sigmas, ypositions):
-            if fi < 0.005: continue
-            s *= 2 # show 2 sigma
-            left_whisker = fi + left_padding - s
-            right_whisker = fi + left_padding + s
-            left_edge = left_whisker
-            c = whisker_color
-            if left_whisker < left_padding:
-                left_edge = left_padding + 0.004 # add fudge factor; mpl sees to draw bars a bit too far to right
-                c = '#CB1B1F'
-            # print(fi, y, left_whisker, right_whisker)
-            # horiz line
-            ax.plot([left_edge, right_whisker],  [y, y], lw=whisker_linewidth, c=c)
-            # left vertical
-            if left_whisker >= left_padding:
-                ax.plot([left_whisker, left_whisker],   [y - whisker_barwidth, y + whisker_barwidth], lw=whisker_linewidth, c=c)
-            # right vertical
-            ax.plot([right_whisker, right_whisker], [y - whisker_barwidth, y + whisker_barwidth], lw=whisker_linewidth, c=c)
-
-
-    # barcontainer = ax.barh(y=range(n_features),
-    #                        width=imp,
-    #                        left=0.001,
-    #                        height=0.9,
-    #                        tick_label=I.index,
-    #                        color=color)
-
-    # # Alter appearance of each bar
-    # for rect in barcontainer.patches:
-    #     rect.set_linewidth(.1)
-    #     rect.set_edgecolor(GREY)#'none')
-
-    # rotate y-ticks
-    if yrot is not None:
-        ax.tick_params(labelrotation=yrot)
-
-    return ImpViz()
+def compress_catcodes(X, catcolnames, inplace=False):
+    "Compress categorical integers if less than 90% dense"
+    X_ = X if inplace else X.copy()
+    for colname in catcolnames:
+        uniq_x = np.unique(X_[colname])
+        if len(uniq_x) < 0.90 * len(X_):  # sparse? compress into contiguous range of x cat codes
+            X_[colname] = X_[colname].rank(method='min').astype(int)
+    return X_

@@ -27,7 +27,7 @@ from numpy import nan, where
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 
-from stratx.partdep import *
+import stratx.partdep
 
 def slopes(X, y, colname, min_samples_leaf=10):
     rf = RandomForestRegressor(n_estimators=1,
@@ -35,7 +35,7 @@ def slopes(X, y, colname, min_samples_leaf=10):
                                bootstrap=False,
                                max_features=1.0)
     rf.fit(X.drop(colname, axis=1), y)
-    return collect_discrete_slopes(rf, X[colname], X.drop(colname, axis=1).values, y)
+    return stratx.partdep.collect_discrete_slopes(rf, X[colname], X.drop(colname, axis=1).values, y)
 
 
 def check(X, y, colname, expected_xranges, expected_slopes, expected_ignored=0, min_samples_leaf=15):
@@ -122,6 +122,6 @@ def test_sim_2cat_problem():
 
     real_uniq_x = np.unique(X['x1'])
     slope_at_x, slope_counts_at_x = \
-        avg_slopes_at_x_jit(real_uniq_x, expected_xranges, expected_slopes)
+        stratx.partdep.avg_slopes_at_x_jit(real_uniq_x, expected_xranges, expected_slopes)
 
     print(slope_at_x, slope_counts_at_x)

@@ -1,6 +1,6 @@
 import shap
 from stratx.ice import friedman_partial_dependence
-from stratx.partdep import plot_stratpd
+from stratx import plot_stratpd
 from articles.pd.support import synthetic_interaction_data
 
 import numpy as np

@@ -53,7 +53,8 @@ import rfpimp
 
 import shap
 
-import stratx.featimp as featimp #import plot_importances, importances, friedman_partial_dependences
+import stratx.featimp as featimp
+from stratx import plot_stratpd, importances, plot_importances
 
 # THIS FILE IS INTENDED FOR USE BY PARRT TO TEST / GENERATE SAMPLE IMAGES
 
@@ -427,14 +428,14 @@ def gen_topk_figs(n_trials,dataset,targetname,title,yunits,catcolnames=set(),
                              )
 
     w = 4.5 if dataset == 'flights' else 3
-    featimp.plot_importances(imps['Strat'].iloc[:8], imp_range=(0, 0.4), width=w,
+    plot_importances(imps['Strat'].iloc[:8], imp_range=(0, 0.4), width=w,
                      title=f"{dataset} StratImpact importances")
     plt.tight_layout()
     plt.savefig(f"../images/{dataset}-features.pdf")
     # plt.show()
     plt.close()
 
-    featimp.plot_importances(imps['RF SHAP'].iloc[:8], imp_range=(0, 0.4), width=w,
+    plot_importances(imps['RF SHAP'].iloc[:8], imp_range=(0, 0.4), width=w,
                      title=f"{dataset} SHAP RF importances")
     plt.tight_layout()
     plt.savefig(f"../images/{dataset}-features-shap-rf.pdf")

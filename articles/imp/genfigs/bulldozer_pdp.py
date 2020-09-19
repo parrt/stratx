@@ -10,8 +10,8 @@ from sympy.simplify.radsimp import fraction_expand
 
 #from support import load_bulldozer
 import support
-from stratx.partdep import plot_stratpd, plot_catstratpd, plot_catstratpd_gridsearch
-from stratx.featimp import importances
+from stratx import plot_stratpd, plot_catstratpd, plot_catstratpd_gridsearch
+from stratx import importances
 
 import numpy as np
 import pandas as pd

@@ -24,7 +24,7 @@ SOFTWARE.
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble.partial_dependence import partial_dependence
+from sklearn.inspection import partial_dependence
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
@@ -39,10 +39,11 @@ from articles.pd.support import load_rent, load_bulldozer, load_flights, \
                                 toy_weather_data, toy_weight_data, \
                                 df_cat_to_catcode, df_split_dates, \
                                 df_string_to_cat, synthetic_interaction_data
-from stratx.partdep import plot_stratpd, plot_catstratpd, \
-                           plot_stratpd_gridsearch, plot_catstratpd_gridsearch, \
-                           marginal_plot_, partial_dependence
-from stratx.ice import predict_ice, predict_catice, plot_ice, plot_catice, friedman_partial_dependence
+from stratx import plot_stratpd, plot_catstratpd, \
+                           plot_stratpd_gridsearch, plot_catstratpd_gridsearch
+from stratx.partdep import partial_dependence
+from stratx.plot import marginal_plot_, plot_ice, plot_catice
+from stratx.ice import predict_ice, predict_catice, friedman_partial_dependence
 import inspect
 import matplotlib.patches as mpatches
 from collections import OrderedDict

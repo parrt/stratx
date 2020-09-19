@@ -1,5 +1,4 @@
 from support import *
-from stratx.featimp import *
 
 np.random.seed(1)
 

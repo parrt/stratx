@@ -31,7 +31,7 @@ from sklearn.utils import resample
 
 import shap
 
-from stratx.partdep import leaf_samples, conjure_twoclass, catwise_leaves, avg_values_at_cat
+import stratx.partdep
 
 import numpy as np
 import pandas as pd
@@ -48,7 +48,7 @@ def get_leaves(X, y, colname, min_samples_leaf=1):
                                max_features=1.0,
                                oob_score=False)
     rf.fit(X_not_col, y)
-    leaves = leaf_samples(rf, X_not_col)
+    leaves = stratx.partdep.leaf_samples(rf, X_not_col)
     return leaves
 
 
@@ -77,7 +77,7 @@ def stratify_cats(X, y,
             print(f"CatStrat Partition RF: dropping {colname} training R^2 {rf.score(X_not_col, y):.2f}")
     else:
         print("USING UNSUPERVISED MODE")
-        X_synth, y_synth = conjure_twoclass(X)
+        X_synth, y_synth = stratx.partdep.conjure_twoclass(X)
         rf = RandomForestClassifier(n_estimators=n_trees,
                                     min_samples_leaf=min_samples_leaf,# * 2,  # there are 2x as many samples (X,X') so must double leaf size
                                     bootstrap=bootstrap,
@@ -92,7 +92,7 @@ def stratify_cats(X, y,
     #     catwise_leaves(rf, X, y, colname, verbose=verbose)
 
     leaf_deltas, leaf_counts, ignored = \
-        catwise_leaves(rf, X_not_col, X_col, y.values, max_catcode)
+        stratx.partdep.catwise_leaves(rf, X_not_col, X_col, y.values, max_catcode)
     print("leaf_deltas\n",leaf_deltas)
     print("leaf_counts\n",leaf_counts)
 
@@ -131,7 +131,7 @@ def check(expected_avg_per_cat, expected_count_per_cat, leaf_deltas, leaf_counts
     if leaf_counts is None:
         leaf_counts = (~np.isnan(leaf_deltas)).astype(int)
     avg_per_cat, count_per_cat = \
-        avg_values_at_cat(leaf_deltas, leaf_counts, marginal_avg_y_per_cat=marginal_avg_y_per_cat)
+        stratx.partdep.avg_values_at_cat(leaf_deltas, leaf_counts, marginal_avg_y_per_cat=marginal_avg_y_per_cat)
 
 
     np.testing.assert_array_almost_equal(avg_per_cat, expected_avg_per_cat, decimal=2)
@@ -148,7 +148,7 @@ def test_single_leaf():
         [0]
     ])
     leaf_counts = np.array([1,1,1,0,1]).reshape(-1,1)
-    avg_per_cat, count_per_cat = avg_values_at_cat(leaf_deltas, leaf_counts)
+    avg_per_cat, count_per_cat = stratx.partdep.avg_values_at_cat(leaf_deltas, leaf_counts)
     expected = np.array([0, 1, 2, nan, 0])
     np.testing.assert_array_almost_equal(avg_per_cat, expected, decimal=2)
 

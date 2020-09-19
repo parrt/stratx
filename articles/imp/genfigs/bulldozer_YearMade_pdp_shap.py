@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import shap
 
-from stratx.partdep import plot_stratpd, plot_catstratpd
+from stratx import plot_stratpd, plot_catstratpd
 
 GREY = '#444443'
 

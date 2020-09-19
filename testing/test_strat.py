@@ -31,7 +31,7 @@ from sklearn.utils import resample
 
 import shap
 
-from stratx.partdep import *
+import stratx.partdep
 
 import numpy as np
 import pandas as pd
@@ -45,9 +45,9 @@ def check(X, y, colname,
           expected_ignored=0,
           min_samples_leaf=15):
     leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy, ignored = \
-        partial_dependence(X, y, colname,
-                           min_samples_leaf=min_samples_leaf,
-                           min_slopes_per_x=1)
+        stratx.partdep.partial_dependence(X, y, colname,
+                                          min_samples_leaf=min_samples_leaf,
+                                          min_slopes_per_x=1)
 
     # print(leaf_xranges, leaf_slopes, slope_counts_at_x, dx, slope_at_x, pdpx, pdpy)
 

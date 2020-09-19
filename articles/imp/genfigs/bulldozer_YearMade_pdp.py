@@ -8,7 +8,7 @@ from sklearn.utils import resample
 import shap
 from sympy.simplify.radsimp import fraction_expand
 
-from stratx.partdep import plot_stratpd
+from stratx import plot_stratpd
 from support import load_dataset
 
 import numpy as np
