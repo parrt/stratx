@@ -1,0 +1,348 @@
+%%
+%% This is file `ecrc.sty',
+%% generated with the docstrip utility.
+%%
+%% The original source files were:
+%%
+%% elsarticle.dtx  (with options: `class')
+%% 
+%% Copyright 2009, 2010, 2011 Elsevier Ltd
+%% 
+%% This file is part of the 'Elsarticle Bundle'.
+%% -------------------------------------------
+%% 
+%% It may be distributed under the conditions of the LaTeX Project Public
+%% License, either version 1.2 of this license or (at your option) any
+%% later version.  The latest version of this license is in
+%%    http://www.latex-project.org/lppl.txt
+%% and version 1.2 or later is part of all distributions of LaTeX
+%% version 1999/12/01 or later.
+%% 
+%%
+\NeedsTeXFormat{LaTeX2e}%
+
+\ProvidesPackage{ecrc}[2011/05/07 v1.2a ecrc]
+
+\DeclareOption{procedia}{\global\elsarticle@nsmodeltrue}
+\newif\ifelsarticle@nsmodel\elsarticle@nsmodelfalse
+
+\ProcessOptions
+
+\RequirePackage{geometry}
+\ifnum\jtype=1
+ \geometry{twoside,
+  paperwidth=210mm,
+  paperheight=297mm,
+  textheight=562pt,
+  textwidth=384pt,
+  centering,
+  headheight=10pt,
+  headsep=12pt,
+  footskip=12pt,
+  footnotesep=24pt plus 2pt minus 12pt,
+}
+ \global\let\bibfont=\footnotesize
+ \global\bibsep=0pt
+ \if@twocolumn\global\@twocolumnfalse\fi
+ \else
+\ifnum\jtype=3
+  \ifelsarticle@nsmodel
+   \AtBeginDocument{\@twosidetrue\@mparswitchfalse}
+   \def\@evenfoot{}
+   \def\@oddfoot{}
+   \geometry{twoside,
+    paperwidth=210mm,
+    paperheight=297mm,
+    textheight=622pt,
+    textwidth=428.72pt,
+    centering,
+    headheight=10pt,
+    headsep=12pt,
+    footskip=12pt,
+    footnotesep=24pt plus 2pt minus 12pt,
+    columnsep=2pc
+}
+  \else
+    \geometry{twoside,
+     paperwidth=210mm,
+     paperheight=297mm,
+     textheight=622pt,
+     textwidth=468pt,
+     centering,
+     headheight=10pt,
+     headsep=12pt,
+     footskip=12pt,
+     footnotesep=24pt plus 2pt minus 12pt,
+     columnsep=2pc
+}
+\fi
+ \global\let\bibfont=\footnotesize
+ \global\bibsep=0pt
+ \if@twocolumn\input{fleqn.clo}\fi
+\else\ifnum\jtype=5
+ \RequirePackage{geometry}
+ \geometry{twoside,
+  paperwidth=210mm,
+  paperheight=297mm,
+  textheight=682pt,
+  textwidth=522pt,
+  centering,
+  headheight=10pt,
+  headsep=12pt,
+  footskip=12pt,
+  footnotesep=24pt plus 2pt minus 12pt,
+  columnsep=18pt
+ }%
+ \global\let\bibfont=\footnotesize
+ \global\bibsep=0pt
+ \input{fleqn.clo}
+ \global\@twocolumntrue
+%%
+%% End of option '5p'
+%%
+\fi\fi\fi
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\AtEndDocument{\label{lastpage}}
+
+\let\@journalname\@empty
+\def\journalname#1{\gdef\@journalname{#1}}
+
+\let\@jid\@empty
+\def\jid#1{\gdef\@jid{#1}}
+
+\def\reprintline{%
+    \parbox[t]{\@tempdima}{\centering%
+    \raisebox{20pt}{\includegraphics{SDlogo-\jtype p}}\\[-12pt]
+    \mbox{\footnotesize\@journalname~xx~(xxxx)~xxx-xxx}%
+    }}
+
+\def\volume#1{\gdef\@vol{#1}}
+\def\firstpage#1{\gdef\@firstpage{#1}%
+                  \setcounter{page}{#1}}
+                  
+\def\lastpage{\pageref{lastpage}}
+
+\def\jnltitlelogo#1{\gdef\@jnltitlelogo{#1}}
+
+\newdimen\dummylogowidth
+\dummylogowidth=87pt
+
+\jnltitlelogo{Journal Logo}
+
+\def\TopRule{\rule{\dummylogowidth}{1.85pt}\\[-9.6pt]
+             \rule{\dummylogowidth}{1pt}}
+
+\def\BottomRule{\rule{\dummylogowidth}{1pt}\\[-9pt]        
+                \rule{\dummylogowidth}{1.85pt}}  
+
+
+\def\jnltitlebox{\parbox[c][42pt]{84.37pt}%%
+                {\fontsize{18pt}{20pt}\sffamily\selectfont
+                \centering\@jnltitlelogo}}
+
+\def\dummyjnllogo{%
+      \parbox[c][61pt][c]{\dummylogowidth}%
+      {\TopRule%
+       \vfill%
+        \jnltitlebox%
+       \vfill%
+       \BottomRule%
+}}
+
+\def\elslogo{\includegraphics{elsevier-logo-\jtype p}}
+\def\sdlogo{\includegraphics{SDlogo-\jtype p}}
+\def\jnllogo{\IfFileExists{\@jid logo}%
+   {\includegraphics{\@jid logo}}%
+   {\dummyjnllogo}%
+   }
+
+\def\elsarticle@titlefont{\fontsize{17pt}{20.4}\selectfont}
+\def\elsarticle@authorfont{\fontsize{13pt}{15.6}\selectfont}
+\def\elsarticle@absfont{\fontsize{9pt}{10.8}\selectfont}
+
+\def\runauth#1{\gdef\@runauth{#1}}
+\runauth{Author}
+
+\let\@dochead\@gobble
+\def\dochead#1{\gdef\@dochead{\centering{\large#1}}}
+
+\def\ps@pprintTitle{%
+    \def\@evenhead{%% Even head
+      \setbox1=\hbox{\elslogo}%
+      \setbox2=\hbox{\sdlogo}%
+      \setbox3=\hbox{\jnllogo}%
+%      \@tempdima=\textwidth\relax%
+%      \advance \@tempdima - \wd1%
+%      \advance \@tempdima - \wd3%
+%      \advance \@tempdima - 72pt%
+%      \showthe\wd1
+%      \showthe\wd2
+      \vspace*{2pc}
+      \parbox[t]{\wd1}{\elslogo}
+       \hfil\parbox[t]{19pc}{\centering%
+       \raisebox{23pt}{\sdlogo}\\[-12pt]
+       \mbox{\footnotesize\@journalname~\@vol~(\the\year)%
+         ~\@firstpage--\lastpage}}\hfil%
+        \raisebox{23pt}{\parbox[c]{\wd3}{\jnllogo\\[6pt]
+        \ifelsarticle@nsmodel%
+         \hspace*{-1.8pc}{\footnotesize www.elsevier.com/locate/procedia}%
+        \fi}}}
+      \let\@oddhead\@evenhead%
+      \let\@oddfoot\@empty
+      \let\@oddfoot\@evenfoot
+}      
+
+\long\def\MaketitleBox{%
+  \resetTitleCounters
+  \def\baselinestretch{1}%
+  \begin{center}%
+  \ifx\@dochead\@empty\relax%
+     \vspace*{3pc}%
+  \else%
+     \vspace*{5pc}%
+   \@dochead%
+     \par%
+     \vspace*{1.75pc}%
+   \fi%
+   \def\baselinestretch{1}%
+    {\strut\elsarticle@titlefont\@title\strut}\par\vskip18pt
+%    \normalsize\elsauthors\par\vskip10pt
+    {\elsarticle@authorfont\elsauthors}\par\vskip10pt
+    \footnotesize\itshape\elsaddress\par\vskip36pt
+    \hrule\vskip12pt
+    \ifvoid\absbox\else\unvbox\absbox\par\vskip10pt\fi
+    \ifvoid\keybox\else\unvbox\keybox\par\vskip10pt\fi
+    \hrule\vskip12pt
+    \end{center}%
+   \ifcase\jtype\or
+    \vspace*{-20pt}%
+   \or 
+   \or 
+    \vspace*{-20pt}%
+   \fi 
+}
+
+\def\ps@headings{%
+    \def\@oddhead{\parbox{\textwidth}{\itshape\footnotesize%
+        \hfill\@runauth~/~\@journalname~\@vol~(\the\year)~%
+          \@firstpage--\lastpage%
+         \hfill{\rm \thepage}}}%
+    \def\@evenhead{\parbox{\textwidth}{\itshape\footnotesize%
+         {\rm \thepage}\hfil\@runauth~/~\@journalname~\@vol~(\the\year)~%
+         \@firstpage--\lastpage\hfil}}%
+    \let\@evenfoot\@empty%
+    \let\@evenfoot\@oddfoot}
+
+\pagestyle{headings}
+
+
+\def\footnoterule{\kern-3\p@%
+  \hrule width 3pc height .25pt
+  \kern3\p@}
+
+\newif\if@copyrightline\@copyrightlinefalse
+\let\@copyrightyear\@empty
+\def\copyrightyear#1{\gdef\@copyrightyear{#1}}
+\let\@copyrightowner\@empty
+\def\copyrightowner#1{\gdef\@copyrightowner{#1}}
+
+\def\CopyrightLine{\@ifnextchar[{\@CopyrightLine}{\@CopyrightLine[]}}
+\def\@CopyrightLine[#1]#2#3{\@copyrightlinetrue%
+                       \gdef\@copyrightprefix{#1}%
+                       \gdef\@copyrightyear{#2}%
+                       \gdef\@copyrighttext{#3}% 
+                       \gdef\@CopyrightLine{\par\vskip1pc%
+                       \noindent\ifx\@copyrightprefix\@empty\relax%
+                       \else\@copyrightprefix~\fi%
+                       \textcopyright~\@copyrightyear~%
+                       \@copyrighttext~}}
+
+\renewenvironment{abstract}{\global\setbox\absbox=\vbox\bgroup
+  \hsize=\textwidth\def\baselinestretch{1}%
+  \noindent\unskip\textbf{Abstract}%
+  \elsarticle@absfont\par\medskip\unskip\noindent\ignorespaces}
+ {\if@copyrightline\@CopyrightLine\fi\egroup}
+
+\def\keyword{%
+  \def\sep{\unskip, }%
+ \def\MSC{\@ifnextchar[{\@MSC}{\@MSC[2000]}}
+  \def\@MSC[##1]{\par\leavevmode\hbox {\it ##1~MSC:\space}}%
+  \def\PACS{\par\leavevmode\hbox {\it PACS:\space}}%
+  \def\JEL{\par\leavevmode\hbox {\it JEL:\space}}%
+  \global\setbox\keybox=\vbox\bgroup\hsize=\textwidth
+  \normalsize\normalfont\def\baselinestretch{1}
+  \parskip\z@
+  \elsarticle@absfont\noindent\textit{Keywords: }
+  \raggedright                         % Keywords are not justified.
+  \ignorespaces}
+\def\endkeyword{\par \egroup}
+
+\ifelsarticle@nsmodel
+\def\figurename{Fig.}
+\long\def\@makecaption#1#2{%
+  \vskip\abovecaptionskip\footnotesize
+  \sbox\@tempboxa{#1. #2}%
+  \ifdim \wd\@tempboxa >\hsize
+    #1. #2\par
+  \else
+    \global \@minipagefalse
+    \hb@xt@\hsize{\hfil\box\@tempboxa\hfil}%
+  \fi
+  \vskip\belowcaptionskip}
+\else
+\long\def\@makecaption#1#2{%
+  \vskip\abovecaptionskip\footnotesize
+  \sbox\@tempboxa{#1. #2}%
+  \ifdim \wd\@tempboxa >\hsize
+    #1. #2\par
+  \else
+    \global \@minipagefalse
+    \hb@xt@\hsize{\hfil\box\@tempboxa\hfil}%
+  \fi
+  \vskip\belowcaptionskip}
+\fi
+
+\makeatother
+
+%% Change log
+
+%% 27 Feb 2010:  Fontsize of dochead changed to \large from \Large
+%%               as per Martin Ruck's mail on 26 Feb 2010.
+%%
+%%--------
+%%
+%% 7 May 2011:   As pe Martin Ruck's request on May 5, to make the
+%%               output same as that of Word template, following changes
+%%               are made:
+%
+%%               1. New option `procedia' defined. If this option is
+%%                  used along with the 3p option, the output will be
+%%                  same as that of the Word template.
+%
+%%               2. \CopyrightLine[<text-before-year>]{<year>}{<restt-of-the-copyright-text>}
+%%                  defined.
+%%                  eg: \CopyrightLine[Crown copyright]{2011}{Published by Elsevier Ltd.}
+%%                      \CopyrightLine{2011}{Elsevier Ltd. All rights reserved}
+%
+%%               3. Fontsize of the following parts updated:
+%%                  Title, Author, Abstract, Keywords
+%
+%%               4. Header and footer corrected. Earlier for both the
+%%                  odd and even pages, the header was same. But now
+%%                  this is changed.
+%
+%%               5. `Figure' changed to `Fig.' in caption.
+%
+%%               6. Textwidth changed to 428.pt for the option `nsmodel'.
+%
+%%               7. EPS version of logos created so that authors can
+%%                  can use latex too in addition to pdflatex.
+%
+%% 2 June 2011:  1. A small typo corrected. (Proceedia changed to
+%%                  Procedia).
+%
+%%               2. The journal url will appear only if the option
+%%                  `procedia' is given.
+
