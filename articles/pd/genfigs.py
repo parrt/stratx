@@ -635,7 +635,7 @@ def weather():
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     ax.scatter(X['state'], y, alpha=.05, s=15)
-    ax.set_xticks(range(1,len(names)))
+    ax.set_xticks(range(1,len(catnames)+1))
     ax.set_xticklabels(catnames.values())
     ax.set_xlabel("state")
     ax.set_ylabel("temperature")
@@ -2418,16 +2418,16 @@ def partitioning():
 
 
 if __name__ == '__main__':
-    productsize()
-    interactions()
-    yearmade()
-    rent()
-    rent_ntrees()
-    weight()
-    shap_pregnant()
-    shap_weight(feature_perturbation='tree_path_dependent', twin=True) # more biased but faster
-    shap_weight(feature_perturbation='interventional', twin=True)      # takes 04:45 minutes
-    weather()
+    # productsize()
+    # interactions()
+    # yearmade()
+    # rent()
+    # rent_ntrees()
+    # weight()
+    # shap_pregnant()
+    # shap_weight(feature_perturbation='tree_path_dependent', twin=True) # more biased but faster
+    # shap_weight(feature_perturbation='interventional', twin=True)      # takes 04:45 minutes
+    # weather()
     noise()
 
     # Invoke R to generate csv files then load with python to plot
