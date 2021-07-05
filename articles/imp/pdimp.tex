@@ -61,7 +61,7 @@
 
 \begin{document}
 
-\title{Nonparametric Feature Impact and Importance}
+\title{\bf Nonparametric Feature Impact and Importance}
 
 % PREPRINT
 \cut{
@@ -93,16 +93,16 @@
 \maketitle
 
 \begin{abstract}%
-Practitioners use feature importance to rank and eliminate weak predictors during model development in an effort to simplify models and improve generality.  Unfortunately, they also routinely conflate such feature importance measures with feature impact, the isolated effect of an explanatory variable on the response variable.   This can lead to real-world consequences when importance is inappropriately interpreted as impact for business or medical insight purposes. The dominant approach for computing importances is through interrogation of a fitted model, which works well for feature selection, but gives distorted measures of feature impact. The same method applied to the same data set can yield different feature importances, depending on the model, leading us to conclude that impact should be computed directly from the data.  While there are nonparametric feature selection algorithms, they typically provide feature rankings, rather than measures of impact or importance. They also typically focus on single-variable associations with the response. In this paper, we give mathematical definitions of feature impact and importance, derived from partial dependence curves, that operate directly on the data. To assess quality, we show that features ranked by these definitions are competitive with existing feature selection techniques using three real data sets for predictive tasks.
+Practitioners use feature importance to rank and eliminate weak predictors during model development in an effort to simplify models and improve generality.  Unfortunately, they also routinely conflate such feature importance measures with feature impact, the isolated effect of an explanatory variable on the response variable. This can lead to real-world consequences when importance is inappropriately interpreted as impact in applications like medicine and business. The dominant approach for computing feature importance is through interrogation of a fitted model, which works well for feature selection, but gives distorted measures of feature impact. For example, the same method applied to the same data set can yield different feature importances, depending on the model, leading us to conclude that impact should be computed directly from the data.  While there are nonparametric feature selection algorithms, they typically provide feature rankings, rather than direct measures of impact or importance. They also often focus on single-variable associations with the response. In this paper, we provide mathematical definitions of feature impact and importance, derived from partial dependence curves, that operate directly on the data. We develop two methods, StratImpact and StratImp, that estimate feature impact and importance from partial dependence measures using stratification of the explanatory variables. We show that features ranked by these definitions are competitive with, and often better than, existing feature selection techniques. We validate our methods through a comparison with contemporary methods using three real data sets and a testbed of simulated data.
 \end{abstract}
 
 \keywords{
-feature importance \and business insights \and medical insights \and partial dependence \and model interpretability \and machine learning}
+feature importance \and partial dependence \and model interpretability \and machine learning}
 
 \section{Introduction}
 \label{sec:intro}
 
-Among data analysis techniques, feature importance is one of the most widely applied and practitioners use it for two key purposes: (1) to select features for predictive models, dropping the least predictive features to simplify and potentially increase the generality of the model and (2) to gain business, medical, or other insights, such as product characteristics valued by customers or treatments contributing to patient recovery.  To distinguish the two use cases, we will refer to feature predictiveness for modeling purposes as {\em importance} (the usual meaning) and the effect of features on business or medical response variables as {\em impact}.
+Among data analysis techniques, feature importance is one of the most widely applied and practitioners use it for two key purposes: (1) to select features for predictive models, dropping the least predictive features to simplify and potentially increase the generality of the model and (2) to gain business, medical, or other insights, such as product characteristics valued by customers or treatments contributing to patient recovery.  To distinguish the two use cases, we will refer to feature predictiveness for modeling purposes as {\em importance} (the usual meaning) and the effect of features on business or medical response variables as {\em impact}. 
 
 While some feature importance approaches work directly on the data, such as minimal-redundancy-maximal-relevance (mRMR) by \cite{mRMR}, almost all algorithms used in practice rank features by interrogating a fitted model provided by the user.  Examples include permutation importance by \cite{RF}, drop column importance, and SHAP by \cite{shap}; LIME by \cite{lime} interrogates subsidiary models to analyze such fitted models. It is accepted as self-evident that identifying the most predictive features for a model is best done through interrogation of that  model, but this is not always the case.  For example, when asked to identify the single most important feature of a real dataset \citep{bulldozer} for a random forest (RF), the features selected by model-based techniques get twice the validation error of the nonparametric technique proposed in this paper; see \figref{fig:topk}c. Still, model interrogation is generally very effective in practice for feature importance purposes.
 
@@ -119,19 +119,19 @@ Consider the feature importance charts in \figref{fig:diff-models} derived from 
 \end{center}
 \end{figure}
 
-Unfortunately, practitioners routinely conflate model-based feature importance with impact and have, consequently, likely made business or medical decisions based upon faulty information. Despite the potentially serious real-world consequences resulting from inappropriate application of importances, research attention has focused primarily on feature importance rather than feature impact. 
+Although feature importance has long been explored in the statistics and machine learning literature, feature impact is, to date, not well-defined and is often misunderstood. Furthermore, practitioners routinely conflate model-based feature importance with impact and have, consequently, likely made business or medical decisions based upon faulty information. Despite the potentially serious real-world consequences resulting from inappropriate application of importances, research attention has focused primarily on feature importance rather than feature impact. 
 
-In this paper, we address this deficiency by contributing (1) a straightforward mathematical formula as an ideal for computing feature impact, and related feature importance, that does not require predictions from a fitted model and (2) a prototype implementation called \simp{} that yields plausible feature impacts. By not requiring predictions from a model, we also make feature impact methods accessible to the vast  community of business analysts and scientists that lack the expertise to choose, tune, and evaluate models. To assess \simp{} quality, we use importance as a proxy to show that it is competitive on real data with existing importance techniques, as measured by validation errors on models trained using the top $k$ feature importances.  
+In this paper, we address this deficiency by contributing (1) a straightforward nonparametric definition as an ideal for computing feature impact, and related feature importance, and (2) a prototype implementation called \simp{} that yields plausible feature impacts. Our definitions make feature impact methods accessible to the vast community of business analysts and scientists that lack the expertise to choose, tune, and evaluate usual parametric models. To assess \simp{} quality, we use importance as a proxy to show that it is competitive on real data with existing importance techniques, as measured by validation errors on models trained using the top $k$ feature importances.  
 
 We measure feature impact as a function of its partial dependence curve, as \cite{pdvim} did, because partial dependences (ideally) isolate the effect of a single variable on the response. In contrast to \cite{pdvim}, we use a nonparametric method called \spd{} (\citealt{stratpd}) to estimate partial dependences without predictions from a fitted model, which allows us to compute feature impact not just feature importance. \spd{} also isolates partial dependence curves in the presence of strong codependencies between features. The partial dependence approach is flexible in that it opens up the possibility of computing importances using any partial dependence method, such as Friedman's original definition (\citealt{PDP}) and ALE (\citealt{ALE}). (We will refer to Friedman's original definition as FPD to distinguish it from the general notion of partial dependence.) SHAP also fits into this perspective since the average SHAP value at any single feature value forms a point on a mean-centered partial dependence curve. Our prototype is currently limited to regression but accepts numerical and label-encoded categorical explanatory variables; a similar approach should work for classification. The software is available via Python package {\tt stratx} with source at {\tt github.com/parrt/stratx}. 
 
-We begin by giving definitions of feature impact and importance in \secref{sec:def}, then survey existing nonparametric and model-dependent techniques in \secref{sec:existing}. \secref{sec:experiments} assesses the quality of \simp{} importance values by examining how well they rank model features in terms of predictiveness. We finish in \secref{sec:discussion} with a discussion of the proposed technique's effectiveness and future work.
+We begin by giving definitions of feature impact and importance in \secref{sec:def}, then survey existing nonparametric and other model-dependent techniques in \secref{sec:existing}. \secref{sec:experiments} assesses the quality of \simp{} importance values by examining how well they rank model features in terms of predictiveness. We finish in \secref{sec:discussion} with a discussion of the proposed technique's effectiveness and future work.
 
 \section{Definitions of impact and importance}\label{sec:def}
 
 \cut{Practitioners loosely define feature importance as feature predictiveness, which presupposes a fitted predictive model, probably because importances are so often used for feature selection during model development.  Research  focuses on more accurately identifying the impact of features upon model predictions.  But, relying on a fitted model makes it difficult to tease apart the true feature importance from the ability of the model to exploit that feature for prediction purposes. Rather than measuring feature impact on {\em model predictions}, we propose avoiding the model completely to define feature importance as the average impact of a feature on the {\em data set response values}.}
 
-In special circumstances, we know the precise impact of each feature $x_j$. Assume we are given the training data pair ($\bf X, y$) where ${\bf X} = [x^{(1)}, \ldots, x^{(n)}]$ is an $n \times p$ matrix whose $p$ columns represent observed features and ${\bf y}$ is the $n \times 1$ vector of responses; ${\bf X}_j$ is the $n \times 1$ column of data associated with feature $x_j$.  If a data set is generated using a linear function, $y = \beta_0 + \sum_{j=1}^p \beta_j x_j$, then coefficient $\beta_j$ corresponds  to the impact of $x_j$ for $j=1,..,p$.  $\beta_j$ is the impact on $y$ for a unit change in feature $x_j$, holding other features constant.
+When the true relationship between a set of features and the response is linear, we know the precise impact of each feature $x_j$. Assume we are given the training data pair ($\bf X, y$) where ${\bf X} = [x^{(1)}, \ldots, x^{(n)}]$ is an $n \times p$ matrix whose $p$ columns represent observed features and ${\bf y}$ is the $n \times 1$ vector of responses; ${\bf X}_j$ is the $n \times 1$ column of data associated with feature $x_j$.  If a data set is generated using a linear function, $y = \beta_0 + \sum_{j=1}^p \beta_j x_j$, then coefficient $\beta_j$ corresponds  to the impact of $x_j$ for $j=1,..,p$.  $\beta_j$ is the impact on $y$ for a unit change in feature $x_j$, holding other features constant.
 
 To hold features constant for any smooth and continuous generator function $f:\mathbb{R}^{p} \rightarrow \mathbb{R}$ that precisely maps each $\xi$ to $y^{(i)}$, ${y^{(i)}} = f(\xi)$, we can take the partial derivatives of $f$ with respect to each feature $x_j$; e.g., for linear functions, ${\partial y}/{\partial x_j}=\beta_j$. Integrating the partial derivative then gives the {\em idealized partial dependence} (\citealt{stratpd}) of $y$ on $x_j$, the isolated contribution of $x_j$ at $z$ to $y$:
 
@@ -161,12 +161,11 @@ To go from the idealized partial dependence of $x_j$ to feature impact, we assum
 \noindent  where $\{{\bf X}_j\}$ is the set of unique ${\bf X}_j$ values ($\{{\bf X}_j^{(i)}\}_{i=1..n}$) and $n_j$ is the number of unique ${\bf X}_j$. 
 The usual definition of region width, $\Delta x_j = {(\max({\bf X}_j) - \min({\bf X}_j))}/{n_j}$, is inappropriate in practice because ${\bf X}_j$ often has large gaps in $x_j$ space and impact units would include $x_j$'s units (e.g., $rent \times bedrooms$ or $rent \times hasparking$). That would make impact scores incomparable across features. By defining $\Delta x_j = 1/n_j$, the fraction of unique ${\bf X}_j$ values covered by one $PD_j$ value, widths are not skewed by empty $x_j$ gaps and impact units become those of $y$. That reduces $x_j$'s impact estimate to the average magnitude of $PD_j$:
 
+\noindent This formula works for any partial dependence curve, either by examining output from a fitted model, $\hat{f}$, or by estimating the partial derivative of $f$ directly from the data and then integrating, as \spd{} does. Dividing $x_j$'s impact by the sum of all impacts, converts impact units from $y$'s units to [0,1]:
+
 \[
 \Imp_j \approx  \sum_{x_j \in \{{\bf X}_j\}} |PD_j(x_j)| \times \frac{1}{n_j} = \overline{|PD_j|}
 \]
-
-
-\noindent This formula works for any partial dependence curve, either by examining output from a fitted model, $\hat{f}$, or by estimating the partial derivative of $f$ directly from the data and then integrating, as \spd{} does. Dividing $x_j$'s impact by the sum of all impacts, converts impact units from $y$'s units to [0,1]:
 
 ~\\
 \noindent {\bf Definition 2} The {\em normalized nonparametric feature impact} of $x_j$ is the ratio of the average magnitude of $x_j$'s partial dependence to the total for all variables:
@@ -478,7 +477,7 @@ The OLS-derived feature rankings present an interesting story here (the circular
 \end{figure}
 }
 
-Features that are predictive in one model are not necessarily predictive in another model.  To determine how well the feature rankings from the various methods ``export'' to another model, we trained gradient boosting machines (GBM) on the OLS-based, RF-based, and \simp{} feature rankings.  \figref{fig:topk-gbm} shows that the \simp{} error curves generated using GBM models are similar to those resulting from RF models, except for the \figref{fig:topk-gbm}b flight delay curve, which does not improve much after feature $k=5$, while the other feature rankings do improve. 
+Features that are predictive in one model are not necessarily predictive in another model.  To determine how well the feature rankings from the various methods ``export'' to another model, we trained gradient boosting machines (GBM) on the OLS-based, RF-based, and \simp{} feature rankings.  \figref{fig:topk-gbm} shows that the \simp{} error curves generated using GBM models are similar to those resulting from RF models, except for the \figref{fig:topk-gbm}(b) flight delay curve, which does not improve much after feature $k=5$, while the other feature rankings do improve. 
 
 \begin{figure}
 \centering
@@ -667,5 +666,7 @@ Our proposed approach relies on accurate partial dependences, and considerable e
 \end{figure}
 }
 
+\section{Compliance with Ethical Standards}
+Funding: JDW acknowledges partial support by the National Science Foundation grant NSF DMS - 1830547. Conflict of Interest: The authors declare that they have no conflict of interest.
 \bibliography{pdimp}
 \end{document}
