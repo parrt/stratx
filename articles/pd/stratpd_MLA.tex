@@ -1,4 +1,5 @@
 \documentclass[3p,times]{elsarticle}
+
 %\documentclass[preprint,3p,12pt,authoryear]{elsarticle}
 %\documentclass[final,3p,times,onecolumn,times]{elsarticle}
 
@@ -11,7 +12,9 @@
 \usepackage{enumerate}
 \setcitestyle{authoryear,round}
 \usepackage{natbib}
-\renewcommand{\bibnumfmt}[1]{}
+%\usepackage[natbibapa]{apacite}
+%\usepackage[style=apa,backend=biber]{biblatex}
+%\renewcommand{\bibnumfmt}[1]{}
 \usepackage{amsmath}
 \usepackage{array}
 \usepackage{url}
@@ -84,20 +87,6 @@
 \renewcommand{\slash}{\texttt{\char`\\}}
 
 \DeclareMathOperator{\Ex}{\mathbb{E}}
-
-%\makeatletter
-%\providecommand{\doi}[1]{%
-%  \begingroup
-%    \let\bibinfo\@secondoftwo
- %   \urlstyle{rm}%
-%    \href{http://dx.doi.org/#1}{%
-%      doi:\discretionary{}{}{}%
-%      \nolinkurl{#1}%
-%    }%
-%  \endgroup
-%}
-%\makeatother
-
 
  %%%%%%%%%%%%%%%%%%%%%%%%%%%%
  %%Trying to fix the moving table problem
@@ -570,7 +559,8 @@ In this paper, we contribute a method for computing partial dependence curves, f
 \section*{Acknowledgments}
 \noindent JDW acknowledges partial support from the National Science Foundation, grant NSF DMS-1830547.
 
-\bibliographystyle{elsarticle-num-names} 
+%\bibliographystyle{apacite}
+\bibliographystyle{elsarticle-num-names-alpha} 
 \bibliography{stratpd}
 
 \appendix
