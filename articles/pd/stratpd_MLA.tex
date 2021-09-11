@@ -575,24 +575,24 @@ In this paper, we contribute a method for computing partial dependence curves, f
 \SetAlgorithmName{Algorithm}{List of Algorithms}
 \SetAlgoSkip{}
 \TitleOfAlgo{{\em StratPD}({\bf X}, {\bf y}, $j$, {\it min\_samples\_leaf}, {\it min\_slopes\_per\_x})}
-$T$ := Decision tree regressor fit to (\Xnj{}, $\bf y$) with hyper parameter: ${\it min\_samples\_leaf}$\;
+$T$ := Decision tree regressor fit to (\Xnj{}, $\bf y$) with ${\it min\_samples\_leaf}$\;
 \For{each leaf $L \in T$}{
-        ${\bf x}_L := \{x_j^{(i)}\}_{i \in L}$, the unique and ordered $x_j$ in $L$%\Comment*{\it Get leaf observations}
-        $\bar{\bf y}_L^{(k)} := \Ex[ y^{(i)} \,|\, (x_j^{(i)}=x_L^{(k)},  y^{(i)})] \text{ for } k = 1..|{\bf x}_L|, i \in L$%\Comment*{\it Compute $\bar{y}$ per unique $x_j$ value}
-        $\delta_L^{(k)} = \frac{\bar{\bf y}_L^{(k+1)} - \bar{\bf y}_L^{(k)}}{{\bf x}_L^{(k+1)} - {\bf x}_L^{(k)}}$%\Comment*{\it Discrete forward difference between adjacent unique $x_j$ values}
+        ${\bf x}_L := \{x_j^{(i)}\}_{i \in L}$, the unique and ordered $x_j$ in $L$\;
+        $\bar{\bf y}_L^{(k)} := \Ex[ y^{(i)} \,|\, (x_j^{(i)}=x_L^{(k)},  y^{(i)})] \text{ for } k = 1..|{\bf x}_L|, i \in L$\;
+        $\delta_L^{(k)} := \frac{\bar{\bf y}_L^{(k+1)} - \bar{\bf y}_L^{(k)}}{{\bf x}_L^{(k+1)} - {\bf x}_L^{(k)}}$\;
 	Add tuples ${({\bf x}_L^{(k)}, {\bf x}_L^{(k+1)},~ \delta_L^{(k)})}$  to list ${\bf D}$ for $k = 1..|{\bf x}_L|-1$\\
 }
 ${\bf ux} := \{x_j^{(i)}\}_{i \in 1..n}$, the unique and ordered $x_j$ in ${\bf X}_j$\\
 Let $\bf c$ and $\delta$ be vectors of length $|\bf ux|$\\
 \For(\hfill$\triangleright$\ {\it\textcolor{gray}{\small Count slopes and compute average slope per unique $x_j$ value}}){each $x \in {\bf ux}$}{
 	${\bf slopes}_x$ := [$slope$ for $(a,b,slope) \in \bf D$ if $x \ge a$ and $x <b$]\\
-	${\bf c}_x$ := $|{\bf slopes}_x|$%\Comment*{\it Count number of slopes used to estimate overall slope at $x$}
-	${\delta}_x$ := $\overline{\bf slopes}_x$%\Comment*{\it Slope estimate at $x$ is average of slopes whose range overlaps $x$}
+	${\bf c}_x$ := $|{\bf slopes}_x|$\;
+	${\delta}_x$ := $\overline{\bf slopes}_x$\;
 }
-${\bf \delta}$ := ${\bf \delta}[{\bf c} \ge min\_slopes\_per\_x]$%\Comment*{\it Drop missing slopes and those computed with too few}
-${\bf ux}$ := ${\bf ux}[{\bf c} \ge min\_slopes\_per\_x]$%\Comment*{\it Drop $x_j$ values without sufficient estimates}
+${\bf \delta}$ := ${\bf \delta}[{\bf c} \ge min\_slopes\_per\_x]$\;
+${\bf ux}$ := ${\bf ux}[{\bf c} \ge min\_slopes\_per\_x]$\;
 ${\bf pd}_x$ := ${\bf ux}^{(k+1)} - {\bf ux}^{(k)}$ for $k = 1..|{\bf ux}|-1$\\
-${\bf pd}_y$ := [0] + cumulative\_sum($\delta \times {\bf pd}_x$)~~~%\Comment*{\it integrate, inserting 0 for leftmost $x_j$}
+${\bf pd}_y$ := [0] + cumulative\_sum($\delta \times {\bf pd}_x$)~~~\;
 \Return{${\bf pd}_x, {\bf pd}_y$}
 \label{alg:StratPD}
 \end{algorithm}
@@ -619,14 +619,14 @@ $T$ := Decision tree regressor fit to (\Xnj{}, $\bf y$) with hyper parameter: ${
 Let $\Delta Y$ be a $n_{cats} \times n_{leaves}$ matrix whose columns, $\Delta Y_L$, are vectors of leaf category deltas\\
 Let $C$ be a $n_{cats} \times n_{leaves}$ matrix whose columns, $C_L$, are vectors for leaf category counts\\
 \For(\hfill$\triangleright$\ {\it\textcolor{gray}{\small Get average $y$ delta relative to random ref category for obs. in leaves}}){each leaf $L \in T$}{
-        ${\bf x}_L := \{x_j^{(i)}\}_{i \in L}$, the unique $x_j$ categories in $L$%\Comment*{\it Get leaf observations}
-        $\bar{\bf y}_L^{(k)} := \Ex[ y^{(i)} \,|\, (x_j^{(i)}=x_L^{(k)},  y^{(i)})] \text{ for } k = 1..|{\bf x}_L|, i \in L$%\Comment*{\it Compute $\bar{y}$ per unique $x_j$ category level}
-        $C_L^{(k)} := |i \in L : x_j^{(i)}={\bf x}_L^{(k)}|$%\Comment*{\it Count occurrences of each category}
+        ${\bf x}_L := \{x_j^{(i)}\}_{i \in L}$, the unique $x_j$ categories in $L$\;
+        $\bar{\bf y}_L^{(k)} := \Ex[ y^{(i)} \,|\, (x_j^{(i)}=x_L^{(k)},  y^{(i)})] \text{ for } k = 1..|{\bf x}_L|, i \in L$\;
+        $C_L^{(k)} := |i \in L : x_j^{(i)}={\bf x}_L^{(k)}|$\;
 	${\it refcat}$ := random category chosen from ${\bf x}_L$\\
 	$\Delta {Y}_L$ = $\bar{\bf y}_L - \bar{\bf y}_L^{\it refcat}$\\
 }
-$\Delta {\bf y}$, {\bf c} := $\Delta {Y}_1$, $C_1$%\Comment*{\it $\Delta {\bf y}$ is running average vector mapping category to average $y$ delta}
-$completed$ := $\{L_1\}$; $work$ := $\{L_2 .. L_{n_{leaves}}\}$; %\Comment*{\it sets of leaves}
+$\Delta {\bf y}$, {\bf c} := $\Delta {Y}_1$, $C_1$\;
+$completed$ := $\{L_1\}$; $work$ := $\{L_2 .. L_{n_{leaves}}\}$;\;
 \While(\hfill$\triangleright$\ {\it\textcolor{gray}{\small 2 passes is typical to merge all $\Delta {Y}_L$ into $\Delta {\bf y}$}}){$|work| > 0$ and $|completed|>0$}{
     completed := $\emptyset$\\
     \For{each leaf $L$ in work}{
@@ -634,9 +634,9 @@ $completed$ := $\{L_1\}$; $work$ := $\{L_2 .. L_{n_{leaves}}\}$; %\Comment*{\it 
         \If{$common \ne \emptyset$}{
             ${\it completed}$ := ${\it completed} \cup \{L\}$\\
             $cat$ := random category in $common$\\
-            $\Delta Y_L$ := $\Delta {Y}_L- \Delta {Y}_{L}^{(cat)} + \Delta {\bf y}^{(cat)}$%\Comment*{\it Adjust so $\Delta {Y}_{L}^{(cat)}=0$ then add corresponding $\Delta {\bf y}^{(cat)}$ value}
-            $\Delta {\bf y}$ := $({\bf c} \times \Delta {\bf y} + C_L \times \Delta Y_L)/({\bf c} + C_L)$ where $z+NaN$={\it z}%\Comment*{\it weighted average}
-            ${\bf c} := {\bf c} + C_L$%\Comment*{\it update running weight}
+            $\Delta Y_L$ := $\Delta {Y}_L- \Delta {Y}_{L}^{(cat)} + \Delta {\bf y}^{(cat)}$\;
+            $\Delta {\bf y}$ := $({\bf c} \times \Delta {\bf y} + C_L \times \Delta Y_L)/({\bf c} + C_L)$ where $z+NaN$={\it z}\;
+            ${\bf c} := {\bf c} + C_L$\;
         }
     }
     $work := work \slash {\it completed}$\\
