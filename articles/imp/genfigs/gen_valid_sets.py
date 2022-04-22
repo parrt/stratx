@@ -2,7 +2,23 @@ import pandas as pd
 import numpy as np
 from sklearn.datasets import load_boston
 
-from support import load_flights, load_bulldozer, load_rent, datadir
+from support import synthetic_files, load_flights, \
+    load_bulldozer, load_rent, datadir, load_synthetic
+
+
+np.random.seed(1)
+load_synthetic()
+for fname in synthetic_files:
+    df = pd.read_csv(f"{datadir}/{fname}.csv")
+    nvars = df.shape[1] - 1
+    colnames = [f"v{i+1}" for i in range(nvars)] + ['response']
+    df.columns = colnames
+    df = df.sample(frac=1.0)  # shuffle
+    ntrain = int(len(df)*.8)
+    df_train = df.iloc[0:ntrain]
+    df_test = df.iloc[ntrain:]
+    df_train.to_csv(f"{datadir}/{fname}-train.csv", index=False)
+    df_test.to_csv(f"{datadir}/{fname}-test.csv", index=False)
 
 np.random.seed(1)
 boston = load_boston()
@@ -39,3 +55,4 @@ df_test = df.iloc[-5000:]
 df = df[0:20_000]
 df.to_csv(f"{datadir}/bulldozer-train.csv", index=False)
 df_test.to_csv(f"{datadir}/bulldozer-test.csv", index=False)
+

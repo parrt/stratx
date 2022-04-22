@@ -50,5 +50,6 @@ cp images/bulldozer-features.pdf  $IMG_TARGET
 cp images/bulldozer-features-shap-rf.pdf  $IMG_TARGET
 cp images/rent-features.pdf  $IMG_TARGET
 cp images/rent-features-shap-rf.pdf  $IMG_TARGET
+cp images/*Linear*.pdf  $IMG_TARGET
 cd $TARGET
 zip -r ../pdimp.zip *

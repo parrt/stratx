@@ -24,6 +24,12 @@ SOFTWARE.
 import numpy as np
 import pandas as pd
 
+import requests
+
+import zipfile
+
+import io
+
 import statsmodels.api as sm
 from scipy.stats import spearmanr
 
@@ -69,6 +75,19 @@ pd.set_option('display.width', 300)
 
 # Didn't allow super huge forests in RF and GBM as generating top-k images takes many hours
 # Very small impact on scores.
+
+synthetic_files = ["Linear_Variance_1_Sparsity_5",
+                   "Linear_Variance_1_Sparsity_20",
+                   "Linear_Variance_1_Sparsity_100",
+                   "Linear_Variance_5_Sparsity_5",
+                   "Linear_Variance_5_Sparsity_20",
+                   "Linear_Variance_5_Sparsity_100",
+                   "Non-Linear_Variance_1_Sparsity_5",
+                   "Non-Linear_Variance_5_Sparsity_5",
+                   "Non-Linear_Variance_1_Sparsity_20",
+                   "Non-Linear_Variance_5_Sparsity_20",
+                   "Non-Linear_Variance_1_Sparsity_100",
+                   "Non-Linear_Variance_5_Sparsity_100"]
 
 models = {
     ("boston", "RF"):{'max_features': 0.3, 'min_samples_leaf': 1, 'n_estimators': 50},
@@ -740,6 +759,20 @@ def plot_topk(R, ax=None, k=None,
 
     if title is not None:
         ax.set_title(title, fontsize=title_fontsize, fontname=fontname)
+
+
+def load_synthetic():
+    global datadir
+    if not os.path.exists(datadir):
+        datadir = "data"
+
+    r = requests.get("https://raw.githubusercontent.com/parrt/stratx/master/articles/imp/synthetic-data.zip")
+    if r.status_code != 200:
+        raise ValueError("Can't download https://raw.githubusercontent.com/parrt/stratx/master/articles/imp/synthetic-data.zip")
+
+    z = zipfile.ZipFile(io.BytesIO(r.content))
+    z.extractall(f"{datadir}")
+    print(f"Extracting 12 synthetic data files to {datadir}")
 
 
 def load_flights(n):

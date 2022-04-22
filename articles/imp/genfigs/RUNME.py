@@ -24,4 +24,7 @@ import rent_top
 import rent_stability
 import rent_fdp_shap_imp
 
-import speed # warning: slow
+import synthetic_stability
+
+# warning next one is slow:
+# import speed
