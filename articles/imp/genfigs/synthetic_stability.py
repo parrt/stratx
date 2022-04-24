@@ -22,6 +22,6 @@ for dataset in synthetic_files:
     # plt.show()
     # plt.close()
 
-    plot_importances(I[0:10], imp_range=(0, 0.4), sortby='Impact')
+    plot_importances(I[0:20], imp_range=(0, 0.4), sortby='Impact')
     plt.savefig(f"../images/{dataset}-stability-impact.pdf", bbox_inches="tight", pad_inches=0)
     plt.show()
