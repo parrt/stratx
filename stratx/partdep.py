@@ -597,9 +597,9 @@ def avg_values_at_cat(leaf_deltas, leaf_counts,
     See comment for avg_values_at_cat_one_disjoint_region()
     """
     # catavg is the running average vector and starts out as the first column (1st leaf's deltas)
-    catavg = np.full(shape=(leaf_deltas.shape[0],), fill_value=np.nan, dtype=np.float)
+    catavg = np.full(shape=(leaf_deltas.shape[0],), fill_value=np.nan, dtype=float)
     catgroups = []
-    count_per_cat = np.zeros(shape=(leaf_deltas.shape[0],), dtype=np.int)
+    count_per_cat = np.zeros(shape=(leaf_deltas.shape[0],), dtype=int)
     work = range(0, leaf_deltas.shape[1])  # all leaf indexes added to work list
     # print("START work", work)
     while len(work)>0:
